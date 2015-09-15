@@ -17,7 +17,7 @@ type DockerImageManager struct {
 }
 
 func (d *DockerImageManager) ListReleaseImages() {
-
+	docker.NewClient("asd")
 }
 
 func (d *DockerImageManager) FindBaseImage() {
