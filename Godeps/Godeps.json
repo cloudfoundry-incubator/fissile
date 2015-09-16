@@ -16,12 +16,25 @@
 			"Rev": "a65b733b303f0055f8d324d805f393cd3e7a7904"
 		},
 		{
+			"ImportPath": "github.com/fatih/color",
+			"Comment": "v0.1-8-g76d4231",
+			"Rev": "76d423163af754ff6423d2d9be0057fbf03c57c2"
+		},
+		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
 			"Rev": "c9ad0ce23f68428421adfc6ced9e6123f54788a5"
 		},
 		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
+		},
+		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor",
 			"Rev": "cdabc654f61ff99a82622c888f738c808c38cfa9"
+		},
+		{
+			"ImportPath": "github.com/shiena/ansicolor",
+			"Rev": "a5e2b567a4dd6cc74545b8a4f27c9d63b9e7735b"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
