@@ -1,16 +1,20 @@
 package app
 
 import (
+	"fmt"
 	"log"
 
-	"github.com/fatih/color"
+	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
+
+	"github.com/fatih/color"
 )
 
 type Fissile interface {
 	ListPackages(releasePath string)
 	ListJobs(releasePath string)
 	ListFullConfiguration(releasePath string)
+	ShowBaseImage(dockerEndpoint string, baseImage string)
 }
 
 type FissileApp struct {
@@ -64,4 +68,21 @@ func (f *FissileApp) ListFullConfiguration(releasePath string) {
 			)
 		}
 	}
+}
+
+func (f *FissileApp) ShowBaseImage(dockerEndpoint string, baseImage string) {
+	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+	}
+
+	image, err := dockerManager.FindBaseImage(baseImage)
+	if err != nil {
+		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+	}
+
+	log.Printf("ID: %s", color.GreenString(image.ID))
+	log.Printf("Size: %s", color.YellowString(fmt.Sprintf("%.2f", image.Size/(1024*1024))))
+	log.Printf("Author: %s", color.YellowString(image.Author))
+	log.Printf("Architecture: %s", color.YellowString(image.Architecture))
 }

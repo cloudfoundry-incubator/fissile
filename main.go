@@ -84,6 +84,26 @@ func main() {
 				fissile.ListFullConfiguration(c.String("release"))
 			},
 		},
+		{
+			Name:    "show-baseimage",
+			Aliases: []string{"sb"},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "docker-endpoint, d",
+					Value: "unix:///var/run/docker.sock",
+					Usage: "Docker endpoint.",
+				},
+				cli.StringFlag{
+					Name:  "base-image, b",
+					Value: "ubuntu:14.04",
+					Usage: "Base image.",
+				},
+			},
+			Usage: "Show information about a base docker image",
+			Action: func(c *cli.Context) {
+				fissile.ShowBaseImage(c.String("docker-endpoint"), c.String("base-image"))
+			},
+		},
 	}
 
 	app.Run(os.Args)
