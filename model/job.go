@@ -80,7 +80,7 @@ func (j *Job) ValidateSha1() error {
 // Returns the full path of the extracted archive
 func (j *Job) Extract(destination string) (string, error) {
 	targetDir := filepath.Join(destination, j.Name)
-	if err := os.MkdirAll(targetDir, 0x755); err != nil {
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return "", err
 	}
 

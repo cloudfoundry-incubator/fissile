@@ -58,7 +58,7 @@ func TestReleaseValidationStructure(t *testing.T) {
 	releaseDir := filepath.Join(tempDir, uuid.New())
 
 	// Create an empty release dir
-	os.MkdirAll(releaseDir, 0x755)
+	os.MkdirAll(releaseDir, 0755)
 
 	release := Release{
 		Path: releaseDir,
@@ -77,14 +77,14 @@ func TestReleaseValidationStructure(t *testing.T) {
 	assert.Contains(err.Error(), "packages dir")
 
 	// Create an empty packages dir
-	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0x755)
+	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0755)
 	assert.Nil(err)
 	err = release.validatePathStructure()
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "jobs directory")
 
 	// Create an empty jobs dir
-	err = os.MkdirAll(filepath.Join(releaseDir, jobsDir), 0x755)
+	err = os.MkdirAll(filepath.Join(releaseDir, jobsDir), 0755)
 	assert.Nil(err)
 	err = release.validatePathStructure()
 	assert.NotNil(err)
