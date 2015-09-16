@@ -1,14 +1,22 @@
 package main
 
 import (
+	"log"
 	"os"
+	"runtime"
 
 	"github.com/hpcloud/fissile/app"
 
 	"github.com/codegangsta/cli"
+	"github.com/fatih/color"
 )
 
 func main() {
+
+	if runtime.GOOS == "windows" {
+		log.SetOutput(color.Output)
+	}
+
 	fissile := app.NewFissileApp()
 
 	app := cli.NewApp()
@@ -29,9 +37,8 @@ func main() {
 					Usage: "Target path for extracting the release",
 				},
 			},
-			Usage: "List all jobs in a BOSH release",
+			Usage: "Download a BOSH release",
 			Action: func(c *cli.Context) {
-				fissile.ListJobs()
 			},
 		},
 		{
@@ -41,11 +48,12 @@ func main() {
 				cli.StringFlag{
 					Name:  "release, r",
 					Usage: "Path to a bosh release.",
+					Value: ".",
 				},
 			},
 			Usage: "List all jobs in a BOSH release",
 			Action: func(c *cli.Context) {
-				fissile.ListJobs()
+				fissile.ListJobs(c.String("release"))
 			},
 		},
 		{
@@ -59,7 +67,7 @@ func main() {
 			},
 			Usage: "List all packages in a BOSH release",
 			Action: func(c *cli.Context) {
-				fissile.ListJobs()
+				fissile.ListPackages(c.String("release"))
 			},
 		},
 		{
@@ -68,12 +76,12 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "release, r",
-					Usage: "Path to a bosh release. Can be a tgz, a URL or a local directory.",
+					Usage: "Path to a bosh release.",
 				},
 			},
 			Usage: "List all configurations for all jobs in a release",
 			Action: func(c *cli.Context) {
-				fissile.ListJobs()
+				fissile.ListFullConfiguration(c.String("release"))
 			},
 		},
 	}

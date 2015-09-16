@@ -127,7 +127,7 @@ func (j *Job) loadJobSpec() (err error) {
 
 	jobDir, err := j.Extract(tempJobDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error extracting archive for job %s: %s", j.Name, err.Error())
 	}
 
 	specFile := filepath.Join(jobDir, "job.MF")
