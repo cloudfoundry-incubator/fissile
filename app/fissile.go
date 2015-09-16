@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/hpcloud/fissile/docker"
@@ -82,7 +81,5 @@ func (f *FissileApp) ShowBaseImage(dockerEndpoint string, baseImage string) {
 	}
 
 	log.Printf("ID: %s", color.GreenString(image.ID))
-	log.Printf("Size: %s", color.YellowString(fmt.Sprintf("%.2f", image.Size/(1024*1024))))
-	log.Printf("Author: %s", color.YellowString(image.Author))
 	log.Printf("Architecture: %s", color.YellowString(image.Architecture))
 }
