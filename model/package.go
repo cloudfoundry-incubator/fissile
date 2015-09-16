@@ -98,6 +98,16 @@ func (p *Package) loadPackageInfo() (err error) {
 	p.Sha1 = p.packageReleaseInfo["sha1"].(string)
 	p.Path = p.packageArchivePath()
 
+	return nil
+}
+
+func (p *Package) loadPackageDependencies() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Error trying to load package information: %s", r)
+		}
+	}()
+
 	for _, pkg := range p.packageReleaseInfo["dependencies"].([]interface{}) {
 		pkgName := pkg.(string)
 		dependency, err := p.Release.lookupPackage(pkgName)

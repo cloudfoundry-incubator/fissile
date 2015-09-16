@@ -50,6 +50,10 @@ func NewRelease(path string) (*Release, error) {
 		return nil, err
 	}
 
+	if err := release.loadDependenciesForPackages(); err != nil {
+		return nil, err
+	}
+
 	if err := release.loadJobs(); err != nil {
 		return nil, err
 	}
@@ -124,6 +128,16 @@ func (r *Release) loadPackages() (err error) {
 		}
 
 		r.Packages = append(r.Packages, p)
+	}
+
+	return nil
+}
+
+func (r *Release) loadDependenciesForPackages() error {
+	for _, pkg := range r.Packages {
+		if err := pkg.loadPackageDependencies(); err != nil {
+			return err
+		}
 	}
 
 	return nil
