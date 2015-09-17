@@ -1,8 +1,8 @@
 package docker
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -81,10 +81,14 @@ func TestCreateCompilerContainer(t *testing.T) {
 	assert.Nil(err)
 	assert.NotEmpty(container.Container.ID)
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(container.Stdout)
-	s := buf.String()
-	panic(s)
+	go func() {
+		io.Copy(os.Stdout, container.Stdout)
+	}()
+
+	//	buf := new(bytes.Buffer)
+	//	buf.ReadFrom(container.Stdout)
+	//	s := buf.String()
+	//	panic(s)
 
 	time.Sleep(10 * time.Second)
 }

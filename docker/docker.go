@@ -3,6 +3,7 @@ package docker
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/fsouza/go-dockerclient"
 )
@@ -71,11 +72,14 @@ func (d *DockerImageManager) UploadJobImage() {
 func (d *DockerImageManager) createCompilationContainer(containerName string, imageName string) (*FissileContainer, error) {
 	cco := docker.CreateContainerOptions{
 		Config: &docker.Config{
-			Hostname:   "compiler",
-			Domainname: "fissile",
-			Cmd:        []string{"ping", "google.com", "-c", "5"},
-			WorkingDir: "/",
-			Image:      imageName,
+			AttachStdin:  false,
+			AttachStdout: true,
+			AttachStderr: true,
+			Hostname:     "compiler",
+			Domainname:   "fissile",
+			Cmd:          []string{"ping", "google.com", "-c", "5"},
+			WorkingDir:   "/",
+			Image:        imageName,
 		},
 		HostConfig: &docker.HostConfig{
 			Privileged: true,
@@ -94,23 +98,28 @@ func (d *DockerImageManager) createCompilationContainer(containerName string, im
 	}
 
 	attached := make(chan struct{})
-	//stdinReader, stdoutWriter := io.Pipe()
+	//	stdinReader, stdinWriter := io.Pipe()
 	stdoutReader, stdoutWriter := io.Pipe()
-	stderrReader, stderrWriter := io.Pipe()
+	//	stderrReader, stderrWriter := io.Pipe()
+
+	//	stdinReader, stdinWriter := io.Pipe()
+	//	stdoutReader, stdoutWriter := io.Pipe()
+	//	stderrReader, stderrWriter := io.Pipe()
 
 	go func() {
 		err = d.client.AttachToContainer(docker.AttachToContainerOptions{
 			Container: container.ID,
 
-			//InputStream:  stdinReader,
+			InputStream:  os.Stdin, // stdinReader,
 			OutputStream: stdoutWriter,
-			ErrorStream:  stderrWriter,
+			ErrorStream:  os.Stderr, // stderrWriter,
 
-			Stdin:  false,
-			Stdout: true,
-			Stderr: true,
+			Stdin:       true,
+			Stdout:      true,
+			Stderr:      true,
+			Stream:      true,
+			RawTerminal: false,
 
-			Stream:  true,
 			Success: attached,
 		})
 
@@ -121,10 +130,12 @@ func (d *DockerImageManager) createCompilationContainer(containerName string, im
 
 	attached <- <-attached
 
+	//panic("Test")
+
 	return &FissileContainer{
 		Container: container,
-		//Stdin:     stdinWriter,
+		//		Stdin:     stdinWriter,
 		Stdout: stdoutReader,
-		Stderr: stderrReader,
+		//		Stderr:    stderrReader,
 	}, nil
 }
