@@ -112,8 +112,10 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	imageName := getBaseCompilationImageName(repository, release.Name, release.Version)
-
 	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
+
+	containerName := getBaseCompilationContainerName(repository, release.Name, release.Version)
+	log.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
 
 	image, err := dockerManager.FindImage(imageName)
 	if err != nil {
@@ -144,11 +146,11 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
 	}
 
-	exitCode, _, err := dockerManager.RunInContainer(
-		imageName,
+	exitCode, container, err := dockerManager.RunInContainer(
+		containerName,
 		baseImageName,
 		[]string{"bash", "-c", containerScriptPath},
-		"",
+		tempScriptDir,
 		"",
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
@@ -163,6 +165,14 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 			}
 		},
 	)
+	defer func() {
+		if container != nil {
+			err = dockerManager.RemoveContainer(container.ID)
+			if err != nil {
+				log.Fatalln(color.RedString("Error removing container %s: %s", container.ID, err.Error()))
+			}
+		}
+	}()
 
 	if err != nil {
 		log.Fatalln(color.RedString("Error running script: %s", err.Error()))
@@ -172,6 +182,10 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 		log.Fatalln(color.RedString("Error - script script exited with code %d: %s", exitCode, err.Error()))
 	}
 
+}
+
+func getBaseCompilationContainerName(repository, releaseName, releaseVersion string) string {
+	return fmt.Sprintf("%s-%s-%s-cbase", repository, releaseName, releaseVersion)
 }
 
 func getBaseCompilationImageName(repository, releaseName, releaseVersion string) string {
