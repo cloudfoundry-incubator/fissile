@@ -179,7 +179,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	}
 
 	if exitCode != 0 {
-		log.Fatalln(color.RedString("Error - script script exited with code %d: %s", exitCode, err.Error()))
+		log.Fatalln(color.RedString("Error - script script exited with code %d", exitCode))
 	}
 
 }
