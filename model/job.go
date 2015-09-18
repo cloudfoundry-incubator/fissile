@@ -116,9 +116,11 @@ func (j *Job) loadJobSpec() (err error) {
 
 	tempJobDir, err := ioutil.TempDir("", "fissile-job-dir")
 	defer func() {
-		// Cleanup if we're not in an error state
+		cleanupErr := os.RemoveAll(tempJobDir)
 		if err == nil {
-			err = os.RemoveAll(tempJobDir)
+			err = cleanupErr
+		} else {
+			err = fmt.Errorf("There were errors loading the job spec: %s. Cleanup error: %s", err.Error(), cleanupErr.Error())
 		}
 	}()
 	if err != nil {
