@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -43,7 +44,7 @@ func TestFindImageOK(t *testing.T) {
 	dockerManager, err := NewDockerImageManager(dockerEndpoint)
 	assert.Nil(err)
 
-	image, err := dockerManager.FindBaseImage(dockerImageName)
+	image, err := dockerManager.FindImage(dockerImageName)
 
 	assert.Nil(err)
 	assert.NotEmpty(image.ID)
@@ -55,7 +56,7 @@ func TestShowImageNotOK(t *testing.T) {
 	dockerManager, err := NewDockerImageManager(dockerEndpoint)
 	assert.Nil(err)
 
-	_, err = dockerManager.FindBaseImage(uuid.New())
+	_, err = dockerManager.FindImage(uuid.New())
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "Could not find base image")
@@ -70,7 +71,7 @@ func TestRunInContainer(t *testing.T) {
 
 	var output string
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
 		[]string{"ping", "127.0.0.1", "-c", "1"},
@@ -88,7 +89,7 @@ func TestRunInContainer(t *testing.T) {
 	assert.Equal(0, exitCode)
 	assert.NotEmpty(output)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -101,7 +102,7 @@ func TestRunInContainerStderr(t *testing.T) {
 
 	var output string
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
 		[]string{"ping", "-foo"},
@@ -119,7 +120,7 @@ func TestRunInContainerStderr(t *testing.T) {
 	assert.Equal(2, exitCode)
 	assert.NotEmpty(output)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -132,10 +133,10 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 
 	var output string
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
-		[]string{"ls", "/fissile-in"},
+		[]string{"ls", ContainerInPath},
 		"/",
 		"",
 		func(stdout io.Reader) {
@@ -150,7 +151,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 	assert.Equal(0, exitCode)
 	assert.NotEmpty(output)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -161,10 +162,10 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 
 	assert.Nil(err)
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
-		[]string{"touch", "/fissile-in/fissile-test.txt"},
+		[]string{"touch", filepath.Join(ContainerInPath, "fissile-test.txt")},
 		"/",
 		"",
 		nil,
@@ -174,7 +175,7 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 	assert.Nil(err)
 	assert.NotEqual(0, exitCode)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -187,10 +188,10 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 
 	var output string
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
-		[]string{"ls", "/fissile-out"},
+		[]string{"ls", ContainerOutPath},
 		"",
 		"/tmp",
 		func(stdout io.Reader) {
@@ -205,7 +206,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 	assert.Equal(0, exitCode)
 	assert.NotEmpty(output)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -216,10 +217,10 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 
 	assert.Nil(err)
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
-		[]string{"touch", "/fissile-out/fissile-test.txt"},
+		[]string{"touch", filepath.Join(ContainerOutPath, "fissile-test.txt")},
 		"",
 		"/tmp",
 		nil,
@@ -229,7 +230,7 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(0, exitCode)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 }
 
@@ -240,7 +241,7 @@ func TestCreateImageOk(t *testing.T) {
 
 	assert.Nil(err)
 
-	exitCode, container, err := dockerManager.runInContainer(
+	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
 		[]string{"ping", "127.0.0.1", "-c", "1"},
@@ -256,7 +257,7 @@ func TestCreateImageOk(t *testing.T) {
 	testRepo := getTestName()
 	testTag := getTestName()
 
-	image, err := dockerManager.createImage(
+	image, err := dockerManager.CreateImage(
 		container.ID,
 		testRepo,
 		testTag,
@@ -267,10 +268,10 @@ func TestCreateImageOk(t *testing.T) {
 	assert.Nil(err)
 	assert.NotEmpty(image.ID)
 
-	err = dockerManager.removeContainer(container.ID)
+	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
 
-	err = dockerManager.removeImage(fmt.Sprintf("%s:%s", testRepo, testTag))
+	err = dockerManager.RemoveImage(fmt.Sprintf("%s:%s", testRepo, testTag))
 	assert.Nil(err)
 }
 

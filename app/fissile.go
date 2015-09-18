@@ -1,8 +1,12 @@
 package app
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"path/filepath"
 
 	"github.com/hpcloud/fissile/baseos/compilation"
 	"github.com/hpcloud/fissile/docker"
@@ -107,7 +111,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	imageName := fmt.Sprintf("%s:%s-%s-cbase", repository, release.Name, release.Version)
+	imageName := getBaseCompilationImageName(repository, release.Name, release.Version)
 
 	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
@@ -122,13 +126,54 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 		))
 	}
 
+	tempScriptDir, err := ioutil.TempDir("", "fissile-compilation")
+	if err != nil {
+		log.Fatalln(color.RedString("Could not create temp dir %s: %s", tempScriptDir, err.Error()))
+	}
+
 	compilationScript, err := compilation.Asset("baseos/compilation/ubuntu.sh")
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
 	}
 
-	script := string(compilationScript)
+	targetScriptName := "compilation-prerequisites.sh"
+	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 
-	log.Println(script)
+	hostScriptPath := filepath.Join(tempScriptDir, "compilation-prerequisites.sh")
+	if err = ioutil.WriteFile(hostScriptPath, compilationScript, 0700); err != nil {
+		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
+	}
 
+	exitCode, _, err := dockerManager.RunInContainer(
+		imageName,
+		baseImageName,
+		[]string{"bash", "-c", containerScriptPath},
+		"",
+		"",
+		func(stdout io.Reader) {
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
+			}
+		},
+		func(stderr io.Reader) {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
+			}
+		},
+	)
+
+	if err != nil {
+		log.Fatalln(color.RedString("Error running script: %s", err.Error()))
+	}
+
+	if exitCode != 0 {
+		log.Fatalln(color.RedString("Error - script script exited with code %d: %s", exitCode, err.Error()))
+	}
+
+}
+
+func getBaseCompilationImageName(repository, releaseName, releaseVersion string) string {
+	return fmt.Sprintf("%s:%s-%s-cbase", repository, releaseName, releaseVersion)
 }

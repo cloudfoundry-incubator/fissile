@@ -8,6 +8,11 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
+const (
+	ContainerInPath  = "/fissile-in"
+	ContainerOutPath = "/fissile-out"
+)
+
 type ProcessOutStream func(io.Reader)
 
 type DockerImageManager struct {
@@ -88,11 +93,11 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 	}
 
 	if inPath != "" {
-		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:/fissile-in:ro", inPath))
+		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:%s:ro", inPath, ContainerInPath))
 	}
 
 	if outPath != "" {
-		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:/fissile-out", outPath))
+		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:%s", outPath, ContainerOutPath))
 	}
 
 	container, err = d.client.CreateContainer(cco)
