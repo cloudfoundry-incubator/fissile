@@ -8,14 +8,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
-type ImageManager interface {
-	ListReleaseImages()
-	FindBaseImage(imageName string)
-	CompileInBaseContainer()
-	CreateJobImage()
-	UploadJobImage()
-}
-
 type ProcessOutStream func(io.Reader)
 
 type DockerImageManager struct {
@@ -39,11 +31,7 @@ func NewDockerImageManager(dockerEndpoint string) (*DockerImageManager, error) {
 	return manager, nil
 }
 
-func (d *DockerImageManager) ListReleaseImages() {
-
-}
-
-func (d *DockerImageManager) FindBaseImage(imageName string) (*docker.Image, error) {
+func (d *DockerImageManager) FindImage(imageName string) (*docker.Image, error) {
 	image, err := d.client.InspectImage(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("Could not find base image %s: %s", imageName, err.Error())
@@ -52,30 +40,18 @@ func (d *DockerImageManager) FindBaseImage(imageName string) (*docker.Image, err
 	return image, nil
 }
 
-func (d *DockerImageManager) CompileInBaseContainer() {
-
-}
-
-func (d *DockerImageManager) CreateJobImage() {
-
-}
-
-func (d *DockerImageManager) UploadJobImage() {
-
-}
-
-func (d *DockerImageManager) removeContainer(containerID string) error {
+func (d *DockerImageManager) RemoveContainer(containerID string) error {
 	return d.client.RemoveContainer(docker.RemoveContainerOptions{
 		ID:    containerID,
 		Force: true,
 	})
 }
 
-func (d *DockerImageManager) removeImage(imageName string) error {
+func (d *DockerImageManager) RemoveImage(imageName string) error {
 	return d.client.RemoveImage(imageName)
 }
 
-func (d *DockerImageManager) createImage(containerID string, repository string, tag string, message string, cmd []string) (*docker.Image, error) {
+func (d *DockerImageManager) CreateImage(containerID string, repository string, tag string, message string, cmd []string) (*docker.Image, error) {
 	cco := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: repository,
@@ -90,7 +66,7 @@ func (d *DockerImageManager) createImage(containerID string, repository string, 
 	return d.client.CommitContainer(cco)
 }
 
-func (d *DockerImageManager) runInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *docker.Container, err error) {
+func (d *DockerImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *docker.Container, err error) {
 	exitCode = -1
 
 	cco := docker.CreateContainerOptions{

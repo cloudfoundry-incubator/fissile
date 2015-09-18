@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/hpcloud/fissile/baseos/compilation"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 
@@ -15,6 +16,7 @@ type Fissile interface {
 	ListJobs(releasePath string)
 	ListFullConfiguration(releasePath string)
 	ShowBaseImage(dockerEndpoint string, baseImage string)
+	CreateBaseCompilationImage(dockerEndpoint, baseImage, releasePath, prefix string)
 }
 
 type FissileApp struct {
@@ -70,17 +72,63 @@ func (f *FissileApp) ListFullConfiguration(releasePath string) {
 	}
 }
 
-func (f *FissileApp) ShowBaseImage(dockerEndpoint string, baseImage string) {
+func (f *FissileApp) ShowBaseImage(dockerEndpoint, baseImage string) {
 	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
 
-	image, err := dockerManager.FindBaseImage(baseImage)
+	image, err := dockerManager.FindImage(baseImage)
 	if err != nil {
 		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
 	}
 
 	log.Printf("ID: %s", color.GreenString(image.ID))
 	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+}
+
+func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repository string) {
+	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+	}
+
+	baseImage, err := dockerManager.FindImage(baseImageName)
+	if err != nil {
+		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+	}
+
+	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
+
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	imageName := fmt.Sprintf("%s:%s-%s-cbase", repository, release.Name, release.Version)
+
+	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
+
+	image, err := dockerManager.FindImage(imageName)
+	if err != nil {
+		log.Println("Image doesn't exist, it will be created ...")
+	} else {
+		log.Println(color.GreenString(
+			"Compilation image %s with ID %s already exists. Doing nothing.",
+			color.YellowString(imageName),
+			color.YellowString(image.ID),
+		))
+	}
+
+	compilationScript, err := compilation.Asset("baseos/compilation/ubuntu.sh")
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
+	}
+
+	script := string(compilationScript)
+
+	log.Println(script)
+
 }

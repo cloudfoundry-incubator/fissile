@@ -47,7 +47,7 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "release, r",
-					Usage: "Path to a bosh release.",
+					Usage: "Path to a BOSH release.",
 					Value: ".",
 				},
 			},
@@ -62,7 +62,7 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "release, r",
-					Usage: "Path to a bosh release.",
+					Usage: "Path to a BOSH release.",
 				},
 			},
 			Usage: "List all packages in a BOSH release",
@@ -76,7 +76,7 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "release, r",
-					Usage: "Path to a bosh release.",
+					Usage: "Path to a BOSH release.",
 				},
 			},
 			Usage: "List all configurations for all jobs in a release",
@@ -102,6 +102,41 @@ func main() {
 			Usage: "Show information about a base docker image",
 			Action: func(c *cli.Context) {
 				fissile.ShowBaseImage(c.String("docker-endpoint"), c.String("base-image"))
+			},
+		},
+		{
+			Name:    "prepare-compilationbase",
+			Aliases: []string{"pc"},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "docker-endpoint, d",
+					Value: "unix:///var/run/docker.sock",
+					Usage: "Docker endpoint.",
+				},
+				cli.StringFlag{
+					Name:  "base-image, b",
+					Value: "ubuntu:14.04",
+					Usage: "Base image.",
+				},
+				cli.StringFlag{
+					Name:  "repository, p",
+					Value: "fissile",
+					Usage: "Repository name.",
+				},
+				cli.StringFlag{
+					Name:  "release, r",
+					Usage: "Path to a BOSH release.",
+				},
+			},
+			Usage:       "Prepare a compilation base image",
+			Description: "The name of the created image will be <REPOSITORY>:<RELEASE_NAME>-<RELEASE_VERSION>-cbase. If the image already exists, this command does nothing.",
+			Action: func(c *cli.Context) {
+				fissile.CreateBaseCompilationImage(
+					c.String("docker-endpoint"),
+					c.String("base-image"),
+					c.String("release"),
+					c.String("repository"),
+				)
 			},
 		},
 	}
