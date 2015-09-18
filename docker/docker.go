@@ -3,7 +3,7 @@ package docker
 import (
 	"fmt"
 	"io"
-	"os"
+	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 )
@@ -16,12 +16,7 @@ type ImageManager interface {
 	UploadJobImage()
 }
 
-type FissileContainer struct {
-	Container *docker.Container
-	Stdin     io.Writer
-	Stdout    io.Reader
-	Stderr    io.Reader
-}
+type ProcessOutStream func(io.Reader)
 
 type DockerImageManager struct {
 	DockerEndpoint string
@@ -69,7 +64,35 @@ func (d *DockerImageManager) UploadJobImage() {
 
 }
 
-func (d *DockerImageManager) createCompilationContainer(containerName string, imageName string) (*FissileContainer, error) {
+func (d *DockerImageManager) removeContainer(containerID string) error {
+	return d.client.RemoveContainer(docker.RemoveContainerOptions{
+		ID:    containerID,
+		Force: true,
+	})
+}
+
+func (d *DockerImageManager) removeImage(imageName string) error {
+	return d.client.RemoveImage(imageName)
+}
+
+func (d *DockerImageManager) createImage(containerID string, repository string, tag string, message string, cmd []string) (*docker.Image, error) {
+	cco := docker.CommitContainerOptions{
+		Container:  containerID,
+		Repository: repository,
+		Tag:        tag,
+		Author:     "fissile",
+		Message:    message,
+		Run: &docker.Config{
+			Cmd: cmd,
+		},
+	}
+
+	return d.client.CommitContainer(cco)
+}
+
+func (d *DockerImageManager) runInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *docker.Container, err error) {
+	exitCode = -1
+
 	cco := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdin:  false,
@@ -77,65 +100,108 @@ func (d *DockerImageManager) createCompilationContainer(containerName string, im
 			AttachStderr: true,
 			Hostname:     "compiler",
 			Domainname:   "fissile",
-			Cmd:          []string{"ping", "google.com", "-c", "5"},
+			Cmd:          cmd,
 			WorkingDir:   "/",
 			Image:        imageName,
 		},
 		HostConfig: &docker.HostConfig{
 			Privileged: true,
+			Binds:      []string{},
 		},
 		Name: containerName,
 	}
 
-	container, err := d.client.CreateContainer(cco)
-	if err != nil {
-		return nil, err
+	if inPath != "" {
+		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:/fissile-in:ro", inPath))
 	}
 
-	err = d.client.StartContainer(container.ID, container.HostConfig)
+	if outPath != "" {
+		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:/fissile-out", outPath))
+	}
+
+	container, err = d.client.CreateContainer(cco)
 	if err != nil {
-		return nil, err
+		return -1, nil, err
 	}
 
 	attached := make(chan struct{})
-	//	stdinReader, stdinWriter := io.Pipe()
-	stdoutReader, stdoutWriter := io.Pipe()
-	//	stderrReader, stderrWriter := io.Pipe()
 
-	//	stdinReader, stdinWriter := io.Pipe()
-	//	stdoutReader, stdoutWriter := io.Pipe()
-	//	stderrReader, stderrWriter := io.Pipe()
+	var stdoutReader, stderrReader io.ReadCloser
+	var stdoutWriter, stderrWriter io.WriteCloser
+
+	if stdoutProcessor != nil {
+		stdoutReader, stdoutWriter = io.Pipe()
+	}
+
+	if stderrProcessor != nil {
+		stderrReader, stderrWriter = io.Pipe()
+	}
 
 	go func() {
 		err = d.client.AttachToContainer(docker.AttachToContainerOptions{
 			Container: container.ID,
 
-			InputStream:  os.Stdin, // stdinReader,
+			InputStream:  nil,
 			OutputStream: stdoutWriter,
-			ErrorStream:  os.Stderr, // stderrWriter,
+			ErrorStream:  stderrWriter,
 
-			Stdin:       true,
-			Stdout:      true,
-			Stderr:      true,
+			Stdin:       false,
+			Stdout:      stdoutProcessor != nil,
+			Stderr:      stderrProcessor != nil,
 			Stream:      true,
 			RawTerminal: false,
 
 			Success: attached,
 		})
-
-		if err != nil {
-			panic(err)
-		}
 	}()
 
 	attached <- <-attached
 
-	//panic("Test")
+	err = d.client.StartContainer(container.ID, container.HostConfig)
+	if err != nil {
+		return -1, nil, err
+	}
 
-	return &FissileContainer{
-		Container: container,
-		//		Stdin:     stdinWriter,
-		Stdout: stdoutReader,
-		//		Stderr:    stderrReader,
-	}, nil
+	var processorsGroup sync.WaitGroup
+
+	if stdoutProcessor != nil {
+		processorsGroup.Add(1)
+
+		go func() {
+			defer processorsGroup.Done()
+			stdoutProcessor(stdoutReader)
+		}()
+	}
+
+	if stderrProcessor != nil {
+		processorsGroup.Add(1)
+
+		go func() {
+			defer processorsGroup.Done()
+			stderrProcessor(stderrReader)
+		}()
+	}
+
+	exitCode, err = d.client.WaitContainer(container.ID)
+	if err != nil {
+		return -1, nil, err
+	}
+
+	if stdoutWriter != nil {
+		stdoutWriter.Close()
+	}
+	if stderrWriter != nil {
+		stderrWriter.Close()
+	}
+
+	if stdoutReader != nil {
+		stdoutReader.Close()
+	}
+	if stderrReader != nil {
+		stderrReader.Close()
+	}
+
+	processorsGroup.Wait()
+
+	return exitCode, container, nil
 }
