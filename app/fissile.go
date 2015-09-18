@@ -82,5 +82,5 @@ func (f *FissileApp) ShowBaseImage(dockerEndpoint string, baseImage string) {
 	}
 
 	log.Printf("ID: %s", color.GreenString(image.ID))
-	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.f2", float64(image.VirtualSize)/(1024*1024))))
+	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 }
