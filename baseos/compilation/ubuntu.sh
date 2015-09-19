@@ -15,5 +15,9 @@ libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
 cmake uuid-dev libgcrypt-dev ca-certificates \
 scsitools mg htop module-assistant debhelper runit parted \
 anacron software-properties-common"
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
 apt-get install -y $debs
 

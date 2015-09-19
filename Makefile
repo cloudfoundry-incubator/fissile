@@ -11,7 +11,7 @@ vet:
 bindata:
 	go-bindata -pkg=compilation -o=./baseos/compilation/compilation.go ./baseos/compilation/*.sh
 
-build:
+build: bindata
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	go build
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/hpcloud/fissile/baseos/compilation"
@@ -111,7 +112,8 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	imageName := getBaseCompilationImageName(repository, release.Name, release.Version)
+	imageTag := getBaseCompilationImageTag(release.Name, release.Version)
+	imageName := fmt.Sprintf("%s:%s", repository, imageTag)
 	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
 	containerName := getBaseCompilationContainerName(repository, release.Name, release.Version)
@@ -126,6 +128,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 			color.YellowString(imageName),
 			color.YellowString(image.ID),
 		))
+		os.Exit(0)
 	}
 
 	tempScriptDir, err := ioutil.TempDir("", "fissile-compilation")
@@ -181,13 +184,26 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	if exitCode != 0 {
 		log.Fatalln(color.RedString("Error - script script exited with code %d", exitCode))
 	}
-
+	
+	image, err = dockerManager.CreateImage(
+		container.ID,
+		repository,
+		imageTag,
+		"",
+		[]string{},
+	)
+	
+	if err != nil {
+		log.Fatalln(color.RedString("Error creating image %s", err.Error()))
+	}
+	
+	log.Println(color.GreenString("Image %s:%s with ID %s created successfully.", color.YellowString(repository), color.YellowString(imageTag), color.YellowString(container.ID)))
 }
 
 func getBaseCompilationContainerName(repository, releaseName, releaseVersion string) string {
 	return fmt.Sprintf("%s-%s-%s-cbase", repository, releaseName, releaseVersion)
 }
 
-func getBaseCompilationImageName(repository, releaseName, releaseVersion string) string {
-	return fmt.Sprintf("%s:%s-%s-cbase", repository, releaseName, releaseVersion)
+func getBaseCompilationImageTag(releaseName, releaseVersion string) string {
+	return fmt.Sprintf("%s-%s-cbase", releaseName, releaseVersion)
 }
