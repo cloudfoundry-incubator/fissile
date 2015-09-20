@@ -139,6 +139,52 @@ func main() {
 				)
 			},
 		},
+		{
+			Name:    "compile-packages",
+			Aliases: []string{"cp"},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "docker-endpoint, d",
+					Value: "unix:///var/run/docker.sock",
+					Usage: "Docker endpoint.",
+				},
+				cli.StringFlag{
+					Name:  "base-image, b",
+					Value: "ubuntu:14.04",
+					Usage: "Base image.",
+				},
+				cli.StringFlag{
+					Name:  "repository, p",
+					Value: "fissile",
+					Usage: "Repository name.",
+				},
+				cli.StringFlag{
+					Name:  "release, r",
+					Usage: "Path to a BOSH release.",
+				},
+				cli.StringFlag{
+					Name:  "target, t",
+					Usage: "Path to the location of the compiled packages.",
+				},
+				cli.IntFlag{
+					Name:  "workers, w",
+					Value: 4,
+					Usage: "Number of compiler workers to use.",
+				},
+			},
+			Usage:       "Compile packages",
+			Description: "Compiles packages from the release using parallel workers",
+			Action: func(c *cli.Context) {
+				fissile.Compile(
+					c.String("docker-endpoint"),
+					c.String("base-image"),
+					c.String("release"),
+					c.String("repository"),
+					c.String("target"),
+					c.Int("workers"),
+				)
+			},
+		},
 	}
 
 	app.Run(os.Args)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
@@ -17,10 +18,13 @@ import (
 	"github.com/crufter/copyrecur"
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
 	ContainerPackagesDir = "/var/vcap/packages"
+
+	sleepTimeWhileCantCompileSec = 2
 )
 
 const (
@@ -48,6 +52,7 @@ func NewCompilator(
 	dockerRepository string,
 	baseType string,
 ) (*Compilator, error) {
+
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
 		Release:          release,
@@ -68,18 +73,74 @@ func NewCompilator(
 }
 
 func (c *Compilator) Compile(workerCount int) error {
+	var result error
+
 	// Check for cycles
 
 	// Iterate until all packages are compiled
 	// Not the most efficient implementation,
 	// but it's easy to parallelize and reason about
+	var workersGroup sync.WaitGroup
+
 	for workerIdx := 0; workerIdx < workerCount; workerIdx++ {
+		workersGroup.Add(1)
+
 		go func(idx int) {
-			// Wait a bit if there's nothing to work on
+			defer workersGroup.Done()
+
+			done := false
+
+			for done == false {
+				hasWork := false
+
+				for _, pkg := range c.Release.Packages {
+					pkgState, workerErr := c.getPackageStatus(pkg)
+					if workerErr != nil {
+						result = multierror.Append(result, workerErr)
+						return
+					}
+
+					if pkgState == packageNone {
+						c.packageLock[pkg].Lock()
+						defer func() {
+							c.packageLock[pkg].Unlock()
+						}()
+
+						if pkgState == packageNone {
+							hasWork = true
+							workerErr = c.compilePackage(pkg)
+							if workerErr != nil {
+								result = multierror.Append(result, workerErr)
+							}
+						}
+					}
+				}
+
+				done = true
+
+				for _, pkg := range c.Release.Packages {
+					pkgState, workerErr := c.getPackageStatus(pkg)
+					if workerErr != nil {
+						result = multierror.Append(result, workerErr)
+						return
+					}
+
+					if pkgState != packageCompiled {
+						done = false
+						break
+					}
+				}
+
+				// Wait a bit if there's nothing to work on
+				if !done && !hasWork {
+					time.Sleep(sleepTimeWhileCantCompileSec * time.Second)
+				}
+			}
 		}(workerIdx)
 	}
 
 	// Wait until all workers finish
+	workersGroup.Wait()
 
 	return nil
 }

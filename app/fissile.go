@@ -19,6 +19,7 @@ type Fissile interface {
 	ListFullConfiguration(releasePath string)
 	ShowBaseImage(dockerEndpoint string, baseImage string)
 	CreateBaseCompilationImage(dockerEndpoint, baseImage, releasePath, prefix string)
+	Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int)
 }
 
 type FissileApp struct {
@@ -121,5 +122,39 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 
 	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
 		log.Fatalln(color.RedString("Error creating compilation base image: %s", err.Error()))
+	}
+}
+
+func (f *FissileApp) Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int) {
+	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+	}
+
+	baseImage, err := dockerManager.FindImage(baseImageName)
+	if err != nil {
+		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+	}
+
+	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
+
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	comp, err := compilator.NewCompilator(dockerManager, release, targetPath, repository, compilation.UbuntuBase)
+	if err != nil {
+		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
+	}
+
+	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
+		log.Fatalln(color.RedString("Error creating compilation base image: %s", err.Error()))
+	}
+
+	if err := comp.Compile(workerCount); err != nil {
+		log.Fatalln(color.RedString("Error compiling packages: %s", err.Error()))
 	}
 }
