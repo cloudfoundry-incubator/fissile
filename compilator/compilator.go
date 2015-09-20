@@ -16,6 +16,7 @@ import (
 
 	"github.com/crufter/copyrecur"
 	"github.com/fatih/color"
+	dockerClient "github.com/fsouza/go-dockerclient"
 )
 
 const (
@@ -34,6 +35,7 @@ type Compilator struct {
 	Release          *model.Release
 	HostWorkDir      string
 	DockerRepository string
+	BaseType         string
 
 	packageLock      map[*model.Package]*sync.Mutex
 	packageCompiling map[*model.Package]bool
@@ -44,12 +46,14 @@ func NewCompilator(
 	release *model.Release,
 	hostWorkDir string,
 	dockerRepository string,
+	baseType string,
 ) (*Compilator, error) {
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
 		Release:          release,
 		HostWorkDir:      hostWorkDir,
 		DockerRepository: dockerRepository,
+		BaseType:         baseType,
 
 		packageLock:      map[*model.Package]*sync.Mutex{},
 		packageCompiling: map[*model.Package]bool{},
@@ -80,6 +84,103 @@ func (c *Compilator) Compile(workerCount int) error {
 	return nil
 }
 
+func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
+	imageTag := c.BaseCompilationImageTag()
+	imageName := fmt.Sprintf("%s:%s", c.DockerRepository, imageTag)
+	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
+
+	containerName := c.BaseCompilationContainerName()
+	log.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
+
+	image, err = c.DockerManager.FindImage(imageName)
+	if err != nil {
+		log.Println("Image doesn't exist, it will be created ...")
+	} else {
+		log.Println(color.GreenString(
+			"Compilation image %s with ID %s already exists. Doing nothing.",
+			color.YellowString(imageName),
+			color.YellowString(image.ID),
+		))
+		os.Exit(0)
+	}
+
+	tempScriptDir, err := ioutil.TempDir("", "fissile-compilation")
+	if err != nil {
+		return nil, fmt.Errorf("Could not create temp dir %s: %s", tempScriptDir, err.Error())
+	}
+
+	targetScriptName := "compilation-prerequisites.sh"
+	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
+	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
+	if err = compilation.SaveScript(c.BaseType, compilation.PreprequisitesScript, hostScriptPath); err != nil {
+		return nil, fmt.Errorf("Error saving script asset: %s", err.Error())
+	}
+
+	exitCode, container, err := c.DockerManager.RunInContainer(
+		containerName,
+		baseImageName,
+		[]string{"bash", "-c", containerScriptPath},
+		tempScriptDir,
+		"",
+		func(stdout io.Reader) {
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
+			}
+		},
+		func(stderr io.Reader) {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
+			}
+		},
+	)
+	defer func() {
+		if container != nil {
+			removeErr := c.DockerManager.RemoveContainer(container.ID)
+			if removeErr != nil {
+				if err == nil {
+					err = removeErr
+				} else {
+					err = fmt.Errorf(
+						"Image creation error: %s. Image removal error: %s.",
+						err,
+						removeErr,
+					)
+				}
+			}
+		}
+	}()
+
+	if err != nil {
+		return nil, fmt.Errorf("Error running script: %s", err.Error())
+	}
+
+	if exitCode != 0 {
+		return nil, fmt.Errorf("Error - script script exited with code %d", exitCode)
+	}
+
+	image, err = c.DockerManager.CreateImage(
+		container.ID,
+		c.DockerRepository,
+		imageTag,
+		"",
+		[]string{},
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("Error creating image %s", err.Error())
+	}
+
+	log.Println(color.GreenString(
+		"Image %s:%s with ID %s created successfully.",
+		color.YellowString(c.DockerRepository),
+		color.YellowString(imageTag),
+		color.YellowString(container.ID)))
+
+	return image, nil
+}
+
 func (c *Compilator) compilePackage(pkg *model.Package) error {
 	// Do nothing if any dependency has not been compiled
 	for _, dep := range pkg.Dependencies {
@@ -104,15 +205,11 @@ func (c *Compilator) compilePackage(pkg *model.Package) error {
 	}
 
 	// Generate a compilation script
-	compilationScript, err := compilation.Asset("scripts/compilation/ubuntu-compile.sh")
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
-	}
 	targetScriptName := "compile.sh"
-	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	hostScriptPath := filepath.Join(c.getTargetPackageSourcesDir(pkg), targetScriptName)
-	if err = ioutil.WriteFile(hostScriptPath, compilationScript, 0700); err != nil {
-		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
+	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
+	if err := compilation.SaveScript(c.BaseType, compilation.CompilationScript, hostScriptPath); err != nil {
+		return err
 	}
 
 	// Run compilation in container
@@ -136,6 +233,10 @@ func (c *Compilator) compilePackage(pkg *model.Package) error {
 			}
 		},
 	)
+
+	if err != nil {
+		return err
+	}
 
 	if exitCode != 0 {
 		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)

@@ -1,14 +1,11 @@
 package app
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"os"
-	"path/filepath"
 
+	"github.com/hpcloud/fissile/compilator"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
@@ -112,90 +109,17 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	imageTag := getBaseCompilationImageTag(release.Name, release.Version)
-	imageName := fmt.Sprintf("%s:%s", repository, imageTag)
-	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
-
-	containerName := getBaseCompilationContainerName(repository, release.Name, release.Version)
-	log.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
-
-	image, err := dockerManager.FindImage(imageName)
+	tempDir, err := ioutil.TempDir("", "fissile-base-compiler")
 	if err != nil {
-		log.Println("Image doesn't exist, it will be created ...")
-	} else {
-		log.Println(color.GreenString(
-			"Compilation image %s with ID %s already exists. Doing nothing.",
-			color.YellowString(imageName),
-			color.YellowString(image.ID),
-		))
-		os.Exit(0)
+		log.Fatalln(color.RedString("Error creating temp dir: %s", err.Error()))
 	}
 
-	tempScriptDir, err := ioutil.TempDir("", "fissile-compilation")
+	comp, err := compilator.NewCompilator(dockerManager, release, tempDir, repository, compilation.UbuntuBase)
 	if err != nil {
-		log.Fatalln(color.RedString("Could not create temp dir %s: %s", tempScriptDir, err.Error()))
+		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
 
-	compilationScript, err := compilation.Asset("scripts/compilation/ubuntu-prerequisites.sh")
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
+	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
+		log.Fatalln(color.RedString("Error creating compilation base image: %s", err.Error()))
 	}
-
-	targetScriptName := "compilation-prerequisites.sh"
-	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
-
-	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
-	if err = ioutil.WriteFile(hostScriptPath, compilationScript, 0700); err != nil {
-		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
-	}
-
-	exitCode, container, err := dockerManager.RunInContainer(
-		containerName,
-		baseImageName,
-		[]string{"bash", "-c", containerScriptPath},
-		tempScriptDir,
-		"",
-		func(stdout io.Reader) {
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
-			}
-		},
-		func(stderr io.Reader) {
-			scanner := bufio.NewScanner(stderr)
-			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
-			}
-		},
-	)
-	defer func() {
-		if container != nil {
-			err = dockerManager.RemoveContainer(container.ID)
-			if err != nil {
-				log.Fatalln(color.RedString("Error removing container %s: %s", container.ID, err.Error()))
-			}
-		}
-	}()
-
-	if err != nil {
-		log.Fatalln(color.RedString("Error running script: %s", err.Error()))
-	}
-
-	if exitCode != 0 {
-		log.Fatalln(color.RedString("Error - script script exited with code %d", exitCode))
-	}
-
-	image, err = dockerManager.CreateImage(
-		container.ID,
-		repository,
-		imageTag,
-		"",
-		[]string{},
-	)
-
-	if err != nil {
-		log.Fatalln(color.RedString("Error creating image %s", err.Error()))
-	}
-
-	log.Println(color.GreenString("Image %s:%s with ID %s created successfully.", color.YellowString(repository), color.YellowString(imageTag), color.YellowString(container.ID)))
 }
