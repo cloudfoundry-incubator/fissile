@@ -1,15 +1,21 @@
 package compilator
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
+	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/crufter/copyrecur"
+	"github.com/fatih/color"
 )
 
 const (
@@ -24,19 +30,26 @@ const (
 )
 
 type Compilator struct {
-	DockerManager *docker.DockerImageManager
-	Release       *model.Release
-	HostWorkDir   string
+	DockerManager    *docker.DockerImageManager
+	Release          *model.Release
+	HostWorkDir      string
+	DockerRepository string
 
 	packageLock      map[*model.Package]*sync.Mutex
 	packageCompiling map[*model.Package]bool
 }
 
-func NewCompilator(dockerManager *docker.DockerImageManager, release *model.Release, hostWorkDir string) (*Compilator, error) {
+func NewCompilator(
+	dockerManager *docker.DockerImageManager,
+	release *model.Release,
+	hostWorkDir string,
+	dockerRepository string,
+) (*Compilator, error) {
 	compilator := &Compilator{
-		DockerManager: dockerManager,
-		Release:       release,
-		HostWorkDir:   hostWorkDir,
+		DockerManager:    dockerManager,
+		Release:          release,
+		HostWorkDir:      hostWorkDir,
+		DockerRepository: dockerRepository,
 
 		packageLock:      map[*model.Package]*sync.Mutex{},
 		packageCompiling: map[*model.Package]bool{},
@@ -81,15 +94,55 @@ func (c *Compilator) compilePackage(pkg *model.Package) error {
 		}
 	}
 
-	// Compile
-	// Prepare input dir (package plus deps), generate a compilation script, run compilation in container,
-	// remove container, copy compiled package to its destination in the work dir
-
+	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
 		return err
 	}
 
 	if err := c.copyDependencies(pkg); err != nil {
+		return err
+	}
+
+	// Generate a compilation script
+	compilationScript, err := compilation.Asset("scripts/compilation/ubuntu-compile.sh")
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
+	}
+	targetScriptName := "compile.sh"
+	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
+	hostScriptPath := filepath.Join(c.getTargetPackageSourcesDir(pkg), targetScriptName)
+	if err = ioutil.WriteFile(hostScriptPath, compilationScript, 0700); err != nil {
+		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
+	}
+
+	// Run compilation in container
+	containerName := c.getPackageContainerName(pkg)
+	exitCode, container, err := c.DockerManager.RunInContainer(
+		containerName,
+		fmt.Sprintf("%s:%s", c.DockerRepository, c.BaseCompilationImageTag()),
+		[]string{"bash", "-x", containerScriptPath},
+		c.getTargetPackageSourcesDir(pkg),
+		c.getPackageCompiledDir(pkg),
+		func(stdout io.Reader) {
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
+			}
+		},
+		func(stderr io.Reader) {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
+			}
+		},
+	)
+
+	if exitCode != 0 {
+		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
+	}
+
+	// Remove container
+	if err := c.DockerManager.RemoveContainer(container.ID); err != nil {
 		return err
 	}
 
@@ -194,4 +247,16 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	}
 
 	return true, nil
+}
+
+func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
+	return fmt.Sprintf("%s-%s-%s-pkg-%s", c.DockerRepository, c.Release.Name, c.Release.Version, pkg.Name)
+}
+
+func (c *Compilator) BaseCompilationContainerName() string {
+	return fmt.Sprintf("%s-%s-%s-cbase", c.DockerRepository, c.Release.Name, c.Release.Version)
+}
+
+func (c *Compilator) BaseCompilationImageTag() string {
+	return fmt.Sprintf("%s-%s-cbase", c.Release.Name, c.Release.Version)
 }

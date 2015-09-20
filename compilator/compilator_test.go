@@ -58,7 +58,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir)
+	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test")
 	assert.Nil(err)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
@@ -84,7 +84,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir)
+	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test")
 	assert.Nil(err)
 
 	status, err := compilator.getPackageStatus(release.Packages[0])
@@ -107,7 +107,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir)
+	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test")
 	assert.Nil(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -136,7 +136,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir)
+	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test")
 	assert.Nil(err)
 
 	pkg, err := compilator.Release.LookupPackage("tor")
@@ -158,4 +158,25 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	exists, err := validatePath(expectedDummyFileLocation, false, "")
 	assert.Nil(err)
 	assert.True(exists, expectedDummyFileLocation)
+}
+
+func TestCompilePackage(t *testing.T) {
+	assert := assert.New(t)
+
+	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := model.NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test")
+	assert.Nil(err)
+
+	err = compilator.compilePackage(release.Packages[0])
+	assert.Nil(err)
 }
