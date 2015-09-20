@@ -9,7 +9,7 @@ vet:
 	go vet ./...
 
 bindata:
-	go-bindata -pkg=compilation -o=./baseos/compilation/compilation.go ./baseos/compilation/*.sh
+	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh
 
 build: bindata
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\

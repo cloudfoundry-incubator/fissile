@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hpcloud/fissile/baseos/compilation"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
+	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
 )
@@ -136,7 +136,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 		log.Fatalln(color.RedString("Could not create temp dir %s: %s", tempScriptDir, err.Error()))
 	}
 
-	compilationScript, err := compilation.Asset("baseos/compilation/ubuntu.sh")
+	compilationScript, err := compilation.Asset("scripts/compilation/ubuntu-prerequisites.sh")
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading script asset. This is probably a bug: %s", err.Error()))
 	}
@@ -144,7 +144,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	targetScriptName := "compilation-prerequisites.sh"
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 
-	hostScriptPath := filepath.Join(tempScriptDir, "compilation-prerequisites.sh")
+	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
 	if err = ioutil.WriteFile(hostScriptPath, compilationScript, 0700); err != nil {
 		log.Fatalln(color.RedString("Error saving script asset: %s", err.Error()))
 	}
@@ -184,7 +184,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	if exitCode != 0 {
 		log.Fatalln(color.RedString("Error - script script exited with code %d", exitCode))
 	}
-	
+
 	image, err = dockerManager.CreateImage(
 		container.ID,
 		repository,
@@ -192,18 +192,10 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 		"",
 		[]string{},
 	)
-	
+
 	if err != nil {
 		log.Fatalln(color.RedString("Error creating image %s", err.Error()))
 	}
-	
+
 	log.Println(color.GreenString("Image %s:%s with ID %s created successfully.", color.YellowString(repository), color.YellowString(imageTag), color.YellowString(container.ID)))
-}
-
-func getBaseCompilationContainerName(repository, releaseName, releaseVersion string) string {
-	return fmt.Sprintf("%s-%s-%s-cbase", repository, releaseName, releaseVersion)
-}
-
-func getBaseCompilationImageTag(releaseName, releaseVersion string) string {
-	return fmt.Sprintf("%s-%s-cbase", releaseName, releaseVersion)
 }

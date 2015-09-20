@@ -1,3 +1,5 @@
+set -e # exit immediately if a simple command exits with a non-zero status
+set -u # report the usage of uninitialized variables
 
 # Use the following for inspiration:
 # https://github.com/cloudfoundry/bosh/tree/master/stemcell_builder/stages
