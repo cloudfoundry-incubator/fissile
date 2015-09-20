@@ -150,7 +150,7 @@ func (j *Job) loadJobSpec() (err error) {
 	if j.jobSpec["packages"] != nil {
 		for _, pkg := range j.jobSpec["packages"].([]interface{}) {
 			pkgName := pkg.(string)
-			dependency, err := j.Release.lookupPackage(pkgName)
+			dependency, err := j.Release.LookupPackage(pkgName)
 			if err != nil {
 				return fmt.Errorf("Cannot find dependency for job %s: %v", j.Name, err.Error())
 			}

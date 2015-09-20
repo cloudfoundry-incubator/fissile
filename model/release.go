@@ -83,7 +83,7 @@ func (r *Release) loadMetadata() (err error) {
 	return nil
 }
 
-func (r *Release) lookupPackage(packageName string) (*Package, error) {
+func (r *Release) LookupPackage(packageName string) (*Package, error) {
 	for _, pkg := range r.Packages {
 		if pkg.Name == packageName {
 			return pkg, nil

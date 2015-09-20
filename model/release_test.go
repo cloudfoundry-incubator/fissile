@@ -150,7 +150,7 @@ func TestLookupPackageOk(t *testing.T) {
 	release, err := NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	pkg, err := release.lookupPackage("ntp-4.2.8p2")
+	pkg, err := release.LookupPackage("ntp-4.2.8p2")
 	assert.Nil(err)
 
 	assert.Equal("ntp-4.2.8p2", pkg.Name)
@@ -166,6 +166,23 @@ func TestLookupPackageNotOk(t *testing.T) {
 	release, err := NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	_, err = release.lookupPackage("foo")
+	_, err = release.LookupPackage("foo")
 	assert.NotNil(err)
+}
+
+func TestPackageDependencies(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	release, err := NewRelease(releasePath)
+	assert.Nil(err)
+
+	pkg, err := release.LookupPackage("tor")
+
+	assert.Nil(err)
+	assert.Equal(1, len(pkg.Dependencies))
+	assert.Equal("libevent", pkg.Dependencies[0].Name)
 }

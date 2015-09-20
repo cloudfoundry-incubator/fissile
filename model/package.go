@@ -110,7 +110,7 @@ func (p *Package) loadPackageDependencies() (err error) {
 
 	for _, pkg := range p.packageReleaseInfo["dependencies"].([]interface{}) {
 		pkgName := pkg.(string)
-		dependency, err := p.Release.lookupPackage(pkgName)
+		dependency, err := p.Release.LookupPackage(pkgName)
 		if err != nil {
 			return fmt.Errorf("Cannot find dependency for package %s: %v", p.Name, err.Error())
 		}
