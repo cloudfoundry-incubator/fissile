@@ -86,8 +86,9 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 			Image:        imageName,
 		},
 		HostConfig: &docker.HostConfig{
-			Privileged: true,
-			Binds:      []string{},
+			Privileged:     false,
+			Binds:          []string{},
+			ReadonlyRootfs: false,
 		},
 		Name: containerName,
 	}
@@ -119,7 +120,7 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 	}
 
 	go func() {
-		err = d.client.AttachToContainer(docker.AttachToContainerOptions{
+		if attachErr := d.client.AttachToContainer(docker.AttachToContainerOptions{
 			Container: container.ID,
 
 			InputStream:  nil,
@@ -133,14 +134,20 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 			RawTerminal: false,
 
 			Success: attached,
-		})
+		}); attachErr != nil {
+			if err == nil {
+				err = attachErr
+			} else {
+				err = fmt.Errorf("Error running in container: %s. Error attaching to container: %s", err.Error(), attachErr.Error())
+			}
+		}
 	}()
 
 	attached <- <-attached
 
 	err = d.client.StartContainer(container.ID, container.HostConfig)
 	if err != nil {
-		return -1, nil, err
+		return -1, container, err
 	}
 
 	var processorsGroup sync.WaitGroup
@@ -165,7 +172,7 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 
 	exitCode, err = d.client.WaitContainer(container.ID)
 	if err != nil {
-		return -1, nil, err
+		return -1, container, err
 	}
 
 	if stdoutWriter != nil {
