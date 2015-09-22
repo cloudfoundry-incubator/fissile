@@ -23,3 +23,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y $debs
 
+# TODO installation of libyaml should be part of the ruby installation, 
+# or it should be a package of its own; here we install 0.1.4, 
+# upstream installs 0.1.6
+apt-get install -y libyaml-dev
+
