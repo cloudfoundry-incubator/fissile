@@ -3,6 +3,7 @@ package compilator
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,8 @@ var dockerEndpoint string
 var dockerImageName string
 
 func TestMain(m *testing.M) {
+	log.SetOutput(ioutil.Discard)
+
 	dockerEndpoint = os.Getenv(dockerEndpointEnvVar)
 	if dockerEndpoint == "" {
 		dockerEndpoint = defaultDockerTestEndpoint
@@ -67,6 +70,10 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
 	assert.Nil(err)
+
+	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
+	assert.Nil(err)
+
 	status, err := compilator.getPackageStatus(release.Packages[0])
 
 	assert.Nil(err)
