@@ -164,10 +164,6 @@ func (r *Release) validatePathStructure() error {
 		return err
 	}
 
-	if err := validatePath(r.licenseArchivePath(), false, "license archive file"); err != nil {
-		return err
-	}
-
 	return nil
 }
 

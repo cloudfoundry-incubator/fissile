@@ -87,14 +87,6 @@ func TestReleaseValidationStructure(t *testing.T) {
 	err = os.MkdirAll(filepath.Join(releaseDir, jobsDir), 0755)
 	assert.Nil(err)
 	err = release.validatePathStructure()
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "license archive")
-
-	// Create an empty release archive
-	file, err = os.Create(filepath.Join(releaseDir, licenseArchive))
-	assert.Nil(err)
-	file.Close()
-	err = release.validatePathStructure()
 	assert.Nil(err)
 }
 
