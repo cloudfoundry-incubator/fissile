@@ -179,7 +179,7 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) error {
 	}
 
 	if pathInfo.IsDir() && !shouldBeDir {
-		return fmt.Errorf("Path %s (%s) points to a directory. It should be a a file. %s", path, pathDescription)
+		return fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
 	} else if !pathInfo.IsDir() && shouldBeDir {
 		return fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
 	}
