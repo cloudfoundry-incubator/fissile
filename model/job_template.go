@@ -19,9 +19,9 @@ type JobTemplate struct {
 }
 
 const (
-	textBlock  = "text"
-	printBlock = "print"
-	codeBlock  = "code"
+	TextBlock  = "text"
+	PrintBlock = "print"
+	CodeBlock  = "code"
 )
 
 type templateBlock struct {
@@ -30,7 +30,18 @@ type templateBlock struct {
 }
 
 func (b *templateBlock) Transform() (string, error) {
-	transformation, err := assets.Asset("scripts/templates/transformations.yml")
+	var transformation []byte
+	var err error
+
+	switch {
+	case b.Type == PrintBlock:
+		transformation, err = assets.Asset("scripts/templates/transformations.yml")
+	case b.Type == CodeBlock:
+		transformation, err = assets.Asset("scripts/templates/transformations_code.yml")
+	default:
+		return b.Block, nil
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("Error loading script asset. This is probably a bug: %s", err.Error())
 	}
@@ -60,17 +71,17 @@ func (j *JobTemplate) GetErbBlocks() ([]*templateBlock, error) {
 			return nil, fmt.Errorf("Unexpected block type %T in template %s for job %s", v, j.SourcePath, j.Job.Name)
 		case *ego.TextBlock:
 			result = append(result, &templateBlock{
-				Type:  textBlock,
+				Type:  TextBlock,
 				Block: b.(*ego.TextBlock).Content,
 			})
 		case *ego.CodeBlock:
 			result = append(result, &templateBlock{
-				Type:  codeBlock,
+				Type:  CodeBlock,
 				Block: b.(*ego.CodeBlock).Content,
 			})
 		case *ego.PrintBlock:
 			result = append(result, &templateBlock{
-				Type:  printBlock,
+				Type:  PrintBlock,
 				Block: b.(*ego.PrintBlock).Content,
 			})
 		}
