@@ -16,7 +16,8 @@ rsync openssh-server traceroute libncurses5-dev quota \
 libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
 cmake uuid-dev libgcrypt-dev ca-certificates \
 scsitools mg htop module-assistant debhelper runit parted \
-anacron software-properties-common"
+anacron software-properties-common git libmysqlclient-dev \
+libpq-dev"
 
 export DEBIAN_FRONTEND=noninteractive
 
