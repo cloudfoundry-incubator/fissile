@@ -5,4 +5,6 @@ Fissile converts an existing BOSH release (packaged, like the ones you download 
 It’s supposed to do this using just the release itself, without a BOSH deployment, CPIs or a BOSH agent.
 
 
+At a high level, fissile helps you go through the following process:
 
+![fissile-highlevel](https://docs.google.com/drawings/d/1cu3H9UHKH6qD4JNQtMoCpMlBDdiIj0KYWQ4IT5yJS3Q/export/png)
