@@ -16,6 +16,8 @@ func main() {
 		log.SetOutput(color.Output)
 	}
 
+	log.SetFlags(0)
+
 	cliApp := cli.NewApp()
 	cliApp.Name = "fissile"
 	cliApp.Usage = "Use fissile to break apart a BOSH release."
