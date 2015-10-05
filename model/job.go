@@ -161,10 +161,18 @@ func (j *Job) loadJobSpec() (err error) {
 
 	if j.jobSpec["templates"] != nil {
 		for source, destination := range j.jobSpec["templates"].(map[interface{}]interface{}) {
+			templateFile := filepath.Join(jobDir, "templates", source.(string))
+
+			templateContent, err := ioutil.ReadFile(templateFile)
+			if err != nil {
+				return err
+			}
+
 			template := &JobTemplate{
 				SourcePath:      source.(string),
 				DestinationPath: destination.(string),
 				Job:             j,
+				Content:         string(templateContent),
 			}
 
 			j.Templates = append(j.Templates, template)

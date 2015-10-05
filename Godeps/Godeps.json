@@ -1,7 +1,20 @@
 {
 	"ImportPath": "github.com/hpcloud/fissile",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.4.1",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-15",
+			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
+		},
+		{
+			"ImportPath": "github.com/benbjohnson/ego",
+			"Comment": "v0.1.0-6-g590dff9",
+			"Rev": "590dff9742dbd2e134877a5ec2cc915ce5c8aac7"
+		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-143-ga65b733",
@@ -35,6 +48,10 @@
 		{
 			"ImportPath": "github.com/shiena/ansicolor",
 			"Rev": "a5e2b567a4dd6cc74545b8a4f27c9d63b9e7735b"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
 		},
 		{
 			"ImportPath": "github.com/termie/go-shutil",

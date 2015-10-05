@@ -14,10 +14,5 @@ type JobProperty struct {
 	Description string
 	Default     interface{}
 	Job         *Job
-}
-
-type JobTemplate struct {
-	SourcePath      string
-	DestinationPath string
-	Job             *Job
+	Content     string
 }

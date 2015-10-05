@@ -17,6 +17,7 @@ type Fissile interface {
 	ListPackages(releasePath string)
 	ListJobs(releasePath string)
 	ListFullConfiguration(releasePath string)
+	PrintAllTemplateContents(releasePath string)
 	ShowBaseImage(dockerEndpoint string, baseImage string)
 	CreateBaseCompilationImage(dockerEndpoint, baseImage, releasePath, prefix string)
 	Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int)
@@ -73,6 +74,45 @@ func (f *FissileApp) ListFullConfiguration(releasePath string) {
 			)
 		}
 	}
+}
+
+func (f *FissileApp) PrintAllTemplateContents(releasePath string) {
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	count := 0
+	countTransformed := 0
+	for _, job := range release.Jobs {
+		for _, template := range job.Templates {
+			blocks, err := template.GetErbBlocks()
+
+			if err != nil {
+				log.Println(color.RedString("Error reading template blocks for template %s in job %s: %s", template.SourcePath, job.Name, err.Error()))
+			}
+
+			for _, block := range blocks {
+				if block.Type == "print" {
+					count++
+
+					transformedBlock, err := block.Transform()
+					if err != nil {
+						log.Println(color.RedString("Error transforming block %s for template %s in job %s: %s", block.Block, template.SourcePath, job.Name, err.Error()))
+					}
+
+					if transformedBlock != "" {
+						countTransformed++
+					} else {
+						log.Println(color.MagentaString(block.Block))
+					}
+				}
+			}
+
+		}
+	}
+	log.Printf("Transformed %d out of %d", countTransformed, count)
 }
 
 func (f *FissileApp) ShowBaseImage(dockerEndpoint, baseImage string) {

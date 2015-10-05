@@ -9,8 +9,9 @@ vet:
 	go vet ./...
 
 bindata:
-	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh
-
+	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh &&\
+	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
+	
 build: bindata
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	go build

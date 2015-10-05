@@ -86,7 +86,7 @@ func scriptsCompilationFakeCompileSh() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/compilation/fake-compile.sh", size: 6, mode: os.FileMode(436), modTime: time.Unix(1442784228, 0)}
+	info := bindataFileInfo{name: "scripts/compilation/fake-compile.sh", size: 6, mode: os.FileMode(420), modTime: time.Unix(1442944400, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -106,7 +106,7 @@ func scriptsCompilationFakePrerequisitesSh() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/compilation/fake-prerequisites.sh", size: 6, mode: os.FileMode(436), modTime: time.Unix(1442784228, 0)}
+	info := bindataFileInfo{name: "scripts/compilation/fake-prerequisites.sh", size: 6, mode: os.FileMode(420), modTime: time.Unix(1442944400, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -126,7 +126,7 @@ func scriptsCompilationUbuntuCompileSh() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/compilation/ubuntu-compile.sh", size: 674, mode: os.FileMode(436), modTime: time.Unix(1442874536, 0)}
+	info := bindataFileInfo{name: "scripts/compilation/ubuntu-compile.sh", size: 674, mode: os.FileMode(420), modTime: time.Unix(1442944400, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -146,7 +146,7 @@ func scriptsCompilationUbuntuPrerequisitesSh() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/compilation/ubuntu-prerequisites.sh", size: 1183, mode: os.FileMode(436), modTime: time.Unix(1442886183, 0)}
+	info := bindataFileInfo{name: "scripts/compilation/ubuntu-prerequisites.sh", size: 1183, mode: os.FileMode(420), modTime: time.Unix(1442944400, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }

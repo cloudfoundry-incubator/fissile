@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	if runtime.GOOS == "windows" {
 		log.SetOutput(color.Output)
 	}
@@ -82,6 +81,20 @@ func main() {
 			Usage: "List all configurations for all jobs in a release",
 			Action: func(c *cli.Context) {
 				fissile.ListFullConfiguration(c.String("release"))
+			},
+		},
+		{
+			Name:    "print-templates",
+			Aliases: []string{"pt"},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "release, r",
+					Usage: "Path to a BOSH release.",
+				},
+			},
+			Usage: "Print all template for all jobs in a release",
+			Action: func(c *cli.Context) {
+				fissile.PrintAllTemplateContents(c.String("release"))
 			},
 		},
 		{

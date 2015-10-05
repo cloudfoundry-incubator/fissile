@@ -1,0 +1,22 @@
+transformations:
+  # p("path.to.config") or p('path.to.config')
+  - match: '^\s*p\(["'']{1}[-\w\.]+["'']{1}\)\s*$'
+    output: '((index . 0))'
+    transformations:
+      - match: '["'']{1}[-\w\.]+["'']{1}'
+        output: '((index . 0))'
+        transformations:
+          - match: '[-\w]+'
+            output: '{{index . ((range $idx, $element := . ))"(( $element ))" ((end))}}'
+  # properties.path.to.config
+  - match: '^\s*properties\.[-\w\.]+\s*$'
+    output: '((index . 0))'
+    transformations:
+      - match: '[-\w]+'
+        output: '{{index . ((range $idx, $element := .))((if ne $idx 0))"(( $element ))" ((end))((end))}}'
+  # direct_config
+  - match: '^\s*[-\w]+\s*$'
+    output: '((index . 0))'
+    transformations:
+      - match: '[-\w]+'
+        output: '{{index . "((index . 0))"}}'
