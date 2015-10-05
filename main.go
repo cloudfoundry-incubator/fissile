@@ -11,6 +11,8 @@ import (
 	"github.com/fatih/color"
 )
 
+var version string
+
 func main() {
 	if runtime.GOOS == "windows" {
 		log.SetOutput(color.Output)
@@ -21,6 +23,7 @@ func main() {
 	cliApp := cli.NewApp()
 	cliApp.Name = "fissile"
 	cliApp.Usage = "Use fissile to break apart a BOSH release."
+	cliApp.Version = version
 
 	cliApp.Commands = []cli.Command{
 		{

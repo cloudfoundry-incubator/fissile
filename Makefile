@@ -35,7 +35,7 @@ bindata:
 build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
-	go build
+	go build -ldflags="-X main.version $(APP_VERSION)"
 	@echo "$(NO_COLOR)\c"
 
 tools:
