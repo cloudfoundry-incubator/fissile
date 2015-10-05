@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
 
 	"github.com/hpcloud/fissile/compilator"
 	"github.com/hpcloud/fissile/docker"
@@ -13,24 +14,7 @@ import (
 	"github.com/fatih/color"
 )
 
-type Fissile interface {
-	ListPackages(releasePath string)
-	ListJobs(releasePath string)
-	ListFullConfiguration(releasePath string)
-	PrintAllTemplateContents(releasePath string)
-	ShowBaseImage(dockerEndpoint string, baseImage string)
-	CreateBaseCompilationImage(dockerEndpoint, baseImage, releasePath, prefix string)
-	Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int)
-}
-
-type FissileApp struct {
-}
-
-func NewFissileApp() Fissile {
-	return &FissileApp{}
-}
-
-func (f *FissileApp) ListPackages(releasePath string) {
+func ListPackages(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -43,7 +27,7 @@ func (f *FissileApp) ListPackages(releasePath string) {
 	}
 }
 
-func (f *FissileApp) ListJobs(releasePath string) {
+func ListJobs(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -56,7 +40,7 @@ func (f *FissileApp) ListJobs(releasePath string) {
 	}
 }
 
-func (f *FissileApp) ListFullConfiguration(releasePath string) {
+func ListFullConfiguration(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -64,19 +48,42 @@ func (f *FissileApp) ListFullConfiguration(releasePath string) {
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
+	propertiesGrouped := map[string]int{}
+
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
-			log.Printf(
-				"%s (%s): %s\n",
-				color.YellowString(property.Name),
-				color.WhiteString("%v", property.Default),
-				property.Description,
-			)
+
+			if _, ok := propertiesGrouped[property.Name]; ok {
+				propertiesGrouped[property.Name]++
+			} else {
+				propertiesGrouped[property.Name] = 1
+			}
 		}
 	}
+
+	keys := make([]string, 0, len(propertiesGrouped))
+	for k := range propertiesGrouped {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		log.Printf(
+			"Count: %s\t%s",
+			color.MagentaString(fmt.Sprintf("%d", propertiesGrouped[name])),
+			color.YellowString(name),
+		)
+	}
+
+	log.Printf(
+		"Total: %s",
+		color.GreenString(fmt.Sprintf("%d", len(propertiesGrouped))),
+	)
+
 }
 
-func (f *FissileApp) PrintAllTemplateContents(releasePath string) {
+func PrintAllTemplateContents(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -115,7 +122,7 @@ func (f *FissileApp) PrintAllTemplateContents(releasePath string) {
 	log.Printf("Transformed %d out of %d", countTransformed, count)
 }
 
-func (f *FissileApp) ShowBaseImage(dockerEndpoint, baseImage string) {
+func ShowBaseImage(dockerEndpoint, baseImage string) {
 	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
@@ -130,7 +137,7 @@ func (f *FissileApp) ShowBaseImage(dockerEndpoint, baseImage string) {
 	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 }
 
-func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repository string) {
+func CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repository string) {
 	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
@@ -165,7 +172,7 @@ func (f *FissileApp) CreateBaseCompilationImage(dockerEndpoint, baseImageName, r
 	}
 }
 
-func (f *FissileApp) Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int) {
+func Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int) {
 	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
