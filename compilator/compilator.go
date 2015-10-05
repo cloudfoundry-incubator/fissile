@@ -316,7 +316,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		fmt.Sprintf("%s:%s", c.DockerRepository, c.BaseCompilationImageTag()),
 		[]string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		c.getTargetPackageSourcesDir(pkg),
-		c.getPackageCompiledDir(pkg),
+		c.getPackageCompiledTempDir(pkg),
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
@@ -351,6 +351,9 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
 	}
 
+	// It all went ok - we can move the compiled-temp bits to the compiled dir
+	os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
+
 	return nil
 }
 
@@ -358,6 +361,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 // .
 // └── <pkg-name>
 //     ├── compiled
+//     ├── compiled-temp
 //     └── sources
 //         └── var
 //             └── vcap
@@ -381,6 +385,10 @@ func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 
 func (c *Compilator) getTargetPackageSourcesDir(pkg *model.Package) string {
 	return filepath.Join(c.HostWorkDir, pkg.Name, "sources")
+}
+
+func (c *Compilator) getPackageCompiledTempDir(pkg *model.Package) string {
+	return filepath.Join(c.HostWorkDir, pkg.Name, "compiled-temp")
 }
 
 func (c *Compilator) getPackageCompiledDir(pkg *model.Package) string {
