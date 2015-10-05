@@ -32,6 +32,6 @@ func CommandRouter(c *cli.Context) {
 	case c.Command.FullName() == "configuration report":
 		ListFullConfiguration(c.String("release"))
 	case c.Command.FullName() == "templates report":
-		PrintAllTemplateContents(c.String("release"))
+		PrintTemplateReport(c.String("release"))
 	}
 }
