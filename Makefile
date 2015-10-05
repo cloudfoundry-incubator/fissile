@@ -2,6 +2,7 @@ NO_COLOR=\033[0m
 OK_COLOR=\033[32;01m
 ERROR_COLOR=\033[31;01m
 WARN_COLOR=\033[33;01m
+APP_VERSION=0.0.1
 
 .PHONY: all clean format lint vet bindata build test
 
@@ -35,7 +36,7 @@ bindata:
 build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
-	go build -ldflags="-X main.version $(APP_VERSION)"
+	go build -ldflags="-X main.version=$(APP_VERSION)"
 	@echo "$(NO_COLOR)\c"
 
 tools:
