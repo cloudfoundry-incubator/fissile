@@ -105,23 +105,25 @@ func (c *Compilator) Compile(workerCount int) error {
 
 					if pkgState == packageNone {
 						func() {
+							// Set package state to "compiling"
 							func() {
+								defer func() {
+									c.packageLock[pkg].Unlock()
+								}()
 								c.packageLock[pkg].Lock()
 								c.packageCompiling[pkg] = true
+							}()
+							// Set package state to "not compiling" when done
+							defer func() {
 								defer func() {
 									c.packageLock[pkg].Unlock()
 								}()
-							}()
-							defer func() {
 								c.packageLock[pkg].Lock()
 								c.packageCompiling[pkg] = false
-								defer func() {
-									c.packageLock[pkg].Unlock()
-								}()
 							}()
 							if pkgState == packageNone {
-								hasWork = true
-								workerErr = c.compilePackage(pkg)
+								compiled, workerErr := c.compilePackage(pkg)
+								hasWork = compiled
 								if workerErr != nil {
 									log.Println(color.RedString(
 										"worker-%s > Compiling package %s failed: %s.\n",
@@ -133,6 +135,7 @@ func (c *Compilator) Compile(workerCount int) error {
 								}
 							}
 						}()
+
 						if result != nil {
 							break
 						}
@@ -270,29 +273,29 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	return image, nil
 }
 
-func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
+func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err error) {
 
 	// Do nothing if any dependency has not been compiled
 	for _, dep := range pkg.Dependencies {
 
 		packageStatus, err := c.getPackageStatus(dep)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		if packageStatus != packageCompiled {
-			return nil
+			return false, nil
 		}
 	}
 	log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("Starting compilation ...")))
 
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
-		return err
+		return false, err
 	}
 
 	if err := c.copyDependencies(pkg); err != nil {
-		return err
+		return false, err
 	}
 
 	// Generate a compilation script
@@ -300,13 +303,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	hostScriptPath := filepath.Join(c.getTargetPackageSourcesDir(pkg), targetScriptName)
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	if err := compilation.SaveScript(c.BaseType, compilation.CompilationScript, hostScriptPath); err != nil {
-		return err
+		return false, err
 	}
 
 	// Extract package
 	extractDir := c.getSourcePackageDir(pkg)
 	if _, err := pkg.Extract(extractDir); err != nil {
-		return err
+		return false, err
 	}
 
 	// Run compilation in container
@@ -344,17 +347,17 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	}()
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if exitCode != 0 {
-		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
+		return false, fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
 	}
 
 	// It all went ok - we can move the compiled-temp bits to the compiled dir
 	os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
 
-	return nil
+	return true, nil
 }
 
 // We want to create a package structure like this:
