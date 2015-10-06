@@ -4,6 +4,7 @@ import (
 	"github.com/codegangsta/cli"
 )
 
+// CommandRouter will dispatch CLI commands to their relevant functions
 func CommandRouter(c *cli.Context) {
 	switch {
 	case c.Command.FullName() == "release download":

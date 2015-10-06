@@ -5,28 +5,33 @@ import (
 	"io"
 	"sync"
 
-	"github.com/fsouza/go-dockerclient"
+	dockerclient "github.com/fsouza/go-dockerclient"
 )
 
 const (
-	ContainerInPath  = "/fissile-in"
+	// ContainerInPath is the input path for fissile
+	ContainerInPath = "/fissile-in"
+	// ContainerOutPath is the output path for fissile
 	ContainerOutPath = "/fissile-out"
 )
 
+// ProcessOutStream is stdout of the process
 type ProcessOutStream func(io.Reader)
 
-type DockerImageManager struct {
+// ImageManager handles Docker images
+type ImageManager struct {
 	DockerEndpoint string
 
-	client *docker.Client
+	client *dockerclient.Client
 }
 
-func NewDockerImageManager(dockerEndpoint string) (*DockerImageManager, error) {
-	manager := &DockerImageManager{
+// NewImageManager creates an instance of ImageManager
+func NewImageManager(dockerEndpoint string) (*ImageManager, error) {
+	manager := &ImageManager{
 		DockerEndpoint: dockerEndpoint,
 	}
 
-	client, err := docker.NewClient(manager.DockerEndpoint)
+	client, err := dockerclient.NewClient(manager.DockerEndpoint)
 	manager.client = client
 
 	if err != nil {
@@ -36,7 +41,8 @@ func NewDockerImageManager(dockerEndpoint string) (*DockerImageManager, error) {
 	return manager, nil
 }
 
-func (d *DockerImageManager) FindImage(imageName string) (*docker.Image, error) {
+// FindImage will lookup an image in Docker
+func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) {
 	image, err := d.client.InspectImage(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("Could not find base image %s: %s", imageName, err.Error())
@@ -45,25 +51,28 @@ func (d *DockerImageManager) FindImage(imageName string) (*docker.Image, error) 
 	return image, nil
 }
 
-func (d *DockerImageManager) RemoveContainer(containerID string) error {
-	return d.client.RemoveContainer(docker.RemoveContainerOptions{
+// RemoveContainer will remove a container from Docker
+func (d *ImageManager) RemoveContainer(containerID string) error {
+	return d.client.RemoveContainer(dockerclient.RemoveContainerOptions{
 		ID:    containerID,
 		Force: true,
 	})
 }
 
-func (d *DockerImageManager) RemoveImage(imageName string) error {
+// RemoveImage will remove an image from Docker's internal registry
+func (d *ImageManager) RemoveImage(imageName string) error {
 	return d.client.RemoveImage(imageName)
 }
 
-func (d *DockerImageManager) CreateImage(containerID string, repository string, tag string, message string, cmd []string) (*docker.Image, error) {
-	cco := docker.CommitContainerOptions{
+// CreateImage will create a Docker image
+func (d *ImageManager) CreateImage(containerID string, repository string, tag string, message string, cmd []string) (*dockerclient.Image, error) {
+	cco := dockerclient.CommitContainerOptions{
 		Container:  containerID,
 		Repository: repository,
 		Tag:        tag,
 		Author:     "fissile",
 		Message:    message,
-		Run: &docker.Config{
+		Run: &dockerclient.Config{
 			Cmd: cmd,
 		},
 	}
@@ -71,11 +80,12 @@ func (d *DockerImageManager) CreateImage(containerID string, repository string, 
 	return d.client.CommitContainer(cco)
 }
 
-func (d *DockerImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *docker.Container, err error) {
+// RunInContainer will execute a set of commands within a running Docker container
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
 	exitCode = -1
 
-	cco := docker.CreateContainerOptions{
-		Config: &docker.Config{
+	cco := dockerclient.CreateContainerOptions{
+		Config: &dockerclient.Config{
 			AttachStdin:  false,
 			AttachStdout: true,
 			AttachStderr: true,
@@ -85,7 +95,7 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 			WorkingDir:   "/",
 			Image:        imageName,
 		},
-		HostConfig: &docker.HostConfig{
+		HostConfig: &dockerclient.HostConfig{
 			Privileged:     false,
 			Binds:          []string{},
 			ReadonlyRootfs: false,
@@ -120,7 +130,7 @@ func (d *DockerImageManager) RunInContainer(containerName string, imageName stri
 	}
 
 	go func() {
-		if attachErr := d.client.AttachToContainer(docker.AttachToContainerOptions{
+		if attachErr := d.client.AttachToContainer(dockerclient.AttachToContainerOptions{
 			Container: container.ID,
 
 			InputStream:  nil,

@@ -24,7 +24,7 @@ func TestPackageInfoOk(t *testing.T) {
 	assert.Equal("ntp-4.2.8p2", release.Packages[0].Name)
 	assert.Equal("543219fbdaf6ec6f8af2956016055f2fb100d782", release.Packages[0].Version)
 	assert.Equal("543219fbdaf6ec6f8af2956016055f2fb100d782", release.Packages[0].Fingerprint)
-	assert.Equal("e42db26038a42994b0255939d0d046ca58071a45", release.Packages[0].Sha1)
+	assert.Equal("e42db26038a42994b0255939d0d046ca58071a45", release.Packages[0].SHA1)
 
 	packagePath := filepath.Join(ntpReleasePath, packagesDir, "ntp-4.2.8p2.tgz")
 	assert.Equal(packagePath, release.Packages[0].Path)
@@ -33,7 +33,7 @@ func TestPackageInfoOk(t *testing.T) {
 	assert.Nil(err)
 }
 
-func TestPackageSha1Ok(t *testing.T) {
+func TestPackageSHA1Ok(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -45,10 +45,10 @@ func TestPackageSha1Ok(t *testing.T) {
 
 	assert.Equal(1, len(release.Packages))
 
-	assert.Nil(release.Packages[0].ValidateSha1())
+	assert.Nil(release.Packages[0].ValidateSHA1())
 }
 
-func TestPackageSha1NotOk(t *testing.T) {
+func TestPackageSHA1NotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -61,9 +61,9 @@ func TestPackageSha1NotOk(t *testing.T) {
 	assert.Equal(1, len(release.Packages))
 
 	// Mess up the manifest signature
-	release.Packages[0].Sha1 += "foo"
+	release.Packages[0].SHA1 += "foo"
 
-	assert.NotNil(release.Packages[0].ValidateSha1())
+	assert.NotNil(release.Packages[0].ValidateSHA1())
 }
 
 func TestPackageExtractOk(t *testing.T) {

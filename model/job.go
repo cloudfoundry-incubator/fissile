@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Job represents a BOSH job
 type Job struct {
 	Name        string
 	Description string
@@ -49,9 +50,9 @@ func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job,
 	return job, nil
 }
 
-// Validates that the SHA1 of the actual job archive is the same
+// ValidateSHA1 validates that the SHA1 of the actual job archive is the same
 // as the one from the release manifest
-func (j *Job) ValidateSha1() error {
+func (j *Job) ValidateSHA1() error {
 	file, err := os.Open(j.Path)
 	if err != nil {
 		return fmt.Errorf("Error opening the job archive %s for sha1 calculation", j.Path)
@@ -75,7 +76,7 @@ func (j *Job) ValidateSha1() error {
 	return nil
 }
 
-// Extracts the contents of the job archive to destination
+// Extract will extract the contents of the job archive to destination
 // It creates a directory with the name of the job
 // Returns the full path of the extracted archive
 func (j *Job) Extract(destination string) (string, error) {

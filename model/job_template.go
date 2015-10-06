@@ -11,6 +11,7 @@ import (
 	"github.com/benbjohnson/ego"
 )
 
+// JobTemplate represents a BOSH job template
 type JobTemplate struct {
 	SourcePath      string
 	DestinationPath string
@@ -19,17 +20,22 @@ type JobTemplate struct {
 }
 
 const (
-	TextBlock  = "text"
+	// TextBlock is the text section of a BOSH template
+	TextBlock = "text"
+	// PrintBlock is the print section of a BOSH template
 	PrintBlock = "print"
-	CodeBlock  = "code"
+	// CodeBlock is the code section of a BOSH template
+	CodeBlock = "code"
 )
 
-type templateBlock struct {
+// TemplateBlock is a BOSH template block
+type TemplateBlock struct {
 	Type  string
 	Block string
 }
 
-func (b *templateBlock) Transform() (string, error) {
+// Transform will convert the template
+func (b *TemplateBlock) Transform() (string, error) {
 	var transformation []byte
 	var err error
 
@@ -54,8 +60,9 @@ func (b *templateBlock) Transform() (string, error) {
 	return transformer.Transform(b.Block)
 }
 
-func (j *JobTemplate) GetErbBlocks() ([]*templateBlock, error) {
-	result := []*templateBlock{}
+// GetErbBlocks will find the erb blocks within the job template
+func (j *JobTemplate) GetErbBlocks() ([]*TemplateBlock, error) {
+	result := []*TemplateBlock{}
 
 	s := ego.NewScanner(strings.NewReader(j.Content), "")
 
@@ -70,17 +77,17 @@ func (j *JobTemplate) GetErbBlocks() ([]*templateBlock, error) {
 		default:
 			return nil, fmt.Errorf("Unexpected block type %T in template %s for job %s", v, j.SourcePath, j.Job.Name)
 		case *ego.TextBlock:
-			result = append(result, &templateBlock{
+			result = append(result, &TemplateBlock{
 				Type:  TextBlock,
 				Block: b.(*ego.TextBlock).Content,
 			})
 		case *ego.CodeBlock:
-			result = append(result, &templateBlock{
+			result = append(result, &TemplateBlock{
 				Type:  CodeBlock,
 				Block: b.(*ego.CodeBlock).Content,
 			})
 		case *ego.PrintBlock:
-			result = append(result, &templateBlock{
+			result = append(result, &TemplateBlock{
 				Type:  PrintBlock,
 				Block: b.(*ego.PrintBlock).Content,
 			})

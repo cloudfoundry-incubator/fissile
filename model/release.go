@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Release represents a BOSH release
 type Release struct {
 	Jobs               []*Job
 	Packages           []*Package
@@ -29,8 +30,8 @@ const (
 	manifestFile   = "release.MF"
 )
 
+// NewRelease will create an instance of a BOSH release
 func NewRelease(path string) (*Release, error) {
-
 	release := &Release{
 		Path:     path,
 		Packages: []*Package{},
@@ -83,6 +84,7 @@ func (r *Release) loadMetadata() (err error) {
 	return nil
 }
 
+// LookupPackage will find a package within a BOSH release
 func (r *Release) LookupPackage(packageName string) (*Package, error) {
 	for _, pkg := range r.Packages {
 		if pkg.Name == packageName {
@@ -173,9 +175,9 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("Path %s (%s) does not exist.", path, pathDescription)
-		} else {
-			return err
 		}
+
+		return err
 	}
 
 	if pathInfo.IsDir() && !shouldBeDir {
