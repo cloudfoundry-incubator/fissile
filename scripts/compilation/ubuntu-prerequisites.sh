@@ -8,6 +8,10 @@ set -u # report the usage of uninitialized variables
 # Containers should be more lightweight, and we should be able 
 # to cherry pick and customize our dependencies
 
+# TODO installation of libyaml should be part of the ruby installation, 
+# or it should be a package of its own; here we install 0.1.4, 
+# upstream installs 0.1.6
+
 debs="build-essential libssl-dev lsof strace bind9-host \
 dnsutils tcpdump iputils-arping \
 curl wget libcurl3 libcurl3-dev bison libreadline6-dev \
@@ -17,15 +21,9 @@ rsync openssh-server traceroute libncurses5-dev quota \
 libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
 cmake uuid-dev libgcrypt-dev ca-certificates \
 scsitools mg htop module-assistant debhelper runit parted \
-anacron software-properties-common git"
+anacron software-properties-common libyaml-dev gettext git"
 
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y $debs
-
-# TODO installation of libyaml should be part of the ruby installation, 
-# or it should be a package of its own; here we install 0.1.4, 
-# upstream installs 0.1.6
-apt-get install -y libyaml-dev
-
+apt-get install -o Dpkg::Options::="--force-confnew" -f -y --force-yes --no-install-recommends $debs
