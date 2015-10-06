@@ -414,7 +414,15 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 			return err
 		}
 
-		if err := shutil.CopyTree(depCompiledPath, depDestinationPath, nil); err != nil {
+		if err := shutil.CopyTree(
+			depCompiledPath,
+			depDestinationPath,
+			&shutil.CopyTreeOptions{
+				Symlinks:               true,
+				Ignore:                 nil,
+				CopyFunction:           shutil.Copy,
+				IgnoreDanglingSymlinks: false},
+		); err != nil {
 			return err
 		}
 	}
