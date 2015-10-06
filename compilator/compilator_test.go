@@ -198,6 +198,7 @@ func TestCompilePackage(t *testing.T) {
 	}()
 	assert.Nil(err)
 
-	err = comp.compilePackage(release.Packages[0])
+	compiled, err := comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
+	assert.True(compiled)
 }

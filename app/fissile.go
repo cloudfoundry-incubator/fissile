@@ -100,6 +100,8 @@ func PrintTemplateReport(releasePath string) {
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
+	templateCount := 0
+
 	countPrint := 0
 	countPrintTransformed := 0
 
@@ -110,6 +112,8 @@ func PrintTemplateReport(releasePath string) {
 
 	for _, job := range release.Jobs {
 		for _, template := range job.Templates {
+			templateCount++
+
 			blocks, err := template.GetErbBlocks()
 
 			if err != nil {
@@ -148,6 +152,11 @@ func PrintTemplateReport(releasePath string) {
 
 		}
 	}
+
+	log.Printf(
+		"There are %s templates present.",
+		color.GreenString("%d", templateCount),
+	)
 
 	log.Printf(
 		"There are %s text blocks that we don't need to touch.",
