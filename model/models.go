@@ -8,11 +8,10 @@ type ReleaseLicense struct {
 	Release     *Release
 }
 
-// JobProperty is a generic key-value property
+// JobProperty is a generic key-value property referenced by a job
 type JobProperty struct {
 	Name        string
 	Description string
 	Default     interface{}
 	Job         *Job
-	Content     string
 }

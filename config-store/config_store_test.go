@@ -1,4 +1,4 @@
-package config_store
+package configstore
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreManager("foo")
+	confStore := NewConfigStoreBuilder("foo")
 
 	boshKey := "this.is.a.bosh.key"
 
@@ -24,7 +24,7 @@ func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreManager("foo")
+	confStore := NewConfigStoreBuilder("foo")
 
 	boshKey := ""
 
@@ -37,7 +37,7 @@ func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 func TestConsulPathToBOSHKeyConversion(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreManager("foo")
+	confStore := NewConfigStoreBuilder("foo")
 
 	boshKey := "/foo/this/is/a/consul/path"
 
@@ -50,7 +50,7 @@ func TestConsulPathToBOSHKeyConversion(t *testing.T) {
 func TestConsulPathToBOSHKeyConversionBadPrefix(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreManager("foo")
+	confStore := NewConfigStoreBuilder("foo")
 
 	boshKey := "/bar/this/is/a/consul/path"
 
@@ -63,7 +63,7 @@ func TestConsulPathToBOSHKeyConversionBadPrefix(t *testing.T) {
 func TestConsulPathToBOSHKeyConversionBadKey(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreManager("foo")
+	confStore := NewConfigStoreBuilder("foo")
 
 	boshKey := "/foo/"
 

@@ -50,6 +50,16 @@ func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job,
 	return job, nil
 }
 
+func (j *Job) getProperty(name string) (*JobProperty, error) {
+	for _, property := range j.Properties {
+		if property.Name == name {
+			return property, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Property %s not found in job %s", name, j.Name)
+}
+
 // ValidateSHA1 validates that the SHA1 of the actual job archive is the same
 // as the one from the release manifest
 func (j *Job) ValidateSHA1() error {

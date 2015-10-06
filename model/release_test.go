@@ -178,3 +178,19 @@ func TestPackageDependencies(t *testing.T) {
 	assert.Equal(1, len(pkg.Dependencies))
 	assert.Equal("libevent", pkg.Dependencies[0].Name)
 }
+
+func TestGetDeploymentConfig(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	release, err := NewRelease(releasePath)
+	assert.Nil(err)
+
+	configs := release.GetDeploymentConfigs()
+
+	assert.NotNil(configs)
+	assert.Equal(4, len(configs))
+}

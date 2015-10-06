@@ -10,6 +10,7 @@ import (
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
+	"gopkg.in/yaml.v2"
 
 	"github.com/fatih/color"
 )
@@ -62,7 +63,7 @@ func ListFullConfiguration(releasePath string) {
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	propertiesGroupedUsageCounts := map[string]int{}
-	propertiesGroupedDefaultCounts := map[string]int{}
+	propertiesGroupedDefaults := map[string][]interface{}{}
 
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
@@ -71,11 +72,11 @@ func ListFullConfiguration(releasePath string) {
 				propertiesGroupedUsageCounts[property.Name]++
 			} else {
 				propertiesGroupedUsageCounts[property.Name] = 1
-				propertiesGroupedDefaultCounts[property.Name] = 0
+				propertiesGroupedDefaults[property.Name] = []interface{}{}
 			}
 
 			if property.Default != nil {
-				propertiesGroupedDefaultCounts[property.Name]++
+				propertiesGroupedDefaults[property.Name] = append(propertiesGroupedDefaults[property.Name], property.Default)
 			}
 		}
 	}
@@ -91,12 +92,41 @@ func ListFullConfiguration(releasePath string) {
 
 	for _, name := range keys {
 		log.Printf(
-			"Count: %s\t%s",
+			"====== %s ======\nUsage count: %s\n",
+			color.GreenString(name),
 			color.MagentaString(fmt.Sprintf("%d", propertiesGroupedUsageCounts[name])),
-			color.YellowString(name),
 		)
 
-		if propertiesGroupedDefaultCounts[name] > 0 {
+		defaults := propertiesGroupedDefaults[name]
+
+		if len(defaults) > 0 {
+			buf, err := yaml.Marshal(defaults[0])
+			if err != nil {
+				log.Fatalln(color.RedString("Error marshaling config value %v: %s", defaults[0], err.Error()))
+			}
+			previous := string(buf)
+			log.Printf(
+				"Default:\n%s\n",
+				color.YellowString(previous),
+			)
+
+			for _, value := range defaults[1:] {
+				buf, err := yaml.Marshal(value)
+				if err != nil {
+					log.Fatalln(color.RedString("Error marshaling config value %v: %s", value, err.Error()))
+				}
+				current := string(buf)
+				if current != previous {
+					log.Printf(
+						"*** ALTERNATE DEFAULT:\n%s\n",
+						color.RedString(current),
+					)
+				}
+				previous = current
+			}
+		}
+
+		if len(propertiesGroupedDefaults[name]) > 0 {
 			keysWithDefaults++
 		}
 	}
