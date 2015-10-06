@@ -58,37 +58,50 @@ func ListFullConfiguration(releasePath string) {
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	propertiesGrouped := map[string]int{}
+	propertiesGroupedUsageCounts := map[string]int{}
+	propertiesGroupedDefaultCounts := map[string]int{}
 
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
 
-			if _, ok := propertiesGrouped[property.Name]; ok {
-				propertiesGrouped[property.Name]++
+			if _, ok := propertiesGroupedUsageCounts[property.Name]; ok {
+				propertiesGroupedUsageCounts[property.Name]++
 			} else {
-				propertiesGrouped[property.Name] = 1
+				propertiesGroupedUsageCounts[property.Name] = 1
+				propertiesGroupedDefaultCounts[property.Name] = 0
+			}
+
+			if property.Default != nil {
+				propertiesGroupedDefaultCounts[property.Name]++
 			}
 		}
 	}
 
-	keys := make([]string, 0, len(propertiesGrouped))
-	for k := range propertiesGrouped {
+	keys := make([]string, 0, len(propertiesGroupedUsageCounts))
+	for k := range propertiesGroupedUsageCounts {
 		keys = append(keys, k)
 	}
 
 	sort.Strings(keys)
 
+	keysWithDefaults := 0
+
 	for _, name := range keys {
 		log.Printf(
 			"Count: %s\t%s",
-			color.MagentaString(fmt.Sprintf("%d", propertiesGrouped[name])),
+			color.MagentaString(fmt.Sprintf("%d", propertiesGroupedUsageCounts[name])),
 			color.YellowString(name),
 		)
+
+		if propertiesGroupedDefaultCounts[name] > 0 {
+			keysWithDefaults++
+		}
 	}
 
 	log.Printf(
-		"There are %s configuration keys present.",
-		color.GreenString(fmt.Sprintf("%d", len(propertiesGrouped))),
+		"There are %s unique configuration keys present. %s of them have default values.",
+		color.GreenString(fmt.Sprintf("%d", len(propertiesGroupedUsageCounts))),
+		color.GreenString(fmt.Sprintf("%d", keysWithDefaults)),
 	)
 }
 
