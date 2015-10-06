@@ -45,7 +45,7 @@ func TestJobSha1Ok(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Nil(release.Jobs[0].ValidateSha1())
+	assert.Nil(release.Jobs[0].ValidateSHA1())
 }
 
 func TestJobSha1NotOk(t *testing.T) {
@@ -63,7 +63,7 @@ func TestJobSha1NotOk(t *testing.T) {
 	// Mess up the manifest signature
 	release.Jobs[0].Sha1 += "foo"
 
-	assert.NotNil(release.Jobs[0].ValidateSha1())
+	assert.NotNil(release.Jobs[0].ValidateSHA1())
 }
 
 func TestJobExtractOk(t *testing.T) {

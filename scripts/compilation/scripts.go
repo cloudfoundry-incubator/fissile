@@ -6,13 +6,18 @@ import (
 )
 
 const (
+	// UbuntuBase is the name of the Ubuntu base image
 	UbuntuBase = "ubuntu"
-	FakeBase   = "fake"
+	// FakeBase is the name of the fake base image
+	FakeBase = "fake"
 
-	CompilationScript    = "compile"
-	PreprequisitesScript = "prerequisites"
+	// CompilationScript is the compilation script
+	CompilationScript = "compile"
+	// PrerequisitesScript is the script that installs prerequisites
+	PrerequisitesScript = "prerequisites"
 )
 
+// SaveScript will write a script to the disk
 func SaveScript(baseType, scriptType, path string) error {
 	script, err := GetScript(baseType, scriptType)
 	if err != nil {
@@ -26,6 +31,7 @@ func SaveScript(baseType, scriptType, path string) error {
 	return nil
 }
 
+// GetScript will lookup a script
 func GetScript(baseType, scriptType string) ([]byte, error) {
 	assetPath := fmt.Sprintf("scripts/compilation/%s-%s.sh", baseType, scriptType)
 

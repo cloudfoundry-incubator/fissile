@@ -10,11 +10,12 @@ import (
 	"github.com/pivotal-golang/archiver/extractor"
 )
 
+// Package represents a BOSH package
 type Package struct {
 	Name         string
 	Version      string
 	Fingerprint  string
-	Sha1         string
+	SHA1         string
 	Release      *Release
 	Path         string
 	Dependencies []*Package
@@ -37,12 +38,12 @@ func newPackage(release *Release, packageReleaseInfo map[interface{}]interface{}
 	return pkg, nil
 }
 
-// Validates that the SHA1 of the actual package archive is the same
+// ValidateSHA1 validates that the SHA1 of the actual package archive is the same
 // as the one from the release manifest
-func (p *Package) ValidateSha1() error {
+func (p *Package) ValidateSHA1() error {
 	file, err := os.Open(p.Path)
 	if err != nil {
-		return fmt.Errorf("Error opening the package archive %s for sha1 calculation", p.Path)
+		return fmt.Errorf("Error opening the package archive %s for SHA1 calculation", p.Path)
 	}
 
 	defer file.Close()
@@ -51,19 +52,19 @@ func (p *Package) ValidateSha1() error {
 
 	_, err = io.Copy(h, file)
 	if err != nil {
-		return fmt.Errorf("Error copying package archive %s for sha1 calculation", p.Path)
+		return fmt.Errorf("Error copying package archive %s for SHA1 calculation", p.Path)
 	}
 
-	computedSha1 := fmt.Sprintf("%x", h.Sum(nil))
+	computedSHA1 := fmt.Sprintf("%x", h.Sum(nil))
 
-	if computedSha1 != p.Sha1 {
-		return fmt.Errorf("Computed sha1 (%s) is different than manifest sha1 (%s) for package archive %s", computedSha1, p.Sha1, p.Path)
+	if computedSHA1 != p.SHA1 {
+		return fmt.Errorf("Computed SHA1 (%s) is different than manifest SHA1 (%s) for package archive %s", computedSHA1, p.SHA1, p.Path)
 	}
 
 	return nil
 }
 
-// Extracts the contents of the package archive to destination
+// Extract will extract the contents of the package archive to destination
 // It creates a directory with the name of the package
 // Returns the full path of the extracted archive
 func (p *Package) Extract(destination string) (string, error) {
@@ -79,7 +80,7 @@ func (p *Package) Extract(destination string) (string, error) {
 	return targetDir, nil
 }
 
-// Creates a directory structure that contains the package
+// PrepareForCompilation creates a directory structure that contains the package
 // and all its dependencies, suitable for executing the compilation package
 func (p *Package) PrepareForCompilation(destrination string) error {
 	return fmt.Errorf("TODO: Not implemented")
@@ -95,7 +96,7 @@ func (p *Package) loadPackageInfo() (err error) {
 	p.Name = p.packageReleaseInfo["name"].(string)
 	p.Version = p.packageReleaseInfo["version"].(string)
 	p.Fingerprint = p.packageReleaseInfo["fingerprint"].(string)
-	p.Sha1 = p.packageReleaseInfo["sha1"].(string)
+	p.SHA1 = p.packageReleaseInfo["sha1"].(string)
 	p.Path = p.packageArchivePath()
 
 	return nil

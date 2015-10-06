@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 )
 
+// ListPackages will list all BOSH packages within a release
 func ListPackages(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -32,6 +33,7 @@ func ListPackages(releasePath string) {
 	)
 }
 
+// ListJobs will list all jobs within a release
 func ListJobs(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -50,6 +52,7 @@ func ListJobs(releasePath string) {
 	)
 }
 
+// ListFullConfiguration will output all the configurations within the release
 func ListFullConfiguration(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -105,6 +108,7 @@ func ListFullConfiguration(releasePath string) {
 	)
 }
 
+// PrintTemplateReport will output details about the contents of a release
 func PrintTemplateReport(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -189,8 +193,9 @@ func PrintTemplateReport(releasePath string) {
 	)
 }
 
+// ShowBaseImage will show details about the base BOSH image
 func ShowBaseImage(dockerEndpoint, baseImage string) {
-	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
@@ -204,8 +209,9 @@ func ShowBaseImage(dockerEndpoint, baseImage string) {
 	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 }
 
+// CreateBaseCompilationImage will recompile the base BOSH image for a release
 func CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repository string) {
-	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
@@ -239,8 +245,9 @@ func CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repo
 	}
 }
 
+// Compile will compile a full BOSH release
 func Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int) {
-	dockerManager, err := docker.NewDockerImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager(dockerEndpoint)
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}

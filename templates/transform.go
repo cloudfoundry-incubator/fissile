@@ -2,21 +2,25 @@ package templates
 
 import (
 	"bytes"
-	"gopkg.in/yaml.v2"
 	"regexp"
 	"text/template"
+
+	"gopkg.in/yaml.v2"
 )
 
+// Match represents a matcher
 type Match struct {
 	Match           string  `yaml:"match"`
 	Output          string  `yaml:"output"`
 	Transformations []Match `yaml:"transformations,flow,omitempty"`
 }
 
+// Transformer represents the transformers of a package
 type Transformer struct {
 	Transformations []Match `yaml:"transformations,flow"`
 }
 
+// NewTransformer will create an instance of the transformer from the YAML
 func NewTransformer(spec string) (*Transformer, error) {
 	transformer := &Transformer{}
 
@@ -27,6 +31,7 @@ func NewTransformer(spec string) (*Transformer, error) {
 	return transformer, nil
 }
 
+// Transform performs the transformation
 func (t *Transformer) Transform(input string) (string, error) {
 	return getFirstSuccesfulTransform(input, t.Transformations)
 }

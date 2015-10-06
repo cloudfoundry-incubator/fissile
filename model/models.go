@@ -1,14 +1,14 @@
 package model
 
-import ()
-
+// ReleaseLicense represents the license of a BOSH release
 type ReleaseLicense struct {
 	Fingerprint string
-	Sha1        string
+	SHA1        string
 	Contents    []string
 	Release     *Release
 }
 
+// JobProperty is a generic key-value property
 type JobProperty struct {
 	Name        string
 	Description string

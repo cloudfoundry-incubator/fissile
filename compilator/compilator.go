@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	// ContainerPackagesDir represents the default location of installed BOSH packages
 	ContainerPackagesDir = "/var/vcap/packages"
 
 	sleepTimeWhileCantCompileSec = 5
@@ -34,8 +35,9 @@ const (
 	packageCompiled
 )
 
+// Compilator represents the BOSH compiler
 type Compilator struct {
-	DockerManager    *docker.DockerImageManager
+	DockerManager    *docker.ImageManager
 	Release          *model.Release
 	HostWorkDir      string
 	DockerRepository string
@@ -45,8 +47,9 @@ type Compilator struct {
 	packageCompiling map[*model.Package]bool
 }
 
+// NewCompilator will create an instance of the Compilator
 func NewCompilator(
-	dockerManager *docker.DockerImageManager,
+	dockerManager *docker.ImageManager,
 	release *model.Release,
 	hostWorkDir string,
 	dockerRepository string,
@@ -72,6 +75,7 @@ func NewCompilator(
 	return compilator, nil
 }
 
+// Compile will perform the compile of a BOSH release
 func (c *Compilator) Compile(workerCount int) error {
 	var result error
 
@@ -176,6 +180,7 @@ func (c *Compilator) Compile(workerCount int) error {
 	return result
 }
 
+// CreateCompilationBase will create the compiler container
 func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
 	imageTag := c.BaseCompilationImageTag()
 	imageName := fmt.Sprintf("%s:%s", c.DockerRepository, imageTag)
@@ -204,7 +209,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	targetScriptName := "compilation-prerequisites.sh"
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
-	if err = compilation.SaveScript(c.BaseType, compilation.PreprequisitesScript, hostScriptPath); err != nil {
+	if err = compilation.SaveScript(c.BaseType, compilation.PrerequisitesScript, hostScriptPath); err != nil {
 		return nil, fmt.Errorf("Error saving script asset: %s", err.Error())
 	}
 
@@ -486,9 +491,9 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
-		} else {
-			return false, err
 		}
+
+		return false, err
 	}
 
 	if pathInfo.IsDir() && !shouldBeDir {
@@ -504,10 +509,12 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 	return fmt.Sprintf("%s-%s-%s-pkg-%s", c.DockerRepository, c.Release.Name, c.Release.Version, pkg.Name)
 }
 
+// BaseCompilationContainerName will return the compilation container's name
 func (c *Compilator) BaseCompilationContainerName() string {
 	return fmt.Sprintf("%s-%s-%s-cbase", c.DockerRepository, c.Release.Name, c.Release.Version)
 }
 
+// BaseCompilationImageTag will return the compilation container's tag
 func (c *Compilator) BaseCompilationImageTag() string {
 	return fmt.Sprintf("%s-%s-cbase", c.Release.Name, c.Release.Version)
 }
