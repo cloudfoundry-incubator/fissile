@@ -8,7 +8,8 @@ set -u # report the usage of uninitialized variables
 # Containers should be more lightweight, and we should be able 
 # to cherry pick and customize our dependencies
 
-debs="libssl-dev lsof strace bind9-host dnsutils tcpdump iputils-arping \
+debs="build-essential libssl-dev lsof strace bind9-host \
+dnsutils tcpdump iputils-arping \
 curl wget libcurl3 libcurl3-dev bison libreadline6-dev \
 libxml2 libxml2-dev libxslt1.1 libxslt1-dev zip unzip \
 nfs-common flex psmisc apparmor-utils iptables sysstat \
@@ -16,8 +17,7 @@ rsync openssh-server traceroute libncurses5-dev quota \
 libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
 cmake uuid-dev libgcrypt-dev ca-certificates \
 scsitools mg htop module-assistant debhelper runit parted \
-anacron software-properties-common git libmysqlclient-dev \
-libpq-dev"
+anacron software-properties-common git"
 
 export DEBIAN_FRONTEND=noninteractive
 
