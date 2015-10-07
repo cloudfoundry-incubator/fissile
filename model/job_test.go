@@ -141,3 +141,43 @@ func TestJobPropertiesOk(t *testing.T) {
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
 }
+
+func TestGetJobPropertyOk(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	assert.Equal(1, len(release.Jobs))
+
+	assert.Equal(1, len(release.Jobs[0].Properties))
+
+	property, err := release.Jobs[0].getProperty("ntp_conf")
+
+	assert.Nil(err)
+	assert.Equal("ntp_conf", property.Name)
+}
+
+func TestGetJobPropertyNotOk(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	assert.Equal(1, len(release.Jobs))
+
+	assert.Equal(1, len(release.Jobs[0].Properties))
+
+	_, err = release.Jobs[0].getProperty("foo")
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "not found in job")
+}

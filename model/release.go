@@ -62,6 +62,30 @@ func NewRelease(path string) (*Release, error) {
 	return release, nil
 }
 
+// GetUniqueConfigs returns all unique configs available in a release
+func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
+	result := map[string]*ReleaseConfig{}
+
+	for _, job := range r.Jobs {
+		for _, property := range job.Properties {
+
+			if config, ok := result[property.Name]; ok {
+				config.UsageCount++
+				config.Jobs = append(config.Jobs, job)
+			} else {
+				result[property.Name] = &ReleaseConfig{
+					Name:        property.Name,
+					Jobs:        []*Job{job},
+					UsageCount:  1,
+					Description: property.Description,
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 func (r *Release) loadMetadata() (err error) {
 	defer func() {
 		if r := recover(); r != nil {

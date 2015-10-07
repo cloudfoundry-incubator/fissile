@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/hpcloud/fissile/app"
+	"github.com/hpcloud/fissile/config-store"
 
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
@@ -161,6 +162,40 @@ func main() {
 						},
 					},
 					Usage:  "List all configurations for all jobs in a release",
+					Action: app.CommandRouter,
+				},
+				{
+					Name:    "generate",
+					Aliases: []string{"gen"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a BOSH release.",
+						},
+						cli.StringFlag{
+							Name:  "light-opinions, l",
+							Usage: "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
+						},
+						cli.StringFlag{
+							Name:  "dark-opinions, d",
+							Usage: "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
+						},
+						cli.StringFlag{
+							Name:  "target, t",
+							Usage: "Path to the location of the generated configuration base.",
+						},
+						cli.StringFlag{
+							Name:  "prefix, p",
+							Usage: "Prefix to be used for all configuration keys.",
+							Value: "hcf",
+						},
+						cli.StringFlag{
+							Name:  "provider, o",
+							Usage: "Provider to use when generating the configuration base.",
+							Value: configstore.DirTreeProvider,
+						},
+					},
+					Usage:  "Generates a configuration base that can be loaded into something like consul",
 					Action: app.CommandRouter,
 				},
 			},
