@@ -6,11 +6,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-15",
-			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
-		},
-		{
 			"ImportPath": "github.com/benbjohnson/ego",
 			"Comment": "v0.1.0-6-g590dff9",
 			"Rev": "590dff9742dbd2e134877a5ec2cc915ce5c8aac7"
@@ -30,11 +25,6 @@
 			"Rev": "c9ad0ce23f68428421adfc6ced9e6123f54788a5"
 		},
 		{
-			"ImportPath": "github.com/hashicorp/consul/api",
-			"Comment": "v0.5.2-322-g78aa6f1",
-			"Rev": "78aa6f1443ba506e8c9bc88b6f4448ad6fee325f"
-		},
-		{
 			"ImportPath": "github.com/hashicorp/errwrap",
 			"Rev": "7554cd9344cec97297fa6649b055a8c98c2a1e55"
 		},
@@ -45,6 +35,10 @@
 		{
 			"ImportPath": "github.com/mattn/go-isatty",
 			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
+		},
+		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor",
