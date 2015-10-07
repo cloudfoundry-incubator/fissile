@@ -13,22 +13,22 @@ const (
 	leafFilename = "file.yml"
 )
 
-type DirTreeConfigWriterProvider struct {
+type dirTreeConfigWriterProvider struct {
 	tempDir string
 }
 
-func newDirTreeConfigWriterProvider() (*DirTreeConfigWriterProvider, error) {
+func newDirTreeConfigWriterProvider() (*dirTreeConfigWriterProvider, error) {
 	tempDir, err := ioutil.TempDir("", "fissile-config-writer-dirtree")
 	if err != nil {
 		return nil, err
 	}
 
-	return &DirTreeConfigWriterProvider{
+	return &dirTreeConfigWriterProvider{
 		tempDir: tempDir,
 	}, nil
 }
 
-func (d *DirTreeConfigWriterProvider) WriteConfig(configKey string, value interface{}) error {
+func (d *dirTreeConfigWriterProvider) WriteConfig(configKey string, value interface{}) error {
 	path := filepath.Join(d.tempDir, configKey)
 
 	if err := os.MkdirAll(path, 0755); err != nil {
@@ -45,7 +45,7 @@ func (d *DirTreeConfigWriterProvider) WriteConfig(configKey string, value interf
 	return ioutil.WriteFile(filePath, buf, 0755)
 }
 
-func (d *DirTreeConfigWriterProvider) Save(targetPath string) error {
+func (d *dirTreeConfigWriterProvider) Save(targetPath string) error {
 	return shutil.CopyTree(
 		d.tempDir,
 		targetPath,

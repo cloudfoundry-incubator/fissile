@@ -84,7 +84,7 @@ func scriptsTemplatesTransformationsYml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/templates/transformations.yml", size: 797, mode: os.FileMode(420), modTime: time.Unix(1444232057, 0)}
+	info := bindataFileInfo{name: "scripts/templates/transformations.yml", size: 797, mode: os.FileMode(420), modTime: time.Unix(1443205015, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }
@@ -104,7 +104,7 @@ func scriptsTemplatesTransformations_codeYml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "scripts/templates/transformations_code.yml", size: 193, mode: os.FileMode(420), modTime: time.Unix(1444232057, 0)}
+	info := bindataFileInfo{name: "scripts/templates/transformations_code.yml", size: 193, mode: os.FileMode(420), modTime: time.Unix(1444068549, 0)}
 	a := &asset{bytes: bytes, info:  info}
 	return a, nil
 }

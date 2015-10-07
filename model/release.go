@@ -62,6 +62,7 @@ func NewRelease(path string) (*Release, error) {
 	return release, nil
 }
 
+// GetUniqueConfigs returns all unique configs available in a release
 func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 	result := map[string]*ReleaseConfig{}
 

@@ -312,6 +312,7 @@ func Compile(baseImageName, releasePath, repository, targetPath string, workerCo
 	}
 }
 
+//GenerateConfigurationBase generates a configuration base using a BOSH release and opinions from manifests
 func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {

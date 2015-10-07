@@ -8,10 +8,15 @@ import (
 )
 
 const (
-	SpecStore         = "spec"
-	OpinionsStore     = "opinions"
+	// SpecStore is the prefix for the spec defaults keys
+	SpecStore = "spec"
+	// OpinionsStore is the prefix for the opinions defaults keys
+	OpinionsStore = "opinions"
+
+	// DescriptionsStore is the prefix for the description keys
 	DescriptionsStore = "descriptions"
 
+	// DirTreeProvider is the name of the default config writer that creates a filesystem tree
 	DirTreeProvider = "dirtree"
 )
 
@@ -37,13 +42,14 @@ func NewConfigStoreBuilder(prefix, provider, lightOpinionsPath, darkOpinionsPath
 	return configStoreManager
 }
 
+// WriteBaseConfig generates the configuration base for a BOSH release
 func (c *Builder) WriteBaseConfig(release *model.Release) error {
-	var configWriter ConfigWriter
+	var writer configWriter
 	var err error
 
 	switch {
 	case c.provider == DirTreeProvider:
-		configWriter, err = newDirTreeConfigWriterProvider()
+		writer, err = newDirTreeConfigWriterProvider()
 		if err != nil {
 			return err
 		}
@@ -51,22 +57,22 @@ func (c *Builder) WriteBaseConfig(release *model.Release) error {
 		return fmt.Errorf("Invalid config writer provider %s", c.provider)
 	}
 
-	if err := c.writeDescriptionConfigs(release, configWriter); err != nil {
+	if err := c.writeDescriptionConfigs(release, writer); err != nil {
 		return err
 	}
 
-	if err := c.writeSpecConfigs(release, configWriter); err != nil {
+	if err := c.writeSpecConfigs(release, writer); err != nil {
 		return err
 	}
 
-	if err := c.writeOpinionsConfigs(release, configWriter); err != nil {
+	if err := c.writeOpinionsConfigs(release, writer); err != nil {
 		return err
 	}
 
-	return configWriter.Save(c.targetLocation)
+	return writer.Save(c.targetLocation)
 }
 
-func (c *Builder) writeSpecConfigs(release *model.Release, confWriter ConfigWriter) error {
+func (c *Builder) writeSpecConfigs(release *model.Release, confWriter configWriter) error {
 
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
@@ -84,7 +90,7 @@ func (c *Builder) writeSpecConfigs(release *model.Release, confWriter ConfigWrit
 	return nil
 }
 
-func (c *Builder) writeDescriptionConfigs(release *model.Release, confWriter ConfigWriter) error {
+func (c *Builder) writeDescriptionConfigs(release *model.Release, confWriter configWriter) error {
 
 	configs := release.GetUniqueConfigs()
 
@@ -102,10 +108,10 @@ func (c *Builder) writeDescriptionConfigs(release *model.Release, confWriter Con
 	return nil
 }
 
-func (c *Builder) writeOpinionsConfigs(release *model.Release, confWriter ConfigWriter) error {
+func (c *Builder) writeOpinionsConfigs(release *model.Release, confWriter configWriter) error {
 	configs := release.GetUniqueConfigs()
 
-	opinions, err := NewOpinions(c.lightOpinionsPath, c.darkOpinionsPath)
+	opinions, err := newOpinions(c.lightOpinionsPath, c.darkOpinionsPath)
 	if err != nil {
 		return err
 	}

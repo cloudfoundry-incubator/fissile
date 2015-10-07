@@ -6,13 +6,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Opinions struct {
+type opinions struct {
 	Light map[interface{}]interface{}
 	Dark  map[interface{}]interface{}
 }
 
-func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
-	result := &Opinions{}
+func newOpinions(lightFile, darkFile string) (*opinions, error) {
+	result := &opinions{}
 
 	manifestContents, err := ioutil.ReadFile(lightFile)
 	if err != nil {
@@ -37,7 +37,7 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 	return result, nil
 }
 
-func (o *Opinions) GetOpinionForKey(keyPieces []string) (result interface{}) {
+func (o *opinions) GetOpinionForKey(keyPieces []string) (result interface{}) {
 	darkValue := getDeepValueFromManifest(o.Dark, keyPieces)
 
 	if darkValue != nil {

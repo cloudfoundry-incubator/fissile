@@ -17,7 +17,7 @@ func TestOpinionsLoad(t *testing.T) {
 	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
-	confOpinions, err := NewOpinions(opinionsFile, opinionsFileDark)
+	confOpinions, err := newOpinions(opinionsFile, opinionsFileDark)
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 }
@@ -32,7 +32,7 @@ func TestGetOpinionForKey(t *testing.T) {
 	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
-	confOpinions, err := NewOpinions(opinionsFile, opinionsFileDark)
+	confOpinions, err := newOpinions(opinionsFile, opinionsFileDark)
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
@@ -50,7 +50,7 @@ func TestGetOpinionWithDarkKey(t *testing.T) {
 	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
-	confOpinions, err := NewOpinions(opinionsFile, opinionsFileDark)
+	confOpinions, err := newOpinions(opinionsFile, opinionsFileDark)
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
@@ -68,7 +68,7 @@ func TestGetOpinionForKeyInvalid(t *testing.T) {
 	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
-	confOpinions, err := NewOpinions(opinionsFile, opinionsFileDark)
+	confOpinions, err := newOpinions(opinionsFile, opinionsFileDark)
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
