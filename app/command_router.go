@@ -14,16 +14,14 @@ func CommandRouter(c *cli.Context) {
 		ListPackages(c.String("release"))
 	case c.Command.FullName() == "compilation build-base":
 		CreateBaseCompilationImage(
-			c.String("docker-endpoint"),
 			c.String("base-image"),
 			c.String("release"),
 			c.String("repository"),
 		)
 	case c.Command.FullName() == "compilation show-base":
-		ShowBaseImage(c.String("docker-endpoint"), c.String("base-image"))
+		ShowBaseImage(c.String("base-image"))
 	case c.Command.FullName() == "compilation start":
 		Compile(
-			c.String("docker-endpoint"),
 			c.String("base-image"),
 			c.String("release"),
 			c.String("repository"),

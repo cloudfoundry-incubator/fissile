@@ -13,21 +13,13 @@ import (
 )
 
 const (
-	dockerEndpointEnvVar      = "FISSILE_TEST_DOCKER_ENDPOINT"
-	defaultDockerTestEndpoint = "unix:///var/run/docker.sock"
-	dockerImageEnvVar         = "FISSILE_TEST_DOCKER_IMAGE"
-	defaultDockerTestImage    = "ubuntu:14.04"
+	dockerImageEnvVar      = "FISSILE_TEST_DOCKER_IMAGE"
+	defaultDockerTestImage = "ubuntu:14.04"
 )
 
-var dockerEndpoint string
 var dockerImageName string
 
 func TestMain(m *testing.M) {
-	dockerEndpoint = os.Getenv(dockerEndpointEnvVar)
-	if dockerEndpoint == "" {
-		dockerEndpoint = defaultDockerTestEndpoint
-	}
-
 	dockerImageName = os.Getenv(dockerImageEnvVar)
 	if dockerImageName == "" {
 		dockerImageName = defaultDockerTestImage
@@ -41,7 +33,7 @@ func TestMain(m *testing.M) {
 func TestFindImageOK(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 	assert.Nil(err)
 
 	image, err := dockerManager.FindImage(dockerImageName)
@@ -53,7 +45,7 @@ func TestFindImageOK(t *testing.T) {
 func TestShowImageNotOK(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 	assert.Nil(err)
 
 	_, err = dockerManager.FindImage(uuid.New())
@@ -65,7 +57,7 @@ func TestShowImageNotOK(t *testing.T) {
 func TestRunInContainer(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -96,7 +88,7 @@ func TestRunInContainer(t *testing.T) {
 func TestRunInContainerStderr(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -127,7 +119,7 @@ func TestRunInContainerStderr(t *testing.T) {
 func TestRunInContainerWithInFiles(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -158,7 +150,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -182,7 +174,7 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 func TestRunInContainerWithOutFiles(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -213,7 +205,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 
@@ -237,7 +229,7 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 func TestCreateImageOk(t *testing.T) {
 	assert := assert.New(t)
 
-	dockerManager, err := NewImageManager(dockerEndpoint)
+	dockerManager, err := NewImageManager()
 
 	assert.Nil(err)
 

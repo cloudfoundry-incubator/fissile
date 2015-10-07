@@ -11,28 +11,21 @@ import (
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
+	"github.com/hpcloud/fissile/util"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	dockerEndpointEnvVar      = "FISSILE_TEST_DOCKER_ENDPOINT"
-	defaultDockerTestEndpoint = "unix:///var/run/docker.sock"
-	dockerImageEnvVar         = "FISSILE_TEST_DOCKER_IMAGE"
-	defaultDockerTestImage    = "ubuntu:14.04"
+	dockerImageEnvVar      = "FISSILE_TEST_DOCKER_IMAGE"
+	defaultDockerTestImage = "ubuntu:14.04"
 )
 
-var dockerEndpoint string
 var dockerImageName string
 
 func TestMain(m *testing.M) {
 	log.SetOutput(ioutil.Discard)
-
-	dockerEndpoint = os.Getenv(dockerEndpointEnvVar)
-	if dockerEndpoint == "" {
-		dockerEndpoint = defaultDockerTestEndpoint
-	}
 
 	dockerImageName = os.Getenv(dockerImageEnvVar)
 	if dockerImageName == "" {
@@ -53,10 +46,10 @@ func TestCompilationSourcePreparation(t *testing.T) {
 func TestGetPackageStatusCompiled(t *testing.T) {
 	assert := assert.New(t)
 
-	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
@@ -83,10 +76,10 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 func TestGetPackageStatusNone(t *testing.T) {
 	assert := assert.New(t)
 
-	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
@@ -106,10 +99,10 @@ func TestGetPackageStatusNone(t *testing.T) {
 func TestPackageFolderStructure(t *testing.T) {
 	assert := assert.New(t)
 
-	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
@@ -135,10 +128,10 @@ func TestPackageFolderStructure(t *testing.T) {
 func TestPackageDependenciesPreparation(t *testing.T) {
 	assert := assert.New(t)
 
-	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
@@ -173,10 +166,10 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 func TestCompilePackage(t *testing.T) {
 	assert := assert.New(t)
 
-	compilationWorkDir, err := ioutil.TempDir("", "fissile-tests")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
@@ -191,6 +184,7 @@ func TestCompilePackage(t *testing.T) {
 
 	imageTag := comp.BaseCompilationImageTag()
 	imageName := fmt.Sprintf("%s:%s", comp.DockerRepository, imageTag)
+
 	_, err = comp.CreateCompilationBase(dockerImageName)
 	defer func() {
 		err = dockerManager.RemoveImage(imageName)

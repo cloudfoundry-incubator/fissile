@@ -20,18 +20,14 @@ type ProcessOutStream func(io.Reader)
 
 // ImageManager handles Docker images
 type ImageManager struct {
-	DockerEndpoint string
-
 	client *dockerclient.Client
 }
 
 // NewImageManager creates an instance of ImageManager
-func NewImageManager(dockerEndpoint string) (*ImageManager, error) {
-	manager := &ImageManager{
-		DockerEndpoint: dockerEndpoint,
-	}
+func NewImageManager() (*ImageManager, error) {
+	manager := &ImageManager{}
 
-	client, err := dockerclient.NewClient(manager.DockerEndpoint)
+	client, err := dockerclient.NewClientFromEnv()
 	manager.client = client
 
 	if err != nil {

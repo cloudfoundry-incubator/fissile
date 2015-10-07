@@ -82,11 +82,6 @@ func main() {
 					Aliases: []string{"bb"},
 					Flags: []cli.Flag{
 						cli.StringFlag{
-							Name:  "docker-endpoint, d",
-							Value: "unix:///var/run/docker.sock",
-							Usage: "Docker endpoint.",
-						},
-						cli.StringFlag{
 							Name:  "base-image, b",
 							Value: "ubuntu:14.04",
 							Usage: "Base image.",
@@ -110,11 +105,6 @@ func main() {
 					Aliases: []string{"sb"},
 					Flags: []cli.Flag{
 						cli.StringFlag{
-							Name:  "docker-endpoint, d",
-							Value: "unix:///var/run/docker.sock",
-							Usage: "Docker endpoint.",
-						},
-						cli.StringFlag{
 							Name:  "base-image, b",
 							Value: "ubuntu:14.04",
 							Usage: "Base image.",
@@ -127,11 +117,6 @@ func main() {
 					Name:    "start",
 					Aliases: []string{"st"},
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "docker-endpoint, d",
-							Value: "unix:///var/run/docker.sock",
-							Usage: "Docker endpoint.",
-						},
 						cli.StringFlag{
 							Name:  "base-image, b",
 							Value: "ubuntu:14.04",
