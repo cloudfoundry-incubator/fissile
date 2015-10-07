@@ -7,12 +7,13 @@ import (
 	"sort"
 
 	"github.com/hpcloud/fissile/compilator"
+	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
-	"gopkg.in/yaml.v2"
 
 	"github.com/fatih/color"
+	"gopkg.in/yaml.v2"
 )
 
 // ListPackages will list all BOSH packages within a release
@@ -54,6 +55,7 @@ func ListJobs(releasePath string) {
 }
 
 // ListFullConfiguration will output all the configurations within the release
+// TODO this should be updated to use release.GetUniqueConfigs
 func ListFullConfiguration(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -308,4 +310,21 @@ func Compile(baseImageName, releasePath, repository, targetPath string, workerCo
 	if err := comp.Compile(workerCount); err != nil {
 		log.Fatalln(color.RedString("Error compiling packages: %s", err.Error()))
 	}
+}
+
+func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
+
+	if err := configStore.WriteBaseConfig(release); err != nil {
+		log.Fatalln(color.RedString("Error writing base config: %s", err.Error()))
+	}
+
+	log.Print(color.GreenString("Done."))
 }

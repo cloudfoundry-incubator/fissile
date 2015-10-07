@@ -62,7 +62,7 @@ func NewRelease(path string) (*Release, error) {
 	return release, nil
 }
 
-func (r *Release) GetDeploymentConfigs() map[string]*ReleaseConfig {
+func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 	result := map[string]*ReleaseConfig{}
 
 	for _, job := range r.Jobs {

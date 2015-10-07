@@ -32,5 +32,14 @@ func CommandRouter(c *cli.Context) {
 		ListFullConfiguration(c.String("release"))
 	case c.Command.FullName() == "templates report":
 		PrintTemplateReport(c.String("release"))
+	case c.Command.FullName() == "configuration generate":
+		GenerateConfigurationBase(
+			c.String("release"),
+			c.String("light-opinions"),
+			c.String("dark-opinions"),
+			c.String("target"),
+			c.String("prefix"),
+			c.String("provider"),
+		)
 	}
 }
