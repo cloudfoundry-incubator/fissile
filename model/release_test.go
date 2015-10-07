@@ -189,7 +189,7 @@ func TestGetDeploymentConfig(t *testing.T) {
 	release, err := NewRelease(releasePath)
 	assert.Nil(err)
 
-	configs := release.GetDeploymentConfigs()
+	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
 	assert.Equal(4, len(configs))
