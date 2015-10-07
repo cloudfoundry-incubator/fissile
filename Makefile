@@ -46,6 +46,7 @@ build: bindata
 
 tools:
 	@echo "$(OK_COLOR)==> Installing tools$(NO_COLOR)"
+	docker pull ubuntu:14.04
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/golang/lint/golint
 	go get -u github.com/axw/gocov/...
