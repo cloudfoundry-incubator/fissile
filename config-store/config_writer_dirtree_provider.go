@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	leafFilename = "file.yml"
+	leafFilename = "value.yml"
 )
 
 type dirTreeConfigWriterProvider struct {
