@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
+	"github.com/hpcloud/fissile/util"
 
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
@@ -201,7 +201,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		return image, nil
 	}
 
-	tempScriptDir, err := ioutil.TempDir("", "fissile-compilation")
+	tempScriptDir, err := util.TempDir("", "fissile-compilation")
 	if err != nil {
 		return nil, fmt.Errorf("Could not create temp dir %s: %s", tempScriptDir, err.Error())
 	}

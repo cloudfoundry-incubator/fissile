@@ -194,8 +194,8 @@ func PrintTemplateReport(releasePath string) {
 }
 
 // ShowBaseImage will show details about the base BOSH image
-func ShowBaseImage(dockerEndpoint, baseImage string) {
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+func ShowBaseImage(baseImage string) {
+	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
@@ -210,8 +210,8 @@ func ShowBaseImage(dockerEndpoint, baseImage string) {
 }
 
 // CreateBaseCompilationImage will recompile the base BOSH image for a release
-func CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repository string) {
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+func CreateBaseCompilationImage(baseImageName, releasePath, repository string) {
+	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
@@ -246,8 +246,8 @@ func CreateBaseCompilationImage(dockerEndpoint, baseImageName, releasePath, repo
 }
 
 // Compile will compile a full BOSH release
-func Compile(dockerEndpoint, baseImageName, releasePath, repository, targetPath string, workerCount int) {
-	dockerManager, err := docker.NewImageManager(dockerEndpoint)
+func Compile(baseImageName, releasePath, repository, targetPath string, workerCount int) {
+	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
