@@ -1,3 +1,4 @@
 *.exe
 /fissile
 coverage.xml
+build/

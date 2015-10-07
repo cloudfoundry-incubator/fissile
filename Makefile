@@ -37,7 +37,11 @@ bindata:
 build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
-	go build -ldflags="-X main.version=$(APP_VERSION)"
+	gox -verbose \
+	-ldflags="-X main.version=$(APP_VERSION) " \
+	-os="windows linux darwin " \
+	-arch="amd64" \
+	-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
 	@echo "$(NO_COLOR)\c"
 
 tools:
