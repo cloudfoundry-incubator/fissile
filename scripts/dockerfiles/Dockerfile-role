@@ -1,7 +1,22 @@
-FROM {{ .RoleBaseImage }}
+FROM {{ index . "base_image" }}
 
 MAINTAINER hcf@hpe.com
 
-LABEL "role"="{{.Role}}" "release-version"="{{.Release.Version}}" "version"="{{.Version}}"
+{{ with $context := . }}
+{{ with $role := index . "role" }}
+{{ with $job := index $role.Jobs 0}}
+LABEL "role"="{{ $role.Name }}" "release-version"="{{ $job.Release.Version }}" "version"="{{ index $context "image_version" }}"
+{{ end }}
+{{ end }}
+{{ end }}
 
+# Add packages
+ADD packages /var/vcap/packages/
 
+# Add job sources
+ADD jobs /var/vcap/job-sources/
+
+# Add run.sh
+ADD run.sh /opt/hcf/
+
+ENTRYPOINT ["/opt/hcf/run.sh"]

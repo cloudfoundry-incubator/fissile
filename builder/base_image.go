@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -76,7 +77,7 @@ func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
 		return nil, err
 	}
 
-	dockerfileTemplate := template.New("t")
+	dockerfileTemplate := template.New("Dockerfile-base")
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
 	if err != nil {
 		return nil, err
@@ -89,4 +90,8 @@ func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
 	}
 
 	return output.Bytes(), nil
+}
+
+func getBaseImageName(repository string) string {
+	return fmt.Sprintf("%s:role-base", repository)
 }

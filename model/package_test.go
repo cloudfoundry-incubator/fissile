@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hpcloud/fissile/util"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +31,7 @@ func TestPackageInfoOk(t *testing.T) {
 	packagePath := filepath.Join(ntpReleasePath, packagesDir, "ntp-4.2.8p2.tgz")
 	assert.Equal(packagePath, release.Packages[0].Path)
 
-	err = validatePath(packagePath, false, "")
+	err = util.ValidatePath(packagePath, false, "")
 	assert.Nil(err)
 }
 
@@ -83,6 +85,6 @@ func TestPackageExtractOk(t *testing.T) {
 	packageDir, err := release.Packages[0].Extract(tempDir)
 	assert.Nil(err)
 
-	assert.Nil(validatePath(packageDir, true, ""))
-	assert.Nil(validatePath(filepath.Join(packageDir, "packaging"), false, ""))
+	assert.Nil(util.ValidatePath(packageDir, true, ""))
+	assert.Nil(util.ValidatePath(filepath.Join(packageDir, "packaging"), false, ""))
 }

@@ -11,4 +11,4 @@ ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin
 
-ADD configgin /opt/configgin/
+ADD configgin /opt/hcf/configgin/

@@ -1,0 +1,10 @@
+---
+roles:
+  - name: myrole
+    jobs:
+      - name: new_hostname
+      - name: tor
+  - name: foorole
+    jobs:
+      - name: foo
+ 
