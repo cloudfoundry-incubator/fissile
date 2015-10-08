@@ -64,4 +64,9 @@ func TestBaseImageCreateDockerfileDir(t *testing.T) {
 	contents, err = ioutil.ReadFile(configginPath)
 	assert.Nil(err)
 	assert.Contains(string(contents), "exit 0")
+
+	monitrcPath := filepath.Join(targetDir, "monitrc.erb")
+	contents, err = ioutil.ReadFile(monitrcPath)
+	assert.Nil(err)
+	assert.Contains(string(contents), "hcf.monit.password")
 }
