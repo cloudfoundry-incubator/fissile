@@ -1,9 +1,0 @@
-FROM {{ .BaseImage }}
-
-MAINTAINER hcf@hpe.com
-
-# Install monit
-
-# Install configgin
-
-
