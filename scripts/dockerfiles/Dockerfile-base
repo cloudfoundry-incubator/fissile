@@ -7,6 +7,7 @@ MAINTAINER hcf@hpe.com
 # Install monit
 
 RUN apt-get update && apt-get install monit -y
+ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin
 
