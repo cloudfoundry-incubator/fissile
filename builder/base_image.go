@@ -35,11 +35,20 @@ func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath s
 		return err
 	}
 
-	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0755); err != nil {
+	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0644); err != nil {
 		return err
 	}
 
 	if err := b.unpackConfiggin(targetDir, configginTarballPath); err != nil {
+		return err
+	}
+
+	monitrcPath := filepath.Join(targetDir, "monitrc.erb")
+	monitrcContents, err := dockerfiles.Asset("scripts/dockerfiles/monitrc.erb")
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(monitrcPath, monitrcContents, 0600); err != nil {
 		return err
 	}
 

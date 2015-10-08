@@ -31,7 +31,7 @@ vet:
 bindata:
 	@echo "$(OK_COLOR)==> Generating code$(NO_COLOR)"
 	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh &&\
-	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* &&\
+	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb &&\
 	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
 	@echo "$(NO_COLOR)\c"
 	
