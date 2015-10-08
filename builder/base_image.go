@@ -2,22 +2,61 @@ package builder
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"text/template"
 
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
+	"github.com/pivotal-golang/archiver/extractor"
 )
 
+// BaseImageBuilder represents a builder of docker base images
 type BaseImageBuilder struct {
 	BaseImage string
 }
 
+// NewBaseImageBuilder creates a new BaseImageBuilder
 func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 	return &BaseImageBuilder{
 		BaseImage: baseImage,
 	}
 }
 
-func (b *BaseImageBuilder) CreateDockerfileDir(targetDir string) error {
+// CreateDockerfileDir generates a Dockerfile and assets in the targetDir
+func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath string) error {
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return nil
+	}
+
+	dockerfilePath := filepath.Join(targetDir, "Dockerfile")
+	dockerfileContents, err := b.generateDockerfile()
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0755); err != nil {
+		return err
+	}
+
+	if err := b.unpackConfiggin(targetDir, configginTarballPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *BaseImageBuilder) unpackConfiggin(targetDir, configginTarballPath string) error {
+
+	configginDir := filepath.Join(targetDir, "configgin")
+
+	if err := os.MkdirAll(configginDir, 0755); err != nil {
+		return err
+	}
+
+	if err := extractor.NewTgz().Extract(configginTarballPath, configginDir); err != nil {
+		return err
+	}
 
 	return nil
 }

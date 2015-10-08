@@ -218,6 +218,46 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:    "images",
+			Aliases: []string{"img"},
+			Subcommands: []cli.Command{
+				{
+					Name:    "create-base",
+					Aliases: []string{"cb"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "target, t",
+							Usage: "Path to the location of the generated Dockerfile and assets.",
+						},
+						cli.StringFlag{
+							Name:  "configgin, c",
+							Usage: "Path to the tarball containing configgin.",
+						},
+						cli.StringFlag{
+							Name:  "base-image, b",
+							Usage: "Name of base image to build FROM in the Dockerfile.",
+							Value: "ubuntu:14.04",
+						},
+						cli.BoolFlag{
+							Name:  "no-build, n",
+							Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
+						},
+						cli.StringFlag{
+							Name:  "repository, p",
+							Value: "fissile",
+							Usage: "Docker repository name.",
+						},
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a BOSH release.",
+						},
+					},
+					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
+					Action: app.CommandRouter,
+				},
+			},
+		},
 	}
 
 	cliApp.Run(os.Args)

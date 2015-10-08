@@ -10,5 +10,4 @@ RUN apt-get update && apt-get install monit -y
 
 # Install configgin
 
-ADD configgin/* /opt/configgin/
-
+ADD configgin /opt/configgin/

@@ -1,7 +1,9 @@
 package builder
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,4 +37,31 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 
 	assert.NotNil(dockerfileContents)
 	assert.Contains(string(dockerfileContents), "foo:bar")
+}
+
+func TestBaseImageCreateDockerfileDir(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	configginTarball := filepath.Join(workDir, "../test-assets/configgin/fake-configgin.tgz")
+
+	targetDir, err := ioutil.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	baseImageBuilder := NewBaseImageBuilder("foo:bar")
+
+	err = baseImageBuilder.CreateDockerfileDir(targetDir, configginTarball)
+	assert.Nil(err)
+
+	dockerfilePath := filepath.Join(targetDir, "Dockerfile")
+	contents, err := ioutil.ReadFile(dockerfilePath)
+	assert.Nil(err)
+	assert.Contains(string(contents), "foo:bar")
+
+	configginPath := filepath.Join(targetDir, "configgin", "configgin")
+	contents, err = ioutil.ReadFile(configginPath)
+	assert.Nil(err)
+	assert.Contains(string(contents), "exit 0")
 }
