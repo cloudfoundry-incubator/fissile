@@ -41,5 +41,14 @@ func CommandRouter(c *cli.Context) {
 			c.String("prefix"),
 			c.String("provider"),
 		)
+	case c.Command.FullName() == "images create-base":
+		GenerateBaseDockerImage(
+			c.String("target"),
+			c.String("configgin"),
+			c.String("base-image"),
+			c.Bool("no-build"),
+			c.String("repository"),
+			c.String("release"),
+		)
 	}
 }

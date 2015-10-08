@@ -1,0 +1,13 @@
+FROM {{ .BaseImage }}
+
+MAINTAINER hcf@hpe.com
+
+# Install prerequisites
+
+# Install monit
+
+RUN apt-get update && apt-get install monit -y
+
+# Install configgin
+
+ADD configgin /opt/configgin/

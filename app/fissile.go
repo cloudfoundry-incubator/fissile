@@ -6,6 +6,7 @@ import (
 	"log"
 	"sort"
 
+	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
 	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
@@ -328,4 +329,24 @@ func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath,
 	}
 
 	log.Print(color.GreenString("Done."))
+}
+
+// GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
+func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository, releasePath string) {
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
+
+	log.Println("Creating Dockerfile ...")
+
+	if err = baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
+		log.Fatalln(color.RedString("Error creating Dockerfile and/or assets: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Done."))
 }

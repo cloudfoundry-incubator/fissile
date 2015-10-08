@@ -1,0 +1,7 @@
+FROM {{ .RoleBaseImage }}
+
+MAINTAINER hcf@hpe.com
+
+LABEL "role"="{{.Role}}" "release-version"="{{.Release.Version}}" "version"="{{.Version}}"
+
+
