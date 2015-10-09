@@ -162,6 +162,36 @@ func TestLookupPackageNotOk(t *testing.T) {
 	assert.NotNil(err)
 }
 
+func TestLookupJobOk(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	job, err := release.LookupJob("ntpd")
+	assert.Nil(err)
+
+	assert.Equal("ntpd", job.Name)
+}
+
+func TestLookupJobNotOk(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	_, err = release.LookupJob("foo")
+	assert.NotNil(err)
+}
+
 func TestPackageDependencies(t *testing.T) {
 	assert := assert.New(t)
 

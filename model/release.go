@@ -3,8 +3,9 @@ package model
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
+
+	"github.com/hpcloud/fissile/util"
 
 	"gopkg.in/yaml.v2"
 )
@@ -119,6 +120,17 @@ func (r *Release) LookupPackage(packageName string) (*Package, error) {
 	return nil, fmt.Errorf("Cannot find package %s in release", packageName)
 }
 
+// LookupJob will find a job within a BOSH release
+func (r *Release) LookupJob(jobName string) (*Job, error) {
+	for _, job := range r.Jobs {
+		if job.Name == jobName {
+			return job, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Cannot find job %s in release", jobName)
+}
+
 func (r *Release) loadJobs() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -174,40 +186,20 @@ func (r *Release) loadLicense() error {
 }
 
 func (r *Release) validatePathStructure() error {
-	if err := validatePath(r.Path, true, "release directory"); err != nil {
+	if err := util.ValidatePath(r.Path, true, "release directory"); err != nil {
 		return err
 	}
 
-	if err := validatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
+	if err := util.ValidatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
 		return err
 	}
 
-	if err := validatePath(r.packagesDirPath(), true, "packages directory"); err != nil {
+	if err := util.ValidatePath(r.packagesDirPath(), true, "packages directory"); err != nil {
 		return err
 	}
 
-	if err := validatePath(r.jobsDirPath(), true, "jobs directory"); err != nil {
+	if err := util.ValidatePath(r.jobsDirPath(), true, "jobs directory"); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func validatePath(path string, shouldBeDir bool, pathDescription string) error {
-	pathInfo, err := os.Stat(path)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("Path %s (%s) does not exist.", path, pathDescription)
-		}
-
-		return err
-	}
-
-	if pathInfo.IsDir() && !shouldBeDir {
-		return fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
-	} else if !pathInfo.IsDir() && shouldBeDir {
-		return fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
 	}
 
 	return nil

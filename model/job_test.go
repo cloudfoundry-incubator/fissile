@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hpcloud/fissile/util"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +31,7 @@ func TestJobInfoOk(t *testing.T) {
 	jobPath := filepath.Join(ntpReleasePath, jobsDir, "ntpd.tgz")
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
-	err = validatePath(jobPath, false, "")
+	err = util.ValidatePath(jobPath, false, "")
 	assert.Nil(err)
 }
 
@@ -83,8 +85,8 @@ func TestJobExtractOk(t *testing.T) {
 	jobDir, err := release.Jobs[0].Extract(tempDir)
 	assert.Nil(err)
 
-	assert.Nil(validatePath(jobDir, true, ""))
-	assert.Nil(validatePath(filepath.Join(jobDir, "job.MF"), false, ""))
+	assert.Nil(util.ValidatePath(jobDir, true, ""))
+	assert.Nil(util.ValidatePath(filepath.Join(jobDir, "job.MF"), false, ""))
 }
 
 func TestJobPackagesOk(t *testing.T) {

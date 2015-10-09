@@ -55,7 +55,7 @@ func (t *Match) transform(input string) (string, error) {
 		}
 	}
 
-	matchTemplate := template.New("t")
+	matchTemplate := template.New("template-transformer")
 	matchTemplate.Delims("((", "))")
 	matchTemplate, err := matchTemplate.Parse(t.Output)
 	if err != nil {

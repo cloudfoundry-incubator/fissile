@@ -350,3 +350,29 @@ func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noB
 
 	log.Println(color.GreenString("Done."))
 }
+
+// GenerateRoleImages generates all role images
+func GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, release)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+	}
+
+	roleBuilder := builder.NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version)
+
+	for _, role := range rolesManifest.Roles {
+		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
+		if err := roleBuilder.CreateDockerfileDir(role); err != nil {
+			log.Fatalln(color.RedString("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error()))
+		}
+	}
+
+	log.Println(color.GreenString("Done."))
+}

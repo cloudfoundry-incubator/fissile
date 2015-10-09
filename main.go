@@ -256,6 +256,53 @@ func main() {
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
 					Action: app.CommandRouter,
 				},
+				{
+					Name:    "create-roles",
+					Aliases: []string{"cr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "target, t",
+							Usage: "Path to the location of the generated Dockerfile and assets.",
+						},
+						cli.BoolFlag{
+							Name:  "no-build, n",
+							Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
+						},
+						cli.StringFlag{
+							Name:  "repository, p",
+							Value: "fissile",
+							Usage: "Docker repository name.",
+						},
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a BOSH release.",
+						},
+						cli.StringFlag{
+							Name:  "roles-manifest, m",
+							Usage: "Path to a yaml file that details which jobs are used for each role",
+						},
+						cli.StringFlag{
+							Name:  "compiled-packages, c",
+							Usage: "Path to the directory that contains all compiled packages",
+						},
+						cli.StringFlag{
+							Name:  "default-consul-address",
+							Usage: "Default consul address that the container image will try to connect to when run, if not specified",
+							Value: "http://127.0.0.1:8500",
+						},
+						cli.StringFlag{
+							Name:  "default-config-store-prefix",
+							Usage: "Default configuration store prefix that is used by the container, if not specified",
+							Value: "hcf",
+						},
+						cli.StringFlag{
+							Name:  "version, v",
+							Usage: "Used as a version label for the created images",
+						},
+					},
+					Usage:  "Creates Dockerfiles and a docker image for all roles.",
+					Action: app.CommandRouter,
+				},
 			},
 		},
 	}

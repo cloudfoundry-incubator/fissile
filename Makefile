@@ -31,7 +31,7 @@ vet:
 bindata:
 	@echo "$(OK_COLOR)==> Generating code$(NO_COLOR)"
 	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh &&\
-	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb &&\
+	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh &&\
 	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
 	@echo "$(NO_COLOR)\c"
 	
@@ -40,7 +40,7 @@ build: bindata
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	gox -verbose \
 	-ldflags="-X main.version=$(APP_VERSION) " \
-	-os="windows linux darwin " \
+	-os="darwin " \
 	-arch="amd64" \
 	-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
 	@echo "$(NO_COLOR)\c"

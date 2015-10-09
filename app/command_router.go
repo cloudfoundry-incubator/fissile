@@ -50,5 +50,17 @@ func CommandRouter(c *cli.Context) {
 			c.String("repository"),
 			c.String("release"),
 		)
+	case c.Command.FullName() == "images create-roles":
+		GenerateRoleImages(
+			c.String("target"),
+			c.String("repository"),
+			c.Bool("no-build"),
+			c.String("release"),
+			c.String("roles-manifest"),
+			c.String("compiled-packages"),
+			c.String("default-consul-address"),
+			c.String("default-config-store-prefix"),
+			c.String("version"),
+		)
 	}
 }
