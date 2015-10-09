@@ -74,6 +74,12 @@ func TestReleaseValidationStructure(t *testing.T) {
 	file.Close()
 	err = release.validatePathStructure()
 	assert.NotNil(err)
+	assert.Contains(err.Error(), "release license tar")
+
+	err = ioutil.WriteFile(filepath.Join(releaseDir, licenseArchive), []byte{}, 0644)
+	assert.Nil(err)
+	err = release.validatePathStructure()
+	assert.NotNil(err)
 	assert.Contains(err.Error(), "packages dir")
 
 	// Create an empty packages dir
@@ -207,6 +213,44 @@ func TestPackageDependencies(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(1, len(pkg.Dependencies))
 	assert.Equal("libevent", pkg.Dependencies[0].Name)
+}
+
+func TestReleaseLicenseOk(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release := Release{Path: releasePath}
+
+	err = release.loadLicense()
+
+	assert.Nil(err)
+	assert.NotEmpty(release.License.Contents)
+	assert.Equal(40, len(release.License.SHA1))
+}
+
+func TestReleaseLicenseNotOk(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/bad-release")
+	release := Release{Path: releasePath}
+
+	err = release.loadLicense()
+
+	if assert.NotNil(err) {
+		assert.Contains(err.Error(), "tar ended before finding license or notice")
+	}
+	assert.Nil(release.License.Contents)
+	assert.Empty(release.License.SHA1)
 }
 
 func TestGetDeploymentConfig(t *testing.T) {
