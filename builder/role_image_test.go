@@ -86,8 +86,10 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14")
 
-	err = roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
+	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
 	assert.Nil(err)
+
+	assert.Equal(filepath.Join(targetPath, "myrole"), dockerfileDir)
 
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole"), true, "role dir"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "run.sh"), false, "run script"))

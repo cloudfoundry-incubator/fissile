@@ -6,7 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"sort"
+	"strings"
 
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
@@ -335,6 +337,10 @@ func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath,
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
 func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository, releasePath string) {
+	if !strings.HasSuffix(targetPath, string(os.PathSeparator)) {
+		targetPath = fmt.Sprintf("%s%c", targetPath, os.PathSeparator)
+	}
+
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -400,8 +406,39 @@ func GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath
 
 	for _, role := range rolesManifest.Roles {
 		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
-		if err := roleBuilder.CreateDockerfileDir(role); err != nil {
+		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
+		if err != nil {
 			log.Fatalln(color.RedString("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error()))
+		}
+
+		if !noBuild {
+			if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
+				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
+			}
+
+			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+
+			dockerManager, err := docker.NewImageManager()
+			if err != nil {
+				log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+			}
+
+			roleImageName := builder.GetRoleImageName(repository, role)
+
+			if err := dockerManager.BuildImage(
+				dockerfileDir,
+				roleImageName,
+				func(stdout io.Reader) {
+					scanner := bufio.NewScanner(stdout)
+					for scanner.Scan() {
+						log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
+					}
+				},
+			); err != nil {
+				log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
+			}
+		} else {
+			log.Println("Skipping image build because of flag.")
 		}
 	}
 
