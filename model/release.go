@@ -221,11 +221,6 @@ func (r *Release) loadLicense() error {
 			return nil
 		})
 
-	// We don't care about not finding these for now.
-	// if r.License.Contents == nil && r.Notice.Contents == nil {
-	// 	return fmt.Errorf("tar ended before finding license or notice: %v", err)
-	// }
-
 	return err
 }
 
@@ -237,11 +232,6 @@ func (r *Release) validatePathStructure() error {
 	if err := util.ValidatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
 		return err
 	}
-
-	// Don't care about this check for now
-	// if err := util.ValidatePath(r.licenseArchivePath(), false, "release license tar"); err != nil {
-	// 	return err
-	// }
 
 	if err := util.ValidatePath(r.packagesDirPath(), true, "packages directory"); err != nil {
 		return err
@@ -275,10 +265,7 @@ func (r *Release) manifestFilePath() string {
 func targzIterate(filename string, fn func(*tar.Reader, *tar.Header) error) error {
 	targz, err := os.Open(filename)
 	if err != nil {
-		// We don't care if we can't find this file because upstream
-		// is terribly inconsistent.
-		// return fmt.Errorf("%s failed to open: %v", filename, err)
-		return nil
+		return nil // Don't care if this file doesn't exist
 	}
 
 	defer targz.Close()

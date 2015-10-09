@@ -75,15 +75,6 @@ func TestReleaseValidationStructure(t *testing.T) {
 	err = release.validatePathStructure()
 	assert.NotNil(err)
 
-	// Not validating license tars yet
-	// assert.Contains(err.Error(), "release license tar")
-
-	// err = ioutil.WriteFile(filepath.Join(releaseDir, licenseArchive), []byte{}, 0644)
-	// assert.Nil(err)
-	// err = release.validatePathStructure()
-	// assert.NotNil(err)
-	// assert.Contains(err.Error(), "packages dir")
-
 	// Create an empty packages dir
 	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0755)
 	assert.Nil(err)

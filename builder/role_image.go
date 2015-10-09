@@ -53,13 +53,13 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	if license := &role.Jobs[0].Release.License; license.Contents != nil {
 		err := ioutil.WriteFile(filepath.Join(roleDir, license.Filename), license.Contents, 0644)
 		if err != nil {
-			return fmt.Errorf("failed to write out license file: %v", err)
+			return "", fmt.Errorf("failed to write out license file: %v", err)
 		}
 	}
 	if notice := role.Jobs[0].Release.Notice; notice.Contents != nil {
 		err := ioutil.WriteFile(filepath.Join(roleDir, notice.Filename), notice.Contents, 0644)
 		if err != nil {
-			return fmt.Errorf("failed to write out notice file: %v", err)
+			return "", fmt.Errorf("failed to write out notice file: %v", err)
 		}
 	}
 
