@@ -108,16 +108,6 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
 		return err
 	}
 
-	// Write master monit file
-	monitContents := []byte{}
-	if err != nil {
-		return err
-	}
-	monitPath := filepath.Join(roleDir, "monit")
-	if err := ioutil.WriteFile(monitPath, monitContents, 0644); err != nil {
-		return err
-	}
-
 	// Generate Dockerfile
 	dockerfileContents, err := r.generateDockerfile(role)
 	if err != nil {

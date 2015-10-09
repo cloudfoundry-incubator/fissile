@@ -92,7 +92,6 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole"), true, "role dir"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "run.sh"), false, "run script"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "Dockerfile"), false, "Dockerfile"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "monit"), false, "monit file"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "packages", "tor"), true, "package dir"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "packages", "tor", "bar"), false, "compilation artifact"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "monit"), false, "job monit file"))
