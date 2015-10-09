@@ -1,7 +1,9 @@
 package app
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"sort"
@@ -348,7 +350,36 @@ func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noB
 		log.Fatalln(color.RedString("Error creating Dockerfile and/or assets: %s", err.Error()))
 	}
 
+	log.Println("Dockerfile created.")
+
+	if !noBuild {
+		log.Println("Building docker image ...")
+
+		dockerManager, err := docker.NewImageManager()
+		if err != nil {
+			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		}
+
+		baseImageName := builder.GetBaseImageName(repository)
+
+		if err := dockerManager.BuildImage(
+			targetPath,
+			baseImageName,
+			func(stdout io.Reader) {
+				scanner := bufio.NewScanner(stdout)
+				for scanner.Scan() {
+					log.Println(color.GreenString("build-%s > %s", color.MagentaString(baseImageName), color.WhiteString(scanner.Text())))
+				}
+			},
+		); err != nil {
+			log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
+		}
+	} else {
+		log.Println("Skipping image build because of flag.")
+	}
+
 	log.Println(color.GreenString("Done."))
+
 }
 
 // GenerateRoleImages generates all role images

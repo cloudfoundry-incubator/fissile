@@ -151,7 +151,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 }
 
 func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) {
-	baseImage := getBaseImageName(r.repository)
+	baseImage := GetBaseImageName(r.repository)
 
 	asset, err := dockerfiles.Asset("scripts/dockerfiles/Dockerfile-role")
 	if err != nil {
