@@ -3,10 +3,11 @@ FROM {{ .BaseImage }}
 MAINTAINER hcf@hpe.com
 
 # Install prerequisites
+RUN useradd -m --comment 'hcf user' vcap && usermod -G adm vcap
 
 # Install monit
 
-RUN apt-get update && apt-get install monit -y
+RUN apt-get update && apt-get install monit runit -y
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin

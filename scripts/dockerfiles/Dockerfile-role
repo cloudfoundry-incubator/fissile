@@ -14,7 +14,7 @@ LABEL "role"="{{ $role.Name }}" "release-version"="{{ $job.Release.Version }}" "
 ADD packages /var/vcap/packages/
 
 # Add job sources
-ADD jobs /var/vcap/job-sources/
+ADD jobs /var/vcap/jobs-src/
 
 # Add run.sh
 ADD run.sh /opt/hcf/

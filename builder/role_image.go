@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/hpcloud/fissile/model"
@@ -13,6 +14,10 @@ import (
 	"github.com/hpcloud/fissile/util"
 
 	"github.com/termie/go-shutil"
+)
+
+const (
+	binPrefix = "bin"
 )
 
 // RoleImageBuilder represents a builder of docker role images
@@ -113,6 +118,15 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 		if err := os.Remove(jobManifestFile); err != nil {
 			return "", err
 		}
+
+		for _, template := range job.Templates {
+			templatePath := filepath.Join(jobDir, "templates", template.SourcePath)
+			if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
+				os.Chmod(templatePath, 0755)
+			} else {
+				os.Chmod(templatePath, 0644)
+			}
+		}
 	}
 
 	// Generate run script
@@ -197,7 +211,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 
 // GetRoleImageName generates a docker image name to be used as a role image
 func GetRoleImageName(repository string, role *model.Role) string {
-	return fmt.Sprintf("%s:%s-%s-%s",
+	return fmt.Sprintf("%s:%s-v%s-%s",
 		repository,
 		role.Jobs[0].Release.Name,
 		role.Jobs[0].Release.Version,
