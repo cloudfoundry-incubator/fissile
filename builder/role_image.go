@@ -15,6 +15,7 @@ import (
 	"github.com/termie/go-shutil"
 )
 
+// RoleImageBuilder represents a builder of docker role images
 type RoleImageBuilder struct {
 	repository               string
 	compiledPackagesPath     string
@@ -24,6 +25,7 @@ type RoleImageBuilder struct {
 	version                  string
 }
 
+// NewRoleImageBuilder creates a new RoleImageBuilder
 func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version string) *RoleImageBuilder {
 	return &RoleImageBuilder{
 		repository:               repository,
@@ -35,9 +37,10 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultCo
 	}
 }
 
+// CreateDockerfileDir generates a Dockerfile and assets in the targetDir
 func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
 	if len(role.Jobs) == 0 {
-		return fmt.Errorf("Error - role %s has 0 jobs")
+		return fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 	}
 
 	// Create a dir for the role

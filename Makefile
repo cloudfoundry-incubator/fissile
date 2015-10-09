@@ -40,7 +40,7 @@ build: bindata
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	gox -verbose \
 	-ldflags="-X main.version=$(APP_VERSION) " \
-	-os="windows linux darwin " \
+	-os="darwin " \
 	-arch="amd64" \
 	-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
 	@echo "$(NO_COLOR)\c"
