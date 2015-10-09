@@ -74,13 +74,6 @@ func TestReleaseValidationStructure(t *testing.T) {
 	file.Close()
 	err = release.validatePathStructure()
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "release license tar")
-
-	err = ioutil.WriteFile(filepath.Join(releaseDir, licenseArchive), []byte{}, 0644)
-	assert.Nil(err)
-	err = release.validatePathStructure()
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "packages dir")
 
 	// Create an empty packages dir
 	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0755)
@@ -231,6 +224,7 @@ func TestReleaseLicenseOk(t *testing.T) {
 	assert.Nil(err)
 	assert.NotEmpty(release.License.Contents)
 	assert.Equal(40, len(release.License.SHA1))
+	assert.Equal("LICENSE", release.License.Filename)
 }
 
 func TestReleaseLicenseNotOk(t *testing.T) {
@@ -247,7 +241,7 @@ func TestReleaseLicenseNotOk(t *testing.T) {
 	err = release.loadLicense()
 
 	if assert.NotNil(err) {
-		assert.Contains(err.Error(), "tar ended before finding license or notice")
+		assert.Contains(err.Error(), "unexpected EOF")
 	}
 	assert.Nil(release.License.Contents)
 	assert.Empty(release.License.SHA1)

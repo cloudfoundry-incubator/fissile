@@ -19,4 +19,13 @@ ADD jobs /var/vcap/job-sources/
 # Add run.sh
 ADD run.sh /opt/hcf/
 
+{{ with .license }}
+# Add license file
+ADD {{.}} /opt/hcf/share/doc/
+{{ end }}
+{{ with .notice }}
+# Add notice file
+ADD {{.}} /opt/hcf/share/doc/
+{{ end }}
+
 ENTRYPOINT ["/opt/hcf/run.sh"]

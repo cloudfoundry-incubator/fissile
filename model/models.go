@@ -2,6 +2,7 @@ package model
 
 // ReleaseLicense represents the license of a BOSH release
 type ReleaseLicense struct {
+	Filename string
 	SHA1     string
 	Contents []byte
 	Release  *Release

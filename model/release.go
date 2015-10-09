@@ -211,19 +211,17 @@ func (r *Release) loadLicense() error {
 			case strings.Contains(name, "license"):
 				r.License.Contents = licenseWriter.Bytes()
 				r.License.SHA1 = sha1hash
+				r.License.Filename = filepath.Base(header.Name)
 			case strings.Contains(name, "notice"):
 				r.Notice.Contents = licenseWriter.Bytes()
 				r.Notice.SHA1 = sha1hash
+				r.Notice.Filename = filepath.Base(header.Name)
 			}
 
 			return nil
 		})
 
-	if r.License.Contents == nil && r.Notice.Contents == nil {
-		return fmt.Errorf("tar ended before finding license or notice: %v", err)
-	}
-
-	return nil
+	return err
 }
 
 func (r *Release) validatePathStructure() error {
@@ -232,10 +230,6 @@ func (r *Release) validatePathStructure() error {
 	}
 
 	if err := util.ValidatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
-		return err
-	}
-
-	if err := util.ValidatePath(r.licenseArchivePath(), false, "release license tar"); err != nil {
 		return err
 	}
 
@@ -271,7 +265,7 @@ func (r *Release) manifestFilePath() string {
 func targzIterate(filename string, fn func(*tar.Reader, *tar.Header) error) error {
 	targz, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("%s failed to open: %v", filename, err)
+		return nil // Don't care if this file doesn't exist
 	}
 
 	defer targz.Close()
