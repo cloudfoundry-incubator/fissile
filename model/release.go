@@ -266,8 +266,8 @@ func (r *Release) manifestFilePath() string {
 	return filepath.Join(r.Path, manifestFile)
 }
 
-// targzIterate iterates over the files it a tar.gz file and calls a callback for
-// each file encountered.
+// targzIterate iterates over the files it finds in a tar.gz file and calls a
+// callback for each file encountered.
 func targzIterate(filename string, fn func(*tar.Reader, *tar.Header) error) error {
 	targz, err := os.Open(filename)
 	if err != nil {
