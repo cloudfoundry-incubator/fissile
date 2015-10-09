@@ -16,8 +16,9 @@ if [[ -z $role_instance_index ]]; then
   role_instance_index=0
 fi
 
-# Generate templates
-{{ with $role := index . "role" }}{{ range $i, $job := .Jobs}}
+# Process templates
+{{ with $role := index . "role" }}
+{{ range $i, $job := .Jobs}}
 # ============================================================================
 #         Templates for job {{ $job.Name }}
 # ============================================================================
@@ -33,6 +34,17 @@ fi
 # =====================================================
 {{ end }}
 {{ end }}
+
+# Process monitrc.erb template
+/opt/hcf/configgin/configgin \
+  --data '{"job": { "name": "hcf-monit-master" }, "index": ${role_instance_index}, "parameters": {} }' \
+  --output  "/etc/monitrc" \
+  --consul  "${consul_address}" \
+  --prefix  "${config_store_prefix}" \
+  --role    "{{$role.Name}}" \
+  --job     "hcf-monit-master" \
+  "/opt/hcf/monitrc.erb"
+
 {{ end }}
 
 # Run

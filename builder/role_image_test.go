@@ -59,10 +59,11 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14")
 
-	dockerfileContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
+	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.Nil(err)
 
-	assert.Contains(string(dockerfileContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
+	assert.Contains(string(runScriptContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
+	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 }
 
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
