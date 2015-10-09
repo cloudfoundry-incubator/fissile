@@ -1,9 +1,16 @@
 package model
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"crypto/sha1"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hpcloud/fissile/util"
 
@@ -15,6 +22,7 @@ type Release struct {
 	Jobs               []*Job
 	Packages           []*Package
 	License            ReleaseLicense
+	Notice             ReleaseLicense
 	Name               string
 	UncommittedChanges bool
 	CommitHash         string
@@ -45,6 +53,10 @@ func NewRelease(path string) (*Release, error) {
 	}
 
 	if err := release.loadMetadata(); err != nil {
+		return nil, err
+	}
+
+	if err := release.loadLicense(); err != nil {
 		return nil, err
 	}
 
@@ -182,6 +194,35 @@ func (r *Release) loadDependenciesForPackages() error {
 }
 
 func (r *Release) loadLicense() error {
+	err := targzIterate(r.licenseArchivePath(),
+		func(tarfile *tar.Reader, header *tar.Header) error {
+			hash := sha1.New()
+			licenseFile := io.TeeReader(tarfile, hash)
+
+			licenseWriter := &bytes.Buffer{}
+			if _, err := io.Copy(licenseWriter, licenseFile); err != nil {
+				return fmt.Errorf("failed reading tar'd file: %s, %v", header.Name, err)
+			}
+
+			sha1hash := fmt.Sprintf("%02x", hash.Sum(nil))
+			name := strings.ToLower(header.Name)
+
+			switch {
+			case strings.Contains(name, "license"):
+				r.License.Contents = licenseWriter.Bytes()
+				r.License.SHA1 = sha1hash
+			case strings.Contains(name, "notice"):
+				r.Notice.Contents = licenseWriter.Bytes()
+				r.Notice.SHA1 = sha1hash
+			}
+
+			return nil
+		})
+
+	if r.License.Contents == nil && r.Notice.Contents == nil {
+		return fmt.Errorf("tar ended before finding license or notice: %v", err)
+	}
+
 	return nil
 }
 
@@ -191,6 +232,10 @@ func (r *Release) validatePathStructure() error {
 	}
 
 	if err := util.ValidatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
+		return err
+	}
+
+	if err := util.ValidatePath(r.licenseArchivePath(), false, "release license tar"); err != nil {
 		return err
 	}
 
@@ -219,4 +264,35 @@ func (r *Release) jobsDirPath() string {
 
 func (r *Release) manifestFilePath() string {
 	return filepath.Join(r.Path, manifestFile)
+}
+
+// targzIterate iterates over the files it a tar.gz file and calls a callback for
+// each file encountered.
+func targzIterate(filename string, fn func(*tar.Reader, *tar.Header) error) error {
+	targz, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("%s failed to open: %v", filename, err)
+	}
+
+	defer targz.Close()
+
+	gzipReader, err := gzip.NewReader(targz)
+	if err != nil {
+		return fmt.Errorf("%s could not be read: %v", filename, err)
+	}
+
+	tarfile := tar.NewReader(gzipReader)
+	for {
+		header, err := tarfile.Next()
+		if err == io.EOF {
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("%s's tar'd files failed to read: %v", filename, err)
+		}
+
+		err = fn(tarfile, header)
+		if err != nil {
+			return err
+		}
+	}
 }
