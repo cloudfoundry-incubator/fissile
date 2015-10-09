@@ -37,22 +37,22 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultCo
 	}
 }
 
-// CreateDockerfileDir generates a Dockerfile and assets in the targetDir
-func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
+// CreateDockerfileDir generates a Dockerfile and assets in the targetDir and returns a path to the dir
+func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error) {
 	if len(role.Jobs) == 0 {
-		return fmt.Errorf("Error - role %s has 0 jobs", role.Name)
+		return "", fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 	}
 
 	// Create a dir for the role
 	roleDir := filepath.Join(r.targetPath, role.Name)
 	if err := os.MkdirAll(roleDir, 0755); err != nil {
-		return err
+		return "", err
 	}
 
 	// Copy compiled packages
 	packagesDir := filepath.Join(roleDir, "packages")
 	if err := os.MkdirAll(packagesDir, 0755); err != nil {
-		return err
+		return "", err
 	}
 	packageSet := map[string]bool{}
 	for _, job := range role.Jobs {
@@ -66,7 +66,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
 
 			compiledDir := filepath.Join(r.compiledPackagesPath, pkg.Name, "compiled")
 			if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
-				return err
+				return "", err
 			}
 
 			packageDir := filepath.Join(packagesDir, pkg.Name)
@@ -79,7 +79,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
 					CopyFunction:           shutil.Copy,
 					IgnoreDanglingSymlinks: false},
 			); err != nil {
-				return err
+				return "", err
 			}
 		}
 	}
@@ -87,41 +87,41 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) error {
 	// Copy jobs templates and monit
 	jobsDir := filepath.Join(roleDir, "jobs")
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
-		return err
+		return "", err
 	}
 	for _, job := range role.Jobs {
 		jobDir, err := job.Extract(jobsDir)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		jobManifestFile := filepath.Join(jobDir, "job.MF")
 		if err := os.Remove(jobManifestFile); err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	// Generate run script
 	runScriptContents, err := r.generateRunScript(role)
 	if err != nil {
-		return err
+		return "", err
 	}
 	runScriptPath := filepath.Join(roleDir, "run.sh")
 	if err := ioutil.WriteFile(runScriptPath, runScriptContents, 0744); err != nil {
-		return err
+		return "", err
 	}
 
 	// Generate Dockerfile
 	dockerfileContents, err := r.generateDockerfile(role)
 	if err != nil {
-		return err
+		return "", err
 	}
 	dockerfilePath := filepath.Join(roleDir, "Dockerfile")
 	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0644); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return roleDir, nil
 }
 
 func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
@@ -151,7 +151,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 }
 
 func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) {
-	baseImage := getBaseImageName(r.repository)
+	baseImage := GetBaseImageName(r.repository)
 
 	asset, err := dockerfiles.Asset("scripts/dockerfiles/Dockerfile-role")
 	if err != nil {
@@ -176,4 +176,13 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 	}
 
 	return output.Bytes(), nil
+}
+
+// GetRoleImageName generates a docker image name to be used as a role image
+func GetRoleImageName(repository string, role *model.Role) string {
+	return fmt.Sprintf("%s:%s-%s-%s",
+		repository,
+		role.Jobs[0].Release.Name,
+		role.Jobs[0].Release.Version,
+		role.Name)
 }

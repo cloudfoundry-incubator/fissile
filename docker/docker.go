@@ -3,6 +3,7 @@ package docker
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"sync"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
@@ -35,6 +36,43 @@ func NewImageManager() (*ImageManager, error) {
 	}
 
 	return manager, nil
+}
+
+// BuildImage builds a docker image using a directory that contains a Dockerfile
+func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcessor ProcessOutStream) error {
+
+	var stdoutReader io.ReadCloser
+	var stdoutWriter io.WriteCloser
+
+	if stdoutProcessor != nil {
+		stdoutReader, stdoutWriter = io.Pipe()
+	}
+
+	if stdoutProcessor != nil {
+		go func() {
+			stdoutProcessor(stdoutReader)
+		}()
+	}
+
+	bio := dockerclient.BuildImageOptions{
+		Name:         name,
+		ContextDir:   filepath.Dir(dockerfileDirPath),
+		OutputStream: stdoutWriter,
+	}
+
+	if err := d.client.BuildImage(bio); err != nil {
+		return err
+	}
+
+	if stdoutWriter != nil {
+		stdoutWriter.Close()
+	}
+
+	if stdoutReader != nil {
+		stdoutReader.Close()
+	}
+
+	return nil
 }
 
 // FindImage will lookup an image in Docker
