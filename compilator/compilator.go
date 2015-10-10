@@ -2,6 +2,7 @@ package compilator
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -63,24 +64,47 @@ func NewCompilator(
 	return compilator, nil
 }
 
+var errWorkerAbort = errors.New("worker aborted")
+
 type compileResult struct {
 	Pkg *model.Package
 	Err error
 }
 
-// Compile will perform the compile of a BOSH release
+//
+// Compilation concurrency works like this:
+// 1 routine producing (todoCh<-)
+// n workers consuming (<-todoCh)
+// 1 synchronizer consuming EXACTLY 1 <-doneCh for every <-todoCh
+//
+// Dependencies:
+// Packages with the least dependencies are queued first
+// workers wait for their dependencies by waiting on a map of broadcasting
+// channels that are closed by the synchronizer when something is done
+// compiling successfully
+//
+// In the event of an error:
+// - workers will try to bail out of waiting on <-todo or <-c.packageDone[name]
+//   early if it finds the killCh has been activated. There is a "race" here
+//   to see if the synchronizer will drain <-todoCh or if they will select on
+//   <-killCh before <-todoCh. In the worst case, an extra package will be
+//   compiled by each active worker.
+// - synchronizer will greedily drain the <-todoCh to starve the workers out
+//   and won't wait for the <-doneCh for the N packages it drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	var workersGroup sync.WaitGroup
 
 	todoCh := make(chan *model.Package)
 	doneCh := make(chan compileResult)
+	killCh := make(chan struct{})
 
 	for i := 0; i < workerCount; i++ {
 		workersGroup.Add(1)
-		go c.compileWorker(i, todoCh, doneCh, &workersGroup)
+		go c.compileWorker(i, todoCh, doneCh, killCh, &workersGroup)
 	}
 
 	go func() {
+		workersGroup.Add(1)
 		buckets := createDepBuckets(c.Release.Packages)
 		for _, bucketPackages := range buckets {
 			for _, pkg := range bucketPackages {
@@ -88,25 +112,38 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 			}
 		}
 		close(todoCh)
+		workersGroup.Done()
 	}()
 
-	for i := 0; i < len(c.Release.Packages); i++ {
+	nPackages := len(c.Release.Packages)
+	killed := false
+	for nPackages > 0 {
 		result := <-doneCh
-		close(c.packageDone[result.Pkg.Name])
+		nPackages--
 
-		if result.Err != nil {
-			log.Printf(
-				"%s   > failure: %s - %s\n",
-				color.YellowString("result"),
-				color.RedString(result.Pkg.Name),
-				color.RedString(result.Err.Error()),
-			)
-		} else {
-			log.Printf(
-				"%s   > success: %s\n",
-				color.YellowString("result"),
-				color.GreenString(result.Pkg.Name),
-			)
+		if result.Err == nil {
+			close(c.packageDone[result.Pkg.Name])
+			log.Printf("%s   > success: %s\n",
+				color.YellowString("result"), color.GreenString(result.Pkg.Name))
+			continue
+		}
+
+		log.Printf(
+			"%s   > failure: %s - %s\n",
+			color.YellowString("result"),
+			color.RedString(result.Pkg.Name),
+			color.RedString(result.Err.Error()),
+		)
+
+		if !killed {
+			killed = true
+			close(killCh)
+			// Drain the todo channel.
+			nTodo := 0
+			for range todoCh {
+				nTodo++
+			}
+			nPackages -= nTodo
 		}
 	}
 
@@ -115,13 +152,29 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	return nil
 }
 
-func (c *Compilator) compileWorker(id int, todoCh chan *model.Package, doneCh chan compileResult, wg *sync.WaitGroup) {
+func (c *Compilator) compileWorker(
+	id int,
+	todoCh chan *model.Package,
+	doneCh chan compileResult,
+	killCh chan struct{},
+	wg *sync.WaitGroup,
+) {
+
 	log.Printf("worker-%s > start\n", color.YellowString("%d", id))
 
+MainLoop:
 	for {
-		pkg, ok := <-todoCh
-		if !ok {
-			break
+		var pkg *model.Package
+		var ok bool
+
+		select {
+		case <-killCh:
+			log.Printf("worker-%s > killed", color.YellowString("%d", id))
+			break MainLoop
+		case pkg, ok = <-todoCh:
+			if !ok {
+				break MainLoop
+			}
 		}
 
 		// Wait for our deps
@@ -129,10 +182,17 @@ func (c *Compilator) compileWorker(id int, todoCh chan *model.Package, doneCh ch
 			done := false
 			for !done {
 				select {
+				case <-killCh:
+					log.Printf("worker-%s > killed:  %s",
+						color.YellowString("%d", id), color.MagentaString(pkg.Name))
+					doneCh <- compileResult{Pkg: pkg, Err: errWorkerAbort}
+					break MainLoop
 				case <-time.After(5 * time.Second):
-					log.Printf("worker-%s > waiting: %s - %s", color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
+					log.Printf("worker-%s > waiting: %s - %s",
+						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
 				case <-c.packageDone[dep.Name]:
-					log.Printf("worker-%s > depdone: %s - %s", color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
+					log.Printf("worker-%s > depdone: %s - %s",
+						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
 					done = true
 				}
 			}
@@ -142,6 +202,7 @@ func (c *Compilator) compileWorker(id int, todoCh chan *model.Package, doneCh ch
 
 		workerErr := c.compilePackage(pkg)
 		log.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
+
 		doneCh <- compileResult{Pkg: pkg, Err: workerErr}
 	}
 
