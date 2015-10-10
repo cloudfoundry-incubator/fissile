@@ -120,7 +120,7 @@ func main() {
 						},
 						cli.IntFlag{
 							Name:  "workers, w",
-							Value: 4,
+							Value: 2,
 							Usage: "Number of compiler workers to use.",
 						},
 					},
