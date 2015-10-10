@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,22 +18,12 @@ import (
 
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
-	"github.com/hashicorp/go-multierror"
 	"github.com/termie/go-shutil"
 )
 
 const (
 	// ContainerPackagesDir represents the default location of installed BOSH packages
 	ContainerPackagesDir = "/var/vcap/packages"
-
-	sleepTimeWhileCantCompileSec = 5
-)
-
-const (
-	packageError = iota
-	packageNone
-	packageCompiling
-	packageCompiled
 )
 
 // Compilator represents the BOSH compiler
@@ -43,8 +34,7 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
-	packageLock      map[*model.Package]*sync.Mutex
-	packageCompiling map[*model.Package]bool
+	packageDone map[string]chan struct{}
 }
 
 // NewCompilator will create an instance of the Compilator
@@ -63,118 +53,133 @@ func NewCompilator(
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
 
-		packageLock:      map[*model.Package]*sync.Mutex{},
-		packageCompiling: map[*model.Package]bool{},
+		packageDone: make(map[string]chan struct{}),
+	}
+
+	for _, pkg := range release.Packages {
+		compilator.packageDone[pkg.Name] = make(chan struct{})
 	}
 
 	return compilator, nil
 }
 
+type compileResult struct {
+	Pkg *model.Package
+	Err error
+}
+
 // Compile will perform the compile of a BOSH release
 func (c *Compilator) Compile(workerCount int, release *model.Release) error {
-	var result error
-
-	c.initPackageMaps(release)
-
-	// TODO Check for cycles
-
-	// Iterate until all packages are compiled
-	// Not the most efficient implementation,
-	// but it's easy to parallelize and reason about
 	var workersGroup sync.WaitGroup
 
-	for idx := 0; idx < workerCount; idx++ {
+	todoCh := make(chan *model.Package)
+	doneCh := make(chan compileResult)
+
+	for i := 0; i < workerCount; i++ {
 		workersGroup.Add(1)
-
-		go func(workerIdx int) {
-			defer workersGroup.Done()
-
-			hasWork := false
-			done := false
-
-			for done == false {
-				log.Printf("worker-%s > Compilation work started.\n", color.YellowString("%d", workerIdx))
-
-				hasWork = false
-
-				for _, pkg := range release.Packages {
-					pkgState, workerErr := c.getPackageStatus(pkg)
-					if workerErr != nil {
-						result = multierror.Append(result, workerErr)
-						return
-					}
-
-					if pkgState == packageNone {
-						func() {
-							// Set package state to "compiling"
-							func() {
-								defer func() {
-									c.packageLock[pkg].Unlock()
-								}()
-								c.packageLock[pkg].Lock()
-								c.packageCompiling[pkg] = true
-							}()
-							// Set package state to "not compiling" when done
-							defer func() {
-								defer func() {
-									c.packageLock[pkg].Unlock()
-								}()
-								c.packageLock[pkg].Lock()
-								c.packageCompiling[pkg] = false
-							}()
-							if pkgState == packageNone {
-								compiled, workerErr := c.compilePackage(pkg)
-								hasWork = compiled
-								if workerErr != nil {
-									log.Println(color.RedString(
-										"worker-%s > Compiling package %s failed: %s.\n",
-										color.YellowString("%d", workerIdx),
-										color.GreenString(pkg.Name),
-										color.RedString(workerErr.Error()),
-									))
-									result = multierror.Append(result, workerErr)
-								}
-							}
-						}()
-
-						if result != nil {
-							break
-						}
-					}
-				}
-
-				if result != nil {
-					break
-				}
-
-				done = true
-
-				for _, pkg := range release.Packages {
-					pkgState, workerErr := c.getPackageStatus(pkg)
-					if workerErr != nil {
-						result = multierror.Append(result, workerErr)
-						return
-					}
-
-					if pkgState != packageCompiled {
-						done = false
-						break
-					}
-				}
-
-				// Wait a bit if there's nothing to work on
-				if !done && !hasWork {
-					log.Printf("worker-%s > Didn't find any work, sleeping ...\n", color.YellowString("%d", workerIdx))
-					time.Sleep(sleepTimeWhileCantCompileSec * time.Second)
-				}
-			}
-		}(idx)
+		go c.compileWorker(i, todoCh, doneCh, &workersGroup)
 	}
 
-	// Wait until all workers finish
+	go func() {
+		buckets := createDepBuckets(c.Release.Packages)
+		for _, bucketPackages := range buckets {
+			for _, pkg := range bucketPackages {
+				todoCh <- pkg
+			}
+		}
+		close(todoCh)
+	}()
+
+	for i := 0; i < len(c.Release.Packages); i++ {
+		result := <-doneCh
+		close(c.packageDone[result.Pkg.Name])
+
+		if result.Err != nil {
+			log.Printf(
+				"%s   > failure: %s - %s\n",
+				color.YellowString("result"),
+				color.RedString(result.Pkg.Name),
+				color.RedString(result.Err.Error()),
+			)
+		} else {
+			log.Printf(
+				"%s   > success: %s\n",
+				color.YellowString("result"),
+				color.GreenString(result.Pkg.Name),
+			)
+		}
+	}
+
 	workersGroup.Wait()
 
-	return result
+	return nil
+}
+
+func (c *Compilator) compileWorker(id int, todoCh chan *model.Package, doneCh chan compileResult, wg *sync.WaitGroup) {
+	log.Printf("worker-%s > start\n", color.YellowString("%d", id))
+
+	for {
+		pkg, ok := <-todoCh
+		if !ok {
+			break
+		}
+
+		// Wait for our deps
+		for _, dep := range pkg.Dependencies {
+			done := false
+			for !done {
+				select {
+				case <-time.After(5 * time.Second):
+					log.Printf("worker-%s > waiting: %s - %s", color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
+				case <-c.packageDone[dep.Name]:
+					log.Printf("worker-%s > depdone: %s - %s", color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
+					done = true
+				}
+			}
+		}
+
+		log.Printf("worker-%s > compile: %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
+
+		workerErr := c.compilePackage(pkg)
+		log.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
+		doneCh <- compileResult{Pkg: pkg, Err: workerErr}
+	}
+
+	log.Printf("worker-%s > exit\n", color.YellowString("%d", id))
+	wg.Done()
+}
+
+func createDepBuckets(packages []*model.Package) [][]*model.Package {
+	var buckets [][]*model.Package
+
+	// ruby takes forever and has no deps,
+	// so optimize by moving ruby packages to the front
+	var rubies []*model.Package
+
+	for _, pkg := range packages {
+		depCount := len(pkg.Dependencies)
+		for depCount >= len(buckets) {
+			buckets = append(buckets, nil)
+		}
+
+		if strings.HasPrefix(pkg.Name, "ruby-2.") {
+			rubies = append(rubies, pkg)
+			continue
+		}
+
+		buckets[depCount] = append(buckets[depCount], pkg)
+	}
+
+	// prepend rubies to get them out of the way first
+	bucket0 := buckets[0]
+	bucket0 = append(bucket0, rubies...)
+	for i := range rubies {
+		bucket0[i], bucket0[len(bucket0)-i-1] =
+			bucket0[len(bucket0)-i-1], bucket0[i]
+	}
+	buckets[0] = bucket0
+
+	return buckets
 }
 
 // CreateCompilationBase will create the compiler container
@@ -274,29 +279,16 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	return image, nil
 }
 
-func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err error) {
-
-	// Do nothing if any dependency has not been compiled
-	for _, dep := range pkg.Dependencies {
-
-		packageStatus, err := c.getPackageStatus(dep)
-		if err != nil {
-			return false, err
-		}
-
-		if packageStatus != packageCompiled {
-			return false, nil
-		}
-	}
-	log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("Starting compilation ...")))
+func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
+	//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("Starting compilation ...")))
 
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
-		return false, err
+		return err
 	}
 
 	if err := c.copyDependencies(pkg); err != nil {
-		return false, err
+		return err
 	}
 
 	// Generate a compilation script
@@ -304,13 +296,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err erro
 	hostScriptPath := filepath.Join(c.getTargetPackageSourcesDir(pkg), targetScriptName)
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	if err := compilation.SaveScript(c.BaseType, compilation.CompilationScript, hostScriptPath); err != nil {
-		return false, err
+		return err
 	}
 
 	// Extract package
 	extractDir := c.getSourcePackageDir(pkg)
 	if _, err := pkg.Extract(extractDir); err != nil {
-		return false, err
+		return err
 	}
 
 	// Run compilation in container
@@ -324,44 +316,44 @@ func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err erro
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
+				//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
+				//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
 			}
 		},
 	)
+
 	defer func() {
 		// Remove container
-		if container != nil {
-			if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
-				if err == nil {
-					err = removeErr
-				} else {
-					err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
-				}
+		if container == nil {
+			return
+		}
+
+		if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
+			if err == nil {
+				err = removeErr
+			} else {
+				err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
 			}
 		}
 	}()
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if exitCode != 0 {
-		return false, fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
+		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
 	}
 
-	// It all went ok - we can move the compiled-temp bits to the compiled dir
-	os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
-
-	return true, nil
+	return os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
 }
 
-// We want to create a package structure like this:
+// createComplilationDirStructure creates a package structure like this:
 // .
 // └── <pkg-name>
 //     ├── compiled
@@ -429,40 +421,6 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 	}
 
 	return nil
-}
-
-func (c *Compilator) getPackageStatus(pkg *model.Package) (int, error) {
-	// Acquire mutex before checking status
-	c.packageLock[pkg].Lock()
-	defer func() {
-		c.packageLock[pkg].Unlock()
-	}()
-
-	// If package is in packageCompiling hash
-	if c.packageCompiling[pkg] {
-		return packageCompiling, nil
-	}
-
-	// If compiled package exists on hard
-	compiledPackagePath := filepath.Join(c.HostWorkDir, pkg.Name, "compiled")
-	compiledPackagePathExists, err := validatePath(compiledPackagePath, true, "package path")
-	if err != nil {
-		return packageError, err
-	}
-
-	if compiledPackagePathExists {
-		compiledDirEmpty, err := isDirEmpty(compiledPackagePath)
-		if err != nil {
-			return packageError, err
-		}
-
-		if !compiledDirEmpty {
-			return packageCompiled, nil
-		}
-	}
-
-	// Package is in no state otherwise
-	return packageNone, nil
 }
 
 func isDirEmpty(path string) (bool, error) {

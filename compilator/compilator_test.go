@@ -43,63 +43,6 @@ func TestCompilation(t *testing.T) {
 func TestCompilationSourcePreparation(t *testing.T) {
 }
 
-func TestGetPackageStatusCompiled(t *testing.T) {
-	assert := assert.New(t)
-
-	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
-
-	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
-
-	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
-	assert.Nil(err)
-
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
-	assert.Nil(err)
-
-	compilator.initPackageMaps(release)
-
-	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
-	err = os.MkdirAll(compiledPackagePath, 0755)
-	assert.Nil(err)
-
-	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
-	assert.Nil(err)
-
-	status, err := compilator.getPackageStatus(release.Packages[0])
-
-	assert.Nil(err)
-	assert.Equal(packageCompiled, status)
-}
-
-func TestGetPackageStatusNone(t *testing.T) {
-	assert := assert.New(t)
-
-	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
-
-	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
-
-	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
-	assert.Nil(err)
-
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
-	assert.Nil(err)
-
-	compilator.initPackageMaps(release)
-
-	status, err := compilator.getPackageStatus(release.Packages[0])
-
-	assert.Nil(err)
-	assert.Equal(packageNone, status)
-}
-
 func TestPackageFolderStructure(t *testing.T) {
 	assert := assert.New(t)
 
@@ -195,7 +138,6 @@ func TestCompilePackage(t *testing.T) {
 	}()
 	assert.Nil(err)
 
-	compiled, err := comp.compilePackage(release.Packages[0])
+	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
-	assert.True(compiled)
 }

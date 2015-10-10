@@ -120,8 +120,7 @@ func main() {
 						},
 						cli.IntFlag{
 							Name:  "workers, w",
-							Value: 4,
-							Usage: "Number of compiler workers to use.",
+							Usage: "Number of compiler workers to use, if <= 0 intelligently guesses",
 						},
 					},
 					Usage:       "Compile packages",
