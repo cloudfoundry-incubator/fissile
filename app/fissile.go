@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -254,12 +253,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) {
 		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
 	}
 
-	tempDir, err := ioutil.TempDir("", "fissile-base-compiler")
-	if err != nil {
-		log.Fatalln(color.RedString("Error creating temp dir: %s", err.Error()))
-	}
-
-	comp, err := compilator.NewCompilator(dockerManager, tempDir, repository, compilation.UbuntuBase, f.Version)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
 		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
@@ -292,12 +286,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) {
 
 	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	tempDir, err := ioutil.TempDir("", "fissile-base-compiler")
-	if err != nil {
-		log.Fatalln(color.RedString("Error creating temp dir: %s", err.Error()))
-	}
-
-	comp, err := compilator.NewCompilator(dockerManager, tempDir, repository, compilation.UbuntuBase, f.Version)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
 		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
