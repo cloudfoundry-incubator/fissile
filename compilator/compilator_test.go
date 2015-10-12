@@ -57,8 +57,10 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test", compilation.FakeBase)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
 	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
@@ -87,8 +89,10 @@ func TestGetPackageStatusNone(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test", compilation.FakeBase)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
 	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
 
 	status, err := compilator.getPackageStatus(release.Packages[0])
 
@@ -110,7 +114,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test", compilation.FakeBase)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
 	assert.Nil(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -139,10 +143,10 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, release, compilationWorkDir, "fissile-test", compilation.FakeBase)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
 	assert.Nil(err)
 
-	pkg, err := compilator.Release.LookupPackage("tor")
+	pkg, err := release.LookupPackage("tor")
 	assert.Nil(err)
 	err = compilator.createCompilationDirStructure(pkg)
 	assert.Nil(err)
@@ -179,11 +183,10 @@ func TestCompilePackage(t *testing.T) {
 
 	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, release, compilationWorkDir, testRepository, compilation.FakeBase)
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15")
 	assert.Nil(err)
 
-	imageTag := comp.BaseCompilationImageTag()
-	imageName := fmt.Sprintf("%s:%s", comp.DockerRepository, imageTag)
+	imageName := comp.BaseImageName()
 
 	_, err = comp.CreateCompilationBase(dockerImageName)
 	defer func() {

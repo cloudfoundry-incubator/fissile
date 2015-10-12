@@ -30,13 +30,13 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
 
 	dockerfileContents, err := roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
 	assert.Nil(err)
 
 	dockerfileString := string(dockerfileContents)
-	assert.Contains(dockerfileString, "foo:role-base")
+	assert.Contains(dockerfileString, "foo-role-base:6.28.30")
 	assert.Contains(dockerfileString, `"release-version"="0.3.5"`)
 	assert.Contains(dockerfileString, "ADD LICENSE.md /opt/hcf/share/doc")
 }
@@ -59,7 +59,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.Nil(err)
@@ -86,7 +86,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
 	assert.Nil(err)
