@@ -185,10 +185,31 @@ The following diagram shows the ordering of things. The highlighted items are co
  >     --target ~/fissile-roles/ \
  >     --repository fissile \
  >     --release ~/fissile-releases/cf-release-v217/ \
+ >     --roles-manifest ~/roles-manifest.yml \
  >     --compiled-packages ~/fissile-compiled/ \
  >     --default-consul-address http://127.0.0.1:8500 \
  >     --default-config-store-prefix hcf \
  >     --version 3.14.15
+ > ```
+
+- `images list-roles`
+
+ - `--repository <REPOSITORY_PREFIX>`  a repository prefix used to name the images; this parameter has a default value of `fissile`
+ - `--release <RELEASE_PATH>` path to a BOSH release **(not optional)**
+ - `--roles-manifest <MANIFEST_PATH>` path to a roles manifest yaml file; this file details which jobs make up each role **(not optional)**
+ - `--version <IMAGE_VERSION>` this is used as a version label when creating images and for naming them as well  **(not optional)**
+ - `--docker-only` if this flag is set, only images that are available on docker will be displayed; this is an optional flag
+ - `--with-sizes` if this flag is set, the command also displays the virtual size for each image; if this flag is set, the `--docker-only` flag must be set as well; this is an optional flag
+
+ > This command lists all the final docker image names for all the roles defined in the manifest at `<MANIFEST_PATH>`. If the `--docker-only` flag is *not* set, this command does not connect to docker.
+ > ```bash
+ > fissile images list-roles \
+ >     --repository fissile \
+ >     --release ~/fissile-releases/cf-release-v217/ \
+ >     --roles-manifest ~/roles-manifest.yml \
+ >     --version 3.14.15
+ >     --docker-only \
+ >     --with-sizes
  > ```
 
 ## Configuration base

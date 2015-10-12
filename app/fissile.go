@@ -17,6 +17,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
+	dockerclient "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v2"
 )
 
@@ -447,4 +448,56 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 	}
 
 	log.Println(color.GreenString("Done."))
+}
+
+// ListRoleImages lists all role images
+func (f *Fissile) ListRoleImages(repository, releasePath, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
+	if withVirtualSize && !existingOnDocker {
+		log.Fatalln(color.RedString("Cannot list image virtual sizes of not matching image names with docker"))
+	}
+
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	var dockerManager *docker.ImageManager
+
+	if existingOnDocker {
+		dockerManager, err = docker.NewImageManager()
+		if err != nil {
+			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		}
+	}
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, release)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+	}
+
+	for _, role := range rolesManifest.Roles {
+		imageName := builder.GetRoleImageName(repository, role, version)
+
+		if existingOnDocker {
+			image, err := dockerManager.FindImage(imageName)
+
+			if err == nil {
+				if withVirtualSize {
+					log.Printf(
+						"%s (%sMB)\n",
+						color.GreenString(imageName),
+						color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+					)
+				} else {
+					log.Println(imageName)
+				}
+			} else {
+				if err != dockerclient.ErrNoSuchImage {
+					log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+				}
+			}
+		} else {
+			log.Println(imageName)
+		}
+	}
 }

@@ -69,5 +69,14 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("default-config-store-prefix"),
 			c.String("version"),
 		)
+	case c.Command.FullName() == "images list-roles":
+		f.ListRoleImages(
+			c.String("repository"),
+			c.String("release"),
+			c.String("roles-manifest"),
+			c.String("version"),
+			c.Bool("docker-only"),
+			c.Bool("with-sizes"),
+		)
 	}
 }
