@@ -249,7 +249,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Docker repository name.",
+							Usage: "Docker repository name prefix.",
 						},
 						cli.StringFlag{
 							Name:  "release, r",
@@ -279,6 +279,39 @@ func main() {
 						},
 					},
 					Usage:  "Creates Dockerfiles and a docker image for all roles.",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "list-roles",
+					Aliases: []string{"lr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "repository, p",
+							Value: "fissile",
+							Usage: "Docker repository name prefix.",
+						},
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a BOSH release.",
+						},
+						cli.StringFlag{
+							Name:  "roles-manifest, m",
+							Usage: "Path to a yaml file that details which jobs are used for each role",
+						},
+						cli.StringFlag{
+							Name:  "version, v",
+							Usage: "Used as a version label for the created images",
+						},
+						cli.BoolFlag{
+							Name:  "docker-only, d",
+							Usage: "If the flag is set, only show images that are available on docker",
+						},
+						cli.BoolFlag{
+							Name:  "with-sizes, s",
+							Usage: "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
+						},
+					},
+					Usage:  "Lists role images.",
 					Action: fissile.CommandRouter,
 				},
 			},
