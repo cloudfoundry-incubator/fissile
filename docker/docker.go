@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
 )
@@ -118,6 +119,11 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
 	exitCode = -1
 
+	// Get current user info to map to container
+	// os/user.Current() isn't supported when cross-compiling hence this code
+	currentUid := syscall.Geteuid()
+	currentGid := syscall.Getegid()
+
 	cco := dockerclient.CreateContainerOptions{
 		Config: &dockerclient.Config{
 			AttachStdin:  false,
@@ -128,6 +134,10 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			Cmd:          cmd,
 			WorkingDir:   "/",
 			Image:        imageName,
+			Env: []string{
+				fmt.Sprintf("HOST_USERID=%d", currentUid),
+				fmt.Sprintf("HOST_USERGID=%d", currentGid),
+			},
 		},
 		HostConfig: &dockerclient.HostConfig{
 			Privileged:     false,
