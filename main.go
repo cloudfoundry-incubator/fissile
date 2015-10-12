@@ -26,27 +26,13 @@ func main() {
 	cliApp.Usage = "Use fissile to break apart a BOSH release."
 	cliApp.Version = version
 
+	fissile := app.NewFissileApplication(version)
+
 	cliApp.Commands = []cli.Command{
 		{
 			Name:    "release",
 			Aliases: []string{"rel"},
 			Subcommands: []cli.Command{
-				{
-					Name:    "download",
-					Aliases: []string{"dl"},
-					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "release, r",
-							Usage: "URL for a bosh release.",
-						},
-						cli.StringFlag{
-							Name:  "path, p",
-							Usage: "Target path for extracting the release",
-						},
-					},
-					Usage:  "Download a BOSH release",
-					Action: app.CommandRouter,
-				},
 				{
 					Name:    "jobs-report",
 					Aliases: []string{"jr"},
@@ -58,7 +44,7 @@ func main() {
 						},
 					},
 					Usage:  "List all jobs in a BOSH release",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 				{
 					Name:    "packages-report",
@@ -70,7 +56,7 @@ func main() {
 						},
 					},
 					Usage:  "List all packages in a BOSH release",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 			},
 		},
@@ -90,16 +76,12 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name.",
-						},
-						cli.StringFlag{
-							Name:  "release, r",
-							Usage: "Path to a BOSH release.",
+							Usage: "Repository name prefix.",
 						},
 					},
 					Usage:       "Prepare a compilation base image",
-					Description: "The name of the created image will be <REPOSITORY>:<RELEASE_NAME>-<RELEASE_VERSION>-cbase. If the image already exists, this command does nothing.",
-					Action:      app.CommandRouter,
+					Description: "The name of the created image will be <REPOSITORY_PREFIX>:<RELEASE_NAME>-<RELEASE_VERSION>-cbase. If the image already exists, this command does nothing.",
+					Action:      fissile.CommandRouter,
 				},
 				{
 					Name:    "show-base",
@@ -110,19 +92,19 @@ func main() {
 							Value: "ubuntu:14.04",
 							Usage: "Base image.",
 						},
+						cli.StringFlag{
+							Name:  "repository, p",
+							Value: "fissile",
+							Usage: "Repository name prefix.",
+						},
 					},
 					Usage:  "Show information about a base docker image",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 				{
 					Name:    "start",
 					Aliases: []string{"st"},
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "base-image, b",
-							Value: "ubuntu:14.04",
-							Usage: "Base image.",
-						},
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
@@ -144,7 +126,7 @@ func main() {
 					},
 					Usage:       "Compile packages",
 					Description: "Compiles packages from the release using parallel workers",
-					Action:      app.CommandRouter,
+					Action:      fissile.CommandRouter,
 				},
 			},
 		},
@@ -162,7 +144,7 @@ func main() {
 						},
 					},
 					Usage:  "List all configurations for all jobs in a release",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 				{
 					Name:    "generate",
@@ -196,7 +178,7 @@ func main() {
 						},
 					},
 					Usage:  "Generates a configuration base that can be loaded into something like consul",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 			},
 		},
@@ -214,7 +196,7 @@ func main() {
 						},
 					},
 					Usage:  "Print all template for all jobs in a release",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 			},
 		},
@@ -248,13 +230,9 @@ func main() {
 							Value: "fissile",
 							Usage: "Docker repository name.",
 						},
-						cli.StringFlag{
-							Name:  "release, r",
-							Usage: "Path to a BOSH release.",
-						},
 					},
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 				{
 					Name:    "create-roles",
@@ -301,7 +279,7 @@ func main() {
 						},
 					},
 					Usage:  "Creates Dockerfiles and a docker image for all roles.",
-					Action: app.CommandRouter,
+					Action: fissile.CommandRouter,
 				},
 			},
 		},

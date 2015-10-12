@@ -38,10 +38,10 @@ const (
 // Compilator represents the BOSH compiler
 type Compilator struct {
 	DockerManager    *docker.ImageManager
-	Release          *model.Release
 	HostWorkDir      string
-	DockerRepository string
+	RepositoryPrefix string
 	BaseType         string
+	FissileVersion   string
 
 	packageLock      map[*model.Package]*sync.Mutex
 	packageCompiling map[*model.Package]bool
@@ -50,34 +50,31 @@ type Compilator struct {
 // NewCompilator will create an instance of the Compilator
 func NewCompilator(
 	dockerManager *docker.ImageManager,
-	release *model.Release,
 	hostWorkDir string,
-	dockerRepository string,
+	repositoryPrefix string,
 	baseType string,
+	fissileVersion string,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
-		Release:          release,
 		HostWorkDir:      hostWorkDir,
-		DockerRepository: dockerRepository,
+		RepositoryPrefix: repositoryPrefix,
 		BaseType:         baseType,
+		FissileVersion:   fissileVersion,
 
 		packageLock:      map[*model.Package]*sync.Mutex{},
 		packageCompiling: map[*model.Package]bool{},
-	}
-
-	for _, pkg := range release.Packages {
-		compilator.packageLock[pkg] = &sync.Mutex{}
-		compilator.packageCompiling[pkg] = false
 	}
 
 	return compilator, nil
 }
 
 // Compile will perform the compile of a BOSH release
-func (c *Compilator) Compile(workerCount int) error {
+func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	var result error
+
+	c.initPackageMaps(release)
 
 	// TODO Check for cycles
 
@@ -100,7 +97,7 @@ func (c *Compilator) Compile(workerCount int) error {
 
 				hasWork = false
 
-				for _, pkg := range c.Release.Packages {
+				for _, pkg := range release.Packages {
 					pkgState, workerErr := c.getPackageStatus(pkg)
 					if workerErr != nil {
 						result = multierror.Append(result, workerErr)
@@ -152,7 +149,7 @@ func (c *Compilator) Compile(workerCount int) error {
 
 				done = true
 
-				for _, pkg := range c.Release.Packages {
+				for _, pkg := range release.Packages {
 					pkgState, workerErr := c.getPackageStatus(pkg)
 					if workerErr != nil {
 						result = multierror.Append(result, workerErr)
@@ -183,10 +180,10 @@ func (c *Compilator) Compile(workerCount int) error {
 // CreateCompilationBase will create the compiler container
 func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
 	imageTag := c.BaseCompilationImageTag()
-	imageName := fmt.Sprintf("%s:%s", c.DockerRepository, imageTag)
+	imageName := c.BaseImageName()
 	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
-	containerName := c.BaseCompilationContainerName()
+	containerName := c.baseCompilationContainerName()
 	log.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
 
 	image, err = c.DockerManager.FindImage(imageName)
@@ -259,7 +256,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 
 	image, err = c.DockerManager.CreateImage(
 		container.ID,
-		c.DockerRepository,
+		c.baseCompilationImageRepository(),
 		imageTag,
 		"",
 		[]string{},
@@ -270,9 +267,8 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	}
 
 	log.Println(color.GreenString(
-		"Image %s:%s with ID %s created successfully.",
-		color.YellowString(c.DockerRepository),
-		color.YellowString(imageTag),
+		"Image %s with ID %s created successfully.",
+		color.YellowString(c.BaseImageName()),
 		color.YellowString(container.ID)))
 
 	return image, nil
@@ -321,7 +317,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err erro
 	containerName := c.getPackageContainerName(pkg)
 	exitCode, container, err := c.DockerManager.RunInContainer(
 		containerName,
-		fmt.Sprintf("%s:%s", c.DockerRepository, c.BaseCompilationImageTag()),
+		c.BaseImageName(),
 		[]string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		c.getTargetPackageSourcesDir(pkg),
 		c.getPackageCompiledTempDir(pkg),
@@ -505,16 +501,33 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	return true, nil
 }
 
+// baseCompilationContainerName will return the compilation container's name
+func (c *Compilator) baseCompilationContainerName() string {
+	return fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion)
+}
+
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
-	return fmt.Sprintf("%s-%s-%s-pkg-%s", c.DockerRepository, c.Release.Name, c.Release.Version, pkg.Name)
+	return fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name)
 }
 
-// BaseCompilationContainerName will return the compilation container's name
-func (c *Compilator) BaseCompilationContainerName() string {
-	return fmt.Sprintf("%s-%s-%s-cbase", c.DockerRepository, c.Release.Name, c.Release.Version)
-}
-
-// BaseCompilationImageTag will return the compilation container's tag
+// BaseCompilationImageTag will return the compilation image tag
 func (c *Compilator) BaseCompilationImageTag() string {
-	return fmt.Sprintf("%s-%s-cbase", c.Release.Name, c.Release.Version)
+	return fmt.Sprintf("%s", c.FissileVersion)
+}
+
+// baseCompilationImageRepository will return the compilation image repository
+func (c *Compilator) baseCompilationImageRepository() string {
+	return fmt.Sprintf("%s-cbase", c.RepositoryPrefix)
+}
+
+// BaseImageName returns the name of the compilation base image
+func (c *Compilator) BaseImageName() string {
+	return fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.BaseCompilationImageTag())
+}
+
+func (c *Compilator) initPackageMaps(release *model.Release) {
+	for _, pkg := range release.Packages {
+		c.packageLock[pkg] = &sync.Mutex{}
+		c.packageCompiling[pkg] = false
+	}
 }

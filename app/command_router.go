@@ -5,35 +5,43 @@ import (
 )
 
 // CommandRouter will dispatch CLI commands to their relevant functions
-func CommandRouter(c *cli.Context) {
+func (f *Fissile) CommandRouter(c *cli.Context) {
 	switch {
-	case c.Command.FullName() == "release download":
 	case c.Command.FullName() == "release jobs-report":
-		ListJobs(c.String("release"))
-	case c.Command.FullName() == "release packages-report":
-		ListPackages(c.String("release"))
-	case c.Command.FullName() == "compilation build-base":
-		CreateBaseCompilationImage(
-			c.String("base-image"),
+		f.ListJobs(
 			c.String("release"),
+		)
+	case c.Command.FullName() == "release packages-report":
+		f.ListPackages(
+			c.String("release"),
+		)
+	case c.Command.FullName() == "compilation build-base":
+		f.CreateBaseCompilationImage(
+			c.String("base-image"),
 			c.String("repository"),
 		)
 	case c.Command.FullName() == "compilation show-base":
-		ShowBaseImage(c.String("base-image"))
-	case c.Command.FullName() == "compilation start":
-		Compile(
+		f.ShowBaseImage(
 			c.String("base-image"),
+			c.String("repository"),
+		)
+	case c.Command.FullName() == "compilation start":
+		f.Compile(
 			c.String("release"),
 			c.String("repository"),
 			c.String("target"),
 			c.Int("workers"),
 		)
 	case c.Command.FullName() == "configuration report":
-		ListFullConfiguration(c.String("release"))
+		f.ListFullConfiguration(
+			c.String("release"),
+		)
 	case c.Command.FullName() == "templates report":
-		PrintTemplateReport(c.String("release"))
+		f.PrintTemplateReport(
+			c.String("release"),
+		)
 	case c.Command.FullName() == "configuration generate":
-		GenerateConfigurationBase(
+		f.GenerateConfigurationBase(
 			c.String("release"),
 			c.String("light-opinions"),
 			c.String("dark-opinions"),
@@ -42,16 +50,15 @@ func CommandRouter(c *cli.Context) {
 			c.String("provider"),
 		)
 	case c.Command.FullName() == "images create-base":
-		GenerateBaseDockerImage(
+		f.GenerateBaseDockerImage(
 			c.String("target"),
 			c.String("configgin"),
 			c.String("base-image"),
 			c.Bool("no-build"),
 			c.String("repository"),
-			c.String("release"),
 		)
 	case c.Command.FullName() == "images create-roles":
-		GenerateRoleImages(
+		f.GenerateRoleImages(
 			c.String("target"),
 			c.String("repository"),
 			c.Bool("no-build"),

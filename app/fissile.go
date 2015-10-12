@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -21,8 +20,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Fissile represents a fissile application
+type Fissile struct {
+	Version string
+}
+
+// NewFissileApplication creates a new app.Fissile
+func NewFissileApplication(version string) *Fissile {
+	return &Fissile{
+		Version: version,
+	}
+}
+
 // ListPackages will list all BOSH packages within a release
-func ListPackages(releasePath string) {
+func (f *Fissile) ListPackages(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -41,7 +52,7 @@ func ListPackages(releasePath string) {
 }
 
 // ListJobs will list all jobs within a release
-func ListJobs(releasePath string) {
+func (f *Fissile) ListJobs(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -61,7 +72,7 @@ func ListJobs(releasePath string) {
 
 // ListFullConfiguration will output all the configurations within the release
 // TODO this should be updated to use release.GetUniqueConfigs
-func ListFullConfiguration(releasePath string) {
+func (f *Fissile) ListFullConfiguration(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -146,7 +157,7 @@ func ListFullConfiguration(releasePath string) {
 }
 
 // PrintTemplateReport will output details about the contents of a release
-func PrintTemplateReport(releasePath string) {
+func (f *Fissile) PrintTemplateReport(releasePath string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -231,7 +242,7 @@ func PrintTemplateReport(releasePath string) {
 }
 
 // ShowBaseImage will show details about the base BOSH image
-func ShowBaseImage(baseImage string) {
+func (f *Fissile) ShowBaseImage(baseImage, repository string) {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
@@ -242,12 +253,27 @@ func ShowBaseImage(baseImage string) {
 		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
 	}
 
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
+	if err != nil {
+		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
+	}
+
+	log.Printf("Image: %s", color.GreenString(baseImage))
+	log.Printf("ID: %s", color.GreenString(image.ID))
+	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+
+	image, err = dockerManager.FindImage(comp.BaseImageName())
+	if err != nil {
+		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+	}
+
+	log.Printf("Image: %s", color.GreenString(comp.BaseImageName()))
 	log.Printf("ID: %s", color.GreenString(image.ID))
 	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 }
 
 // CreateBaseCompilationImage will recompile the base BOSH image for a release
-func CreateBaseCompilationImage(baseImageName, releasePath, repository string) {
+func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
@@ -260,19 +286,7 @@ func CreateBaseCompilationImage(baseImageName, releasePath, repository string) {
 
 	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	release, err := model.NewRelease(releasePath)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-	}
-
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
-
-	tempDir, err := ioutil.TempDir("", "fissile-base-compiler")
-	if err != nil {
-		log.Fatalln(color.RedString("Error creating temp dir: %s", err.Error()))
-	}
-
-	comp, err := compilator.NewCompilator(dockerManager, release, tempDir, repository, compilation.UbuntuBase)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
 		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
@@ -283,18 +297,11 @@ func CreateBaseCompilationImage(baseImageName, releasePath, repository string) {
 }
 
 // Compile will compile a full BOSH release
-func Compile(baseImageName, releasePath, repository, targetPath string, workerCount int) {
+func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCount int) {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
-
-	baseImage, err := dockerManager.FindImage(baseImageName)
-	if err != nil {
-		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
-	}
-
-	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
@@ -303,22 +310,18 @@ func Compile(baseImageName, releasePath, repository, targetPath string, workerCo
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	comp, err := compilator.NewCompilator(dockerManager, release, targetPath, repository, compilation.UbuntuBase)
+	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
 		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
 
-	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
-		log.Fatalln(color.RedString("Error creating compilation base image: %s", err.Error()))
-	}
-
-	if err := comp.Compile(workerCount); err != nil {
+	if err := comp.Compile(workerCount, release); err != nil {
 		log.Fatalln(color.RedString("Error compiling packages: %s", err.Error()))
 	}
 }
 
 //GenerateConfigurationBase generates a configuration base using a BOSH release and opinions from manifests
-func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
+func (f *Fissile) GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -336,23 +339,16 @@ func GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath,
 }
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
-func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository, releasePath string) {
+func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository string) {
 	if !strings.HasSuffix(targetPath, string(os.PathSeparator)) {
 		targetPath = fmt.Sprintf("%s%c", targetPath, os.PathSeparator)
 	}
-
-	release, err := model.NewRelease(releasePath)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-	}
-
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
 	log.Println("Creating Dockerfile ...")
 
-	if err = baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
+	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
 		log.Fatalln(color.RedString("Error creating Dockerfile and/or assets: %s", err.Error()))
 	}
 
@@ -366,7 +362,7 @@ func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noB
 			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 		}
 
-		baseImageName := builder.GetBaseImageName(repository)
+		baseImageName := builder.GetBaseImageName(repository, f.Version)
 
 		if err := dockerManager.BuildImage(
 			targetPath,
@@ -389,7 +385,7 @@ func GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noB
 }
 
 // GenerateRoleImages generates all role images
-func GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
+func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
@@ -402,7 +398,15 @@ func GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath
 		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
 	}
 
-	roleBuilder := builder.NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version)
+	roleBuilder := builder.NewRoleImageBuilder(
+		repository,
+		compiledPackagesPath,
+		targetPath,
+		defaultConsulAddress,
+		defaultConfigStorePrefix,
+		version,
+		f.Version,
+	)
 
 	for _, role := range rolesManifest.Roles {
 		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
@@ -423,7 +427,7 @@ func GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath
 				log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 			}
 
-			roleImageName := builder.GetRoleImageName(repository, role)
+			roleImageName := builder.GetRoleImageName(repository, role, version)
 
 			if err := dockerManager.BuildImage(
 				dockerfileDir,

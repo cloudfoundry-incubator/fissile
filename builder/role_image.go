@@ -28,10 +28,11 @@ type RoleImageBuilder struct {
 	defaultConsulAddress     string
 	defaultConfigStorePrefix string
 	version                  string
+	fissileVersion           string
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version string) *RoleImageBuilder {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version, fissileVersion string) *RoleImageBuilder {
 	return &RoleImageBuilder{
 		repository:               repository,
 		compiledPackagesPath:     compiledPackagesPath,
@@ -39,6 +40,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultCo
 		defaultConsulAddress:     defaultConsulAddress,
 		defaultConfigStorePrefix: defaultConfigStorePrefix,
 		version:                  version,
+		fissileVersion:           fissileVersion,
 	}
 }
 
@@ -179,7 +181,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 }
 
 func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) {
-	baseImage := GetBaseImageName(r.repository)
+	baseImage := GetBaseImageName(r.repository, r.fissileVersion)
 
 	asset, err := dockerfiles.Asset("scripts/dockerfiles/Dockerfile-role")
 	if err != nil {
@@ -210,10 +212,12 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 }
 
 // GetRoleImageName generates a docker image name to be used as a role image
-func GetRoleImageName(repository string, role *model.Role) string {
-	return fmt.Sprintf("%s:%s-v%s-%s",
+func GetRoleImageName(repository string, role *model.Role, version string) string {
+	return fmt.Sprintf("%s-%s-%s:%s-%s",
 		repository,
 		role.Jobs[0].Release.Name,
+		role.Name,
 		role.Jobs[0].Release.Version,
-		role.Name)
+		version,
+	)
 }

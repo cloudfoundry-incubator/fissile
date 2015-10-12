@@ -2,7 +2,7 @@ NO_COLOR=\033[0m
 OK_COLOR=\033[32;01m
 ERROR_COLOR=\033[31;01m
 WARN_COLOR=\033[33;01m
-APP_VERSION=0.0.1
+APP_VERSION ?= 0.0.1
 PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
 
 .PHONY: all clean format lint vet bindata build test
@@ -39,7 +39,7 @@ build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	gox -verbose \
-	-ldflags="-X main.version=$(APP_VERSION) " \
+	-ldflags="-X main.version $(APP_VERSION) " \
 	-os="windows linux darwin " \
 	-arch="amd64" \
 	-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
