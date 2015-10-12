@@ -1,6 +1,11 @@
 package app
 
 import (
+	"errors"
+	"fmt"
+	"log"
+	"path/filepath"
+
 	"github.com/codegangsta/cli"
 )
 
@@ -79,4 +84,19 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Bool("with-sizes"),
 		)
 	}
+}
+
+func absolutePathsForFlags(c *cli.Context, flagNames []string) (map[string]string, error) {
+	absolutePaths := map[string]string{}
+	for _, flagName := range(flagNames) {
+		if c.IsSet(flagName) {
+			path, err := filepath.Abs(c.String(flagName))
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("Error getting absolute path for option %s, path %s: %v",
+					flagName, c.String(flagName), err))
+			}
+			absolutePaths[flagName] = path
+		}
+	}
+	return absolutePaths, nil
 }
