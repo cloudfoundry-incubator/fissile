@@ -10,6 +10,11 @@ RUN useradd -m --comment 'hcf user' vcap && usermod -G adm vcap
 RUN apt-get update && apt-get install monit runit -y
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
+# Setup default locale and timezone
+RUN echo 'LANG="en_US.UTF-8"' > /etc/default/locale
+RUN echo 'UTC' > /etc/timezone
+RUN DEBIAN_FRONTEND=noninteractive locale-gen en_US.UTF-8 && dpkg-reconfigure -fnoninteractive -pcritical tzdata && dpkg-reconfigure locales
+
 # Install configgin
 
 ADD configgin /opt/hcf/configgin/
