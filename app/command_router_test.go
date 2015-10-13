@@ -13,7 +13,8 @@ import (
 func TestFindAbsolutePaths(t *testing.T) {
 	assert := assert.New(t)
 
-	pwd, _ := os.Getwd()
+	pwd, err := os.Getwd()
+	assert.Nil(err)
 	set := flag.NewFlagSet("test", 0)
 	set.String("flag1", "path to first arg", "help for flag1")
 	set.String("flag2", "path to second arg", "help for flag2")
