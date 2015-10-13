@@ -121,8 +121,8 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
-	currentUid := syscall.Geteuid()
-	currentGid := syscall.Getegid()
+	currentUID := syscall.Geteuid()
+	currentGID := syscall.Getegid()
 
 	cco := dockerclient.CreateContainerOptions{
 		Config: &dockerclient.Config{
@@ -135,8 +135,8 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			WorkingDir:   "/",
 			Image:        imageName,
 			Env: []string{
-				fmt.Sprintf("HOST_USERID=%d", currentUid),
-				fmt.Sprintf("HOST_USERGID=%d", currentGid),
+				fmt.Sprintf("HOST_USERID=%d", currentUID),
+				fmt.Sprintf("HOST_USERGID=%d", currentGID),
 			},
 		},
 		HostConfig: &dockerclient.HostConfig{
