@@ -3,12 +3,15 @@ FROM {{ .BaseImage }}
 MAINTAINER hcf@hpe.com
 
 # Install prerequisites
-RUN useradd -m --comment 'hcf user' vcap && usermod -G adm vcap
+RUN useradd -m --comment 'hcf user' vcap && groupadd --system admin && usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap
 
 # Install monit
 
-RUN apt-get update && apt-get install monit runit -y
+RUN apt-get update && apt-get install monit runit curl -y
 ADD monitrc.erb /opt/hcf/monitrc.erb
+
+# Enable resolvconf updates
+RUN resolvconf --enable-updates
 
 # Setup default locale and timezone
 RUN echo 'LANG="en_US.UTF-8"' > /etc/default/locale
