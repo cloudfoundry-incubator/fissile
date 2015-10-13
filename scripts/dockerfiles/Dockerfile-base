@@ -7,8 +7,12 @@ RUN useradd -m --comment 'hcf user' vcap && groupadd --system admin && usermod -
 
 # Install monit
 
-RUN apt-get update && apt-get install monit runit curl -y
+RUN apt-get update && apt-get install monit runit curl software-properties-common -y
 ADD monitrc.erb /opt/hcf/monitrc.erb
+
+# Setup syslog
+
+RUN add-apt-repository ppa:adiscon/v8-stable && apt-get update && apt-get install rsyslog rsyslog-relp rsyslog-mmjsonparse rsyslog-gnutls -y
 
 # Enable resolvconf updates
 RUN resolvconf --enable-updates

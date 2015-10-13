@@ -77,5 +77,8 @@ fi
 
 chmod 0600 /etc/monitrc
 
+# Start rsyslog
+service rsyslog start
+
 # Run
 monit -vI
