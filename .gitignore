@@ -2,3 +2,6 @@
 /fissile
 coverage.xml
 build/
+scripts/compilation/compilation.go
+scripts/dockerfiles/dockerfiles.go
+scripts/templates/transformations.go
