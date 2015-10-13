@@ -22,7 +22,7 @@ func TestFindAbsolutePaths(t *testing.T) {
 
 	c := cli.NewContext(nil, set, nil)
 
-	paths, err := absolutePathsForFlags(c, []string{"flag1", "flag2", "flag3"})
+	paths, err := absolutePathsForFlags(c, "flag1", "flag2", "flag3")
 	assert.Nil(err)
 
 	assert.Equal(paths["flag1"], path.Join(pwd, c.String("flag1")))

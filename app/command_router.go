@@ -11,6 +11,11 @@ import (
 
 // CommandRouter will dispatch CLI commands to their relevant functions
 func (f *Fissile) CommandRouter(c *cli.Context) {
+	paths, err := absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+	if err != nil {
+		log.Fatalln(color.RedString("%v", err))
+	}
+		
 	switch {
 	case c.Command.FullName() == "release jobs-report":
 		f.ListJobs(
@@ -86,7 +91,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	}
 }
 
-func absolutePathsForFlags(c *cli.Context, flagNames []string) (map[string]string, error) {
+func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]string, error) {
 	absolutePaths := map[string]string{}
 	for _, flagName := range(flagNames) {
 		if c.IsSet(flagName) {
