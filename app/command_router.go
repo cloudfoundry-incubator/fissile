@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/codegangsta/cli"
+	"github.com/fatih/color"
 )
 
 // CommandRouter will dispatch CLI commands to their relevant functions
@@ -18,11 +19,11 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	switch {
 	case c.Command.FullName() == "release jobs-report":
 		f.ListJobs(
-			c.String("release"),
+			paths["release"],
 		)
 	case c.Command.FullName() == "release packages-report":
 		f.ListPackages(
-			c.String("release"),
+			paths["release"],
 		)
 	case c.Command.FullName() == "compilation build-base":
 		f.CreateBaseCompilationImage(
@@ -36,31 +37,31 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	case c.Command.FullName() == "compilation start":
 		f.Compile(
-			c.String("release"),
+			paths["release"],
 			c.String("repository"),
-			c.String("target"),
+			paths["target"],
 			c.Int("workers"),
 		)
 	case c.Command.FullName() == "configuration report":
 		f.ListFullConfiguration(
-			c.String("release"),
+			paths["release"],
 		)
 	case c.Command.FullName() == "templates report":
 		f.PrintTemplateReport(
-			c.String("release"),
+			paths["release"],
 		)
 	case c.Command.FullName() == "configuration generate":
 		f.GenerateConfigurationBase(
-			c.String("release"),
-			c.String("light-opinions"),
-			c.String("dark-opinions"),
-			c.String("target"),
+			paths["release"],
+			paths["light-opinions"],
+			paths["dark-opinions"],
+			paths["target"],
 			c.String("prefix"),
 			c.String("provider"),
 		)
 	case c.Command.FullName() == "images create-base":
 		f.GenerateBaseDockerImage(
-			c.String("target"),
+			paths["target"],
 			c.String("configgin"),
 			c.String("base-image"),
 			c.Bool("no-build"),
@@ -68,12 +69,12 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	case c.Command.FullName() == "images create-roles":
 		f.GenerateRoleImages(
-			c.String("target"),
+			paths["target"],
 			c.String("repository"),
 			c.Bool("no-build"),
-			c.String("release"),
-			c.String("roles-manifest"),
-			c.String("compiled-packages"),
+			paths["release"],
+			paths["roles-manifest"],
+			paths["compiled-packages"],
 			c.String("default-consul-address"),
 			c.String("default-config-store-prefix"),
 			c.String("version"),
@@ -81,8 +82,8 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	case c.Command.FullName() == "images list-roles":
 		f.ListRoleImages(
 			c.String("repository"),
-			c.String("release"),
-			c.String("roles-manifest"),
+			paths["release"],
+			paths["roles-manifest"],
 			c.String("version"),
 			c.Bool("docker-only"),
 			c.Bool("with-sizes"),
