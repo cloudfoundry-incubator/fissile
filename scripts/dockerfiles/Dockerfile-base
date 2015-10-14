@@ -3,24 +3,27 @@ FROM {{ .BaseImage }}
 MAINTAINER hcf@hpe.com
 
 # Install prerequisites
-RUN useradd -m --comment 'hcf user' vcap && groupadd --system admin && usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap
-
 # Install monit and other dependencies
-
-RUN apt-get update && apt-get install monit runit curl software-properties-common nfs-common upstart tcpdump lsof strace iputils-arping traceroute htop bind9-host dnsutils wget libcurl3 bison libxml2 libxslt1.1 zip unzip flex psmisc apparmor-utils iptables sysstat rsync quota libaio1 libcap2-bin cmake ca-certificates scsitools mg module-assistant debhelper anacron -y
-ADD monitrc.erb /opt/hcf/monitrc.erb
-
 # Setup syslog
-
-RUN add-apt-repository ppa:adiscon/v8-stable && apt-get update && apt-get install rsyslog rsyslog-relp rsyslog-mmjsonparse rsyslog-gnutls -y
-
 # Enable resolvconf updates
-RUN resolvconf --enable-updates
-
 # Setup default locale and timezone
-RUN echo 'LANG="en_US.UTF-8"' > /etc/default/locale
-RUN echo 'UTC' > /etc/timezone
-RUN DEBIAN_FRONTEND=noninteractive locale-gen en_US.UTF-8 && dpkg-reconfigure -fnoninteractive -pcritical tzdata && dpkg-reconfigure locales
+
+RUN useradd -m --comment 'hcf user' vcap && \
+    groupadd --system admin && \
+    usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap && \
+    apt-get update && \
+    apt-get install monit runit curl software-properties-common nfs-common upstart tcpdump lsof strace iputils-arping traceroute htop bind9-host dnsutils wget libcurl3 bison libxml2 libxslt1.1 zip unzip flex psmisc apparmor-utils iptables sysstat rsync quota libaio1 libcap2-bin cmake ca-certificates scsitools mg module-assistant debhelper anacron -y && \
+    add-apt-repository ppa:adiscon/v8-stable && \
+    apt-get update && \
+    apt-get install rsyslog rsyslog-relp rsyslog-mmjsonparse rsyslog-gnutls -y && \
+    resolvconf --enable-updates && \
+    echo 'LANG="en_US.UTF-8"' > /etc/default/locale && \
+    echo 'UTC' > /etc/timezone && \
+    DEBIAN_FRONTEND=noninteractive locale-gen en_US.UTF-8 && \
+    dpkg-reconfigure -fnoninteractive -pcritical tzdata && \
+    dpkg-reconfigure locales
+
+ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin
 
