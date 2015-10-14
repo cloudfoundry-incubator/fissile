@@ -5,9 +5,9 @@ MAINTAINER hcf@hpe.com
 # Install prerequisites
 RUN useradd -m --comment 'hcf user' vcap && groupadd --system admin && usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap
 
-# Install monit
+# Install monit and other dependencies
 
-RUN apt-get update && apt-get install monit runit curl software-properties-common -y
+RUN apt-get update && apt-get install monit runit curl software-properties-common nfs-common upstart tcpdump lsof strace iputils-arping traceroute htop bind9-host dnsutils wget libcurl3 bison libxml2 libxslt1.1 zip unzip flex psmisc apparmor-utils iptables sysstat rsync quota libaio1 libcap2-bin cmake ca-certificates scsitools mg module-assistant debhelper anacron -y
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Setup syslog
