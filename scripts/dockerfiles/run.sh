@@ -77,6 +77,9 @@ fi
 
 chmod 0600 /etc/monitrc
 
+# Create run dir
+mkdir -p /var/vcap/sys/run
+
 # Start rsyslog
 service rsyslog start
 
