@@ -57,14 +57,15 @@ func LoadRoleManifest(manifestFilePath string, release *Release) (*RoleManifest,
 	return &rolesManifest, nil
 }
 
-func (r *Role) GetScriptPaths() []string {
+func (r *Role) GetScriptPaths() map[string]string {
+	result := map[string]string{}
+
 	if r.Scripts == nil {
-		return []string{}
+		return result
 	}
 
-	result := make([]string, len(r.Scripts))
-	for idx := range r.Scripts {
-		result[idx] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), r.Scripts[idx])
+	for _, script := range r.Scripts {
+		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
 	}
 
 	return result
