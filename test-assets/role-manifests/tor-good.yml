@@ -1,6 +1,7 @@
 ---
 roles:
   - name: myrole
+    scripts: ["myrole.sh"]
     jobs:
       - name: new_hostname
       - name: tor
