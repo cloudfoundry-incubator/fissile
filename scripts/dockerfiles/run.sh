@@ -3,7 +3,7 @@ set -e
 
 if [[ "$1" == "--help" ]]; then
 cat <<EOL
-Usage: run.sh [<consul_address>] [<config_store_prefix>] [<role_instance_index>] [<ip_address>] [<dns_record_name>]
+Usage: run.sh [<consul_address>] [<config_store_prefix>] [<role_instance_index>] [<dns_record_name>]
 EOL
 fi
 
@@ -22,15 +22,12 @@ if [[ -z $role_instance_index ]]; then
   role_instance_index=0
 fi
 
-ip_address=$4
-if [[ -z $ip_address ]]; then
-  ip_address="127.0.0.1"
-fi
-
-dns_record_name=$5
+dns_record_name=$4
 if [[ -z $dns_record_name ]]; then
   dns_record_name="localhost"
 fi
+
+ip_address=`/bin/hostname -i`
 
 # Process templates
 {{ with $role := index . "role" }}
@@ -82,6 +79,18 @@ mkdir -p /var/vcap/sys/run
 
 # Start rsyslog
 service rsyslog start
+
+# Run custom role scripts
+export CONSUL_ADDRESS=$consul_address
+export CONFIG_STORE_PREFIX=$config_store_prefix
+export ROLE_INSTANCE_INDEX=$role_instance_index
+export IP_ADDRESS=$ip_address
+export DNS_RECORD_NAME=$dns_record_name
+{{ with $role := index . "role" }}
+{{ range $i, $script := .Scripts}}
+bash /opt/hcf/startup/{{ $script }}
+{{ end }}
+{{ end }}
 
 # Run
 monit -vI

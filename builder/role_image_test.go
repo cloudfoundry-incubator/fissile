@@ -66,6 +66,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
+	assert.Contains(string(runScriptContents), "/opt/hcf/startup/myrole.sh")
 }
 
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
@@ -101,6 +102,8 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "packages", "tor", "bar"), false, "compilation artifact"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "monit"), false, "job monit file"))
 	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "templates", "bin", "monit_debugger"), false, "job template file"))
+	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "role-startup"), true, "role startup scripts dir"))
+	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "role-startup", "myrole.sh"), false, "role specific startup script"))
 
 	// job.MF should not be there
 	assert.NotNil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "job.MF"), false, "job manifest file"))
