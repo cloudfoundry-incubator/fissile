@@ -5,6 +5,7 @@ if [[ "$1" == "--help" ]]; then
 cat <<EOL
 Usage: run.sh [<consul_address>] [<config_store_prefix>] [<role_instance_index>] [<dns_record_name>]
 EOL
+exit 0
 fi
 
 consul_address=$1
