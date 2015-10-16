@@ -16,6 +16,9 @@ ADD packages /var/vcap/packages/
 # Add job sources
 ADD jobs /var/vcap/jobs-src/
 
+# Add custom startup role scripts
+ADD role-startup /opt/hcf/startup/
+
 # Add run.sh
 ADD run.sh /opt/hcf/
 
