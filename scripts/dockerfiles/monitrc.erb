@@ -1,7 +1,7 @@
 set daemon 10
 set logfile /var/vcap/monit/monit.log
 
-set httpd port <%= p("hcf.monit.port") %> and use address 127.0.0.1
+set httpd port <%= p("hcf.monit.port") %> and use address 0.0.0.0
   allow "<%= p("hcf.monit.user") %>":"<%= p("hcf.monit.password") %>" read-only
 
 include /var/vcap/monit/*.monitrc
