@@ -57,10 +57,6 @@ func NewCompilator(
 		packageDone: make(map[string]chan struct{}),
 	}
 
-	for _, pkg := range release.Packages {
-		compilator.packageDone[pkg.Name] = make(chan struct{})
-	}
-
 	return compilator, nil
 }
 
@@ -92,6 +88,7 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the workers out
 //   and won't wait for the <-doneCh for the N packages it drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release) error {
+	c.initPackageMaps(release)
 	var workersGroup sync.WaitGroup
 
 	todoCh := make(chan *model.Package)
@@ -105,7 +102,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 
 	go func() {
 		workersGroup.Add(1)
-		buckets := createDepBuckets(c.Release.Packages)
+		buckets := createDepBuckets(release.Packages)
 		for _, bucketPackages := range buckets {
 			for _, pkg := range bucketPackages {
 				todoCh <- pkg
@@ -115,7 +112,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		workersGroup.Done()
 	}()
 
-	nPackages := len(c.Release.Packages)
+	nPackages := len(release.Packages)
 	killed := false
 	for nPackages > 0 {
 		result := <-doneCh
@@ -546,7 +543,6 @@ func (c *Compilator) BaseImageName() string {
 
 func (c *Compilator) initPackageMaps(release *model.Release) {
 	for _, pkg := range release.Packages {
-		c.packageLock[pkg] = &sync.Mutex{}
-		c.packageCompiling[pkg] = false
+		c.packageDone[pkg.Name] = make(chan struct{})
 	}
 }
