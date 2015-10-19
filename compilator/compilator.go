@@ -378,13 +378,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
+				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
+				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
 			}
 		},
 	)
