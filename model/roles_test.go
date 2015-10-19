@@ -25,11 +25,18 @@ func TestLoadRoleManifestOK(t *testing.T) {
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
 	assert.Equal(2, len(rolesManifest.Roles))
-	assert.Equal("tor", rolesManifest.Roles[1].Jobs[0].Name)
-	assert.NotNil(rolesManifest.Roles[1].Jobs[0].Release)
-	assert.Equal("tor", rolesManifest.Roles[1].Jobs[0].Release.Name)
-	assert.Equal(1, len(rolesManifest.Roles[0].Scripts))
-	assert.Equal("myrole.sh", rolesManifest.Roles[0].Scripts[0])
+
+	myrole := rolesManifest.Roles[0]
+	assert.False(myrole.IsTask)
+	assert.Equal(1, len(myrole.Scripts))
+	assert.Equal("myrole.sh", myrole.Scripts[0])
+
+	foorole := rolesManifest.Roles[1]
+	assert.True(foorole.IsTask)
+	torjob := foorole.Jobs[0]
+	assert.Equal("tor", torjob.Name)
+	assert.NotNil(torjob.Release)
+	assert.Equal("tor", torjob.Release.Name)
 }
 
 func TestGetScriptPaths(t *testing.T) {

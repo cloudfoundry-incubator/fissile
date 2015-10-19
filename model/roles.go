@@ -18,6 +18,7 @@ type Role struct {
 	Name        string     `yaml:"name"`
 	Jobs        []*Job     `yaml:"_,omitempty"`
 	Scripts     []string   `yaml:"scripts"`
+	IsTask      bool       `yaml:"is_task,omitempty"`
 	JobNameList []*roleJob `yaml:"jobs"`
 
 	rolesManifest *RoleManifest
