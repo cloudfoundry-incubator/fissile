@@ -141,3 +141,23 @@ func TestCompilePackage(t *testing.T) {
 	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
 }
+
+func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
+	pathInfo, err := os.Stat(path)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	if pathInfo.IsDir() && !shouldBeDir {
+		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
+	} else if !pathInfo.IsDir() && shouldBeDir {
+		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
+	}
+
+	return true, nil
+}

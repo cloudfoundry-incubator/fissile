@@ -67,8 +67,7 @@ type compileResult struct {
 	Err error
 }
 
-//
-// Compilation concurrency works like this:
+// Compile concurrency works like this:
 // 1 routine producing (todoCh<-)
 // n workers consuming (<-todoCh)
 // 1 synchronizer consuming EXACTLY 1 <-doneCh for every <-todoCh
@@ -479,42 +478,6 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 	}
 
 	return nil
-}
-
-func isDirEmpty(path string) (bool, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return true, err
-	}
-
-	defer f.Close()
-
-	_, err = f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-
-	return false, err
-}
-
-func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
-	pathInfo, err := os.Stat(path)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	if pathInfo.IsDir() && !shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
-	} else if !pathInfo.IsDir() && shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
-	}
-
-	return true, nil
 }
 
 // baseCompilationContainerName will return the compilation container's name
