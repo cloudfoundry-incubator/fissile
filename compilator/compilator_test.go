@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hpcloud/fissile/docker"
@@ -37,10 +38,35 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
-func TestCompilation(t *testing.T) {
-}
+func TestCompilationBasic(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+	}()
 
-func TestCompilationSourcePreparation(t *testing.T) {
+	compileChan := make(chan string)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	waitCh := make(chan struct{})
+	go func() {
+		c.Compile(1, release)
+		close(waitCh)
+	}()
+
+	assert.Equal(<-compileChan, "ruby-2.5")
+	assert.Equal(<-compileChan, "go-1.4")
+	assert.Equal(<-compileChan, "consul")
+	<-waitCh
 }
 
 func TestPackageFolderStructure(t *testing.T) {
@@ -142,6 +168,44 @@ func TestCompilePackage(t *testing.T) {
 	assert.Nil(err)
 }
 
+func TestCreateDepBuckets(t *testing.T) {
+	t.Parallel()
+
+	packages := []*model.Package{
+		{
+			Name: "consul",
+			Dependencies: []*model.Package{
+				{Name: "go-1.4"},
+			},
+		},
+		{
+			Name:         "go-1.4",
+			Dependencies: nil,
+		},
+		{
+			Name: "cloud_controller_go",
+			Dependencies: []*model.Package{
+				{Name: "go-1.4"},
+				{Name: "ruby-2.5"},
+			},
+		},
+		{
+			Name:         "ruby-2.5",
+			Dependencies: nil,
+		},
+	}
+
+	buckets := createDepBuckets(packages)
+	assert.Equal(t, len(buckets), 3)
+	assert.Equal(t, len(buckets[0]), 2)
+	assert.Equal(t, buckets[0][0].Name, "ruby-2.5") // Ruby should be first
+	assert.Equal(t, buckets[0][1].Name, "go-1.4")
+	assert.Equal(t, len(buckets[1]), 1)
+	assert.Equal(t, buckets[1][0].Name, "consul")
+	assert.Equal(t, len(buckets[2]), 1)
+	assert.Equal(t, buckets[2][0].Name, "cloud_controller_go")
+}
+
 func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
 	pathInfo, err := os.Stat(path)
 
@@ -160,4 +224,26 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	}
 
 	return true, nil
+}
+
+func genTestCase(args ...string) *model.Release {
+	var packages []*model.Package
+
+	for _, pkgDef := range args {
+		splits := strings.Split(pkgDef, ">")
+		pkgName := splits[0]
+
+		var deps []*model.Package
+		if len(splits) == 2 {
+			pkgDeps := strings.Split(splits[1], ",")
+
+			for _, dep := range pkgDeps {
+				deps = append(deps, &model.Package{Name: dep})
+			}
+		}
+
+		packages = append(packages, &model.Package{Name: pkgName, Dependencies: deps})
+	}
+
+	return &model.Release{Packages: packages}
 }

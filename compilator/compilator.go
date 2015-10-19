@@ -27,6 +27,11 @@ const (
 	ContainerPackagesDir = "/var/vcap/packages"
 )
 
+var (
+	// compilePackageHarness is mocked out in tests
+	compilePackageHarness = (*Compilator).compilePackage
+)
+
 // Compilator represents the BOSH compiler
 type Compilator struct {
 	DockerManager    *docker.ImageManager
@@ -196,7 +201,7 @@ MainLoop:
 
 		log.Printf("worker-%s > compile: %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
 
-		workerErr := c.compilePackage(pkg)
+		workerErr := compilePackageHarness(c, pkg)
 		log.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
 
 		doneCh <- compileResult{Pkg: pkg, Err: workerErr}
