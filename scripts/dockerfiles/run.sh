@@ -94,4 +94,12 @@ bash /opt/hcf/startup/{{ $script }}
 {{ end }}
 
 # Run
+{{ with $role := index . "role" }}
+{{ if .IsTask }}
+{{ range $i, $job := .Jobs}}
+/var/vcap/jobs/{{ $job.Name }}/bin/run
+{{ end }}
+{{ else }}
 monit -vI
+{{ end }}
+{{ end }}

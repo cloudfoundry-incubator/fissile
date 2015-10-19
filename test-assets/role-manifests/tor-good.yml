@@ -1,11 +1,11 @@
 ---
 roles:
-  - name: myrole
-    scripts: ["myrole.sh"]
-    jobs:
-      - name: new_hostname
-      - name: tor
-  - name: foorole
-    jobs:
-      - name: tor
- 
+- name: myrole
+  scripts: ["myrole.sh"]
+  jobs:
+  - name: new_hostname
+  - name: tor
+- name: foorole
+  is_task: true
+  jobs:
+  - name: tor

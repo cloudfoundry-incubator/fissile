@@ -63,10 +63,15 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.Nil(err)
-
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/startup/myrole.sh")
+	assert.Contains(string(runScriptContents), "monit -vI")
+
+	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
+	assert.Nil(err)
+	assert.NotContains(string(runScriptContents), "monit -vI")
+	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
 }
 
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
