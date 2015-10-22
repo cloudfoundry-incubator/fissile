@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -317,9 +316,6 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
 	}
 
-	if workerCount <= 0 {
-		workerCount = runtime.NumCPU()
-	}
 	if err := comp.Compile(workerCount, release); err != nil {
 		log.Fatalln(color.RedString("Error compiling packages: %s", err.Error()))
 	}

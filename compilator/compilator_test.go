@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hpcloud/fissile/docker"
@@ -38,35 +37,67 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
-func TestCompilationBasic(t *testing.T) {
-	saveCompilePackage := compilePackageHarness
-	defer func() {
-		compilePackageHarness = saveCompilePackage
-	}()
+func TestCompilation(t *testing.T) {
+}
 
-	compileChan := make(chan string)
-	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
-		compileChan <- pkg.Name
-		return nil
-	}
+func TestCompilationSourcePreparation(t *testing.T) {
+}
 
+func TestGetPackageStatusCompiled(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "")
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
 
-	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+	dockerManager, err := docker.NewImageManager()
+	assert.Nil(err)
 
-	waitCh := make(chan struct{})
-	go func() {
-		c.Compile(1, release)
-		close(waitCh)
-	}()
+	workDir, err := os.Getwd()
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := model.NewRelease(ntpReleasePath)
+	assert.Nil(err)
 
-	assert.Equal(<-compileChan, "ruby-2.5")
-	assert.Equal(<-compileChan, "go-1.4")
-	assert.Equal(<-compileChan, "consul")
-	<-waitCh
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
+
+	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
+	err = os.MkdirAll(compiledPackagePath, 0755)
+	assert.Nil(err)
+
+	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
+	assert.Nil(err)
+
+	status, err := compilator.getPackageStatus(release.Packages[0])
+
+	assert.Nil(err)
+	assert.Equal(packageCompiled, status)
+}
+
+func TestGetPackageStatusNone(t *testing.T) {
+	assert := assert.New(t)
+
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	dockerManager, err := docker.NewImageManager()
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := model.NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
+
+	status, err := compilator.getPackageStatus(release.Packages[0])
+
+	assert.Nil(err)
+	assert.Equal(packageNone, status)
 }
 
 func TestPackageFolderStructure(t *testing.T) {
@@ -164,86 +195,7 @@ func TestCompilePackage(t *testing.T) {
 	}()
 	assert.Nil(err)
 
-	err = comp.compilePackage(release.Packages[0])
+	compiled, err := comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
-}
-
-func TestCreateDepBuckets(t *testing.T) {
-	t.Parallel()
-
-	packages := []*model.Package{
-		{
-			Name: "consul",
-			Dependencies: []*model.Package{
-				{Name: "go-1.4"},
-			},
-		},
-		{
-			Name:         "go-1.4",
-			Dependencies: nil,
-		},
-		{
-			Name: "cloud_controller_go",
-			Dependencies: []*model.Package{
-				{Name: "go-1.4"},
-				{Name: "ruby-2.5"},
-			},
-		},
-		{
-			Name:         "ruby-2.5",
-			Dependencies: nil,
-		},
-	}
-
-	buckets := createDepBuckets(packages)
-	assert.Equal(t, len(buckets), 3)
-	assert.Equal(t, len(buckets[0]), 2)
-	assert.Equal(t, buckets[0][0].Name, "ruby-2.5") // Ruby should be first
-	assert.Equal(t, buckets[0][1].Name, "go-1.4")
-	assert.Equal(t, len(buckets[1]), 1)
-	assert.Equal(t, buckets[1][0].Name, "consul")
-	assert.Equal(t, len(buckets[2]), 1)
-	assert.Equal(t, buckets[2][0].Name, "cloud_controller_go")
-}
-
-func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
-	pathInfo, err := os.Stat(path)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	if pathInfo.IsDir() && !shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
-	} else if !pathInfo.IsDir() && shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
-	}
-
-	return true, nil
-}
-
-func genTestCase(args ...string) *model.Release {
-	var packages []*model.Package
-
-	for _, pkgDef := range args {
-		splits := strings.Split(pkgDef, ">")
-		pkgName := splits[0]
-
-		var deps []*model.Package
-		if len(splits) == 2 {
-			pkgDeps := strings.Split(splits[1], ",")
-
-			for _, dep := range pkgDeps {
-				deps = append(deps, &model.Package{Name: dep})
-			}
-		}
-
-		packages = append(packages, &model.Package{Name: pkgName, Dependencies: deps})
-	}
-
-	return &model.Release{Packages: packages}
+	assert.True(compiled)
 }
