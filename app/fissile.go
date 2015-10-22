@@ -322,17 +322,20 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 }
 
 //GenerateConfigurationBase generates a configuration base using a BOSH release and opinions from manifests
-func (f *Fissile) GenerateConfigurationBase(releasePath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
-	release, err := model.NewRelease(releasePath)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
+	releases := make([]*model.Release, len(releasePaths))
+	for idx, releasePath := range releasePaths {
+		release, err := model.NewRelease(releasePath)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+		releases[idx] = release
+		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
-
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
 
-	if err := configStore.WriteBaseConfig(release); err != nil {
+	if err := configStore.WriteBaseConfig(releases); err != nil {
 		log.Fatalln(color.RedString("Error writing base config: %s", err.Error()))
 	}
 
@@ -386,15 +389,18 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 }
 
 // GenerateRoleImages generates all role images
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePath, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
-	release, err := model.NewRelease(releasePath)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePaths []string, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
+	releases := make([]*model.Release, len(releasePaths))
+	for idx, releasePath := range releasePaths {
+		release, err := model.NewRelease(releasePath)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+		releases[idx] = release
+		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
-
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, release)
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
 	}
@@ -451,17 +457,23 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 }
 
 // ListRoleImages lists all role images
-func (f *Fissile) ListRoleImages(repository, releasePath, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
+func (f *Fissile) ListRoleImages(repository string, releasePaths []string, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
 	if withVirtualSize && !existingOnDocker {
 		log.Fatalln(color.RedString("Cannot list image virtual sizes of not matching image names with docker"))
 	}
 
-	release, err := model.NewRelease(releasePath)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	releases := make([]*model.Release, len(releasePaths))
+	for idx, releasePath := range releasePaths {
+		release, err := model.NewRelease(releasePath)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+		releases[idx] = release
+		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
 	var dockerManager *docker.ImageManager
+	var err error
 
 	if existingOnDocker {
 		dockerManager, err = docker.NewImageManager()
@@ -470,7 +482,7 @@ func (f *Fissile) ListRoleImages(repository, releasePath, rolesManifestPath, ver
 		}
 	}
 
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, release)
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
 	}

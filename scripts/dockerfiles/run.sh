@@ -43,7 +43,7 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
-  --job     "{{$job.Name}}" \
+  --job     "R-{{$job.Release.Name}}-J-{{$job.Name}}" \
   "/var/vcap/jobs-src/{{ $job.Name }}/templates/{{ $template.SourcePath }}"
 # =====================================================
 {{ end }}
@@ -57,7 +57,7 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
-  --job     "{{$job.Name}}" \
+  --job     "R-{{$job.Release.Name}}-J-{{$job.Name}}" \
   "/var/vcap/jobs-src/{{ $job.Name }}/monit"
 # =====================================================
 {{ end }}

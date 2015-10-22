@@ -81,18 +81,22 @@ The following diagram shows the ordering of things. The highlighted items are co
  - `--workers <WORKER_COUNT>` the number of workers (containers) to use for package compilation
 
  > This command will compile all packages in a BOSH release. The command will create a compilation container named `<REPOSITORY_PREFIX>-cbase-<FISSILE_VERSION>-<RELEASE_NAME>-<RELEASE_VERSION>-pkg-<PACKAGE_NAME>` for each package (e.g. `fissile-cbase-1.0.0-cf-217-pkg-nats`). All containers are removed, whether compilation is successful or not. However, if the compilation is interrupted during compilation (e.g. ending `SIGINT`), containers will most likely be left behind.
+ > 
+ > It's safe (and desired) to use the same target directory when compiling multiple releases, because `fissile` uses the package's fingerprint as part of the directory structure. This means that if the same package (with the same version) is used by multiple releases, it will only be compiled once.
+ >
  > The target directory will have the following structure:
  > ```
- > .                                            
- > └── <pkg-name>                               
- >     ├── compiled                             
- >     ├── compiled-temp                        
- >     └── sources                              
- >         └── var                              
- >             └── vcap                         
- >                 ├── packages                 
- >                 │   └── <dependency-package> 
- >                 └── source                   
+ >  .
+ >  └── <pkg-name>
+ >     └── <pkg-fingerprint>
+ > 	     ├── compiled
+ > 	     ├── compiled-temp
+ > 	     └── sources
+ > 	         └── var
+ > 	             └── vcap
+ > 	                 ├── packages
+ > 	                 │   └── <dependency-package>
+ > 	                 └── source                  
  > ```
  > The `compiled-temp` directory is renamed to `compiled` upon success. The rest of the directories contain sources and dependencies that are used during compilation.
  > ```bash
@@ -117,7 +121,7 @@ The following diagram shows the ordering of things. The highlighted items are co
 
 - `configuration generate`
 
- - `--release <RELEASE_PATH>` path to a BOSH release **(not optional)**
+ - `--release <RELEASE_PATH>` path to BOSH release(s) - you can specify this parameter multiple times **(not optional)**
  - `--light-opinions <LIGHT_OPINIONS_YAML_PATH>` path to a BOSH YAML deployment manifest generated using the instructions found [here](https://docs.cloudfoundry.org/deploying/openstack/install_cf_openstack.html#deploy-cf) **(not optional)**
  - `--dark-opinions <DARK_OPINIONS_YAML_PATH>` path to a `cf-stub` BOSH YAML deployment manifest, that, like it's documented [here](https://docs.cloudfoundry.org/deploying/cf-stub-openstack.html) **(not optional)**
  - `--target <TARGET_DIRECTORY>` path to a directory where the command will write the configuration **(not optional)**
@@ -172,7 +176,7 @@ The following diagram shows the ordering of things. The highlighted items are co
  - `--target <TARGET_DIRECTORY>` a path to a directory where fissile will write the `Dockerfiles` and all necessary assets for each of the roles; a directory will be created for each role **(not optional)**
  - `--no-build` if present, the command will not build the docker images; it will only generate the `Dockerfiles` and the necessary assets (this is an optional flag)
  - `--repository <REPOSITORY_PREFIX>`  a repository prefix used to name the images; this parameter has a default value of `fissile`
- - `--release <RELEASE_PATH>` path to a BOSH release **(not optional)**
+ - `--release <RELEASE_PATH>` path to a BOSH release - you can specify this parameter multiple times **(not optional)**
  - `--roles-manifest <MANIFEST_PATH>` path to a roles manifest yaml file; this file details which jobs make up each role **(not optional)**
  - `--compiled-packages <COMPILED_PACKAGES_DIR>` path to a directory containing all the compiled packages; this flag is usually set to the target path used in the `fissile compilation start` command **(not optional)**
  - `--default-consul-address <CONSUL_ADDRESS>` a consul address that container images will try to connect to when run, by default; this parameter has a default value of `http://127.0.0.1:8500`
@@ -195,7 +199,7 @@ The following diagram shows the ordering of things. The highlighted items are co
 - `images list-roles`
 
  - `--repository <REPOSITORY_PREFIX>`  a repository prefix used to name the images; this parameter has a default value of `fissile`
- - `--release <RELEASE_PATH>` path to a BOSH release **(not optional)**
+ - `--release <RELEASE_PATH>` path to BOSH release(s) - you can specify this parameter multiple times **(not optional)**
  - `--roles-manifest <MANIFEST_PATH>` path to a roles manifest yaml file; this file details which jobs make up each role **(not optional)**
  - `--version <IMAGE_VERSION>` this is used as a version label when creating images and for naming them as well  **(not optional)**
  - `--docker-only` if this flag is set, only images that are available on docker will be displayed; this is an optional flag
@@ -219,7 +223,7 @@ The following configuration stores are required:
 - The descriptions for all keys: `/<prefix>/descriptions/<key-path>/`
 
 - Default sets
- - The default values from the job specs, per job: `/<prefix>/spec/<job-name>/<key-path>/`
+ - The default values from the job specs, per job: `/<prefix>/spec/R-<release-name>-J-<job-name>/<key-path>/`
  - Opinions retrieved from generated manifest files: `/<prefix>/opinions/<key-path>/`
 
 - User sets

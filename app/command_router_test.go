@@ -3,7 +3,7 @@ package app
 import (
 	"flag"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/codegangsta/cli"
@@ -26,13 +26,28 @@ func TestFindAbsolutePaths(t *testing.T) {
 	paths, err := absolutePathsForFlags(c, "flag1", "flag2", "flag3")
 	assert.Nil(err)
 
-	assert.Equal(paths["flag1"], path.Join(pwd, c.String("flag1")))
-	assert.Equal(paths["flag2"], path.Join(pwd, "filename02"))
+	assert.Equal(paths["flag1"], filepath.Join(pwd, c.String("flag1")))
+	assert.Equal(paths["flag2"], filepath.Join(pwd, "filename02"))
 	_, ok := paths["flag3"]
-	
+
 	assert.False(ok)
 
 	// To get an error object out of app.AbsolutePathsForFlags we would need to delete
 	// the current directory while the test is running.
 }
 
+func TestFindAbsolutePathsForArray(t *testing.T) {
+	assert := assert.New(t)
+
+	pwd, err := os.Getwd()
+	assert.Nil(err)
+
+	paths, err := absolutePathsForArray([]string{"filename01.txt", "filename02"})
+	assert.Nil(err)
+
+	assert.Equal(paths[0], filepath.Join(pwd, "filename01.txt"))
+	assert.Equal(paths[1], filepath.Join(pwd, "filename02"))
+
+	// To get an error object out of app.AbsolutePathsForFlags we would need to delete
+	// the current directory while the test is running.
+}

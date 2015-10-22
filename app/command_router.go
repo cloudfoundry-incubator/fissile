@@ -11,11 +11,36 @@ import (
 
 // CommandRouter will dispatch CLI commands to their relevant functions
 func (f *Fissile) CommandRouter(c *cli.Context) {
-	paths, err := absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
-	if err != nil {
-		log.Fatalln(color.RedString("%v", err))
+	var paths map[string]string
+	var releasePaths []string
+	var err error
+
+	switch {
+	case c.Command.FullName() == "configuration generate":
+		fallthrough
+	case c.Command.FullName() == "configuration list-roles":
+		fallthrough
+	case c.Command.FullName() == "images create-roles":
+		{
+			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			if err != nil {
+				log.Fatalln(color.RedString("%v", err))
+			}
+
+			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
+			if err != nil {
+				log.Fatalln(color.RedString("%v", err))
+			}
+		}
+	default:
+		{
+			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			if err != nil {
+				log.Fatalln(color.RedString("%v", err))
+			}
+		}
 	}
-		
+
 	switch {
 	case c.Command.FullName() == "release jobs-report":
 		f.ListJobs(
@@ -52,7 +77,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	case c.Command.FullName() == "configuration generate":
 		f.GenerateConfigurationBase(
-			paths["release"],
+			releasePaths,
 			paths["light-opinions"],
 			paths["dark-opinions"],
 			paths["target"],
@@ -72,7 +97,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["target"],
 			c.String("repository"),
 			c.Bool("no-build"),
-			paths["release"],
+			releasePaths,
 			paths["roles-manifest"],
 			paths["compiled-packages"],
 			c.String("default-consul-address"),
@@ -82,7 +107,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	case c.Command.FullName() == "images list-roles":
 		f.ListRoleImages(
 			c.String("repository"),
-			paths["release"],
+			releasePaths,
 			paths["roles-manifest"],
 			c.String("version"),
 			c.Bool("docker-only"),
@@ -91,9 +116,23 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	}
 }
 
+func absolutePathsForArray(paths []string) ([]string, error) {
+	absolutePaths := make([]string, len(paths))
+	for idx, path := range paths {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return nil, fmt.Errorf("Error getting absolute path for path %s: %v",
+				path, err)
+		}
+
+		absolutePaths[idx] = absPath
+	}
+	return absolutePaths, nil
+}
+
 func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]string, error) {
 	absolutePaths := map[string]string{}
-	for _, flagName := range(flagNames) {
+	for _, flagName := range flagNames {
 		if !c.IsSet(flagName) {
 			continue
 		}

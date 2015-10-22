@@ -62,7 +62,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 
 	compilator.initPackageMaps(release)
 
-	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, "compiled")
+	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, release.Packages[0].Fingerprint, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
 	assert.Nil(err)
 

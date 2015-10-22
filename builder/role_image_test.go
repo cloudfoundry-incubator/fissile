@@ -27,7 +27,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
@@ -56,7 +56,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
@@ -90,7 +90,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, release)
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")

@@ -150,9 +150,9 @@ func main() {
 					Name:    "generate",
 					Aliases: []string{"gen"},
 					Flags: []cli.Flag{
-						cli.StringFlag{
+						cli.StringSliceFlag{
 							Name:  "release, r",
-							Usage: "Path to a BOSH release.",
+							Usage: "Path to BOSH release(s).",
 						},
 						cli.StringFlag{
 							Name:  "light-opinions, l",
@@ -251,9 +251,9 @@ func main() {
 							Value: "fissile",
 							Usage: "Docker repository name prefix.",
 						},
-						cli.StringFlag{
+						cli.StringSliceFlag{
 							Name:  "release, r",
-							Usage: "Path to a BOSH release.",
+							Usage: "Path to BOSH release(s).",
 						},
 						cli.StringFlag{
 							Name:  "roles-manifest, m",
@@ -290,9 +290,9 @@ func main() {
 							Value: "fissile",
 							Usage: "Docker repository name prefix.",
 						},
-						cli.StringFlag{
+						cli.StringSliceFlag{
 							Name:  "release, r",
-							Usage: "Path to a BOSH release.",
+							Usage: "Path to BOSH release(s).",
 						},
 						cli.StringFlag{
 							Name:  "roles-manifest, m",

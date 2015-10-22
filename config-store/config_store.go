@@ -43,7 +43,7 @@ func NewConfigStoreBuilder(prefix, provider, lightOpinionsPath, darkOpinionsPath
 }
 
 // WriteBaseConfig generates the configuration base for a BOSH release
-func (c *Builder) WriteBaseConfig(release *model.Release) error {
+func (c *Builder) WriteBaseConfig(releases []*model.Release) error {
 	var writer configWriter
 	var err error
 
@@ -57,16 +57,18 @@ func (c *Builder) WriteBaseConfig(release *model.Release) error {
 		return fmt.Errorf("Invalid config writer provider %s", c.provider)
 	}
 
-	if err := c.writeDescriptionConfigs(release, writer); err != nil {
-		return err
-	}
+	for _, release := range releases {
+		if err := c.writeDescriptionConfigs(release, writer); err != nil {
+			return err
+		}
 
-	if err := c.writeSpecConfigs(release, writer); err != nil {
-		return err
-	}
+		if err := c.writeSpecConfigs(release, writer); err != nil {
+			return err
+		}
 
-	if err := c.writeOpinionsConfigs(release, writer); err != nil {
-		return err
+		if err := c.writeOpinionsConfigs(release, writer); err != nil {
+			return err
+		}
 	}
 
 	return writer.Save(c.targetLocation)
@@ -76,7 +78,7 @@ func (c *Builder) writeSpecConfigs(release *model.Release, confWriter configWrit
 
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
-			key, err := c.boshKeyToConsulPath(fmt.Sprintf("%s.%s", job.Name, property.Name), SpecStore)
+			key, err := c.boshKeyToConsulPath(fmt.Sprintf("R-%s-J-%s.%s", release.Name, job.Name, property.Name), SpecStore)
 			if err != nil {
 				return err
 			}

@@ -7,8 +7,10 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
+  - name: ntpd
+    release_name: ntp
 - name: foorole
   is_task: true
   jobs:
-  - name: tor
-    release_name: tor
+  - name: ntpd
+    release_name: foo
