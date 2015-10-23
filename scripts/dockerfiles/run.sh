@@ -47,6 +47,7 @@ ip_address=`/bin/hostname -i`
   "/var/vcap/jobs-src/{{ $job.Name }}/templates/{{ $template.SourcePath }}"
 # =====================================================
 {{ end }}
+{{ if not $role.IsTask }}
 # ============================================================================
 #         Templates for job {{ $job.Name }}
 # ============================================================================
@@ -60,7 +61,9 @@ ip_address=`/bin/hostname -i`
   "/var/vcap/jobs-src/{{ $job.Name }}/monit"
 # =====================================================
 {{ end }}
+{{ end }}
 
+{{ if not .IsTask }}
 # Process monitrc.erb template
 /opt/hcf/configgin/configgin \
   --data '{"job": { "name": "hcf-monit-master" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
@@ -70,10 +73,11 @@ ip_address=`/bin/hostname -i`
   --role    "{{$role.Name}}" \
   --job     "hcf-monit-master" \
   "/opt/hcf/monitrc.erb"
+chmod 0600 /etc/monitrc
+{{ end }}
 
 {{ end }}
 
-chmod 0600 /etc/monitrc
 
 # Create run dir
 mkdir -p /var/vcap/sys/run

@@ -71,6 +71,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
 	assert.Nil(err)
 	assert.NotContains(string(runScriptContents), "monit -vI")
+	assert.NotContains(string(runScriptContents), "/etc/monitrc")
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
 }
 
