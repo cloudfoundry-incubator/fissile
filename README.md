@@ -3,7 +3,7 @@
 
 
 Fissile converts an existing BOSH release (packaged, like the ones you download from bosh.io) into docker images.
-It’s supposed to do this using just the release itself, without a BOSH deployment, CPIs or a BOSH agent.
+It’s supposed to do this using just the release itself, without a BOSH deployment, CPIs, or a BOSH agent.
 
 
 At a high level, fissile helps you go through the following process:
