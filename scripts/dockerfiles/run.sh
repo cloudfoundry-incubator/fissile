@@ -38,7 +38,7 @@ ip_address=`/bin/hostname -i`
 # ============================================================================
 {{ range $j, $template := $job.Templates }}
 /opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "{{ $job.Name }}" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
+  --data '{"job": { "name": "{{ $role.Name }}" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
   --output  "/var/vcap/jobs/{{ $job.Name }}/{{$template.DestinationPath}}" \
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
@@ -52,7 +52,7 @@ ip_address=`/bin/hostname -i`
 #         Templates for job {{ $job.Name }}
 # ============================================================================
 /opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "{{ $job.Name }}" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
+  --data '{"job": { "name": "{{ $role.Name }}" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
   --output  "/var/vcap/monit/{{ $job.Name }}.monitrc" \
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
@@ -66,7 +66,7 @@ ip_address=`/bin/hostname -i`
 {{ if not .IsTask }}
 # Process monitrc.erb template
 /opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "hcf-monit-master" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
+  --data '{"job": { "name": "{{ $role.Name }}" }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
   --output  "/etc/monitrc" \
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
