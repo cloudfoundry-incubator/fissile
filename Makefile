@@ -2,8 +2,12 @@ NO_COLOR=\033[0m
 OK_COLOR=\033[32;01m
 ERROR_COLOR=\033[31;01m
 WARN_COLOR=\033[33;01m
-APP_VERSION ?= 0.0.1
 PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
+
+include version.mk
+
+BUILD:=$(shell echo `whoami`-`git rev-parse --short HEAD`-`date -u +%Y%m%d%H%M%S`)
+APP_VERSION=$(VERSION)-$(BUILD)
 
 .PHONY: all clean format lint vet bindata build test
 
