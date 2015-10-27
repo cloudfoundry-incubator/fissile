@@ -6,7 +6,8 @@ PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
 
 include version.mk
 
-BUILD:=$(shell echo `whoami`-`git rev-parse --short HEAD`-`date -u +%Y%m%d%H%M%S`)
+BRANCH:=$(shell git rev-parse --short HEAD)
+BUILD:=$(shell whoami)-$(BRANCH)-$(shell date -u +%Y%m%d%H%M%S)
 APP_VERSION=$(VERSION)-$(BUILD)
 
 .PHONY: all clean format lint vet bindata build test
@@ -15,7 +16,7 @@ all: clean format lint vet bindata build test
 
 clean:
 	@echo "$(OK_COLOR)==> Cleaning$(NO_COLOR)"
-	rm -f fissile
+	rm -rf build/
 
 format:
 	@echo "$(OK_COLOR)==> Checking format$(NO_COLOR)"
@@ -34,19 +35,19 @@ vet:
 
 bindata:
 	@echo "$(OK_COLOR)==> Generating code$(NO_COLOR)"
-	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh &&\
-	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh &&\
+	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh && \
+	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh && \
 	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
 	@echo "$(NO_COLOR)\c"
 	
 build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
-	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
-	gox -verbose \
-	-ldflags="-X main.version $(APP_VERSION) " \
-	-os="linux darwin " \
-	-arch="amd64" \
-	-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
+	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
+		gox -verbose \
+			-ldflags="-X main.version $(APP_VERSION) " \
+			-os="linux darwin " \
+			-arch="amd64" \
+			-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
 	@echo "$(NO_COLOR)\c"
 
 tools:
