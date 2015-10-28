@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
 
+	"github.com/fatih/color"
 	"github.com/termie/go-shutil"
 )
 
@@ -75,17 +77,22 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	if err := os.MkdirAll(packagesDir, 0755); err != nil {
 		return "", err
 	}
-	packageSet := map[string]bool{}
+	packageSet := map[string]string{}
 	for _, job := range role.Jobs {
 		for _, pkg := range job.Packages {
 			// Only copy packages that we haven't copied before
 			if _, ok := packageSet[pkg.Name]; ok == false {
-				packageSet[pkg.Name] = true
+				packageSet[pkg.Name] = pkg.Fingerprint
 			} else {
+				if pkg.Fingerprint != packageSet[pkg.Name] {
+					log.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
+						color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
+				}
+
 				continue
 			}
 
-			compiledDir := filepath.Join(r.compiledPackagesPath, pkg.Name, "compiled")
+			compiledDir := filepath.Join(r.compiledPackagesPath, pkg.Name, pkg.Fingerprint, "compiled")
 			if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
 				return "", err
 			}

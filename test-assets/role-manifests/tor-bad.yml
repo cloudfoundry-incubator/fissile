@@ -3,8 +3,11 @@ roles:
   - name: myrole
     jobs:
       - name: new_hostname
+        release_name: tor
       - name: tor
+        release_name: tor
   - name: foorole
     jobs:
       - name: foo
+        release_name: tor	
  

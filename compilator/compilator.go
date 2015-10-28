@@ -348,7 +348,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err erro
 	}()
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Error compiling package %s: %s", pkg.Name, err.Error())
 	}
 
 	if exitCode != 0 {
@@ -364,14 +364,15 @@ func (c *Compilator) compilePackage(pkg *model.Package) (compiled bool, err erro
 // We want to create a package structure like this:
 // .
 // └── <pkg-name>
-//     ├── compiled
-//     ├── compiled-temp
-//     └── sources
-//         └── var
-//             └── vcap
-//                 ├── packages
-//                 │   └── <dependency-package>
-//                 └── source
+//    └── <pkg-fingerprint>
+//	     ├── compiled
+//	     ├── compiled-temp
+//	     └── sources
+//	         └── var
+//	             └── vcap
+//	                 ├── packages
+//	                 │   └── <dependency-package>
+//	                 └── source
 func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 	dependenciesPackageDir := c.getDependenciesPackageDir(pkg)
 	sourcePackageDir := c.getSourcePackageDir(pkg)
@@ -388,15 +389,15 @@ func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 }
 
 func (c *Compilator) getTargetPackageSourcesDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, "sources")
+	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "sources")
 }
 
 func (c *Compilator) getPackageCompiledTempDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, "compiled-temp")
+	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "compiled-temp")
 }
 
 func (c *Compilator) getPackageCompiledDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, "compiled")
+	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "compiled")
 }
 
 func (c *Compilator) getDependenciesPackageDir(pkg *model.Package) string {
@@ -444,7 +445,7 @@ func (c *Compilator) getPackageStatus(pkg *model.Package) (int, error) {
 	}
 
 	// If compiled package exists on hard
-	compiledPackagePath := filepath.Join(c.HostWorkDir, pkg.Name, "compiled")
+	compiledPackagePath := c.getPackageCompiledDir(pkg)
 	compiledPackagePathExists, err := validatePath(compiledPackagePath, true, "package path")
 	if err != nil {
 		return packageError, err

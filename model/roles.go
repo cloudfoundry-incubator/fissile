@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
@@ -25,14 +26,27 @@ type Role struct {
 }
 
 type roleJob struct {
-	Name string `yaml:"name"`
+	Name        string `yaml:"name"`
+	ReleaseName string `yaml:"release_name"`
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
-func LoadRoleManifest(manifestFilePath string, release *Release) (*RoleManifest, error) {
+func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManifest, error) {
 	manifestContents, err := ioutil.ReadFile(manifestFilePath)
 	if err != nil {
 		return nil, err
+	}
+
+	mappedReleases := map[string]*Release{}
+
+	for _, release := range releases {
+		_, ok := mappedReleases[release.Name]
+
+		if ok {
+			return nil, fmt.Errorf("Error - release %s has been loaded more than once.", release.Name)
+		}
+
+		mappedReleases[release.Name] = release
 	}
 
 	rolesManifest := RoleManifest{}
@@ -46,6 +60,13 @@ func LoadRoleManifest(manifestFilePath string, release *Release) (*RoleManifest,
 		role.Jobs = make([]*Job, len(role.JobNameList))
 
 		for idx, roleJob := range role.JobNameList {
+			release, ok := mappedReleases[roleJob.ReleaseName]
+
+			if !ok {
+				return nil, fmt.Errorf("Error - release %s has not been loaded and is referenced by job %s in role %s.",
+					roleJob.ReleaseName, roleJob.Name, role.Name)
+			}
+
 			job, err := release.LookupJob(roleJob.Name)
 			if err != nil {
 				return nil, err
@@ -58,6 +79,7 @@ func LoadRoleManifest(manifestFilePath string, release *Release) (*RoleManifest,
 	return &rolesManifest, nil
 }
 
+// GetScriptPaths returns the paths to the startup scripts for a role
 func (r *Role) GetScriptPaths() map[string]string {
 	result := map[string]string{}
 

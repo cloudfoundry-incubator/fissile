@@ -30,7 +30,7 @@ func TestConfigStoreDirTreeWriter(t *testing.T) {
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
 
-	err = confStore.WriteBaseConfig(release)
+	err = confStore.WriteBaseConfig([]*model.Release{release})
 
 	assert.Nil(err)
 
