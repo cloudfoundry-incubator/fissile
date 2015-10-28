@@ -69,6 +69,99 @@ func TestCompilationBasic(t *testing.T) {
 	<-waitCh
 }
 
+func TestCompilationSkipCompiled(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	compileChan := make(chan string)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return pkg.Name == "ruby-2.5", nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	waitCh := make(chan struct{})
+	go func() {
+		c.Compile(1, release)
+		close(waitCh)
+	}()
+
+	assert.Equal(<-compileChan, "go-1.4")
+	assert.Equal(<-compileChan, "consul")
+	<-waitCh
+}
+
+func TestGetPackageStatusCompiled(t *testing.T) {
+	assert := assert.New(t)
+
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	dockerManager, err := docker.NewImageManager()
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := model.NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
+
+	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, release.Packages[0].Fingerprint, "compiled")
+	err = os.MkdirAll(compiledPackagePath, 0755)
+	assert.Nil(err)
+
+	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
+	assert.Nil(err)
+
+	status, err := compilator.isPackageCompiled(release.Packages[0])
+
+	assert.Nil(err)
+	assert.True(status)
+}
+
+func TestGetPackageStatusNone(t *testing.T) {
+	assert := assert.New(t)
+
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	dockerManager, err := docker.NewImageManager()
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	release, err := model.NewRelease(ntpReleasePath)
+	assert.Nil(err)
+
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	assert.Nil(err)
+
+	compilator.initPackageMaps(release)
+
+	status, err := compilator.isPackageCompiled(release.Packages[0])
+
+	assert.Nil(err)
+	assert.False(status)
+}
+
 func TestPackageFolderStructure(t *testing.T) {
 	assert := assert.New(t)
 
@@ -206,24 +299,30 @@ func TestCreateDepBuckets(t *testing.T) {
 	assert.Equal(t, buckets[2][0].Name, "cloud_controller_go")
 }
 
-func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
-	pathInfo, err := os.Stat(path)
+func TestRemoveCompiledPackages(t *testing.T) {
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
 
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		return false, err
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return pkg.Name == "ruby-2.5", nil
 	}
 
-	if pathInfo.IsDir() && !shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
-	} else if !pathInfo.IsDir() && shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
-	}
+	assert := assert.New(t)
 
-	return true, nil
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	c.initPackageMaps(release)
+	packages, err := c.removeCompiledPackages(release.Packages)
+	assert.Nil(err)
+
+	assert.Equal(2, len(packages))
+	assert.Equal(packages[0].Name, "consul")
+	assert.Equal(packages[1].Name, "go-1.4")
 }
 
 func genTestCase(args ...string) *model.Release {

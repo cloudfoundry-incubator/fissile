@@ -27,9 +27,10 @@ const (
 	ContainerPackagesDir = "/var/vcap/packages"
 )
 
+// mocked out in tests
 var (
-	// compilePackageHarness is mocked out in tests
-	compilePackageHarness = (*Compilator).compilePackage
+	compilePackageHarness    = (*Compilator).compilePackage
+	isPackageCompiledHarness = (*Compilator).isPackageCompiled
 )
 
 // Compilator represents the BOSH compiler
@@ -93,30 +94,48 @@ type compileResult struct {
 //   and won't wait for the <-doneCh for the N packages it drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	c.initPackageMaps(release)
-	var workersGroup sync.WaitGroup
+	packages, err := c.removeCompiledPackages(release.Packages)
+	if err != nil {
+		return fmt.Errorf("failed to remove compiled packages: %v", err)
+	}
 
 	todoCh := make(chan *model.Package)
 	doneCh := make(chan compileResult)
 	killCh := make(chan struct{})
+	var workersGroup sync.WaitGroup
 
 	for i := 0; i < workerCount; i++ {
 		workersGroup.Add(1)
 		go c.compileWorker(i, todoCh, doneCh, killCh, &workersGroup)
 	}
 
-	go func() {
-		workersGroup.Add(1)
-		buckets := createDepBuckets(release.Packages)
-		for _, bucketPackages := range buckets {
-			for _, pkg := range bucketPackages {
-				todoCh <- pkg
-			}
-		}
-		close(todoCh)
-		workersGroup.Done()
-	}()
+	go c.scheduleWork(todoCh, packages, &workersGroup)
+	c.collectResults(todoCh, doneCh, killCh, packages)
 
-	nPackages := len(release.Packages)
+	workersGroup.Wait()
+
+	return nil
+}
+
+func (c *Compilator) scheduleWork(todoCh chan *model.Package, packages []*model.Package, wg *sync.WaitGroup) {
+	wg.Add(1)
+	buckets := createDepBuckets(packages)
+	for _, bucketPackages := range buckets {
+		for _, pkg := range bucketPackages {
+			todoCh <- pkg
+		}
+	}
+	close(todoCh)
+	wg.Done()
+}
+
+func (c *Compilator) collectResults(
+	todoCh chan *model.Package,
+	doneCh chan compileResult,
+	killCh chan struct{},
+	packages []*model.Package,
+) {
+	nPackages := len(packages)
 	killed := false
 	for nPackages > 0 {
 		result := <-doneCh
@@ -148,9 +167,6 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		}
 	}
 
-	workersGroup.Wait()
-
-	return nil
 }
 
 func (c *Compilator) compileWorker(
@@ -342,8 +358,6 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 }
 
 func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
-	//log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("Starting compilation ...")))
-
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
 		return err
@@ -413,6 +427,62 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	}
 
 	return os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
+}
+
+func (c *Compilator) isPackageCompiled(pkg *model.Package) (bool, error) {
+	// If compiled package exists on hard disk
+	compiledPackagePath := c.getPackageCompiledDir(pkg)
+	compiledPackagePathExists, err := validatePath(compiledPackagePath, true, "package path")
+	if err != nil {
+		return false, err
+	}
+
+	if !compiledPackagePathExists {
+		return false, nil
+	}
+
+	compiledDirEmpty, err := isDirEmpty(compiledPackagePath)
+	if err != nil {
+		return false, err
+	}
+
+	return !compiledDirEmpty, nil
+}
+
+func isDirEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return true, err
+	}
+
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+
+	return false, err
+}
+
+func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, error) {
+	pathInfo, err := os.Stat(path)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	if pathInfo.IsDir() && !shouldBeDir {
+		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
+	} else if !pathInfo.IsDir() && shouldBeDir {
+		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
+	}
+
+	return true, nil
 }
 
 // createComplilationDirStructure creates a package structure like this:
@@ -514,4 +584,25 @@ func (c *Compilator) initPackageMaps(release *model.Release) {
 	for _, pkg := range release.Packages {
 		c.packageDone[pkg.Name] = make(chan struct{})
 	}
+}
+
+// removeCompiledPackages must be called after initPackageMaps as it closes
+// the broadcast channels of anything already compiled.
+func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model.Package, error) {
+	var culledPackages []*model.Package
+	for i := 0; i < len(packages); i++ {
+		p := packages[i]
+		compiled, err := isPackageCompiledHarness(c, p)
+		if err != nil {
+			return nil, err
+		}
+
+		if compiled {
+			close(c.packageDone[p.Name])
+		} else {
+			culledPackages = append(culledPackages, p)
+		}
+	}
+
+	return culledPackages, nil
 }
