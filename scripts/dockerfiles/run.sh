@@ -104,6 +104,19 @@ bash /opt/hcf/startup/{{ $script }}
 /var/vcap/jobs/{{ $job.Name }}/bin/run
 {{ end }}
 {{ else }}
-monit -vI
+
+monit -vI &
+pid=$!
+echo "pid = $pid"
+
+killer() {
+  echo "killing $pid"
+  kill $pid
+}
+
+trap killer INT TERM
+
+( while `sleep 1`; do true; done )
+
 {{ end }}
 {{ end }}
