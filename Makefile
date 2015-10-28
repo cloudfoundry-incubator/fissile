@@ -39,7 +39,7 @@ bindata:
 	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh && \
 	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
 	@echo "$(NO_COLOR)\c"
-	
+
 build: bindata
 	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
@@ -62,6 +62,7 @@ tools:
 	go get -u github.com/mitchellh/gox
 	@echo "$(NO_COLOR)\c"
 
+# If this fails, try running 'make bindata' and rerun 'make test'
 test:
 	@echo "$(OK_COLOR)==> Testing$(NO_COLOR)"
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
