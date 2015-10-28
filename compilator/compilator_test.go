@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hpcloud/fissile/docker"
@@ -37,10 +38,71 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
-func TestCompilation(t *testing.T) {
+func TestCompilationBasic(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+	}()
+
+	compileChan := make(chan string)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	waitCh := make(chan struct{})
+	go func() {
+		c.Compile(1, release)
+		close(waitCh)
+	}()
+
+	assert.Equal(<-compileChan, "ruby-2.5")
+	assert.Equal(<-compileChan, "go-1.4")
+	assert.Equal(<-compileChan, "consul")
+	<-waitCh
 }
 
-func TestCompilationSourcePreparation(t *testing.T) {
+func TestCompilationSkipCompiled(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	compileChan := make(chan string)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return pkg.Name == "ruby-2.5", nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	waitCh := make(chan struct{})
+	go func() {
+		c.Compile(1, release)
+		close(waitCh)
+	}()
+
+	assert.Equal(<-compileChan, "go-1.4")
+	assert.Equal(<-compileChan, "consul")
+	<-waitCh
 }
 
 func TestGetPackageStatusCompiled(t *testing.T) {
@@ -69,10 +131,10 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
 	assert.Nil(err)
 
-	status, err := compilator.getPackageStatus(release.Packages[0])
+	status, err := compilator.isPackageCompiled(release.Packages[0])
 
 	assert.Nil(err)
-	assert.Equal(packageCompiled, status)
+	assert.True(status)
 }
 
 func TestGetPackageStatusNone(t *testing.T) {
@@ -94,10 +156,10 @@ func TestGetPackageStatusNone(t *testing.T) {
 
 	compilator.initPackageMaps(release)
 
-	status, err := compilator.getPackageStatus(release.Packages[0])
+	status, err := compilator.isPackageCompiled(release.Packages[0])
 
 	assert.Nil(err)
-	assert.Equal(packageNone, status)
+	assert.False(status)
 }
 
 func TestPackageFolderStructure(t *testing.T) {
@@ -195,7 +257,92 @@ func TestCompilePackage(t *testing.T) {
 	}()
 	assert.Nil(err)
 
-	compiled, err := comp.compilePackage(release.Packages[0])
+	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
-	assert.True(compiled)
+}
+
+func TestCreateDepBuckets(t *testing.T) {
+	t.Parallel()
+
+	packages := []*model.Package{
+		{
+			Name: "consul",
+			Dependencies: []*model.Package{
+				{Name: "go-1.4"},
+			},
+		},
+		{
+			Name:         "go-1.4",
+			Dependencies: nil,
+		},
+		{
+			Name: "cloud_controller_go",
+			Dependencies: []*model.Package{
+				{Name: "go-1.4"},
+				{Name: "ruby-2.5"},
+			},
+		},
+		{
+			Name:         "ruby-2.5",
+			Dependencies: nil,
+		},
+	}
+
+	buckets := createDepBuckets(packages)
+	assert.Equal(t, len(buckets), 3)
+	assert.Equal(t, len(buckets[0]), 2)
+	assert.Equal(t, buckets[0][0].Name, "ruby-2.5") // Ruby should be first
+	assert.Equal(t, buckets[0][1].Name, "go-1.4")
+	assert.Equal(t, len(buckets[1]), 1)
+	assert.Equal(t, buckets[1][0].Name, "consul")
+	assert.Equal(t, len(buckets[2]), 1)
+	assert.Equal(t, buckets[2][0].Name, "cloud_controller_go")
+}
+
+func TestRemoveCompiledPackages(t *testing.T) {
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return pkg.Name == "ruby-2.5", nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	c.initPackageMaps(release)
+	packages, err := c.removeCompiledPackages(release.Packages)
+	assert.Nil(err)
+
+	assert.Equal(2, len(packages))
+	assert.Equal(packages[0].Name, "consul")
+	assert.Equal(packages[1].Name, "go-1.4")
+}
+
+func genTestCase(args ...string) *model.Release {
+	var packages []*model.Package
+
+	for _, pkgDef := range args {
+		splits := strings.Split(pkgDef, ">")
+		pkgName := splits[0]
+
+		var deps []*model.Package
+		if len(splits) == 2 {
+			pkgDeps := strings.Split(splits[1], ",")
+
+			for _, dep := range pkgDeps {
+				deps = append(deps, &model.Package{Name: dep})
+			}
+		}
+
+		packages = append(packages, &model.Package{Name: pkgName, Dependencies: deps})
+	}
+
+	return &model.Release{Packages: packages}
 }
