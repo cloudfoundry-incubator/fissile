@@ -27,4 +27,4 @@ ADD run.sh /opt/hcf/
 ADD {{.license}} {{.notice}} /opt/hcf/share/doc/
 {{ end }}
 
-ENTRYPOINT ["/opt/hcf/run.sh"]
+ENTRYPOINT ["/bin/bash", "/opt/hcf/run.sh"]
