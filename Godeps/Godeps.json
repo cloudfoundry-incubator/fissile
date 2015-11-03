@@ -16,6 +16,10 @@
 			"Rev": "a65b733b303f0055f8d324d805f393cd3e7a7904"
 		},
 		{
+			"ImportPath": "github.com/cppforlife/go-semi-semantic/version",
+			"Rev": "a7ba07c61e58e6df7693d49a13d24f533182518a"
+		},
+		{
 			"ImportPath": "github.com/fatih/color",
 			"Comment": "v0.1-8-g76d4231",
 			"Rev": "76d423163af754ff6423d2d9be0057fbf03c57c2"
@@ -23,14 +27,6 @@
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
 			"Rev": "c9ad0ce23f68428421adfc6ced9e6123f54788a5"
-		},
-		{
-			"ImportPath": "github.com/hashicorp/errwrap",
-			"Rev": "7554cd9344cec97297fa6649b055a8c98c2a1e55"
-		},
-		{
-			"ImportPath": "github.com/hashicorp/go-multierror",
-			"Rev": "d30f09973e19c1dfcd120b2d9c4f168e68d6b5d5"
 		},
 		{
 			"ImportPath": "github.com/mattn/go-isatty",

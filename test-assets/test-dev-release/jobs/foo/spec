@@ -1,0 +1,7 @@
+---
+name: foo
+templates:
+  foo_ctl.erb: bin/foo_ctl
+
+packages:
+- foo

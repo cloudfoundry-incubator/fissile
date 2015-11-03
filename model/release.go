@@ -28,6 +28,8 @@ type Release struct {
 	CommitHash         string
 	Version            string
 	Path               string
+	Dev                bool
+	DevBOSHCacheDir    string
 
 	manifest map[interface{}]interface{}
 }
@@ -46,6 +48,7 @@ func NewRelease(path string) (*Release, error) {
 		Packages: []*Package{},
 		Jobs:     []*Job{},
 		License:  ReleaseLicense{},
+		Dev:      false,
 	}
 
 	if err := release.validatePathStructure(); err != nil {
@@ -257,7 +260,11 @@ func (r *Release) jobsDirPath() string {
 }
 
 func (r *Release) manifestFilePath() string {
-	return filepath.Join(r.Path, manifestFile)
+	if r.Dev {
+		return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
+	} else {
+		return filepath.Join(r.Path, manifestFile)
+	}
 }
 
 // targzIterate iterates over the files it finds in a tar.gz file and calls a

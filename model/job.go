@@ -20,7 +20,7 @@ type Job struct {
 	Packages    []*Package
 	Path        string
 	Fingerprint string
-	Sha1        string
+	SHA1        string
 	Properties  []*JobProperty
 	Version     string
 	Release     *Release
@@ -79,8 +79,8 @@ func (j *Job) ValidateSHA1() error {
 
 	computedSha1 := fmt.Sprintf("%x", h.Sum(nil))
 
-	if computedSha1 != j.Sha1 {
-		return fmt.Errorf("Computed sha1 (%s) is different than manifest sha1 (%s) for job archive %s", computedSha1, j.Sha1, j.Path)
+	if computedSha1 != j.SHA1 {
+		return fmt.Errorf("Computed sha1 (%s) is different than manifest sha1 (%s) for job archive %s", computedSha1, j.SHA1, j.Path)
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (j *Job) loadJobInfo() (err error) {
 	j.Name = j.jobReleaseInfo["name"].(string)
 	j.Version = j.jobReleaseInfo["version"].(string)
 	j.Fingerprint = j.jobReleaseInfo["fingerprint"].(string)
-	j.Sha1 = j.jobReleaseInfo["sha1"].(string)
+	j.SHA1 = j.jobReleaseInfo["sha1"].(string)
 	j.Path = j.jobArchivePath()
 
 	return nil
@@ -217,5 +217,9 @@ func (j *Job) loadJobSpec() (err error) {
 }
 
 func (j *Job) jobArchivePath() string {
-	return fmt.Sprintf("%s.tgz", filepath.Join(j.Release.jobsDirPath(), j.Name))
+	if j.Release.Dev {
+		return filepath.Join(j.Release.DevBOSHCacheDir, j.SHA1)
+	} else {
+		return fmt.Sprintf("%s.tgz", filepath.Join(j.Release.jobsDirPath(), j.Name))
+	}
 }
