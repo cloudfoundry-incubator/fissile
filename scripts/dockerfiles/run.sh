@@ -73,7 +73,7 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
-  --release  "" \
+  --release "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" \
   --job     "hcf-monit-master" \
   "/opt/hcf/monitrc.erb"
 chmod 0600 /etc/monitrc
