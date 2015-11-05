@@ -43,7 +43,8 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
-  --job     "R-{{$job.Release.Name}}-J-{{$job.Name}}" \
+  --release "{{$job.Release.Name}}" \
+  --job     "{{$job.Name}}" \
   "/var/vcap/jobs-src/{{ $job.Name }}/templates/{{ $template.SourcePath }}"
 # =====================================================
 {{ end }}
@@ -57,7 +58,8 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
-  --job     "R-{{$job.Release.Name}}-J-{{$job.Name}}" \
+  --release "{{$job.Release.Name}}" \
+  --job     "{{$job.Name}}" \
   "/var/vcap/jobs-src/{{ $job.Name }}/monit"
 # =====================================================
 {{ end }}
@@ -71,6 +73,7 @@ ip_address=`/bin/hostname -i`
   --consul  "${consul_address}" \
   --prefix  "${config_store_prefix}" \
   --role    "{{$role.Name}}" \
+  --release  "" \
   --job     "hcf-monit-master" \
   "/opt/hcf/monitrc.erb"
 chmod 0600 /etc/monitrc
