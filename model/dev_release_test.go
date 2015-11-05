@@ -20,7 +20,7 @@ func TestDevReleaseValidationOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	_, err = NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 }
@@ -34,10 +34,11 @@ func TestDevReleaseLatestVersionOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)
+	assert.Equal("test-dev", release.Name)
 	assert.Equal("0+dev.2", release.Version)
 }
 
@@ -50,10 +51,26 @@ func TestDevReleaseSpecificVersionOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "0+dev.1", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "0+dev.1", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)
+	assert.Equal("0+dev.1", release.Version)
+}
+
+func TestDevReleaseSpecificNameOk(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	release, err := NewDevRelease(emptyDevReleasePath, "test2", "", emptyDevReleaseCachePath)
+
+	assert.Nil(err)
+	assert.Equal("test2", release.Name)
 	assert.Equal("0+dev.1", release.Version)
 }
 
@@ -81,7 +98,7 @@ func TestDevReleasePackagesOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)
@@ -104,7 +121,7 @@ func TestDevReleasePackageExtractOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)
@@ -132,7 +149,7 @@ func TestDevReleaseJobsOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)
@@ -155,7 +172,7 @@ func TestDevReleaseJobExtractOk(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	release, err := NewDevRelease(emptyDevReleasePath, "test-dev", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.Nil(err)
 	assert.NotNil(release)

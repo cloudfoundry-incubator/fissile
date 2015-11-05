@@ -127,11 +127,12 @@ func (j *Job) loadJobSpec() (err error) {
 
 	tempJobDir, err := ioutil.TempDir("", "fissile-job-dir")
 	defer func() {
-		cleanupErr := os.RemoveAll(tempJobDir)
-		if err == nil {
-			err = cleanupErr
-		} else {
-			err = fmt.Errorf("There were errors loading the job spec: %s. Cleanup error: %s", err.Error(), cleanupErr.Error())
+		if cleanupErr := os.RemoveAll(tempJobDir); cleanupErr != nil {
+			if err == nil {
+				err = cleanupErr
+			} else {
+				err = fmt.Errorf("There were errors loading the job spec: %s. Cleanup error: %s", err.Error(), cleanupErr.Error())
+			}
 		}
 	}()
 	if err != nil {
@@ -140,7 +141,7 @@ func (j *Job) loadJobSpec() (err error) {
 
 	jobDir, err := j.Extract(tempJobDir)
 	if err != nil {
-		return fmt.Errorf("Error extracting archive for job %s: %s", j.Name, err.Error())
+		return fmt.Errorf("Error extracting archive (%s) for job %s: %s", j.Path, j.Name, err.Error())
 	}
 
 	specFile := filepath.Join(jobDir, "job.MF")
