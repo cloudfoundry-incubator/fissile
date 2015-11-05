@@ -52,6 +52,25 @@ func (f *Fissile) ListPackages(releasePath string) {
 	)
 }
 
+// ListDevPackages will list all BOSH packages within a dev release
+func (f *Fissile) ListDevPackages(releasePath, releaseName, releaseVersion, cacheDir string) {
+	release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+
+	for _, pkg := range release.Packages {
+		log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+	}
+
+	log.Printf(
+		"There are %s packages present.",
+		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
+	)
+}
+
 // ListJobs will list all jobs within a release
 func (f *Fissile) ListJobs(releasePath string) {
 	release, err := model.NewRelease(releasePath)
@@ -60,6 +79,25 @@ func (f *Fissile) ListJobs(releasePath string) {
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	for _, job := range release.Jobs {
+		log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+	}
+
+	log.Printf(
+		"There are %s jobs present.",
+		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
+	)
+}
+
+// ListDevJobs will list all jobs within a dev release
+func (f *Fissile) ListDevJobs(releasePath, releaseName, releaseVersion, cacheDir string) {
+	release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+	}
+
+	log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 	for _, job := range release.Jobs {
 		log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)

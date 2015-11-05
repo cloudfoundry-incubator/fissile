@@ -22,7 +22,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		fallthrough
 	case c.Command.FullName() == "images create-roles":
 		{
-			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
 				log.Fatalln(color.RedString("%v", err))
 			}
@@ -34,7 +34,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 	default:
 		{
-			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
 				log.Fatalln(color.RedString("%v", err))
 			}
@@ -113,6 +113,20 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Bool("docker-only"),
 			c.Bool("with-sizes"),
 		)
+	case c.Command.FullName() == "dev jobs-report":
+		f.ListDevJobs(
+			paths["release"],
+			c.String("release-name"),
+			c.String("release-version"),
+			paths["cache-dir"],
+		)
+	case c.Command.FullName() == "dev packages-report":
+		f.ListDevPackages(
+			paths["release"],
+			c.String("release-name"),
+			c.String("release-version"),
+			paths["cache-dir"],
+		)
 	}
 }
 
@@ -143,5 +157,6 @@ func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]stri
 		}
 		absolutePaths[flagName] = path
 	}
+
 	return absolutePaths, nil
 }

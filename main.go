@@ -197,7 +197,7 @@ func main() {
 							Usage: "Path to a BOSH release.",
 						},
 					},
-					Usage:  "Print all template for all jobs in a release",
+					Usage:  "Print all templates for all jobs in a release",
 					Action: fissile.CommandRouter,
 				},
 			},
@@ -314,6 +314,66 @@ func main() {
 						},
 					},
 					Usage:  "Lists role images.",
+					Action: fissile.CommandRouter,
+				},
+			},
+		},
+		{
+			Name: "dev",
+			Subcommands: []cli.Command{
+				{
+
+					Name:    "jobs-report",
+					Aliases: []string{"jr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a dev BOSH release",
+						},
+						cli.StringFlag{
+							Name:  "release-name, rn",
+							Usage: "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value: "",
+						},
+						cli.StringFlag{
+							Name:  "release-version, rv",
+							Usage: "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value: "",
+						},
+						cli.StringFlag{
+							Name:  "cache-dir, cd",
+							Usage: "Local BOSH cache directory; you shouldn't need to change this default",
+							Value: "~/.bosh/cache/",
+						},
+					},
+					Usage:  "List all jobs in a dev BOSH release",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "packages-report",
+					Aliases: []string{"pr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a dev BOSH release",
+						},
+						cli.StringFlag{
+							Name:  "release-name, rn",
+							Usage: "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value: "",
+						},
+						cli.StringFlag{
+							Name:  "release-version, rv",
+							Usage: "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value: "",
+						},
+						cli.StringFlag{
+							Name:  "cache-dir, cd",
+							Usage: "Local BOSH cache directory; you shouldn't need to change this default",
+							Value: "~/.bosh/cache/",
+						},
+					},
+					Usage:  "List all packages in a dev BOSH release",
 					Action: fissile.CommandRouter,
 				},
 			},
