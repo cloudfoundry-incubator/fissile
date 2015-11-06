@@ -19,6 +19,8 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		fallthrough
 	case c.Command.FullName() == "dev packages-report":
 		fallthrough
+	case c.Command.FullName() == "dev compile":
+		fallthrough
 	case c.Command.FullName() == "configuration generate":
 		fallthrough
 	case c.Command.FullName() == "images list-roles":
@@ -137,6 +139,20 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
+		)
+	case c.Command.FullName() == "dev compile":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.CompileDev(
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+			c.String("repository"),
+			paths["target"],
+			c.Int("workers"),
 		)
 	}
 }
