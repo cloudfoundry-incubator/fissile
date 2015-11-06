@@ -6,7 +6,7 @@ import (
 	"runtime"
 
 	"github.com/hpcloud/fissile/app"
-	configstore "github.com/hpcloud/fissile/config-store"
+	"github.com/hpcloud/fissile/config-store"
 
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
@@ -17,10 +17,11 @@ var version string
 func main() {
 	if runtime.GOOS == "windows" {
 		log.SetOutput(color.Output)
+	} else {
+		log.SetOutput(os.Stdout)
 	}
 
 	log.SetFlags(0)
-	log.SetOutput(os.Stdout)
 
 	cliApp := cli.NewApp()
 	cliApp.Name = "fissile"
