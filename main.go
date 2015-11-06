@@ -6,7 +6,7 @@ import (
 	"runtime"
 
 	"github.com/hpcloud/fissile/app"
-	"github.com/hpcloud/fissile/config-store"
+	configstore "github.com/hpcloud/fissile/config-store"
 
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
@@ -20,6 +20,7 @@ func main() {
 	}
 
 	log.SetFlags(0)
+	log.SetOutput(os.Stdout)
 
 	cliApp := cli.NewApp()
 	cliApp.Name = "fissile"
