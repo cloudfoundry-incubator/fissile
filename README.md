@@ -58,7 +58,8 @@ The following diagram shows the ordering of things. The highlighted items are co
  > ```bash
  > fissile compilation build-base \
  >     --base-image ubuntu:14.04 \
- >     --repository fissile
+ >     --repository fissile \
+ >     --release ~/fissile-releases/cf-release-vXXX
  > ```
 
 - `compilation show-base`
