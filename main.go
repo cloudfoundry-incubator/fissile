@@ -326,24 +326,28 @@ func main() {
 					Name:    "jobs-report",
 					Aliases: []string{"jr"},
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "release, r",
-							Usage: "Path to a dev BOSH release",
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
 						},
 						cli.StringFlag{
-							Name:  "release-name, rn",
-							Usage: "Name of a dev BOSH release; if empty, default configured dev release name will be used",
-							Value: "",
-						},
-						cli.StringFlag{
-							Name:  "release-version, rv",
-							Usage: "Version of a dev BOSH release; if empty, the latest dev release will be used",
-							Value: "",
-						},
-						cli.StringFlag{
-							Name:  "cache-dir, cd",
-							Usage: "Local BOSH cache directory; you shouldn't need to change this default",
-							Value: "~/.bosh/cache/",
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; you shouldn't need to change this default",
+							Value:  "~/.bosh/cache/",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
 					Usage:  "List all jobs in a dev BOSH release",
@@ -353,24 +357,28 @@ func main() {
 					Name:    "packages-report",
 					Aliases: []string{"pr"},
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "release, r",
-							Usage: "Path to a dev BOSH release",
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
 						},
 						cli.StringFlag{
-							Name:  "release-name, rn",
-							Usage: "Name of a dev BOSH release; if empty, default configured dev release name will be used",
-							Value: "",
-						},
-						cli.StringFlag{
-							Name:  "release-version, rv",
-							Usage: "Version of a dev BOSH release; if empty, the latest dev release will be used",
-							Value: "",
-						},
-						cli.StringFlag{
-							Name:  "cache-dir, cd",
-							Usage: "Local BOSH cache directory; you shouldn't need to change this default",
-							Value: "~/.bosh/cache/",
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; you shouldn't need to change this default",
+							Value:  "~/.bosh/cache/",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
 					Usage:  "List all packages in a dev BOSH release",

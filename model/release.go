@@ -262,9 +262,9 @@ func (r *Release) jobsDirPath() string {
 func (r *Release) manifestFilePath() string {
 	if r.Dev {
 		return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
-	} else {
-		return filepath.Join(r.Path, manifestFile)
 	}
+
+	return filepath.Join(r.Path, manifestFile)
 }
 
 // targzIterate iterates over the files it finds in a tar.gz file and calls a

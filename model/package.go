@@ -119,7 +119,7 @@ func (p *Package) loadPackageDependencies() (err error) {
 func (p *Package) packageArchivePath() string {
 	if p.Release.Dev {
 		return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
-	} else {
-		return fmt.Sprintf("%s.tgz", filepath.Join(p.Release.packagesDirPath(), p.Name))
 	}
+
+	return fmt.Sprintf("%s.tgz", filepath.Join(p.Release.packagesDirPath(), p.Name))
 }

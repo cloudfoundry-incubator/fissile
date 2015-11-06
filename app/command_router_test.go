@@ -51,3 +51,113 @@ func TestFindAbsolutePathsForArray(t *testing.T) {
 	// To get an error object out of app.AbsolutePathsForFlags we would need to delete
 	// the current directory while the test is running.
 }
+
+func TestDevReleaseArgumentsJustPathsOK(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{"/foo", "/bar"})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name"}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version"}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.Nil(err)
+}
+
+func TestDevReleaseArgumentsPathsAndNamesOK(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{"/foo", "/bar"})
+	releaseName := cli.StringSlice([]string{"foo-name", "bar-name"})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name", Value: &releaseName}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version"}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.Nil(err)
+}
+
+func TestDevReleaseArgumentsPathsNamesAndVersionsOK(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{"/foo", "/bar"})
+	releaseName := cli.StringSlice([]string{"foo-name", "bar-name"})
+	releaseValue := cli.StringSlice([]string{"0+dev.1", "0+dev.2"})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name", Value: &releaseName}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version", Value: &releaseValue}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.Nil(err)
+}
+
+func TestDevReleaseArgumentsNotOK(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name"}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version"}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "Please specify at least one release path")
+}
+
+func TestDevReleaseArgumentsMissingName(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{"/foo", "/bar"})
+	releaseName := cli.StringSlice([]string{"foo-name"})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name", Value: &releaseName}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version"}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "If you specify custom release names, you need to do it for all of them")
+}
+
+func TestDevReleaseArgumentsMissingVersion(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+
+	release := cli.StringSlice([]string{"/foo", "/bar"})
+	releaseValue := cli.StringSlice([]string{"0+dev.3"})
+
+	cli.StringSliceFlag{Name: "release", Value: &release}.Apply(set)
+	cli.StringSliceFlag{Name: "release-name"}.Apply(set)
+	cli.StringSliceFlag{Name: "release-version", Value: &releaseValue}.Apply(set)
+
+	c := cli.NewContext(nil, set, nil)
+
+	err := validateDevReleaseArgs(c)
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "If you specify custom release versions, you need to do it for all of them")
+}

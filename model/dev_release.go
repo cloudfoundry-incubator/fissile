@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// NewRelease will create an instance of a BOSH development release
+// NewDevRelease will create an instance of a BOSH development release
 func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, error) {
 	release := &Release{
 		Path:            path,
@@ -69,12 +69,6 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 }
 
 func (r *Release) getDefaultDevReleaseName() (ver string, err error) {
-	defer func() {
-		if re := recover(); re != nil {
-			err = fmt.Errorf("Error trying to load dev configuration file for release %s: %s", r.Name, re)
-		}
-	}()
-
 	devReleaseConfigContent, err := ioutil.ReadFile(r.getDevReleaseDevConfigFile())
 	if err != nil {
 		return "", err
@@ -86,16 +80,16 @@ func (r *Release) getDefaultDevReleaseName() (ver string, err error) {
 		return "", err
 	}
 
-	return devReleaseConfig["dev_name"].(string), nil
+	var name string
+	if value, ok := devReleaseConfig["dev_name"]; !ok {
+		return "", fmt.Errorf("dev_name key did not exist in configuration file for release: %s", r.Path)
+	} else if name, ok = value.(string); !ok {
+		return "", fmt.Errorf("dev_name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
+	}
+	return name, nil
 }
 
 func (r *Release) getLatestDevVersion() (ver string, err error) {
-	defer func() {
-		if re := recover(); re != nil {
-			err = fmt.Errorf("Error trying to load dev release index for release %s: %s", r.Name, re)
-		}
-	}()
-
 	devReleaseIndexContent, err := ioutil.ReadFile(r.getDevReleaseIndexPath())
 	if err != nil {
 		return "", err
@@ -108,9 +102,24 @@ func (r *Release) getLatestDevVersion() (ver string, err error) {
 	}
 
 	var semiVer version.Version
+	var builds map[interface{}]interface{}
 
-	for _, build := range devReleaseIndex["builds"].(map[interface{}]interface{}) {
-		buildVersion := build.(map[interface{}]interface{})["version"].(string)
+	if value, ok := devReleaseIndex["builds"]; !ok {
+		return "", fmt.Errorf("builds key did not exist in dev releases index file for release: %s", r.Name)
+	} else if builds, ok = value.(map[interface{}]interface{}); !ok {
+		return "", fmt.Errorf("builds key in dev releases index file was not a map for release: %s, type: %T, value: %v", r.Name, value, value)
+	}
+
+	for _, build := range builds {
+		var buildVersion string
+
+		if buildMap, ok := build.(map[interface{}]interface{}); !ok {
+			return "", fmt.Errorf("build entry was not a map in release: %s, type: %T, value: %v", r.Name, build, build)
+		} else if value, ok := buildMap["version"]; !ok {
+			return "", fmt.Errorf("version key did not exist in a build entry for release: %s", r.Name)
+		} else if buildVersion, ok = value.(string); !ok {
+			return "", fmt.Errorf("version was not a string in a build entry for release: %s, type: %T, value: %v", r.Name, value, value)
+		}
 
 		if ver == "" {
 			ver = buildVersion

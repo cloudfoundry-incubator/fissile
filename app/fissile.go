@@ -52,23 +52,36 @@ func (f *Fissile) ListPackages(releasePath string) {
 	)
 }
 
-// ListDevPackages will list all BOSH packages within a dev release
-func (f *Fissile) ListDevPackages(releasePath, releaseName, releaseVersion, cacheDir string) {
-	release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+// ListDevPackages will list all BOSH packages within a list of dev releases
+func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
+
+	for idx, releasePath := range releasePaths {
+		var releaseName, releaseVersion string
+
+		if len(releaseNames) != 0 {
+			releaseName = releaseNames[idx]
+		}
+
+		if len(releaseVersions) != 0 {
+			releaseVersion = releaseVersions[idx]
+		}
+
+		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+
+		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+
+		for _, pkg := range release.Packages {
+			log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+		}
+
+		log.Printf(
+			"There are %s packages present.\n\n",
+			color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
+		)
 	}
-
-	log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-
-	for _, pkg := range release.Packages {
-		log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
-	}
-
-	log.Printf(
-		"There are %s packages present.",
-		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
-	)
 }
 
 // ListJobs will list all jobs within a release
@@ -90,23 +103,35 @@ func (f *Fissile) ListJobs(releasePath string) {
 	)
 }
 
-// ListDevJobs will list all jobs within a dev release
-func (f *Fissile) ListDevJobs(releasePath, releaseName, releaseVersion, cacheDir string) {
-	release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+// ListDevJobs will list all jobs within a list of dev releases
+func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
+	for idx, releasePath := range releasePaths {
+		var releaseName, releaseVersion string
+
+		if len(releaseNames) != 0 {
+			releaseName = releaseNames[idx]
+		}
+
+		if len(releaseVersions) != 0 {
+			releaseVersion = releaseVersions[idx]
+		}
+
+		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+
+		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+
+		for _, job := range release.Jobs {
+			log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+		}
+
+		log.Printf(
+			"There are %s jobs present.\n\n",
+			color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
+		)
 	}
-
-	log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-
-	for _, job := range release.Jobs {
-		log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
-	}
-
-	log.Printf(
-		"There are %s jobs present.",
-		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
-	)
 }
 
 // ListFullConfiguration will output all the configurations within the release

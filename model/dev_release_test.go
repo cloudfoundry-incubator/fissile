@@ -89,6 +89,96 @@ func TestDevReleaseValidationNotOk(t *testing.T) {
 	assert.Contains(err.Error(), "release dev manifests directory")
 }
 
+func TestDevReleaseValidationBadConfigNoDevNameKey(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-missing-dev-name")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "dev_name key did not exist in configuration file for release")
+}
+
+func TestDevReleaseValidationBadConfigWrongDevNameType(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-wrong-dev-name-type")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "dev_name was not a string in release")
+}
+
+func TestDevReleaseValidationBadIndexNoBuildsKey(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "bad-index-no-builds-key", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "builds key did not exist in dev releases index file for release")
+}
+
+func TestDevReleaseValidationBadIndexWrongBuildsKeyType(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "bad-index-wrong-builds-key-type", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "builds key in dev releases index file was not a map for release")
+}
+
+func TestDevReleaseValidationBadIndexNoVersionKeyInBuild(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "bad-index-no-version-in-build", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "version key did not exist in a build entry for release")
+}
+
+func TestDevReleaseValidationBadIndexWrongVersionTypeInBuild(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "bad-index-wrong-version-type-in-build", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "version was not a string in a build entry for release")
+}
+
 func TestDevReleasePackagesOk(t *testing.T) {
 	assert := assert.New(t)
 
