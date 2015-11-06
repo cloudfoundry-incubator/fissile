@@ -78,7 +78,7 @@ func (c *Builder) writeSpecConfigs(release *model.Release, confWriter configWrit
 
 	for _, job := range release.Jobs {
 		for _, property := range job.Properties {
-			key, err := c.boshKeyToConsulPath(fmt.Sprintf("R-%s-J-%s.%s", release.Name, job.Name, property.Name), SpecStore)
+			key, err := c.boshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), SpecStore)
 			if err != nil {
 				return err
 			}

@@ -223,7 +223,7 @@ The following configuration stores are required:
 - The descriptions for all keys: `/<prefix>/descriptions/<key-path>/`
 
 - Default sets
- - The default values from the job specs, per job: `/<prefix>/spec/R-<release-name>-J-<job-name>/<key-path>/`
+ - The default values from the job specs, per job: `/<prefix>/spec/<release-name>/<job-name>/<key-path>/`
  - Opinions retrieved from generated manifest files: `/<prefix>/opinions/<key-path>/`
 
 - User sets
