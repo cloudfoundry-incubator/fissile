@@ -17,6 +17,8 @@ var version string
 func main() {
 	if runtime.GOOS == "windows" {
 		log.SetOutput(color.Output)
+	} else {
+		log.SetOutput(os.Stdout)
 	}
 
 	log.SetFlags(0)
