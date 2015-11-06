@@ -98,6 +98,10 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
 	}
+	if 0 == len(packages) {
+		log.Println("No package needed to be built")
+		return nil
+	}
 
 	todoCh := make(chan *model.Package)
 	doneCh := make(chan compileResult)
