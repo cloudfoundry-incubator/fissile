@@ -38,6 +38,22 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
+func TestCompilationEmpty(t *testing.T) {
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "")
+	assert.Nil(err)
+
+	waitCh := make(chan struct{})
+	go func() {
+		err := c.Compile(1, genTestCase())
+		close(waitCh)
+		assert.Nil(err)
+	}()
+
+	<-waitCh
+}
+
 func TestCompilationBasic(t *testing.T) {
 	saveCompilePackage := compilePackageHarness
 	defer func() {
