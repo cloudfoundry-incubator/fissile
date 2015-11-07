@@ -459,7 +459,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 // ListRoleImages lists all role images
 func (f *Fissile) ListRoleImages(repository string, releasePaths []string, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
 	if withVirtualSize && !existingOnDocker {
-		log.Fatalln(color.RedString("Cannot list image virtual sizes of not matching image names with docker"))
+		log.Fatalln(color.RedString("Cannot list image virtual sizes if not matching image names with docker"))
 	}
 
 	releases := make([]*model.Release, len(releasePaths))
