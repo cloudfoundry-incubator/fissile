@@ -18,7 +18,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	switch {
 	case c.Command.FullName() == "configuration generate":
 		fallthrough
-	case c.Command.FullName() == "configuration list-roles":
+	case c.Command.FullName() == "images list-roles":
 		fallthrough
 	case c.Command.FullName() == "images create-roles":
 		{
