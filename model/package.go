@@ -18,15 +18,18 @@ type Package struct {
 	SHA1         string
 	Release      *Release
 	Path         string
-	Dependencies []*Package
+	Dependencies Packages
 
 	packageReleaseInfo map[interface{}]interface{}
 }
 
+// Packages is an array of *Package
+type Packages []*Package
+
 func newPackage(release *Release, packageReleaseInfo map[interface{}]interface{}) (*Package, error) {
 	pkg := &Package{
 		Release:      release,
-		Dependencies: []*Package{},
+		Dependencies: Packages{},
 
 		packageReleaseInfo: packageReleaseInfo,
 	}
@@ -78,6 +81,21 @@ func (p *Package) Extract(destination string) (string, error) {
 	}
 
 	return targetDir, nil
+}
+
+// Len implements the Len function to satisfy sort.Interface
+func (slice Packages) Len() int {
+	return len(slice)
+}
+
+// Less implements the Less function to satisfy sort.Interface
+func (slice Packages) Less(i, j int) bool {
+	return slice[i].Name < slice[j].Name
+}
+
+// Swap implements the Swap function to satisfy sort.Interface
+func (slice Packages) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 func (p *Package) loadPackageInfo() (err error) {

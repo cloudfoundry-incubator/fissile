@@ -27,7 +27,7 @@ func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 // CreateDockerfileDir generates a Dockerfile and assets in the targetDir
 func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath string) error {
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return nil
+		return err
 	}
 
 	dockerfilePath := filepath.Join(targetDir, "Dockerfile")

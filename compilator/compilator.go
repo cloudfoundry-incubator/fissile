@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -387,7 +386,11 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	}
 
 	// Run compilation in container
-	containerName := c.getPackageContainerName(pkg)
+	containerName, err := c.getPackageContainerName(pkg)
+	if err != nil {
+		return err
+	}
+
 	exitCode, container, err := c.DockerManager.RunInContainer(
 		containerName,
 		c.BaseImageName(),
@@ -566,8 +569,8 @@ func (c *Compilator) baseCompilationContainerName() string {
 	return fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion)
 }
 
-func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
-	return sanitizeDockerContainerName(fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
+func (c *Compilator) getPackageContainerName(pkg *model.Package) (string, error) {
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
 }
 
 // BaseCompilationImageTag will return the compilation image tag
@@ -610,13 +613,4 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	}
 
 	return culledPackages, nil
-}
-
-func sanitizeDockerContainerName(name string) string {
-	reg, err := regexp.Compile("[^a-zA-Z0-9_.-]+")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return reg.ReplaceAllString(name, "-")
 }

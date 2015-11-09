@@ -17,7 +17,7 @@ type Job struct {
 	Name        string
 	Description string
 	Templates   []*JobTemplate
-	Packages    []*Package
+	Packages    Packages
 	Path        string
 	Fingerprint string
 	SHA1        string
@@ -29,11 +29,14 @@ type Job struct {
 	jobSpec        map[interface{}]interface{}
 }
 
+// Jobs is an array of Job*
+type Jobs []*Job
+
 func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job, error) {
 	job := &Job{
 		Release:    release,
 		Templates:  []*JobTemplate{},
-		Packages:   []*Package{},
+		Packages:   Packages{},
 		Properties: []*JobProperty{},
 
 		jobReleaseInfo: jobReleaseInfo,
@@ -213,6 +216,21 @@ func (j *Job) loadJobSpec() (err error) {
 	}
 
 	return nil
+}
+
+// Len implements the Len function to satisfy sort.Interface
+func (slice Jobs) Len() int {
+	return len(slice)
+}
+
+// Less implements the Less function to satisfy sort.Interface
+func (slice Jobs) Less(i, j int) bool {
+	return slice[i].Name < slice[j].Name
+}
+
+// Swap implements the Swap function to satisfy sort.Interface
+func (slice Jobs) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 func (j *Job) jobArchivePath() string {

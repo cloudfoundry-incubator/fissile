@@ -215,7 +215,6 @@ func (f *Fissile) PrintTemplateReport(releasePath string) {
 					}
 				}
 			}
-
 		}
 	}
 
@@ -405,6 +404,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
 	}
 
+	dockerManager, err := docker.NewImageManager()
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+	}
+
 	roleBuilder := builder.NewRoleImageBuilder(
 		repository,
 		compiledPackagesPath,
@@ -429,12 +433,10 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 
 			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-			dockerManager, err := docker.NewImageManager()
+			roleImageName, err := builder.GetRoleImageName(repository, role, version)
 			if err != nil {
-				log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+				log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
 			}
-
-			roleImageName := builder.GetRoleImageName(repository, role, version)
 
 			if err := dockerManager.BuildImage(
 				dockerfileDir,
@@ -488,7 +490,11 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 	}
 
 	for _, role := range rolesManifest.Roles {
-		imageName := builder.GetRoleImageName(repository, role, version)
+		imageName, err := builder.GetRoleImageName(repository, role, version)
+
+		if err != nil {
+			log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
+		}
 
 		if existingOnDocker {
 			image, err := dockerManager.FindImage(imageName)

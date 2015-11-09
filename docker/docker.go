@@ -80,7 +80,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcesso
 func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) {
 	image, err := d.client.InspectImage(imageName)
 	if err != nil {
-		return nil, fmt.Errorf("Could not find base image %s: %s", imageName, err.Error())
+		return nil, fmt.Errorf("Could not find image %s: %s", imageName, err.Error())
 	}
 
 	return image, nil

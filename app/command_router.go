@@ -21,6 +21,8 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		fallthrough
 	case c.Command.FullName() == "dev compile":
 		fallthrough
+	case c.Command.FullName() == "dev create-images":
+		fallthrough
 	case c.Command.FullName() == "configuration generate":
 		fallthrough
 	case c.Command.FullName() == "images list-roles":
@@ -154,6 +156,24 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["target"],
 			c.Int("workers"),
 		)
+	case c.Command.FullName() == "dev create-images":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.GenerateRoleDevImages(
+			paths["target"],
+			c.String("repository"),
+			c.Bool("no-build"),
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+			paths["roles-manifest"],
+			paths["compiled-packages"],
+			c.String("default-consul-address"),
+			c.String("default-config-store-prefix"),
+		)
 	}
 }
 
@@ -182,8 +202,7 @@ func absolutePathsForArray(paths []string) ([]string, error) {
 	for idx, path := range paths {
 		absPath, err := filepath.Abs(path)
 		if err != nil {
-			return nil, fmt.Errorf("Error getting absolute path for path %s: %v",
-				path, err)
+			return nil, fmt.Errorf("Error getting absolute path for path %s: %v", path, err)
 		}
 
 		absolutePaths[idx] = absPath
@@ -200,8 +219,7 @@ func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]stri
 		}
 		path, err := filepath.Abs(c.String(flagName))
 		if err != nil {
-			return nil, fmt.Errorf("Error getting absolute path for option %s, path %s: %v",
-				flagName, c.String(flagName), err)
+			return nil, fmt.Errorf("Error getting absolute path for option %s, path %s: %v", flagName, c.String(flagName), err)
 		}
 
 		absolutePaths[flagName] = path
