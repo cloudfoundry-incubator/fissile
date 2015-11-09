@@ -16,6 +16,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
+	dockerclient "github.com/fsouza/go-dockerclient"
 )
 
 // ListDevPackages will list all BOSH packages within a list of dev releases
@@ -210,4 +211,80 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild b
 	}
 
 	log.Println(color.GreenString("Done."))
+}
+
+// ListDevRoleImages lists all dev role images
+func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath string, existingOnDocker, withVirtualSize bool) {
+	if withVirtualSize && !existingOnDocker {
+		log.Fatalln(color.RedString("Cannot list image virtual sizes if not matching image names with docker"))
+	}
+
+	releases := make([]*model.Release, len(releasePaths))
+
+	for idx, releasePath := range releasePaths {
+		var releaseName, releaseVersion string
+
+		if releaseName = ""; len(releaseNames) != 0 {
+			releaseName = releaseNames[idx]
+		}
+
+		if releaseVersion = ""; len(releaseVersions) != 0 {
+			releaseVersion = releaseVersions[idx]
+		}
+
+		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+		if err != nil {
+			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		}
+
+		if withVirtualSize {
+			log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		}
+
+		releases[idx] = release
+	}
+
+	var dockerManager *docker.ImageManager
+	var err error
+
+	if existingOnDocker {
+		dockerManager, err = docker.NewImageManager()
+		if err != nil {
+			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		}
+	}
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+	}
+
+	for _, role := range rolesManifest.Roles {
+		imageName, err := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
+		if err != nil {
+			log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
+		}
+
+		if existingOnDocker {
+			image, err := dockerManager.FindImage(imageName)
+
+			if err == nil {
+				if withVirtualSize {
+					log.Printf(
+						"%s (%sMB)\n",
+						color.GreenString(imageName),
+						color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+					)
+				} else {
+					log.Println(imageName)
+				}
+			} else {
+				if err != dockerclient.ErrNoSuchImage {
+					log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+				}
+			}
+		} else {
+			log.Println(imageName)
+		}
+	}
 }

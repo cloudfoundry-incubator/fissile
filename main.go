@@ -503,6 +503,55 @@ func main() {
 					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest",
 					Action: fissile.CommandRouter,
 				},
+				{
+					Name:    "list-roles",
+					Aliases: []string{"lr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "repository, p",
+							Value:  "fissile",
+							Usage:  "Repository name.",
+							EnvVar: "FISSILE_REPOSITORY",
+						},
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
+						},
+						cli.StringFlag{
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
+						},
+						cli.StringFlag{
+							Name:   "roles-manifest, m",
+							Usage:  "Path to a yaml file that details which jobs are used for each role",
+							EnvVar: "FISSILE_ROLES_MANIFEST",
+						},
+						cli.BoolFlag{
+							Name:  "docker-only, d",
+							Usage: "If the flag is set, only show images that are available on docker",
+						},
+						cli.BoolFlag{
+							Name:  "with-sizes, s",
+							Usage: "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
+						},
+					},
+					Usage:  "Lists dev role images.",
+					Action: fissile.CommandRouter,
+				},
 			},
 		},
 	}

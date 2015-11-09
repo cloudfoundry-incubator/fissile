@@ -23,6 +23,8 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		fallthrough
 	case c.Command.FullName() == "dev create-images":
 		fallthrough
+	case c.Command.FullName() == "dev list-roles":
+		fallthrough
 	case c.Command.FullName() == "configuration generate":
 		fallthrough
 	case c.Command.FullName() == "images list-roles":
@@ -173,6 +175,21 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["compiled-packages"],
 			c.String("default-consul-address"),
 			c.String("default-config-store-prefix"),
+		)
+	case c.Command.FullName() == "dev list-roles":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.ListDevRoleImages(
+			c.String("repository"),
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+			paths["roles-manifest"],
+			c.Bool("docker-only"),
+			c.Bool("with-sizes"),
 		)
 	}
 }

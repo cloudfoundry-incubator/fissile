@@ -57,6 +57,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcesso
 
 	bio := dockerclient.BuildImageOptions{
 		Name:         name,
+		NoCache:      true,
 		ContextDir:   filepath.Dir(dockerfileDirPath),
 		OutputStream: stdoutWriter,
 	}
