@@ -4,10 +4,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
 	"sort"
+
+	"gopkg.in/yaml.v2"
 )
 
 // RoleManifest represents a collection of roles

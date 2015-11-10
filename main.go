@@ -499,6 +499,10 @@ func main() {
 							Name:  "no-build, n",
 							Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
 						},
+						cli.BoolFlag{
+							Name:  "force, f",
+							Usage: "If specified, image creation will proceed even when images already exist.",
+						},
 					},
 					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest",
 					Action: fissile.CommandRouter,

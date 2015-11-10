@@ -37,7 +37,6 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 
 	dockerfileString := string(dockerfileContents)
 	assert.Contains(dockerfileString, "foo-role-base:6.28.30")
-	assert.Contains(dockerfileString, `"release-version"="0.3.5"`)
 	assert.Contains(dockerfileString, "ADD LICENSE.md  /opt/hcf/share/doc")
 }
 

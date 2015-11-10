@@ -167,6 +167,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["target"],
 			c.String("repository"),
 			c.Bool("no-build"),
+			c.Bool("force"),
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),

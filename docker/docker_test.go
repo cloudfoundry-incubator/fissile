@@ -48,10 +48,11 @@ func TestShowImageNotOK(t *testing.T) {
 	dockerManager, err := NewImageManager()
 	assert.Nil(err)
 
-	_, err = dockerManager.FindImage(uuid.New())
+	name := uuid.New()
+	_, err = dockerManager.FindImage(name)
 
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "Could not find base image")
+	assert.Contains(err.Error(), fmt.Sprintf("Could not find image %s", name))
 }
 
 func TestRunInContainer(t *testing.T) {

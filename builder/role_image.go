@@ -98,16 +98,23 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 			}
 
 			packageDir := filepath.Join(packagesDir, pkg.Name)
-			if err := shutil.CopyTree(
-				compiledDir,
-				packageDir,
-				&shutil.CopyTreeOptions{
-					Symlinks:               true,
-					Ignore:                 nil,
-					CopyFunction:           shutil.Copy,
-					IgnoreDanglingSymlinks: false},
-			); err != nil {
-				return "", err
+			if role.Jobs[0].Release.Dev {
+
+				if err := os.Symlink(compiledDir, packageDir); err != nil {
+					return "", err
+				}
+			} else {
+				if err := shutil.CopyTree(
+					compiledDir,
+					packageDir,
+					&shutil.CopyTreeOptions{
+						Symlinks:               true,
+						Ignore:                 nil,
+						CopyFunction:           shutil.Copy,
+						IgnoreDanglingSymlinks: false},
+				); err != nil {
+					return "", err
+				}
 			}
 		}
 	}
@@ -237,9 +244,8 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 
 // GetRoleImageName generates a docker image name to be used as a role image
 func GetRoleImageName(repository string, role *model.Role, version string) (string, error) {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s:%s-%s",
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s-%s",
 		repository,
-		role.Jobs[0].Release.Name,
 		role.Name,
 		role.Jobs[0].Release.Version,
 		version,
@@ -248,9 +254,8 @@ func GetRoleImageName(repository string, role *model.Role, version string) (stri
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
 func GetRoleDevImageName(repository string, role *model.Role, version string) (string, error) {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s:%s",
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s",
 		repository,
-		role.Jobs[0].Release.Name,
 		role.Name,
 		version,
 	))

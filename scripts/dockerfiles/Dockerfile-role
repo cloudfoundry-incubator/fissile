@@ -5,13 +5,21 @@ MAINTAINER hcf@hpe.com
 {{ with $context := . }}
 {{ with $role := index . "role" }}
 {{ with $job := index $role.Jobs 0}}
-LABEL "role"="{{ $role.Name }}" "release-version"="{{ $job.Release.Version }}" "version"="{{ index $context "image_version" }}"
+LABEL "role"="{{ $role.Name }}" "version"="{{ index $context "image_version" }}"
 {{ end }}
 {{ end }}
 {{ end }}
 
 # Add packages
+{{ with $context := . }}
+{{ with $role := index . "role" }}
+{{ with $job := index $role.Jobs 0}}
+{{ if not $job.Release.Dev }}
 ADD packages /var/vcap/packages/
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
 
 # Add job sources
 ADD jobs /var/vcap/jobs-src/

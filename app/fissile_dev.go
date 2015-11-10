@@ -25,11 +25,11 @@ func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []
 	for idx, releasePath := range releasePaths {
 		var releaseName, releaseVersion string
 
-		if releaseName = ""; len(releaseNames) != 0 {
+		if len(releaseNames) != 0 {
 			releaseName = releaseNames[idx]
 		}
 
-		if releaseVersion = ""; len(releaseVersions) != 0 {
+		if len(releaseVersions) != 0 {
 			releaseVersion = releaseVersions[idx]
 		}
 
@@ -56,11 +56,11 @@ func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []stri
 	for idx, releasePath := range releasePaths {
 		var releaseName, releaseVersion string
 
-		if releaseName = ""; len(releaseNames) != 0 {
+		if len(releaseNames) != 0 {
 			releaseName = releaseNames[idx]
 		}
 
-		if releaseVersion = ""; len(releaseVersions) != 0 {
+		if len(releaseVersions) != 0 {
 			releaseVersion = releaseVersions[idx]
 		}
 
@@ -92,11 +92,11 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 	for idx, releasePath := range releasePaths {
 		var releaseName, releaseVersion string
 
-		if releaseName = ""; len(releaseNames) != 0 {
+		if len(releaseNames) != 0 {
 			releaseName = releaseNames[idx]
 		}
 
-		if releaseVersion = ""; len(releaseVersions) != 0 {
+		if len(releaseVersions) != 0 {
 			releaseVersion = releaseVersions[idx]
 		}
 
@@ -119,16 +119,16 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 }
 
 // GenerateRoleDevImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix string) {
+func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix string) {
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		var releaseName, releaseVersion string
 
-		if releaseName = ""; len(releaseNames) != 0 {
+		if len(releaseNames) != 0 {
 			releaseName = releaseNames[idx]
 		}
 
-		if releaseVersion = ""; len(releaseVersions) != 0 {
+		if len(releaseVersions) != 0 {
 			releaseVersion = releaseVersions[idx]
 		}
 
@@ -169,7 +169,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild b
 		}
 
 		_, err = dockerManager.FindImage(roleImageName)
-		if err == nil {
+		if err == nil && !force {
 			log.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
 			continue
 		}
@@ -224,11 +224,11 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 	for idx, releasePath := range releasePaths {
 		var releaseName, releaseVersion string
 
-		if releaseName = ""; len(releaseNames) != 0 {
+		if len(releaseNames) != 0 {
 			releaseName = releaseNames[idx]
 		}
 
-		if releaseVersion = ""; len(releaseVersions) != 0 {
+		if len(releaseVersions) != 0 {
 			releaseVersion = releaseVersions[idx]
 		}
 
