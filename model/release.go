@@ -28,6 +28,8 @@ type Release struct {
 	CommitHash         string
 	Version            string
 	Path               string
+	Dev                bool
+	DevBOSHCacheDir    string
 
 	manifest map[interface{}]interface{}
 }
@@ -46,6 +48,7 @@ func NewRelease(path string) (*Release, error) {
 		Packages: []*Package{},
 		Jobs:     []*Job{},
 		License:  ReleaseLicense{},
+		Dev:      false,
 	}
 
 	if err := release.validatePathStructure(); err != nil {
@@ -257,6 +260,10 @@ func (r *Release) jobsDirPath() string {
 }
 
 func (r *Release) manifestFilePath() string {
+	if r.Dev {
+		return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
+	}
+
 	return filepath.Join(r.Path, manifestFile)
 }
 

@@ -80,12 +80,6 @@ func (p *Package) Extract(destination string) (string, error) {
 	return targetDir, nil
 }
 
-// PrepareForCompilation creates a directory structure that contains the package
-// and all its dependencies, suitable for executing the compilation package
-func (p *Package) PrepareForCompilation(destrination string) error {
-	return fmt.Errorf("TODO: Not implemented")
-}
-
 func (p *Package) loadPackageInfo() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -123,5 +117,9 @@ func (p *Package) loadPackageDependencies() (err error) {
 }
 
 func (p *Package) packageArchivePath() string {
+	if p.Release.Dev {
+		return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
+	}
+
 	return fmt.Sprintf("%s.tgz", filepath.Join(p.Release.packagesDirPath(), p.Name))
 }

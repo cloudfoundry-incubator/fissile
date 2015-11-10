@@ -26,7 +26,7 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Equal("ntpd", release.Jobs[0].Name)
 	assert.Equal("80450dd04a4b0248b67ab4a8cc1f8b2cfb4deea5", release.Jobs[0].Version)
 	assert.Equal("80450dd04a4b0248b67ab4a8cc1f8b2cfb4deea5", release.Jobs[0].Fingerprint)
-	assert.Equal("b47366e160f9d139c8ce8bef4a8fef1f72e0f151", release.Jobs[0].Sha1)
+	assert.Equal("b47366e160f9d139c8ce8bef4a8fef1f72e0f151", release.Jobs[0].SHA1)
 
 	jobPath := filepath.Join(ntpReleasePath, jobsDir, "ntpd.tgz")
 	assert.Equal(jobPath, release.Jobs[0].Path)
@@ -63,7 +63,7 @@ func TestJobSha1NotOk(t *testing.T) {
 	assert.Equal(1, len(release.Jobs))
 
 	// Mess up the manifest signature
-	release.Jobs[0].Sha1 += "foo"
+	release.Jobs[0].SHA1 += "foo"
 
 	assert.NotNil(release.Jobs[0].ValidateSHA1())
 }

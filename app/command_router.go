@@ -14,15 +14,18 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	var paths map[string]string
 	var releasePaths []string
 	var err error
-
 	switch {
+	case c.Command.FullName() == "dev jobs-report":
+		fallthrough
+	case c.Command.FullName() == "dev packages-report":
+		fallthrough
 	case c.Command.FullName() == "configuration generate":
 		fallthrough
 	case c.Command.FullName() == "images list-roles":
 		fallthrough
 	case c.Command.FullName() == "images create-roles":
 		{
-			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
 				log.Fatalln(color.RedString("%v", err))
 			}
@@ -34,7 +37,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 	default:
 		{
-			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages")
+			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
 				log.Fatalln(color.RedString("%v", err))
 			}
@@ -113,7 +116,49 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Bool("docker-only"),
 			c.Bool("with-sizes"),
 		)
+	case c.Command.FullName() == "dev jobs-report":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.ListDevJobs(
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+		)
+	case c.Command.FullName() == "dev packages-report":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.ListDevPackages(
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+		)
 	}
+}
+
+func validateDevReleaseArgs(c *cli.Context) error {
+	releasePathsCount := len(c.StringSlice("release"))
+	releaseNamesCount := len(c.StringSlice("release-name"))
+	releaseVersionsCount := len(c.StringSlice("release-version"))
+
+	if releasePathsCount == 0 {
+		return fmt.Errorf("Please specify at least one release path")
+	}
+
+	if releaseNamesCount != 0 && releaseNamesCount != releasePathsCount {
+		return fmt.Errorf("If you specify custom release names, you need to do it for all of them")
+	}
+
+	if releaseVersionsCount != 0 && releaseVersionsCount != releasePathsCount {
+		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them")
+	}
+
+	return nil
 }
 
 func absolutePathsForArray(paths []string) ([]string, error) {
@@ -127,13 +172,14 @@ func absolutePathsForArray(paths []string) ([]string, error) {
 
 		absolutePaths[idx] = absPath
 	}
+
 	return absolutePaths, nil
 }
 
 func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]string, error) {
 	absolutePaths := map[string]string{}
 	for _, flagName := range flagNames {
-		if !c.IsSet(flagName) {
+		if c.String(flagName) == "" {
 			continue
 		}
 		path, err := filepath.Abs(c.String(flagName))
@@ -141,7 +187,9 @@ func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]stri
 			return nil, fmt.Errorf("Error getting absolute path for option %s, path %s: %v",
 				flagName, c.String(flagName), err)
 		}
+
 		absolutePaths[flagName] = path
 	}
+
 	return absolutePaths, nil
 }
