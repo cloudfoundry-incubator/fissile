@@ -52,7 +52,7 @@ func TestShowImageNotOK(t *testing.T) {
 	_, err = dockerManager.FindImage(name)
 
 	assert.NotNil(err)
-	assert.Contains(err.Error(), fmt.Sprintf("Could not find image %s", name))
+	assert.Equal(ErrImageNotFound, err)
 }
 
 func TestRunInContainer(t *testing.T) {

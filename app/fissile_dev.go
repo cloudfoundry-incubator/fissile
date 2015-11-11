@@ -1,9 +1,7 @@
 package app
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,29 +14,15 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
-	dockerclient "github.com/fsouza/go-dockerclient"
 )
 
 // ListDevPackages will list all BOSH packages within a list of dev releases
 func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
 
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+	for _, release := range releases {
+		log.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, pkg := range release.Packages {
 			log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
@@ -53,23 +37,11 @@ func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []
 
 // ListDevJobs will list all jobs within a list of dev releases
 func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
 
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
+	for _, release := range releases {
+		log.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, job := range release.Jobs {
 			log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
@@ -89,23 +61,10 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
 
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Compiling packages for release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
+	for _, release := range releases {
+		log.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version)
 		if err != nil {
@@ -120,27 +79,7 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 
 // GenerateRoleDevImages generates all role images using dev releases
 func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix string) {
-	releases := make([]*model.Release, len(releasePaths))
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
-
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-
-		releases[idx] = release
-	}
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
@@ -163,10 +102,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 	)
 
 	for _, role := range rolesManifest.Roles {
-		roleImageName, err := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
-		if err != nil {
-			log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
-		}
+		roleImageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
 
 		_, err = dockerManager.FindImage(roleImageName)
 		if err == nil && !force {
@@ -193,18 +129,11 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 
 			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-			if err := dockerManager.BuildImage(
-				dockerfileDir,
-				roleImageName,
-				func(stdout io.Reader) {
-					scanner := bufio.NewScanner(stdout)
-					for scanner.Scan() {
-						log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
-					}
-				},
-			); err != nil {
-				log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
+			if err != nil {
+				log.Fatalln(color.RedString("Error building image: %s", err.Error()))
 			}
+
 		} else {
 			log.Println("Skipping image build because of flag.")
 		}
@@ -219,6 +148,52 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 		log.Fatalln(color.RedString("Cannot list image virtual sizes if not matching image names with docker"))
 	}
 
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
+
+	var dockerManager *docker.ImageManager
+	var err error
+
+	if existingOnDocker {
+		dockerManager, err = docker.NewImageManager()
+		if err != nil {
+			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		}
+	}
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	if err != nil {
+		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+	}
+
+	for _, role := range rolesManifest.Roles {
+		imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
+
+		if !existingOnDocker {
+			log.Println(imageName)
+			continue
+		}
+
+		image, err := dockerManager.FindImage(imageName)
+
+		if err == docker.ErrImageNotFound {
+			continue
+		} else if err != nil {
+			log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+		}
+
+		if withVirtualSize {
+			log.Printf(
+				"%s (%sMB)\n",
+				color.GreenString(imageName),
+				color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+			)
+		} else {
+			log.Println(imageName)
+		}
+	}
+}
+
+func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) []*model.Release {
 	releases := make([]*model.Release, len(releasePaths))
 
 	for idx, releasePath := range releasePaths {
@@ -237,54 +212,8 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
 		}
 
-		if withVirtualSize {
-			log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-		}
-
 		releases[idx] = release
 	}
 
-	var dockerManager *docker.ImageManager
-	var err error
-
-	if existingOnDocker {
-		dockerManager, err = docker.NewImageManager()
-		if err != nil {
-			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
-		}
-	}
-
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
-	if err != nil {
-		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
-	}
-
-	for _, role := range rolesManifest.Roles {
-		imageName, err := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
-		if err != nil {
-			log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
-		}
-
-		if existingOnDocker {
-			image, err := dockerManager.FindImage(imageName)
-
-			if err == nil {
-				if withVirtualSize {
-					log.Printf(
-						"%s (%sMB)\n",
-						color.GreenString(imageName),
-						color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
-					)
-				} else {
-					log.Println(imageName)
-				}
-			} else {
-				if err != dockerclient.ErrNoSuchImage {
-					log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
-				}
-			}
-		} else {
-			log.Println(imageName)
-		}
-	}
+	return releases
 }

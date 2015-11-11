@@ -44,11 +44,9 @@ const (
 // NewRelease will create an instance of a BOSH release
 func NewRelease(path string) (*Release, error) {
 	release := &Release{
-		Path:     path,
-		Packages: Packages{},
-		Jobs:     Jobs{},
-		License:  ReleaseLicense{},
-		Dev:      false,
+		Path:    path,
+		License: ReleaseLicense{},
+		Dev:     false,
 	}
 
 	if err := release.validatePathStructure(); err != nil {

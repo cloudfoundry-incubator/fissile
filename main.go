@@ -78,7 +78,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 					},
 					Usage:       "Prepare a compilation base image",
@@ -97,7 +97,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 					},
 					Usage:  "Show information about a base docker image",
@@ -110,7 +110,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringFlag{
 							Name:  "release, r",
@@ -233,7 +233,7 @@ func main() {
 						cli.StringFlag{
 							Name:   "repository, p",
 							Value:  "fissile",
-							Usage:  "Docker repository name.",
+							Usage:  "Repository name prefix used to create image names.",
 							EnvVar: "FISSILE_REPOSITORY",
 						},
 					},
@@ -255,7 +255,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Docker repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringSliceFlag{
 							Name:  "release, r",
@@ -294,7 +294,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Docker repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringSliceFlag{
 							Name:  "release, r",
@@ -421,7 +421,7 @@ func main() {
 						cli.StringFlag{
 							Name:   "repository, p",
 							Value:  "fissile",
-							Usage:  "Repository name.",
+							Usage:  "Repository name prefix used to create image names.",
 							EnvVar: "FISSILE_REPOSITORY",
 						},
 						cli.IntFlag{
@@ -469,7 +469,7 @@ func main() {
 						cli.StringFlag{
 							Name:   "repository, p",
 							Value:  "fissile",
-							Usage:  "Repository name.",
+							Usage:  "Repository name prefix used to create image names.",
 							EnvVar: "FISSILE_REPOSITORY",
 						},
 						cli.StringFlag{
@@ -514,7 +514,7 @@ func main() {
 						cli.StringFlag{
 							Name:   "repository, p",
 							Value:  "fissile",
-							Usage:  "Repository name.",
+							Usage:  "Repository name prefix used to create image names.",
 							EnvVar: "FISSILE_REPOSITORY",
 						},
 						cli.StringSliceFlag{

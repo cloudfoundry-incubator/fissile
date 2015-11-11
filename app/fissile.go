@@ -17,7 +17,6 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
-	dockerclient "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v2"
 )
 
@@ -367,18 +366,11 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 
-		if err := dockerManager.BuildImage(
-			targetPath,
-			baseImageName,
-			func(stdout io.Reader) {
-				scanner := bufio.NewScanner(stdout)
-				for scanner.Scan() {
-					log.Println(color.GreenString("build-%s > %s", color.MagentaString(baseImageName), color.WhiteString(scanner.Text())))
-				}
-			},
-		); err != nil {
+		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName))
+		if err != nil {
 			log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
 		}
+
 	} else {
 		log.Println("Skipping image build because of flag.")
 	}
@@ -433,23 +425,13 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 
 			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-			roleImageName, err := builder.GetRoleImageName(repository, role, version)
+			roleImageName := builder.GetRoleImageName(repository, role, version)
+
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
 			if err != nil {
-				log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
+				log.Fatalln(color.RedString("Error building image: %s", err.Error()))
 			}
 
-			if err := dockerManager.BuildImage(
-				dockerfileDir,
-				roleImageName,
-				func(stdout io.Reader) {
-					scanner := bufio.NewScanner(stdout)
-					for scanner.Scan() {
-						log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
-					}
-				},
-			); err != nil {
-				log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
-			}
 		} else {
 			log.Println("Skipping image build because of flag.")
 		}
@@ -490,32 +472,37 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 	}
 
 	for _, role := range rolesManifest.Roles {
-		imageName, err := builder.GetRoleImageName(repository, role, version)
-
-		if err != nil {
-			log.Fatalln(color.RedString("Error generating image name for role %s: %s", role.Name, err.Error()))
-		}
+		imageName := builder.GetRoleImageName(repository, role, version)
 
 		if existingOnDocker {
 			image, err := dockerManager.FindImage(imageName)
 
-			if err == nil {
-				if withVirtualSize {
-					log.Printf(
-						"%s (%sMB)\n",
-						color.GreenString(imageName),
-						color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
-					)
-				} else {
-					log.Println(imageName)
-				}
+			if err == docker.ErrImageNotFound {
+				continue
+			} else if err != nil {
+				log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+			}
+
+			if withVirtualSize {
+				log.Printf(
+					"%s (%sMB)\n",
+					color.GreenString(imageName),
+					color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+				)
 			} else {
-				if err != dockerclient.ErrNoSuchImage {
-					log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
-				}
+				log.Println(imageName)
 			}
 		} else {
 			log.Println(imageName)
+		}
+	}
+}
+
+func newColoredLogger(roleImageName string) func(io.Reader) {
+	return func(stdout io.Reader) {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
 		}
 	}
 }

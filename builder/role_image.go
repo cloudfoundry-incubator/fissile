@@ -104,7 +104,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 					return "", err
 				}
 			} else {
-				if err := shutil.CopyTree(
+				err := shutil.CopyTree(
 					compiledDir,
 					packageDir,
 					&shutil.CopyTreeOptions{
@@ -112,7 +112,9 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 						Ignore:                 nil,
 						CopyFunction:           shutil.Copy,
 						IgnoreDanglingSymlinks: false},
-				); err != nil {
+				)
+
+				if err != nil {
 					return "", err
 				}
 			}
@@ -243,7 +245,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 }
 
 // GetRoleImageName generates a docker image name to be used as a role image
-func GetRoleImageName(repository string, role *model.Role, version string) (string, error) {
+func GetRoleImageName(repository string, role *model.Role, version string) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s-%s",
 		repository,
 		role.Name,
@@ -253,7 +255,7 @@ func GetRoleImageName(repository string, role *model.Role, version string) (stri
 }
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
-func GetRoleDevImageName(repository string, role *model.Role, version string) (string, error) {
+func GetRoleDevImageName(repository string, role *model.Role, version string) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s",
 		repository,
 		role.Name,

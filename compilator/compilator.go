@@ -386,10 +386,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	}
 
 	// Run compilation in container
-	containerName, err := c.getPackageContainerName(pkg)
-	if err != nil {
-		return err
-	}
+	containerName := c.getPackageContainerName(pkg)
 
 	exitCode, container, err := c.DockerManager.RunInContainer(
 		containerName,
@@ -569,7 +566,7 @@ func (c *Compilator) baseCompilationContainerName() string {
 	return fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion)
 }
 
-func (c *Compilator) getPackageContainerName(pkg *model.Package) (string, error) {
+func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
 }
 

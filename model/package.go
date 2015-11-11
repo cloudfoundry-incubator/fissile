@@ -28,8 +28,7 @@ type Packages []*Package
 
 func newPackage(release *Release, packageReleaseInfo map[interface{}]interface{}) (*Package, error) {
 	pkg := &Package{
-		Release:      release,
-		Dependencies: Packages{},
+		Release: release,
 
 		packageReleaseInfo: packageReleaseInfo,
 	}

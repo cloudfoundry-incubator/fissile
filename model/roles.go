@@ -102,7 +102,7 @@ func (r *Role) GetScriptPaths() map[string]string {
 // GetRoleDevVersion gets the aggregate signature of all jobs and packages
 func (r *Role) GetRoleDevVersion() string {
 	roleSignature := ""
-	packages := Packages{}
+	var packages Packages
 
 	sort.Sort(r.Jobs)
 	for _, job := range r.Jobs {

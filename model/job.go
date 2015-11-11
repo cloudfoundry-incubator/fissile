@@ -34,10 +34,7 @@ type Jobs []*Job
 
 func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job, error) {
 	job := &Job{
-		Release:    release,
-		Templates:  []*JobTemplate{},
-		Packages:   Packages{},
-		Properties: []*JobProperty{},
+		Release: release,
 
 		jobReleaseInfo: jobReleaseInfo,
 	}
