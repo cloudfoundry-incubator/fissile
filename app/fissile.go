@@ -342,6 +342,27 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
 func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository string) {
+	dockerManager, err := docker.NewImageManager()
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+	}
+
+	baseImageName := builder.GetBaseImageName(repository, f.Version)
+
+	image, err := dockerManager.FindImage(baseImageName)
+	if err == docker.ErrImageNotFound {
+		log.Println("Image doesn't exist, it will be created ...")
+	} else if err != nil {
+		log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+	} else {
+		log.Println(color.GreenString(
+			"Base role image %s with ID %s already exists. Doing nothing.",
+			color.YellowString(baseImageName),
+			color.YellowString(image.ID),
+		))
+		return
+	}
+
 	if !strings.HasSuffix(targetPath, string(os.PathSeparator)) {
 		targetPath = fmt.Sprintf("%s%c", targetPath, os.PathSeparator)
 	}
@@ -358,11 +379,6 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	if !noBuild {
 		log.Println("Building docker image ...")
-
-		dockerManager, err := docker.NewImageManager()
-		if err != nil {
-			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
-		}
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 

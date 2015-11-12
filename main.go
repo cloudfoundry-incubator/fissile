@@ -556,6 +556,63 @@ func main() {
 					Usage:  "Lists dev role images.",
 					Action: fissile.CommandRouter,
 				},
+				{
+					Name:    "config-gen",
+					Aliases: []string{"cg"},
+					Flags: []cli.Flag{
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
+						},
+						cli.StringFlag{
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
+						},
+						cli.StringFlag{
+							Name:   "target, t",
+							Usage:  "Path to the location of the generated configuration base.",
+							Value:  "/var/fissile/dockerfiles",
+							EnvVar: "FISSILE_CONFIG_OUTPUT_DIR",
+						},
+						cli.StringFlag{
+							Name:   "light-opinions, l",
+							Usage:  "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
+							EnvVar: "FISSILE_LIGHT_OPINIONS",
+						},
+						cli.StringFlag{
+							Name:   "dark-opinions, d",
+							Usage:  "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
+							EnvVar: "FISSILE_DARK_OPINIONS",
+						},
+						cli.StringFlag{
+							Name:   "prefix, p",
+							Usage:  "Prefix to be used for all configuration keys.",
+							Value:  "hcf",
+							EnvVar: "FISSILE_CONFIG_PREFIX",
+						},
+						cli.StringFlag{
+							Name:  "provider, o",
+							Usage: "Provider to use when generating the configuration base.",
+							Value: configstore.DirTreeProvider,
+						},
+					},
+					Usage:  "Generates a configuration base that can be loaded into something like consul.",
+					Action: fissile.CommandRouter,
+				},
 			},
 		},
 	}

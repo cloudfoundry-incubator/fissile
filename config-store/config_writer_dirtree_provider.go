@@ -15,9 +15,10 @@ const (
 
 type dirTreeConfigWriterProvider struct {
 	tempDir string
+	prefix  string
 }
 
-func newDirTreeConfigWriterProvider() (*dirTreeConfigWriterProvider, error) {
+func newDirTreeConfigWriterProvider(prefix string) (*dirTreeConfigWriterProvider, error) {
 	tempDir, err := ioutil.TempDir("", "fissile-config-writer-dirtree")
 	if err != nil {
 		return nil, err
@@ -46,9 +47,16 @@ func (d *dirTreeConfigWriterProvider) WriteConfig(configKey string, value interf
 }
 
 func (d *dirTreeConfigWriterProvider) Save(targetPath string) error {
+	configDirSource := filepath.Join(d.tempDir, d.prefix)
+	configDirDest := filepath.Join(targetPath, d.prefix)
+
+	if err := os.RemoveAll(configDirDest); err != nil {
+		return err
+	}
+
 	return shutil.CopyTree(
-		d.tempDir,
-		targetPath,
+		configDirSource,
+		configDirDest,
 		&shutil.CopyTreeOptions{
 			Symlinks:               true,
 			Ignore:                 nil,

@@ -20,6 +20,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		"dev compile",
 		"dev create-images",
 		"dev list-roles",
+		"dev config-gen",
 		"configuration generate",
 		"images list-roles",
 		"images create-roles":
@@ -184,6 +185,22 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["roles-manifest"],
 			c.Bool("docker-only"),
 			c.Bool("with-sizes"),
+		)
+	case "dev config-gen":
+		if err := validateDevReleaseArgs(c); err != nil {
+			log.Fatalln(color.RedString("%v", err))
+		}
+
+		f.GenerateDevConfigurationBase(
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+			paths["light-opinions"],
+			paths["dark-opinions"],
+			paths["target"],
+			c.String("prefix"),
+			c.String("provider"),
 		)
 	}
 }

@@ -49,7 +49,7 @@ func (c *Builder) WriteBaseConfig(releases []*model.Release) error {
 
 	switch {
 	case c.provider == DirTreeProvider:
-		writer, err = newDirTreeConfigWriterProvider()
+		writer, err = newDirTreeConfigWriterProvider(c.prefix)
 		if err != nil {
 			return err
 		}
