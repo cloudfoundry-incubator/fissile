@@ -78,7 +78,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 					},
 					Usage:       "Prepare a compilation base image",
@@ -97,7 +97,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 					},
 					Usage:  "Show information about a base docker image",
@@ -110,7 +110,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Repository name.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringFlag{
 							Name:  "release, r",
@@ -211,12 +211,15 @@ func main() {
 					Aliases: []string{"cb"},
 					Flags: []cli.Flag{
 						cli.StringFlag{
-							Name:  "target, t",
-							Usage: "Path to the location of the generated Dockerfile and assets.",
+							Name:   "target, t",
+							Usage:  "Path to the location of the generated Dockerfile and assets.",
+							Value:  "/var/fissile/base_dockerfile/",
+							EnvVar: "FISSILE_ROLE_BASE_DOCKERFILE_DIR",
 						},
 						cli.StringFlag{
-							Name:  "configgin, c",
-							Usage: "Path to the tarball containing configgin.",
+							Name:   "configgin, c",
+							Usage:  "Path to the tarball containing configgin.",
+							EnvVar: "FISSILE_CONFIGGIN_PATH",
 						},
 						cli.StringFlag{
 							Name:  "base-image, b",
@@ -228,9 +231,10 @@ func main() {
 							Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
 						},
 						cli.StringFlag{
-							Name:  "repository, p",
-							Value: "fissile",
-							Usage: "Docker repository name.",
+							Name:   "repository, p",
+							Value:  "fissile",
+							Usage:  "Repository name prefix used to create image names.",
+							EnvVar: "FISSILE_REPOSITORY",
 						},
 					},
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
@@ -251,7 +255,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Docker repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringSliceFlag{
 							Name:  "release, r",
@@ -280,7 +284,7 @@ func main() {
 							Usage: "Used as a version label for the created images",
 						},
 					},
-					Usage:  "Creates Dockerfiles and a docker image for all roles.",
+					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest.",
 					Action: fissile.CommandRouter,
 				},
 				{
@@ -290,7 +294,7 @@ func main() {
 						cli.StringFlag{
 							Name:  "repository, p",
 							Value: "fissile",
-							Usage: "Docker repository name prefix.",
+							Usage: "Repository name prefix used to create image names.",
 						},
 						cli.StringSliceFlag{
 							Name:  "release, r",
@@ -345,8 +349,7 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; you shouldn't need to change this default",
-							Value:  "~/.bosh/cache/",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
@@ -376,12 +379,181 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; you shouldn't need to change this default",
-							Value:  "~/.bosh/cache/",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
 					Usage:  "List all packages in a dev BOSH release",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "compile",
+					Aliases: []string{"comp"},
+					Flags: []cli.Flag{
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
+						},
+						cli.StringFlag{
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
+						},
+						cli.StringFlag{
+							Name:   "target, t",
+							Usage:  "Path to the location of the compiled packages.",
+							Value:  "/var/fissile/compilation",
+							EnvVar: "FISSILE_COMPILATION_DIR",
+						},
+						cli.StringFlag{
+							Name:   "repository, p",
+							Value:  "fissile",
+							Usage:  "Repository name prefix used to create image names.",
+							EnvVar: "FISSILE_REPOSITORY",
+						},
+						cli.IntFlag{
+							Name:   "workers, w",
+							Value:  2,
+							Usage:  "Number of compiler workers to use.",
+							EnvVar: "FISSILE_COMPILATION_WORKER_COUNT",
+						},
+					},
+					Usage:  "Compiles packages from dev releases using parallel workers",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "create-images",
+					Aliases: []string{"ci"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "target, t",
+							Usage:  "Path to the location of the generated Dockerfile and assets.",
+							Value:  "/var/fissile/dockerfiles",
+							EnvVar: "FISSILE_DOCKERFILES_DIR",
+						},
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
+						},
+						cli.StringFlag{
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
+						},
+						cli.StringFlag{
+							Name:   "repository, p",
+							Value:  "fissile",
+							Usage:  "Repository name prefix used to create image names.",
+							EnvVar: "FISSILE_REPOSITORY",
+						},
+						cli.StringFlag{
+							Name:   "roles-manifest, m",
+							Usage:  "Path to a yaml file that details which jobs are used for each role",
+							EnvVar: "FISSILE_ROLES_MANIFEST",
+						},
+						cli.StringFlag{
+							Name:   "compiled-packages, c",
+							Usage:  "Path to the directory that contains all compiled packages",
+							Value:  "/var/fissile/compilation",
+							EnvVar: "FISSILE_COMPILATION_DIR",
+						},
+						cli.StringFlag{
+							Name:   "default-consul-address",
+							Usage:  "Default consul address that the container image will try to connect to when run, if not specified",
+							Value:  "http://127.0.0.1:8500",
+							EnvVar: "FISSILE_DEFAULT_CONSUL_ADDRESS",
+						},
+						cli.StringFlag{
+							Name:   "default-config-store-prefix",
+							Usage:  "Default configuration store prefix that is used by the container, if not specified",
+							Value:  "hcf",
+							EnvVar: "FISSILE_DEFAULT_CONFIG_STORE_PREFIX",
+						},
+						cli.BoolFlag{
+							Name:  "no-build, n",
+							Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
+						},
+						cli.BoolFlag{
+							Name:  "force, f",
+							Usage: "If specified, image creation will proceed even when images already exist.",
+						},
+					},
+					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "list-roles",
+					Aliases: []string{"lr"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:   "repository, p",
+							Value:  "fissile",
+							Usage:  "Repository name prefix used to create image names.",
+							EnvVar: "FISSILE_REPOSITORY",
+						},
+						cli.StringSliceFlag{
+							Name:   "release, r",
+							Usage:  "Path to a dev BOSH release",
+							EnvVar: "FISSILE_RELEASE",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-name, rn",
+							Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_NAME",
+						},
+						cli.StringSliceFlag{
+							Name:   "release-version, rv",
+							Usage:  "Version of a dev BOSH release; if empty, the latest dev release will be used",
+							Value:  &cli.StringSlice{},
+							EnvVar: "FISSILE_DEV_RELEASE_VERSION",
+						},
+						cli.StringFlag{
+							Name:   "cache-dir, cd",
+							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							EnvVar: "FISSILE_DEV_CACHE_DIR",
+						},
+						cli.StringFlag{
+							Name:   "roles-manifest, m",
+							Usage:  "Path to a yaml file that details which jobs are used for each role",
+							EnvVar: "FISSILE_ROLES_MANIFEST",
+						},
+						cli.BoolFlag{
+							Name:  "docker-only, d",
+							Usage: "If the flag is set, only show images that are available on docker",
+						},
+						cli.BoolFlag{
+							Name:  "with-sizes, s",
+							Usage: "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
+						},
+					},
+					Usage:  "Lists dev role images.",
 					Action: fissile.CommandRouter,
 				},
 			},

@@ -19,8 +19,8 @@ import (
 
 // Release represents a BOSH release
 type Release struct {
-	Jobs               []*Job
-	Packages           []*Package
+	Jobs               Jobs
+	Packages           Packages
 	License            ReleaseLicense
 	Notice             ReleaseLicense
 	Name               string
@@ -44,11 +44,9 @@ const (
 // NewRelease will create an instance of a BOSH release
 func NewRelease(path string) (*Release, error) {
 	release := &Release{
-		Path:     path,
-		Packages: []*Package{},
-		Jobs:     []*Job{},
-		License:  ReleaseLicense{},
-		Dev:      false,
+		Path:    path,
+		License: ReleaseLicense{},
+		Dev:     false,
 	}
 
 	if err := release.validatePathStructure(); err != nil {
@@ -91,7 +89,7 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 			} else {
 				result[property.Name] = &ReleaseConfig{
 					Name:        property.Name,
-					Jobs:        []*Job{job},
+					Jobs:        Jobs{job},
 					UsageCount:  1,
 					Description: property.Description,
 				}

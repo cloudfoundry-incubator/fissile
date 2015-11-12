@@ -17,6 +17,11 @@ const (
 	ContainerOutPath = "/fissile-out"
 )
 
+var (
+	// ErrImageNotFound is the error returned when an image is not found.
+	ErrImageNotFound = fmt.Errorf("Image not found")
+)
+
 // ProcessOutStream is stdout of the process
 type ProcessOutStream func(io.Reader)
 
@@ -57,6 +62,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcesso
 
 	bio := dockerclient.BuildImageOptions{
 		Name:         name,
+		NoCache:      true,
 		ContextDir:   filepath.Dir(dockerfileDirPath),
 		OutputStream: stdoutWriter,
 	}
@@ -79,8 +85,11 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcesso
 // FindImage will lookup an image in Docker
 func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) {
 	image, err := d.client.InspectImage(imageName)
-	if err != nil {
-		return nil, fmt.Errorf("Could not find base image %s: %s", imageName, err.Error())
+
+	if err == dockerclient.ErrNoSuchImage {
+		return nil, ErrImageNotFound
+	} else if err != nil {
+		return nil, fmt.Errorf("Error looking up image %s: %s", imageName, err.Error())
 	}
 
 	return image, nil

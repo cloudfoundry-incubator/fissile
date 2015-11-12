@@ -1,10 +1,14 @@
 package model
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
+
+	"gopkg.in/yaml.v2"
 )
 
 // RoleManifest represents a collection of roles
@@ -17,7 +21,7 @@ type RoleManifest struct {
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
 	Name        string     `yaml:"name"`
-	Jobs        []*Job     `yaml:"_,omitempty"`
+	Jobs        Jobs       `yaml:"_,omitempty"`
 	Scripts     []string   `yaml:"scripts"`
 	IsTask      bool       `yaml:"is_task,omitempty"`
 	JobNameList []*roleJob `yaml:"jobs"`
@@ -57,7 +61,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 	for _, role := range rolesManifest.Roles {
 		role.rolesManifest = &rolesManifest
-		role.Jobs = make([]*Job, len(role.JobNameList))
+		role.Jobs = make(Jobs, len(role.JobNameList))
 
 		for idx, roleJob := range role.JobNameList {
 			release, ok := mappedReleases[roleJob.ReleaseName]
@@ -93,4 +97,25 @@ func (r *Role) GetScriptPaths() map[string]string {
 
 	return result
 
+}
+
+// GetRoleDevVersion gets the aggregate signature of all jobs and packages
+func (r *Role) GetRoleDevVersion() string {
+	roleSignature := ""
+	var packages Packages
+
+	sort.Sort(r.Jobs)
+	for _, job := range r.Jobs {
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, job.SHA1)
+		packages = append(packages, job.Packages...)
+	}
+
+	sort.Sort(packages)
+	for _, pkg := range packages {
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, pkg.SHA1)
+	}
+
+	hasher := sha1.New()
+	hasher.Write([]byte(roleSignature))
+	return hex.EncodeToString(hasher.Sum(nil))
 }

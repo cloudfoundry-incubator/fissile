@@ -17,7 +17,6 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
-	dockerclient "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v2"
 )
 
@@ -52,38 +51,6 @@ func (f *Fissile) ListPackages(releasePath string) {
 	)
 }
 
-// ListDevPackages will list all BOSH packages within a list of dev releases
-func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
-
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
-
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-
-		for _, pkg := range release.Packages {
-			log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
-		}
-
-		log.Printf(
-			"There are %s packages present.\n\n",
-			color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
-		)
-	}
-}
-
 // ListJobs will list all jobs within a release
 func (f *Fissile) ListJobs(releasePath string) {
 	release, err := model.NewRelease(releasePath)
@@ -101,37 +68,6 @@ func (f *Fissile) ListJobs(releasePath string) {
 		"There are %s jobs present.",
 		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
 	)
-}
-
-// ListDevJobs will list all jobs within a list of dev releases
-func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []string, cacheDir string) {
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
-
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
-		}
-
-		log.Println(color.GreenString("Dev release %s (%s) loaded successfully", color.YellowString(release.Name), color.MagentaString(release.Version)))
-
-		for _, job := range release.Jobs {
-			log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
-		}
-
-		log.Printf(
-			"There are %s jobs present.\n\n",
-			color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
-		)
-	}
 }
 
 // ListFullConfiguration will output all the configurations within the release
@@ -278,7 +214,6 @@ func (f *Fissile) PrintTemplateReport(releasePath string) {
 					}
 				}
 			}
-
 		}
 	}
 
@@ -431,18 +366,11 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 
-		if err := dockerManager.BuildImage(
-			targetPath,
-			baseImageName,
-			func(stdout io.Reader) {
-				scanner := bufio.NewScanner(stdout)
-				for scanner.Scan() {
-					log.Println(color.GreenString("build-%s > %s", color.MagentaString(baseImageName), color.WhiteString(scanner.Text())))
-				}
-			},
-		); err != nil {
+		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName))
+		if err != nil {
 			log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
 		}
+
 	} else {
 		log.Println("Skipping image build because of flag.")
 	}
@@ -466,6 +394,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
 		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+	}
+
+	dockerManager, err := docker.NewImageManager()
+	if err != nil {
+		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
 	}
 
 	roleBuilder := builder.NewRoleImageBuilder(
@@ -492,25 +425,13 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 
 			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-			dockerManager, err := docker.NewImageManager()
-			if err != nil {
-				log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
-			}
-
 			roleImageName := builder.GetRoleImageName(repository, role, version)
 
-			if err := dockerManager.BuildImage(
-				dockerfileDir,
-				roleImageName,
-				func(stdout io.Reader) {
-					scanner := bufio.NewScanner(stdout)
-					for scanner.Scan() {
-						log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
-					}
-				},
-			); err != nil {
-				log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
+			if err != nil {
+				log.Fatalln(color.RedString("Error building image: %s", err.Error()))
 			}
+
 		} else {
 			log.Println("Skipping image build because of flag.")
 		}
@@ -522,7 +443,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 // ListRoleImages lists all role images
 func (f *Fissile) ListRoleImages(repository string, releasePaths []string, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
 	if withVirtualSize && !existingOnDocker {
-		log.Fatalln(color.RedString("Cannot list image virtual sizes of not matching image names with docker"))
+		log.Fatalln(color.RedString("Cannot list image virtual sizes if not matching image names with docker"))
 	}
 
 	releases := make([]*model.Release, len(releasePaths))
@@ -556,23 +477,32 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 		if existingOnDocker {
 			image, err := dockerManager.FindImage(imageName)
 
-			if err == nil {
-				if withVirtualSize {
-					log.Printf(
-						"%s (%sMB)\n",
-						color.GreenString(imageName),
-						color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
-					)
-				} else {
-					log.Println(imageName)
-				}
+			if err == docker.ErrImageNotFound {
+				continue
+			} else if err != nil {
+				log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+			}
+
+			if withVirtualSize {
+				log.Printf(
+					"%s (%sMB)\n",
+					color.GreenString(imageName),
+					color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+				)
 			} else {
-				if err != dockerclient.ErrNoSuchImage {
-					log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
-				}
+				log.Println(imageName)
 			}
 		} else {
 			log.Println(imageName)
+		}
+	}
+}
+
+func newColoredLogger(roleImageName string) func(io.Reader) {
+	return func(stdout io.Reader) {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
 		}
 	}
 }

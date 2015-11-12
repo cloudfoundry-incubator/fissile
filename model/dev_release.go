@@ -15,8 +15,6 @@ import (
 func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, error) {
 	release := &Release{
 		Path:            path,
-		Packages:        []*Package{},
-		Jobs:            []*Job{},
 		Dev:             true,
 		Name:            releaseName,
 		Version:         version,
