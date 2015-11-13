@@ -9,6 +9,7 @@ import (
 
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
+	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
@@ -191,6 +192,20 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 			log.Println(imageName)
 		}
 	}
+}
+
+//GenerateDevConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
+func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
+
+	releases := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
+
+	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
+
+	if err := configStore.WriteBaseConfig(releases); err != nil {
+		log.Fatalln(color.RedString("Error writing base config: %s", err.Error()))
+	}
+
+	log.Print(color.GreenString("Done."))
 }
 
 func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) []*model.Release {
