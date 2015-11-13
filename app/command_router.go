@@ -46,40 +46,40 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 
 	switch c.Command.FullName() {
 	case "release jobs-report":
-		f.ListJobs(
+		err = f.ListJobs(
 			paths["release"],
 		)
 	case "release packages-report":
-		f.ListPackages(
+		err = f.ListPackages(
 			paths["release"],
 		)
 	case "compilation build-base":
-		f.CreateBaseCompilationImage(
+		err = f.CreateBaseCompilationImage(
 			c.String("base-image"),
 			c.String("repository"),
 		)
 	case "compilation show-base":
-		f.ShowBaseImage(
+		err = f.ShowBaseImage(
 			c.String("base-image"),
 			c.String("repository"),
 		)
 	case "compilation start":
-		f.Compile(
+		err = f.Compile(
 			paths["release"],
 			c.String("repository"),
 			paths["target"],
 			c.Int("workers"),
 		)
 	case "configuration report":
-		f.ListFullConfiguration(
+		err = f.ListFullConfiguration(
 			paths["release"],
 		)
 	case "templates report":
-		f.PrintTemplateReport(
+		err = f.PrintTemplateReport(
 			paths["release"],
 		)
 	case "configuration generate":
-		f.GenerateConfigurationBase(
+		err = f.GenerateConfigurationBase(
 			releasePaths,
 			paths["light-opinions"],
 			paths["dark-opinions"],
@@ -88,7 +88,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("provider"),
 		)
 	case "images create-base":
-		f.GenerateBaseDockerImage(
+		err = f.GenerateBaseDockerImage(
 			paths["target"],
 			c.String("configgin"),
 			c.String("base-image"),
@@ -96,7 +96,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("repository"),
 		)
 	case "images create-roles":
-		f.GenerateRoleImages(
+		err = f.GenerateRoleImages(
 			paths["target"],
 			c.String("repository"),
 			c.Bool("no-build"),
@@ -108,7 +108,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("version"),
 		)
 	case "images list-roles":
-		f.ListRoleImages(
+		err = f.ListRoleImages(
 			c.String("repository"),
 			releasePaths,
 			paths["roles-manifest"],
@@ -117,33 +117,33 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Bool("with-sizes"),
 		)
 	case "dev jobs-report":
-		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
 		}
 
-		f.ListDevJobs(
+		err = f.ListDevJobs(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 		)
 	case "dev packages-report":
-		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
 		}
 
-		f.ListDevPackages(
+		err = f.ListDevPackages(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 		)
 	case "dev compile":
-		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
 		}
 
-		f.CompileDev(
+		err = f.CompileDev(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
@@ -153,11 +153,11 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Int("workers"),
 		)
 	case "dev create-images":
-		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
 		}
 
-		f.GenerateRoleDevImages(
+		err = f.GenerateRoleDevImages(
 			paths["target"],
 			c.String("repository"),
 			c.Bool("no-build"),
@@ -172,11 +172,11 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("default-config-store-prefix"),
 		)
 	case "dev list-roles":
-		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
 		}
 
-		f.ListDevRoleImages(
+		err = f.ListDevRoleImages(
 			c.String("repository"),
 			releasePaths,
 			c.StringSlice("release-name"),
@@ -188,10 +188,10 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	case "dev config-gen":
 		if err := validateDevReleaseArgs(c); err != nil {
-			log.Fatalln(color.RedString("%v", err))
+			break
 		}
 
-		f.GenerateDevConfigurationBase(
+		err = f.GenerateDevConfigurationBase(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
@@ -202,6 +202,10 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("prefix"),
 			c.String("provider"),
 		)
+	}
+
+	if err != nil {
+		log.Fatalln(color.RedString("%v", err))
 	}
 }
 

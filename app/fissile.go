@@ -33,10 +33,10 @@ func NewFissileApplication(version string) *Fissile {
 }
 
 // ListPackages will list all BOSH packages within a release
-func (f *Fissile) ListPackages(releasePath string) {
+func (f *Fissile) ListPackages(releasePath string) error {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -49,13 +49,15 @@ func (f *Fissile) ListPackages(releasePath string) {
 		"There are %s packages present.",
 		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
 	)
+
+	return nil
 }
 
 // ListJobs will list all jobs within a release
-func (f *Fissile) ListJobs(releasePath string) {
+func (f *Fissile) ListJobs(releasePath string) error {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -68,14 +70,16 @@ func (f *Fissile) ListJobs(releasePath string) {
 		"There are %s jobs present.",
 		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
 	)
+
+	return nil
 }
 
 // ListFullConfiguration will output all the configurations within the release
 // TODO this should be updated to use release.GetUniqueConfigs
-func (f *Fissile) ListFullConfiguration(releasePath string) {
+func (f *Fissile) ListFullConfiguration(releasePath string) error {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -120,7 +124,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) {
 		if len(defaults) > 0 {
 			buf, err := yaml.Marshal(defaults[0])
 			if err != nil {
-				log.Fatalln(color.RedString("Error marshaling config value %v: %s", defaults[0], err.Error()))
+				return fmt.Errorf("Error marshaling config value %v: %s", defaults[0], err.Error())
 			}
 			previous := string(buf)
 			log.Printf(
@@ -131,7 +135,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) {
 			for _, value := range defaults[1:] {
 				buf, err := yaml.Marshal(value)
 				if err != nil {
-					log.Fatalln(color.RedString("Error marshaling config value %v: %s", value, err.Error()))
+					return fmt.Errorf("Error marshaling config value %v: %s", value, err.Error())
 				}
 				current := string(buf)
 				if current != previous {
@@ -154,13 +158,15 @@ func (f *Fissile) ListFullConfiguration(releasePath string) {
 		color.GreenString(fmt.Sprintf("%d", len(propertiesGroupedUsageCounts))),
 		color.GreenString(fmt.Sprintf("%d", keysWithDefaults)),
 	)
+
+	return nil
 }
 
 // PrintTemplateReport will output details about the contents of a release
-func (f *Fissile) PrintTemplateReport(releasePath string) {
+func (f *Fissile) PrintTemplateReport(releasePath string) error {
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -238,23 +244,25 @@ func (f *Fissile) PrintTemplateReport(releasePath string) {
 		color.MagentaString("%d", countCode),
 		color.GreenString("%d", countCodeTransformed),
 	)
+
+	return nil
 }
 
 // ShowBaseImage will show details about the base BOSH image
-func (f *Fissile) ShowBaseImage(baseImage, repository string) {
+func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	image, err := dockerManager.FindImage(baseImage)
 	if err != nil {
-		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
 	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
-		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
+		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
 	log.Printf("Image: %s", color.GreenString(baseImage))
@@ -263,69 +271,75 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) {
 
 	image, err = dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
-		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
 	log.Printf("Image: %s", color.GreenString(comp.BaseImageName()))
 	log.Printf("ID: %s", color.GreenString(image.ID))
 	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+
+	return nil
 }
 
 // CreateBaseCompilationImage will recompile the base BOSH image for a release
-func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) {
+func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	baseImage, err := dockerManager.FindImage(baseImageName)
 	if err != nil {
-		log.Fatalln(color.RedString("Error looking up base image %s: %s", baseImage, err.Error()))
+		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
 	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
 	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
-		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
+		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
 	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
-		log.Fatalln(color.RedString("Error creating compilation base image: %s", err.Error()))
+		return fmt.Errorf("Error creating compilation base image: %s", err.Error())
 	}
+
+	return nil
 }
 
 // Compile will compile a full BOSH release
-func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCount int) {
+func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCount int) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	release, err := model.NewRelease(releasePath)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version)
 	if err != nil {
-		log.Fatalln(color.RedString("Error creating a new compilator: %s", err.Error()))
+		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
 	if err := comp.Compile(workerCount, release); err != nil {
-		log.Fatalln(color.RedString("Error compiling packages: %s", err.Error()))
+		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
+
+	return nil
 }
 
 //GenerateConfigurationBase generates a configuration base using a BOSH release and opinions from manifests
-func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) {
+func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) error {
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		release, err := model.NewRelease(releasePath)
 		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
 		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -334,17 +348,19 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
 
 	if err := configStore.WriteBaseConfig(releases); err != nil {
-		log.Fatalln(color.RedString("Error writing base config: %s", err.Error()))
+		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
 	log.Print(color.GreenString("Done."))
+
+	return nil
 }
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
-func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository string) {
+func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	baseImageName := builder.GetBaseImageName(repository, f.Version)
@@ -353,14 +369,14 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 	if err == docker.ErrImageNotFound {
 		log.Println("Image doesn't exist, it will be created ...")
 	} else if err != nil {
-		log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+		return fmt.Errorf("Error looking up image: %s", err.Error())
 	} else {
 		log.Println(color.GreenString(
 			"Base role image %s with ID %s already exists. Doing nothing.",
 			color.YellowString(baseImageName),
 			color.YellowString(image.ID),
 		))
-		return
+		return nil
 	}
 
 	if !strings.HasSuffix(targetPath, string(os.PathSeparator)) {
@@ -372,7 +388,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 	log.Println("Creating Dockerfile ...")
 
 	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
-		log.Fatalln(color.RedString("Error creating Dockerfile and/or assets: %s", err.Error()))
+		return fmt.Errorf("Error creating Dockerfile and/or assets: %s", err.Error())
 	}
 
 	log.Println("Dockerfile created.")
@@ -384,7 +400,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName))
 		if err != nil {
-			log.Fatalln(color.RedString("Error building base image: %s", err.Error()))
+			return fmt.Errorf("Error building base image: %s", err.Error())
 		}
 
 	} else {
@@ -393,15 +409,16 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	log.Println(color.GreenString("Done."))
 
+	return nil
 }
 
 // GenerateRoleImages generates all role images
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePaths []string, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) {
+func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePaths []string, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) error {
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		release, err := model.NewRelease(releasePath)
 		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
 		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -409,12 +426,12 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	roleBuilder := builder.NewRoleImageBuilder(
@@ -431,7 +448,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
 		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
 		if err != nil {
-			log.Fatalln(color.RedString("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error()))
+			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
 		}
 
 		if !noBuild {
@@ -445,7 +462,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 
 			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
 			if err != nil {
-				log.Fatalln(color.RedString("Error building image: %s", err.Error()))
+				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 
 		} else {
@@ -454,19 +471,21 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 	}
 
 	log.Println(color.GreenString("Done."))
+
+	return nil
 }
 
 // ListRoleImages lists all role images
-func (f *Fissile) ListRoleImages(repository string, releasePaths []string, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) {
+func (f *Fissile) ListRoleImages(repository string, releasePaths []string, rolesManifestPath, version string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
-		log.Fatalln(color.RedString("Cannot list image virtual sizes if not matching image names with docker"))
+		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
 
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		release, err := model.NewRelease(releasePath)
 		if err != nil {
-			log.Fatalln(color.RedString("Error loading release information: %s", err.Error()))
+			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
 		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
@@ -478,13 +497,13 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 	if existingOnDocker {
 		dockerManager, err = docker.NewImageManager()
 		if err != nil {
-			log.Fatalln(color.RedString("Error connecting to docker: %s", err.Error()))
+			return fmt.Errorf("Error connecting to docker: %s", err.Error())
 		}
 	}
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
 	if err != nil {
-		log.Fatalln(color.RedString("Error loading roles manifest: %s", err.Error()))
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
 	for _, role := range rolesManifest.Roles {
@@ -496,7 +515,7 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 			if err == docker.ErrImageNotFound {
 				continue
 			} else if err != nil {
-				log.Fatalln(color.RedString("Error looking up image: %s", err.Error()))
+				return fmt.Errorf("Error looking up image: %s", err.Error())
 			}
 
 			if withVirtualSize {
@@ -512,6 +531,8 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 			log.Println(imageName)
 		}
 	}
+
+	return nil
 }
 
 func newColoredLogger(roleImageName string) func(io.Reader) {
