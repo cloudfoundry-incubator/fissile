@@ -31,8 +31,8 @@ ADD role-startup /opt/hcf/startup/
 ADD run.sh /opt/hcf/
 
 # Add license and/or notice file
-{{ if or (.license) (.notice) }}
-ADD {{.license}} {{.notice}} /opt/hcf/share/doc/
+{{ if gt (len .licenses) 0 }}
+ADD {{ range $name, $_ := .licenses }}{{$name}} {{end}} /opt/hcf/share/doc/
 {{ end }}
 
 ENTRYPOINT ["/bin/bash", "/opt/hcf/run.sh"]

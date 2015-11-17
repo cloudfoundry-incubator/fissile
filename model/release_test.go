@@ -222,9 +222,9 @@ func TestReleaseLicenseOk(t *testing.T) {
 	err = release.loadLicense()
 
 	assert.Nil(err)
-	assert.NotEmpty(release.License.Contents)
-	assert.Equal(40, len(release.License.SHA1))
-	assert.Equal("LICENSE", release.License.Filename)
+	assert.Equal(40, len(release.License.ActualSHA1))
+	assert.NotEmpty(release.License.Files)
+	assert.NotNil(release.License.Files["LICENSE"])
 }
 
 func TestReleaseLicenseNotOk(t *testing.T) {
@@ -243,8 +243,7 @@ func TestReleaseLicenseNotOk(t *testing.T) {
 	if assert.NotNil(err) {
 		assert.Contains(err.Error(), "unexpected EOF")
 	}
-	assert.Nil(release.License.Contents)
-	assert.Empty(release.License.SHA1)
+	assert.Empty(release.License.Files)
 }
 
 func TestGetDeploymentConfig(t *testing.T) {
