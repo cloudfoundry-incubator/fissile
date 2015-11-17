@@ -61,16 +61,10 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	}
 
 	// Write out license files
-	if license := &role.Jobs[0].Release.License; license.Contents != nil {
-		err := ioutil.WriteFile(filepath.Join(roleDir, license.Filename), license.Contents, 0644)
+	for filename, contents := range role.Jobs[0].Release.License.Files {
+		err := ioutil.WriteFile(filepath.Join(roleDir, filename), contents, 0644)
 		if err != nil {
-			return "", fmt.Errorf("failed to write out license file: %v", err)
-		}
-	}
-	if notice := role.Jobs[0].Release.Notice; notice.Contents != nil {
-		err := ioutil.WriteFile(filepath.Join(roleDir, notice.Filename), notice.Contents, 0644)
-		if err != nil {
-			return "", fmt.Errorf("failed to write out notice file: %v", err)
+			return "", fmt.Errorf("failed to write out license file %s: %v", filename, err)
 		}
 	}
 
@@ -228,8 +222,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 		"base_image":    baseImage,
 		"image_version": r.version,
 		"role":          role,
-		"license":       role.Jobs[0].Release.License.Filename,
-		"notice":        role.Jobs[0].Release.Notice.Filename,
+		"licenses":      role.Jobs[0].Release.License.Files,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))

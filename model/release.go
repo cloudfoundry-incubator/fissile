@@ -2,7 +2,6 @@ package model
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"crypto/sha1"
 	"fmt"
@@ -23,7 +22,6 @@ type Release struct {
 	Jobs               Jobs
 	Packages           Packages
 	License            ReleaseLicense
-	Notice             ReleaseLicense
 	Name               string
 	UncommittedChanges bool
 	CommitHash         string
@@ -208,32 +206,32 @@ func (r *Release) loadDependenciesForPackages() error {
 }
 
 func (r *Release) loadLicense() error {
-	err := targzIterate(r.licenseArchivePath(),
-		func(tarfile *tar.Reader, header *tar.Header) error {
-			hash := sha1.New()
-			licenseFile := io.TeeReader(tarfile, hash)
+	targz, err := os.Open(r.licenseArchivePath())
+	if err != nil {
+		return err
+	}
+	defer targz.Close()
 
-			licenseWriter := &bytes.Buffer{}
-			if _, err := io.Copy(licenseWriter, licenseFile); err != nil {
-				return fmt.Errorf("failed reading tar'd file: %s, %v", header.Name, err)
-			}
+	r.License.Files = make(map[string][]byte)
+	hash := sha1.New()
 
-			sha1hash := fmt.Sprintf("%02x", hash.Sum(nil))
+	err = targzIterate(
+		io.TeeReader(targz, hash),
+		r.licenseArchivePath(),
+		func(licenseFile *tar.Reader, header *tar.Header) error {
 			name := strings.ToLower(header.Name)
 
-			switch {
-			case strings.Contains(name, "license"):
-				r.License.Contents = licenseWriter.Bytes()
-				r.License.SHA1 = sha1hash
-				r.License.Filename = filepath.Base(header.Name)
-			case strings.Contains(name, "notice"):
-				r.Notice.Contents = licenseWriter.Bytes()
-				r.Notice.SHA1 = sha1hash
-				r.Notice.Filename = filepath.Base(header.Name)
+			if strings.Contains(name, "license") || strings.Contains(name, "notice") {
+				buf, err := ioutil.ReadAll(licenseFile)
+				if err != nil {
+					return err
+				}
+				r.License.Files[filepath.Base(header.Name)] = buf
 			}
-
 			return nil
 		})
+
+	r.License.ActualSHA1 = fmt.Sprintf("%02x", hash.Sum(nil))
 
 	return err
 }
@@ -280,14 +278,7 @@ func (r *Release) manifestFilePath() string {
 
 // targzIterate iterates over the files it finds in a tar.gz file and calls a
 // callback for each file encountered.
-func targzIterate(filename string, fn func(*tar.Reader, *tar.Header) error) error {
-	targz, err := os.Open(filename)
-	if err != nil {
-		return nil // Don't care if this file doesn't exist
-	}
-
-	defer targz.Close()
-
+func targzIterate(targz io.Reader, filename string, fn func(*tar.Reader, *tar.Header) error) error {
 	gzipReader, err := gzip.NewReader(targz)
 	if err != nil {
 		return fmt.Errorf("%s could not be read: %v", filename, err)
