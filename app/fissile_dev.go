@@ -80,7 +80,7 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 	for _, release := range releases {
 		log.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
-		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version)
+		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}

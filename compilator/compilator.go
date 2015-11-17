@@ -41,7 +41,8 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
-	packageDone map[string]chan struct{}
+	packageDone   map[string]chan struct{}
+	keepContainer bool
 }
 
 // NewCompilator will create an instance of the Compilator
@@ -51,6 +52,7 @@ func NewCompilator(
 	repositoryPrefix string,
 	baseType string,
 	fissileVersion string,
+	keepContainer bool,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -59,6 +61,7 @@ func NewCompilator(
 		RepositoryPrefix: repositoryPrefix,
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
+		keepContainer:    keepContainer,
 
 		packageDone: make(map[string]chan struct{}),
 	}
@@ -317,7 +320,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		},
 	)
 	defer func() {
-		if container != nil {
+		if container != nil && !c.keepContainer {
 			removeErr := c.DockerManager.RemoveContainer(container.ID)
 			if removeErr != nil {
 				if err == nil {
@@ -410,7 +413,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 
 	defer func() {
 		// Remove container
-		if container == nil {
+		if container == nil || c.keepContainer {
 			return
 		}
 
