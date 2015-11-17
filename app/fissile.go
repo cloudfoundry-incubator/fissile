@@ -260,7 +260,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -282,7 +282,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 }
 
 // CreateBaseCompilationImage will recompile the base BOSH image for a release
-func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) error {
+func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, keepContainer bool) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -295,7 +295,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) e
 
 	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -308,7 +308,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string) e
 }
 
 // Compile will compile a full BOSH release
-func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCount int) error {
+func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCount int, keepContainer bool) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -321,7 +321,7 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 
 	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version)
+	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, keepContainer)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}

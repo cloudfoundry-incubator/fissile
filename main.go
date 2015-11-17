@@ -80,6 +80,10 @@ func main() {
 							Value: "fissile",
 							Usage: "Repository name prefix used to create image names.",
 						},
+						cli.BoolFlag{
+							Name:  "debug, d",
+							Usage: "If specified, containers won't be deleted when their build fails.",
+						},
 					},
 					Usage:       "Prepare a compilation base image",
 					Description: "The name of the created image will be <REPOSITORY_PREFIX>:<RELEASE_NAME>-<RELEASE_VERSION>-cbase. If the image already exists, this command does nothing.",
@@ -124,6 +128,10 @@ func main() {
 							Name:  "workers, w",
 							Value: 2,
 							Usage: "Number of compiler workers to use.",
+						},
+						cli.BoolFlag{
+							Name:  "debug, d",
+							Usage: "If specified, containers won't be deleted when their build fails.",
 						},
 					},
 					Usage:       "Compile packages",

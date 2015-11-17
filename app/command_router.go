@@ -57,6 +57,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.CreateBaseCompilationImage(
 			c.String("base-image"),
 			c.String("repository"),
+			c.Bool("debug"),
 		)
 	case "compilation show-base":
 		err = f.ShowBaseImage(
@@ -69,6 +70,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("repository"),
 			paths["target"],
 			c.Int("workers"),
+			c.Bool("debug"),
 		)
 	case "configuration report":
 		err = f.ListFullConfiguration(
