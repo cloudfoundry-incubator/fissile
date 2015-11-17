@@ -2,11 +2,9 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"github.com/codegangsta/cli"
-	"github.com/fatih/color"
 )
 
 // CommandRouter will dispatch CLI commands to their relevant functions
@@ -27,19 +25,22 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		{
 			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
-				log.Fatalln(color.RedString("%v", err))
+				f.cmdErr = err
+				return
 			}
 
 			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
 			if err != nil {
-				log.Fatalln(color.RedString("%v", err))
+				f.cmdErr = err
+				return
 			}
 		}
 	default:
 		{
 			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
 			if err != nil {
-				log.Fatalln(color.RedString("%v", err))
+				f.cmdErr = err
+				return
 			}
 		}
 	}
@@ -189,7 +190,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.Bool("with-sizes"),
 		)
 	case "dev config-gen":
-		if err := validateDevReleaseArgs(c); err != nil {
+		if err = validateDevReleaseArgs(c); err != nil {
 			break
 		}
 
@@ -206,9 +207,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	}
 
-	if err != nil {
-		log.Fatalln(color.RedString("%v", err))
-	}
+	f.cmdErr = err
 }
 
 func validateDevReleaseArgs(c *cli.Context) error {
@@ -260,4 +259,11 @@ func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]stri
 	}
 
 	return absolutePaths, nil
+}
+
+// CommandAfterHandler is used to expose any errors from running the commands to
+// the rest of the system, to work around the fact that cli.Command.Action does
+// not return any error codes.
+func (f *Fissile) CommandAfterHandler(c *cli.Context) error {
+	return f.cmdErr
 }

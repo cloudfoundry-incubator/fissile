@@ -29,6 +29,10 @@
 			"Rev": "c9ad0ce23f68428421adfc6ced9e6123f54788a5"
 		},
 		{
+			"ImportPath": "github.com/hpcloud/termui",
+			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
+		},
+		{
 			"ImportPath": "github.com/mattn/go-isatty",
 			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
 		},

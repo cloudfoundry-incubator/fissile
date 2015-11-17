@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -17,18 +16,22 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
+	"github.com/hpcloud/termui"
 	"gopkg.in/yaml.v2"
 )
 
 // Fissile represents a fissile application
 type Fissile struct {
 	Version string
+	ui      *termui.UI
+	cmdErr  error
 }
 
 // NewFissileApplication creates a new app.Fissile
-func NewFissileApplication(version string) *Fissile {
+func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	return &Fissile{
 		Version: version,
+		ui:      ui,
 	}
 }
 
@@ -39,13 +42,13 @@ func (f *Fissile) ListPackages(releasePath string) error {
 		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	for _, pkg := range release.Packages {
-		log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+		f.ui.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
 	}
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s packages present.",
 		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
 	)
@@ -60,13 +63,13 @@ func (f *Fissile) ListJobs(releasePath string) error {
 		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	for _, job := range release.Jobs {
-		log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+		f.ui.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
 	}
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s jobs present.",
 		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
 	)
@@ -82,7 +85,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	propertiesGroupedUsageCounts := map[string]int{}
 	propertiesGroupedDefaults := map[string][]interface{}{}
@@ -113,7 +116,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 	keysWithDefaults := 0
 
 	for _, name := range keys {
-		log.Printf(
+		f.ui.Printf(
 			"====== %s ======\nUsage count: %s\n",
 			color.GreenString(name),
 			color.MagentaString(fmt.Sprintf("%d", propertiesGroupedUsageCounts[name])),
@@ -127,7 +130,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 				return fmt.Errorf("Error marshaling config value %v: %s", defaults[0], err.Error())
 			}
 			previous := string(buf)
-			log.Printf(
+			f.ui.Printf(
 				"Default:\n%s\n",
 				color.YellowString(previous),
 			)
@@ -139,7 +142,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 				}
 				current := string(buf)
 				if current != previous {
-					log.Printf(
+					f.ui.Printf(
 						"*** ALTERNATE DEFAULT:\n%s\n",
 						color.RedString(current),
 					)
@@ -153,7 +156,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 		}
 	}
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s unique configuration keys present. %s of them have default values.",
 		color.GreenString(fmt.Sprintf("%d", len(propertiesGroupedUsageCounts))),
 		color.GreenString(fmt.Sprintf("%d", keysWithDefaults)),
@@ -169,7 +172,7 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
 	templateCount := 0
 
@@ -188,7 +191,7 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 			blocks, err := template.GetErbBlocks()
 
 			if err != nil {
-				log.Println(color.RedString("Error reading template blocks for template %s in job %s: %s", template.SourcePath, job.Name, err.Error()))
+				f.ui.Println(color.RedString("Error reading template blocks for template %s in job %s: %s", template.SourcePath, job.Name, err.Error()))
 			}
 
 			for _, block := range blocks {
@@ -200,7 +203,7 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 
 					transformedBlock, err := block.Transform()
 					if err != nil {
-						log.Println(color.RedString("Error transforming block %s for template %s in job %s: %s", block.Block, template.SourcePath, job.Name, err.Error()))
+						f.ui.Println(color.RedString("Error transforming block %s for template %s in job %s: %s", block.Block, template.SourcePath, job.Name, err.Error()))
 					}
 
 					if transformedBlock != "" {
@@ -212,7 +215,7 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 
 					transformedBlock, err := block.Transform()
 					if err != nil {
-						log.Println(color.RedString("Error transforming block %s for template %s in job %s: %s", block.Block, template.SourcePath, job.Name, err.Error()))
+						f.ui.Println(color.RedString("Error transforming block %s for template %s in job %s: %s", block.Block, template.SourcePath, job.Name, err.Error()))
 					}
 
 					if transformedBlock != "" {
@@ -223,23 +226,23 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 		}
 	}
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s templates present.",
 		color.GreenString("%d", templateCount),
 	)
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s text blocks that we don't need to touch.",
 		color.GreenString("%d", countText),
 	)
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s print blocks, and we can transform %s of them.",
 		color.MagentaString("%d", countPrint),
 		color.GreenString("%d", countPrintTransformed),
 	)
 
-	log.Printf(
+	f.ui.Printf(
 		"There are %s code blocks, and we can transform %s of them.",
 		color.MagentaString("%d", countCode),
 		color.GreenString("%d", countCodeTransformed),
@@ -260,23 +263,23 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false, f.ui)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	log.Printf("Image: %s", color.GreenString(baseImage))
-	log.Printf("ID: %s", color.GreenString(image.ID))
-	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Image: %s", color.GreenString(baseImage))
+	f.ui.Printf("ID: %s", color.GreenString(image.ID))
+	f.ui.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 
 	image, err = dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	log.Printf("Image: %s", color.GreenString(comp.BaseImageName()))
-	log.Printf("ID: %s", color.GreenString(image.ID))
-	log.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Image: %s", color.GreenString(comp.BaseImageName()))
+	f.ui.Printf("ID: %s", color.GreenString(image.ID))
+	f.ui.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 
 	return nil
 }
@@ -293,9 +296,9 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	log.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
+	f.ui.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.ui)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -319,9 +322,9 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 		return fmt.Errorf("Error loading release information: %s", err.Error())
 	}
 
-	log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 
-	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, keepContainer)
+	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, keepContainer, f.ui)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -342,7 +345,7 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
-		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+		f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
@@ -351,7 +354,7 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	log.Print(color.GreenString("Done."))
+	f.ui.Print(color.GreenString("Done."))
 
 	return nil
 }
@@ -367,11 +370,11 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	image, err := dockerManager.FindImage(baseImageName)
 	if err == docker.ErrImageNotFound {
-		log.Println("Image doesn't exist, it will be created ...")
+		f.ui.Println("Image doesn't exist, it will be created ...")
 	} else if err != nil {
 		return fmt.Errorf("Error looking up image: %s", err.Error())
 	} else {
-		log.Println(color.GreenString(
+		f.ui.Println(color.GreenString(
 			"Base role image %s with ID %s already exists. Doing nothing.",
 			color.YellowString(baseImageName),
 			color.YellowString(image.ID),
@@ -385,29 +388,29 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
-	log.Println("Creating Dockerfile ...")
+	f.ui.Println("Creating Dockerfile ...")
 
 	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
 		return fmt.Errorf("Error creating Dockerfile and/or assets: %s", err.Error())
 	}
 
-	log.Println("Dockerfile created.")
+	f.ui.Println("Dockerfile created.")
 
 	if !noBuild {
-		log.Println("Building docker image ...")
+		f.ui.Println("Building docker image ...")
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 
-		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName))
+		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName, f.ui))
 		if err != nil {
 			return fmt.Errorf("Error building base image: %s", err.Error())
 		}
 
 	} else {
-		log.Println("Skipping image build because of flag.")
+		f.ui.Println("Skipping image build because of flag.")
 	}
 
-	log.Println(color.GreenString("Done."))
+	f.ui.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -421,7 +424,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
-		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+		f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
@@ -442,10 +445,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 		defaultConfigStorePrefix,
 		version,
 		f.Version,
+		f.ui,
 	)
 
 	for _, role := range rolesManifest.Roles {
-		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
+		f.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
 		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
 		if err != nil {
 			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
@@ -456,21 +460,21 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
 			}
 
-			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+			f.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
 			roleImageName := builder.GetRoleImageName(repository, role, version)
 
-			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, f.ui))
 			if err != nil {
 				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 
 		} else {
-			log.Println("Skipping image build because of flag.")
+			f.ui.Println("Skipping image build because of flag.")
 		}
 	}
 
-	log.Println(color.GreenString("Done."))
+	f.ui.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -488,7 +492,7 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 		releases[idx] = release
-		log.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+		f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
 	var dockerManager *docker.ImageManager
@@ -519,27 +523,27 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 			}
 
 			if withVirtualSize {
-				log.Printf(
+				f.ui.Printf(
 					"%s (%sMB)\n",
 					color.GreenString(imageName),
 					color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
 				)
 			} else {
-				log.Println(imageName)
+				f.ui.Println(imageName)
 			}
 		} else {
-			log.Println(imageName)
+			f.ui.Println(imageName)
 		}
 	}
 
 	return nil
 }
 
-func newColoredLogger(roleImageName string) func(io.Reader) {
+func newColoredLogger(roleImageName string, ui *termui.UI) func(io.Reader) {
 	return func(stdout io.Reader) {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			log.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
+			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
 		}
 	}
 }
