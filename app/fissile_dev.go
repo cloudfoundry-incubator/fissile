@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,13 +25,13 @@ func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []
 	}
 
 	for _, release := range releases {
-		log.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, pkg := range release.Packages {
-			log.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+			f.ui.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
 		}
 
-		log.Printf(
+		f.ui.Printf(
 			"There are %s packages present.\n\n",
 			color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
 		)
@@ -50,13 +49,13 @@ func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []stri
 	}
 
 	for _, release := range releases {
-		log.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, job := range release.Jobs {
-			log.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+			f.ui.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
 		}
 
-		log.Printf(
+		f.ui.Printf(
 			"There are %s jobs present.\n\n",
 			color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
 		)
@@ -78,9 +77,9 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 	}
 
 	for _, release := range releases {
-		log.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.ui.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
-		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false)
+		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.ui)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
@@ -118,6 +117,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 		defaultConfigStorePrefix,
 		"",
 		f.Version,
+		f.ui,
 	)
 
 	for _, role := range rolesManifest.Roles {
@@ -125,7 +125,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 
 		_, err = dockerManager.FindImage(roleImageName)
 		if err == nil && !force {
-			log.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
+			f.ui.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
 			continue
 		}
 
@@ -135,7 +135,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 			return fmt.Errorf("Error removing Dockerfile directory and/or assets for role %s: %s", role.Name, err.Error())
 		}
 
-		log.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
+		f.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
 		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
 		if err != nil {
 			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
@@ -146,19 +146,19 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
 			}
 
-			log.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+			f.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName))
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, f.ui))
 			if err != nil {
 				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 
 		} else {
-			log.Println("Skipping image build because of flag.")
+			f.ui.Println("Skipping image build because of flag.")
 		}
 	}
 
-	log.Println(color.GreenString("Done."))
+	f.ui.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -192,7 +192,7 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 		imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
 
 		if !existingOnDocker {
-			log.Println(imageName)
+			f.ui.Println(imageName)
 			continue
 		}
 
@@ -205,13 +205,13 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 		}
 
 		if withVirtualSize {
-			log.Printf(
+			f.ui.Printf(
 				"%s (%sMB)\n",
 				color.GreenString(imageName),
 				color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
 			)
 		} else {
-			log.Println(imageName)
+			f.ui.Println(imageName)
 		}
 	}
 
@@ -232,7 +232,7 @@ func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, relea
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	log.Print(color.GreenString("Done."))
+	f.ui.Print(color.GreenString("Done."))
 
 	return nil
 }

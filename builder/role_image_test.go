@@ -9,11 +9,18 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/util"
 
+	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert := assert.New(t)
+
+	ui := termui.New(
+		os.Stdin,
+		ioutil.Discard,
+		nil,
+	)
 
 	workDir, err := os.Getwd()
 	assert.Nil(err)
@@ -30,7 +37,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
 
 	dockerfileContents, err := roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
 	assert.Nil(err)
@@ -43,6 +50,12 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert := assert.New(t)
 
+	ui := termui.New(
+		os.Stdin,
+		ioutil.Discard,
+		nil,
+	)
+
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
@@ -58,7 +71,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.Nil(err)
@@ -77,6 +90,12 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert := assert.New(t)
 
+	ui := termui.New(
+		os.Stdin,
+		ioutil.Discard,
+		nil,
+	)
+
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
@@ -92,7 +111,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30")
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
 	assert.Nil(err)

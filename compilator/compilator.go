@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/hpcloud/termui"
 	"github.com/termie/go-shutil"
 )
 
@@ -43,6 +43,7 @@ type Compilator struct {
 
 	packageDone   map[string]chan struct{}
 	keepContainer bool
+	ui            *termui.UI
 }
 
 // NewCompilator will create an instance of the Compilator
@@ -53,6 +54,7 @@ func NewCompilator(
 	baseType string,
 	fissileVersion string,
 	keepContainer bool,
+	ui *termui.UI,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -62,6 +64,7 @@ func NewCompilator(
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
 		keepContainer:    keepContainer,
+		ui:               ui,
 
 		packageDone: make(map[string]chan struct{}),
 	}
@@ -102,7 +105,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
 	}
 	if 0 == len(packages) {
-		log.Println("No package needed to be built")
+		c.ui.Println("No package needed to be built")
 		return nil
 	}
 
@@ -150,12 +153,12 @@ func (c *Compilator) collectResults(
 
 		if result.Err == nil {
 			close(c.packageDone[result.Pkg.Name])
-			log.Printf("%s   > success: %s\n",
+			c.ui.Printf("%s   > success: %s\n",
 				color.YellowString("result"), color.GreenString(result.Pkg.Name))
 			continue
 		}
 
-		log.Printf(
+		c.ui.Printf(
 			"%s   > failure: %s - %s\n",
 			color.YellowString("result"),
 			color.RedString(result.Pkg.Name),
@@ -184,7 +187,7 @@ func (c *Compilator) compileWorker(
 	wg *sync.WaitGroup,
 ) {
 
-	log.Printf("worker-%s > start\n", color.YellowString("%d", id))
+	c.ui.Printf("worker-%s > start\n", color.YellowString("%d", id))
 
 MainLoop:
 	for {
@@ -193,7 +196,7 @@ MainLoop:
 
 		select {
 		case <-killCh:
-			log.Printf("worker-%s > killed", color.YellowString("%d", id))
+			c.ui.Printf("worker-%s > killed", color.YellowString("%d", id))
 			break MainLoop
 		case pkg, ok = <-todoCh:
 			if !ok {
@@ -207,30 +210,30 @@ MainLoop:
 			for !done {
 				select {
 				case <-killCh:
-					log.Printf("worker-%s > killed:  %s",
+					c.ui.Printf("worker-%s > killed:  %s",
 						color.YellowString("%d", id), color.MagentaString(pkg.Name))
 					doneCh <- compileResult{Pkg: pkg, Err: errWorkerAbort}
 					break MainLoop
 				case <-time.After(5 * time.Second):
-					log.Printf("worker-%s > waiting: %s - %s",
+					c.ui.Printf("worker-%s > waiting: %s - %s",
 						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
 				case <-c.packageDone[dep.Name]:
-					log.Printf("worker-%s > depdone: %s - %s",
+					c.ui.Printf("worker-%s > depdone: %s - %s",
 						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
 					done = true
 				}
 			}
 		}
 
-		log.Printf("worker-%s > compile: %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
+		c.ui.Printf("worker-%s > compile: %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
 
 		workerErr := compilePackageHarness(c, pkg)
-		log.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
+		c.ui.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
 
 		doneCh <- compileResult{Pkg: pkg, Err: workerErr}
 	}
 
-	log.Printf("worker-%s > exit\n", color.YellowString("%d", id))
+	c.ui.Printf("worker-%s > exit\n", color.YellowString("%d", id))
 	wg.Done()
 }
 
@@ -271,16 +274,16 @@ func createDepBuckets(packages []*model.Package) [][]*model.Package {
 func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
 	imageTag := c.BaseCompilationImageTag()
 	imageName := c.BaseImageName()
-	log.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
+	c.ui.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
 	containerName := c.baseCompilationContainerName()
-	log.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
+	c.ui.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
 
 	image, err = c.DockerManager.FindImage(imageName)
 	if err != nil {
-		log.Println("Image doesn't exist, it will be created ...")
+		c.ui.Println("Image doesn't exist, it will be created ...")
 	} else {
-		log.Println(color.GreenString(
+		c.ui.Println(color.GreenString(
 			"Compilation image %s with ID %s already exists. Doing nothing.",
 			color.YellowString(imageName),
 			color.YellowString(image.ID),
@@ -309,13 +312,13 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
 			}
 		},
 	)
@@ -356,7 +359,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		return nil, fmt.Errorf("Error creating image %s", err.Error())
 	}
 
-	log.Println(color.GreenString(
+	c.ui.Println(color.GreenString(
 		"Image %s with ID %s created successfully.",
 		color.YellowString(c.BaseImageName()),
 		color.YellowString(container.ID)))
@@ -400,13 +403,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				log.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
 			}
 		},
 	)

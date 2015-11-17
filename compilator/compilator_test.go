@@ -3,7 +3,6 @@ package compilator
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
 
+	"github.com/hpcloud/termui"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,9 +25,13 @@ const (
 
 var dockerImageName string
 
-func TestMain(m *testing.M) {
-	log.SetOutput(ioutil.Discard)
+var ui = termui.New(
+	os.Stdin,
+	ioutil.Discard,
+	nil,
+)
 
+func TestMain(m *testing.M) {
 	dockerImageName = os.Getenv(dockerImageEnvVar)
 	if dockerImageName == "" {
 		dockerImageName = defaultDockerTestImage
@@ -41,7 +45,7 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "")
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	waitCh := make(chan struct{})
@@ -68,7 +72,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "")
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
@@ -105,7 +109,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "")
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
@@ -135,7 +139,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	compilator.initPackageMaps(release)
@@ -167,7 +171,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	compilator.initPackageMaps(release)
@@ -192,7 +196,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -221,7 +225,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15")
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	pkg, err := release.LookupPackage("tor")
@@ -261,7 +265,7 @@ func TestCompilePackage(t *testing.T) {
 
 	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15")
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	imageName := comp.BaseImageName()
@@ -327,7 +331,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "")
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")

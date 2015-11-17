@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"runtime"
 
@@ -10,25 +9,35 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/fatih/color"
+	"github.com/hpcloud/termui"
+	"github.com/hpcloud/termui/sigint"
 )
 
 var version string
 
 func main() {
-	if runtime.GOOS == "windows" {
-		log.SetOutput(color.Output)
-	} else {
-		log.SetOutput(os.Stdout)
-	}
+	var ui *termui.UI
 
-	log.SetFlags(0)
+	if runtime.GOOS == "windows" {
+		ui = termui.New(
+			os.Stdin,
+			color.Output,
+			nil,
+		)
+	} else {
+		ui = termui.New(
+			os.Stdin,
+			os.Stdout,
+			nil,
+		)
+	}
 
 	cliApp := cli.NewApp()
 	cliApp.Name = "fissile"
 	cliApp.Usage = "Use fissile to break apart a BOSH release."
 	cliApp.Version = version
 
-	fissile := app.NewFissileApplication(version)
+	fissile := app.NewFissileApplication(version, ui)
 
 	cliApp.Commands = []cli.Command{
 		{
@@ -625,5 +634,10 @@ func main() {
 		},
 	}
 
-	cliApp.Run(os.Args)
+	cliApp.After = fissile.CommandAfterHandler
+
+	if err := cliApp.Run(os.Args); err != nil {
+		ui.Println(color.RedString("%v", err))
+		sigint.DefaultHandler.Exit(1)
+	}
 }

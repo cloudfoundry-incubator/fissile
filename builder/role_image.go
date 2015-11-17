@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/hpcloud/fissile/util"
 
 	"github.com/fatih/color"
+	"github.com/hpcloud/termui"
 	"github.com/termie/go-shutil"
 )
 
@@ -31,10 +31,11 @@ type RoleImageBuilder struct {
 	defaultConfigStorePrefix string
 	version                  string
 	fissileVersion           string
+	ui                       *termui.UI
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version, fissileVersion string) *RoleImageBuilder {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version, fissileVersion string, ui *termui.UI) *RoleImageBuilder {
 	return &RoleImageBuilder{
 		repository:               repository,
 		compiledPackagesPath:     compiledPackagesPath,
@@ -43,6 +44,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultCo
 		defaultConfigStorePrefix: defaultConfigStorePrefix,
 		version:                  version,
 		fissileVersion:           fissileVersion,
+		ui:                       ui,
 	}
 }
 
@@ -85,7 +87,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 				packageSet[pkg.Name] = pkg.Fingerprint
 			} else {
 				if pkg.Fingerprint != packageSet[pkg.Name] {
-					log.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
+					r.ui.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
 						color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
 				}
 
