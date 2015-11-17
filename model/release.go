@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/hpcloud/fissile/util"
@@ -40,6 +41,10 @@ const (
 	licenseArchive = "license.tgz"
 	manifestFile   = "release.MF"
 )
+
+// yamlBinaryRegexp is the regexp used to look for the "!binary" YAML tag; see
+// loadMetadata() where it is used.
+var yamlBinaryRegexp = regexp.MustCompile(`([^!])!binary \|-\n`)
 
 // NewRelease will create an instance of a BOSH release
 func NewRelease(path string) (*Release, error) {
@@ -111,6 +116,14 @@ func (r *Release) loadMetadata() (err error) {
 	if err != nil {
 		return err
 	}
+
+	// Psych (the Ruby YAML serializer) will incorrectly emit "!binary" when it means "!!binary".
+	// This causes the data to be read incorrectly (not base64 decoded), which causes integrity checks to fail.
+	// See https://github.com/tenderlove/psych/blob/c1decb1fef5/lib/psych/visitors/yaml_tree.rb#L309
+	manifestContents = yamlBinaryRegexp.ReplaceAll(
+		manifestContents,
+		[]byte("$1!!binary |-\n"),
+	)
 
 	err = yaml.Unmarshal([]byte(manifestContents), &r.manifest)
 
