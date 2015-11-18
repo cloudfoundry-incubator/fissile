@@ -206,6 +206,12 @@ func (r *Release) loadDependenciesForPackages() error {
 }
 
 func (r *Release) loadLicense() error {
+	if licenseInfo, ok := r.manifest["license"].(map[interface{}]interface{}); ok {
+		if licenseHash, ok := licenseInfo["sha1"].(string); ok {
+			r.License.SHA1 = licenseHash
+		}
+	}
+
 	targz, err := os.Open(r.licenseArchivePath())
 	if err != nil {
 		return err

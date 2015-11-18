@@ -77,6 +77,41 @@ func (f *Fissile) ListJobs(releasePath string) error {
 	return nil
 }
 
+// VerifyRelease checks that the release files match the checksum in the release manifest
+func (f *Fissile) VerifyRelease(releasePath string) error {
+	release, err := model.NewRelease(releasePath)
+	if err != nil {
+		return fmt.Errorf("Error loading release information: %s", err.Error())
+	}
+
+	f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
+
+	for _, job := range release.Jobs {
+		if err := job.ValidateSHA1(); err != nil {
+			return err
+		}
+		f.ui.Printf("Verified job %s\n", color.YellowString(job.Name))
+	}
+
+	for _, pkg := range release.Packages {
+		if err := pkg.ValidateSHA1(); err != nil {
+			return err
+		}
+		f.ui.Printf("Verified package %s\n", color.YellowString(pkg.Name))
+	}
+
+	if release.License.SHA1 != "" {
+		if release.License.SHA1 != release.License.ActualSHA1 {
+			return fmt.Errorf("Computed SHA1 (%s) is different than manifest sha1 (%s) for license file\n", release.License.ActualSHA1, release.License.SHA1)
+		}
+		f.ui.Println("Verified license file")
+	}
+
+	f.ui.Printf("Release %s (%s) verified successfully\n", color.GreenString(release.Name), color.YellowString(release.Path))
+
+	return nil
+}
+
 // ListFullConfiguration will output all the configurations within the release
 // TODO this should be updated to use release.GetUniqueConfigs
 func (f *Fissile) ListFullConfiguration(releasePath string) error {
