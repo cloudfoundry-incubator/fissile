@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -84,4 +86,30 @@ func TestPrintTemplateReport(t *testing.T) {
 
 	err = f.PrintTemplateReport(releasePath)
 	assert.Nil(err, "Expected PrintTemplateReport to find the release")
+}
+
+func TestVerifyRelease(t *testing.T) {
+	ui := termui.New(bytes.NewBufferString(""), ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+	assetsPath := filepath.Join(workDir, "../test-assets/corrupt-releases")
+
+	f := NewFissileApplication(".", ui)
+
+	err = f.VerifyRelease(filepath.Join(assetsPath, "valid-release"))
+	assert.Nil(err, "Expected valid release to be verifiable")
+
+	err = f.VerifyRelease(filepath.Join(assetsPath, "corrupt-job"))
+	assert.Error(err, "Expected corrupt job to fail release verification")
+	assert.Contains(fmt.Sprintf("%v", err), "corrupt_job.tgz")
+
+	err = f.VerifyRelease(filepath.Join(assetsPath, "corrupt-package"))
+	assert.Error(err, "Expected corrupt package to fail release verification")
+	assert.Contains(fmt.Sprintf("%v", err), "corrupt_package.tgz")
+
+	err = f.VerifyRelease(filepath.Join(assetsPath, "corrupt-license"))
+	assert.Error(err, "Expected corrupt license to fail release verification")
+	assert.Contains(fmt.Sprintf("%v", err), "license")
 }

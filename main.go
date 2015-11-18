@@ -69,6 +69,19 @@ func main() {
 					Usage:  "List all packages in a BOSH release",
 					Action: fissile.CommandRouter,
 				},
+				{
+					Name:    "verify",
+					Aliases: []string{"v"},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "release, r",
+							Usage: "Path to a BOSH release.",
+							Value: ".",
+						},
+					},
+					Usage:  "Verify that the release is intact.",
+					Action: fissile.CommandRouter,
+				},
 			},
 		},
 		{

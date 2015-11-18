@@ -54,6 +54,10 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.ListPackages(
 			paths["release"],
 		)
+	case "release verify":
+		err = f.VerifyRelease(
+			paths["release"],
+		)
 	case "compilation build-base":
 		err = f.CreateBaseCompilationImage(
 			c.String("base-image"),
