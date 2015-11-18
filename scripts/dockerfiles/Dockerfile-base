@@ -12,7 +12,7 @@ RUN useradd -m --comment 'hcf user' vcap && \
     groupadd --system admin && \
     usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap && \
     apt-get update && \
-    apt-get install monit runit curl software-properties-common nfs-common upstart tcpdump lsof strace iputils-arping traceroute htop bind9-host dnsutils wget libcurl3 bison libxml2 libxslt1.1 zip unzip flex psmisc apparmor-utils iptables sysstat rsync quota libaio1 libcap2-bin cmake ca-certificates scsitools mg module-assistant debhelper anacron -y && \
+    apt-get install monit runit curl software-properties-common nfs-common upstart tcpdump lsof strace iputils-arping traceroute htop bind9-host dnsutils wget libcurl3 bison libxml2 libxslt1.1 libyaml-0-2 zip unzip flex psmisc apparmor-utils iptables sysstat rsync quota libaio1 libcap2-bin cmake ca-certificates scsitools mg module-assistant debhelper anacron -y && \
     add-apt-repository ppa:adiscon/v8-stable && \
     apt-get update && \
     apt-get install rsyslog rsyslog-relp rsyslog-mmjsonparse rsyslog-gnutls -y && \
