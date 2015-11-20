@@ -67,23 +67,39 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 }
 
 func (r *Release) getDefaultDevReleaseName() (ver string, err error) {
-	devReleaseConfigContent, err := ioutil.ReadFile(r.getDevReleaseDevConfigFile())
+	releaseConfigContent, err := ioutil.ReadFile(r.getDevReleaseDevConfigFile())
 	if err != nil {
 		return "", err
 	}
 
-	var devReleaseConfig map[interface{}]interface{}
+	var releaseConfig map[interface{}]interface{}
 
-	if err := yaml.Unmarshal([]byte(devReleaseConfigContent), &devReleaseConfig); err != nil {
+	if err := yaml.Unmarshal([]byte(releaseConfigContent), &releaseConfig); err != nil {
 		return "", err
 	}
 
 	var name string
-	if value, ok := devReleaseConfig["dev_name"]; !ok {
-		return "", fmt.Errorf("dev_name key did not exist in configuration file for release: %s", r.Path)
-	} else if name, ok = value.(string); !ok {
-		return "", fmt.Errorf("dev_name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
+	if value, ok := releaseConfig["dev_name"]; ok {
+		if name, ok = value.(string); ok {
+			return name, nil
+		}
 	}
+
+	releaseConfigContent, err = ioutil.ReadFile(r.getDevReleaseFinalConfigFile())
+	if err != nil {
+		return "", err
+	}
+
+	if err := yaml.Unmarshal([]byte(releaseConfigContent), &releaseConfig); err != nil {
+		return "", err
+	}
+
+	if value, ok := releaseConfig["final_name"]; !ok {
+		return "", fmt.Errorf("final_name key did not exist in configuration file for release: %s", r.Path)
+	} else if name, ok = value.(string); !ok {
+		return "", fmt.Errorf("final_name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
+	}
+
 	return name, nil
 }
 
@@ -193,6 +209,10 @@ func (r *Release) getDevReleasesDir() string {
 
 func (r *Release) getDevReleaseConfigDir() string {
 	return filepath.Join(r.Path, "config")
+}
+
+func (r *Release) getDevReleaseFinalConfigFile() string {
+	return filepath.Join(r.getDevReleaseConfigDir(), "final.yml")
 }
 
 func (r *Release) getDevReleaseDevConfigFile() string {
