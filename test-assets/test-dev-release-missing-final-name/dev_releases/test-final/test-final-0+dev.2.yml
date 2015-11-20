@@ -22,5 +22,5 @@ jobs:
   sha1: 4d5bfffdc29414e16f840aa47a6baafc924d248b
 commit_hash: d759e356
 uncommitted_changes: true
-name: test-dev
+name: test-final
 version: 0+dev.1

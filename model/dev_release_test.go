@@ -89,7 +89,7 @@ func TestDevReleaseValidationNotOk(t *testing.T) {
 	assert.Contains(err.Error(), "release dev manifests directory")
 }
 
-func TestDevReleaseValidationBadConfigNoDevNameKey(t *testing.T) {
+func TestDevReleaseValidationBadConfigNoDevNameKeyWithFinalName(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -98,25 +98,40 @@ func TestDevReleaseValidationBadConfigNoDevNameKey(t *testing.T) {
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-missing-dev-name")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
-	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
+	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "dev_name key did not exist in configuration file for release")
+	assert.Nil(err)
+	assert.Equal("test-final", release.Name)
 }
 
-func TestDevReleaseValidationBadConfigWrongDevNameType(t *testing.T) {
+func TestDevReleaseValidationBadConfigNoDevNameKeyNoFinalName(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-wrong-dev-name-type")
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-missing-final-name")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "dev_name was not a string in release")
+	assert.Contains(err.Error(), "final_name key did not exist in configuration file for release")
+}
+
+func TestDevReleaseValidationBadConfigWrongFinalNameType(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-wrong-final-name-type")
+	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
+
+	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "final_name was not a string in release")
 }
 
 func TestDevReleaseValidationBadIndexNoBuildsKey(t *testing.T) {
