@@ -206,6 +206,8 @@ func (r *Release) loadDependenciesForPackages() error {
 }
 
 func (r *Release) loadLicense() error {
+	r.License.Files = make(map[string][]byte)
+
 	if licenseInfo, ok := r.manifest["license"].(map[interface{}]interface{}); ok {
 		if licenseHash, ok := licenseInfo["sha1"].(string); ok {
 			r.License.SHA1 = licenseHash
@@ -213,12 +215,15 @@ func (r *Release) loadLicense() error {
 	}
 
 	targz, err := os.Open(r.licenseArchivePath())
+	if os.IsNotExist(err) && r.License.SHA1 == "" {
+		// License file does not exist, but it's not in the manifest either
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 	defer targz.Close()
 
-	r.License.Files = make(map[string][]byte)
 	hash := sha1.New()
 
 	err = targzIterate(

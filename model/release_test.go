@@ -246,6 +246,21 @@ func TestReleaseLicenseNotOk(t *testing.T) {
 	assert.Empty(release.License.Files)
 }
 
+func TestReleaseNoLicense(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/no-license")
+	release, err := NewRelease(releasePath)
+
+	assert.Nil(err, "Release without license should be valid")
+	assert.Empty(release.License.Files)
+}
+
 func TestGetDeploymentConfig(t *testing.T) {
 	assert := assert.New(t)
 
