@@ -215,8 +215,9 @@ func (r *Release) loadLicense() error {
 	}
 
 	targz, err := os.Open(r.licenseArchivePath())
-	if os.IsNotExist(err) && r.License.SHA1 == "" {
-		// License file does not exist, but it's not in the manifest either
+	if os.IsNotExist(err) {
+		// Licenses don't exist for releases built with bosh.
+		// They _do_ exist for releases downloaded from bosh.io...
 		return nil
 	}
 	if err != nil {
