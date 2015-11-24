@@ -216,8 +216,45 @@ func (r *Release) loadLicense() error {
 
 	targz, err := os.Open(r.licenseArchivePath())
 	if os.IsNotExist(err) {
-		// Licenses don't exist for releases built with bosh.
-		// They _do_ exist for releases downloaded from bosh.io...
+		if r.License.SHA1 == "" {
+			// There were never licenses to load.
+			return nil
+		}
+
+		// If we get here, we've encountered a bosh-created release archive.
+		// It has a checksum for licenses.tgz, but the actual tgz is missing
+		// (instead, bosh placed all the files _inside_ the license archive in
+		// the top level of the release archive).  We can't do anything with the
+		// checksum, but we can still put the license files into the release.
+		// It is unclear why (some of) the releases downloaded from bosh.io do
+		// contain license.tgz.
+
+		parent, err := os.Open(r.Path)
+		if err != nil {
+			return err
+		}
+		defer parent.Close()
+		names, err := parent.Readdirnames(0)
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			lowerName := strings.ToLower(name)
+			if strings.Contains(lowerName, "license") || strings.Contains(lowerName, "notice") {
+				buf, err := ioutil.ReadFile(filepath.Join(r.Path, name))
+				if err != nil {
+					return err
+				}
+				r.License.Files[name] = buf
+			}
+		}
+
+		if len(r.License.Files) == 0 {
+			// We had an expected license checksum, but missing license.tgz and
+			// no extra license files that were just lying around either.
+			return fmt.Errorf("License file is missing")
+		}
+
 		return nil
 	}
 	if err != nil {

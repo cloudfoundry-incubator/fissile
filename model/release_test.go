@@ -261,6 +261,37 @@ func TestReleaseNoLicense(t *testing.T) {
 	assert.Empty(release.License.Files)
 }
 
+func TestReleaseExtractedLicense(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/extracted-license")
+	release, err := NewRelease(releasePath)
+
+	assert.Nil(err, "Release with extracted license should be valid")
+	assert.Equal(2, len(release.License.Files))
+	assert.Equal([]byte("LICENSE file contents"), release.License.Files["LICENSE"])
+	assert.Equal([]byte("NOTICE file contents"), release.License.Files["NOTICE"])
+}
+
+func TestReleaseMissingLicense(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/missing-license")
+	_, err = NewRelease(releasePath)
+
+	assert.NotNil(err, "Release with missing license should be invalid")
+}
+
 func TestGetDeploymentConfig(t *testing.T) {
 	assert := assert.New(t)
 
