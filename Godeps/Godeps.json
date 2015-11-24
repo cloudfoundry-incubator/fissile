@@ -33,6 +33,10 @@
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},
 		{
+			"ImportPath": "github.com/jimmysawczuk/worker",
+			"Rev": "a61940202e76c0397a5783b77113673a2b23656a"
+		},
+		{
 			"ImportPath": "github.com/mattn/go-isatty",
 			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
 		},

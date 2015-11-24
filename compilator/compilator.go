@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hpcloud/fissile/docker"
@@ -19,6 +18,7 @@ import (
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
+	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/termie/go-shutil"
 )
 
@@ -44,6 +44,14 @@ type Compilator struct {
 	packageDone   map[string]chan struct{}
 	keepContainer bool
 	ui            *termui.UI
+}
+
+type compileJob struct {
+	workerPackage *workerLib.Package
+	pkg           *model.Package
+	compilator    *Compilator
+	doneCh        chan<- compileResult
+	killCh        <-chan struct{}
 }
 
 // NewCompilator will create an instance of the Compilator
@@ -109,132 +117,77 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		return nil
 	}
 
-	todoCh := make(chan *model.Package)
 	doneCh := make(chan compileResult)
 	killCh := make(chan struct{})
-	var workersGroup sync.WaitGroup
 
-	for i := 0; i < workerCount; i++ {
-		workersGroup.Add(1)
-		go c.compileWorker(i, todoCh, doneCh, killCh, &workersGroup)
-	}
+	workerLib.MaxJobs = workerCount
 
-	go c.scheduleWork(todoCh, packages, &workersGroup)
-	c.collectResults(todoCh, doneCh, killCh, packages)
-
-	workersGroup.Wait()
-
-	return nil
-}
-
-func (c *Compilator) scheduleWork(todoCh chan *model.Package, packages []*model.Package, wg *sync.WaitGroup) {
-	wg.Add(1)
+	worker := workerLib.NewWorker()
 	buckets := createDepBuckets(packages)
 	for _, bucketPackages := range buckets {
 		for _, pkg := range bucketPackages {
-			todoCh <- pkg
+			worker.Add(compileJob{
+				pkg:        pkg,
+				compilator: c,
+				killCh:     killCh,
+				doneCh:     doneCh,
+			})
 		}
 	}
-	close(todoCh)
-	wg.Done()
-}
+	go func() {
+		for result := range doneCh {
+			if result.Err == nil {
+				close(c.packageDone[result.Pkg.Name])
+				c.ui.Printf("%s   > success: %s\n",
+					color.YellowString("result"), color.GreenString(result.Pkg.Name))
+				continue
+			}
 
-func (c *Compilator) collectResults(
-	todoCh chan *model.Package,
-	doneCh chan compileResult,
-	killCh chan struct{},
-	packages []*model.Package,
-) {
-	nPackages := len(packages)
-	killed := false
-	for nPackages > 0 {
-		result := <-doneCh
-		nPackages--
+			c.ui.Printf(
+				"%s   > failure: %s - %s\n",
+				color.YellowString("result"),
+				color.RedString(result.Pkg.Name),
+				color.RedString(result.Err.Error()),
+			)
 
-		if result.Err == nil {
-			close(c.packageDone[result.Pkg.Name])
-			c.ui.Printf("%s   > success: %s\n",
-				color.YellowString("result"), color.GreenString(result.Pkg.Name))
-			continue
-		}
-
-		c.ui.Printf(
-			"%s   > failure: %s - %s\n",
-			color.YellowString("result"),
-			color.RedString(result.Pkg.Name),
-			color.RedString(result.Err.Error()),
-		)
-
-		if !killed {
-			killed = true
+			err = result.Err
 			close(killCh)
-			// Drain the todo channel.
-			nTodo := 0
-			for range todoCh {
-				nTodo++
-			}
-			nPackages -= nTodo
 		}
-	}
+	}()
+	worker.RunUntilDone()
 
+	return err
 }
 
-func (c *Compilator) compileWorker(
-	id int,
-	todoCh chan *model.Package,
-	doneCh chan compileResult,
-	killCh chan struct{},
-	wg *sync.WaitGroup,
-) {
+func (j compileJob) Run() {
+	c := j.compilator
 
-	c.ui.Printf("worker-%s > start\n", color.YellowString("%d", id))
-
-MainLoop:
-	for {
-		var pkg *model.Package
-		var ok bool
-
-		select {
-		case <-killCh:
-			c.ui.Printf("worker-%s > killed", color.YellowString("%d", id))
-			break MainLoop
-		case pkg, ok = <-todoCh:
-			if !ok {
-				break MainLoop
+	// Wait for our deps
+	for _, dep := range j.pkg.Dependencies {
+		done := false
+		for !done {
+			select {
+			case <-j.killCh:
+				c.ui.Printf("killed:  %s", color.MagentaString(j.pkg.Name))
+				j.doneCh <- compileResult{Pkg: j.pkg, Err: errWorkerAbort}
+				return
+			case <-time.After(5 * time.Second):
+				c.ui.Printf("waiting: %s - %s",
+					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
+			case <-c.packageDone[dep.Name]:
+				c.ui.Printf("depdone: %s - %s",
+					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
+				done = true
 			}
 		}
-
-		// Wait for our deps
-		for _, dep := range pkg.Dependencies {
-			done := false
-			for !done {
-				select {
-				case <-killCh:
-					c.ui.Printf("worker-%s > killed:  %s",
-						color.YellowString("%d", id), color.MagentaString(pkg.Name))
-					doneCh <- compileResult{Pkg: pkg, Err: errWorkerAbort}
-					break MainLoop
-				case <-time.After(5 * time.Second):
-					c.ui.Printf("worker-%s > waiting: %s - %s",
-						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
-				case <-c.packageDone[dep.Name]:
-					c.ui.Printf("worker-%s > depdone: %s - %s",
-						color.YellowString("%d", id), color.MagentaString(pkg.Name), color.MagentaString(dep.Name))
-					done = true
-				}
-			}
-		}
-
-		c.ui.Printf("worker-%s > compile: %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
-
-		workerErr := compilePackageHarness(c, pkg)
-		c.ui.Printf("worker-%s > done:    %s\n", color.YellowString("%d", id), color.MagentaString(pkg.Name))
-
-		doneCh <- compileResult{Pkg: pkg, Err: workerErr}
 	}
 
-	c.ui.Printf("worker-%s > exit\n", color.YellowString("%d", id))
-	wg.Done()
+	c.ui.Printf("compile: %s\n", color.MagentaString(j.pkg.Name))
+
+	workerErr := compilePackageHarness(c, j.pkg)
+	c.ui.Printf("done:    %s\n", color.MagentaString(j.pkg.Name))
+
+	j.doneCh <- compileResult{Pkg: j.pkg, Err: workerErr}
 }
 
 func createDepBuckets(packages []*model.Package) [][]*model.Package {
