@@ -1,26 +1,40 @@
 package builder
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
+	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/termie/go-shutil"
 )
 
 const (
 	binPrefix = "bin"
 )
+
+var (
+	// newDockerImageBuilder is a stub to be replaced by the unit test
+	newDockerImageBuilder = func() (dockerImageBuilder, error) { return docker.NewImageManager() }
+)
+
+// dockerImageBuilder is the interface to shim around docker.RoleImageBuilder for the unit test
+type dockerImageBuilder interface {
+	BuildImage(dockerfileDirPath, name string, stdoutProcessor docker.ProcessOutStream) error
+}
 
 // RoleImageBuilder represents a builder of docker role images
 type RoleImageBuilder struct {
@@ -239,6 +253,92 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 	return output.Bytes(), nil
 }
 
+type roleBuildJob struct {
+	role          *model.Role
+	builder       *RoleImageBuilder
+	ui            *termui.UI
+	noBuild       bool
+	dockerManager dockerImageBuilder
+	resultsCh     chan<- error
+	abort         *bool
+	repository    string
+	version       string
+}
+
+func (j roleBuildJob) Run() {
+	if *j.abort {
+		return
+	}
+
+	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
+	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role)
+	if err != nil {
+		j.resultsCh <- fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
+		return
+	}
+
+	if !j.noBuild {
+		if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
+			dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
+		}
+
+		j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+
+		roleImageName := GetRoleImageName(j.repository, j.role, j.version)
+
+		err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, j.ui))
+		if err != nil {
+			j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
+			return
+		}
+	} else {
+		j.ui.Println("Skipping image build because of flag.")
+	}
+
+	j.resultsCh <- nil
+}
+
+func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, version string, noBuild bool, workerCount int) error {
+	if workerCount < 1 {
+		return fmt.Errorf("Invalid worker count %d", workerCount)
+	}
+
+	dockerManager, err := newDockerImageBuilder()
+	if err != nil {
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
+	}
+
+	workerLib.MaxJobs = workerCount
+	worker := workerLib.NewWorker()
+
+	resultsCh := make(chan error)
+	abort := false
+	for _, role := range roles {
+		worker.Add(roleBuildJob{
+			role:          role,
+			builder:       r,
+			ui:            r.ui,
+			noBuild:       noBuild,
+			dockerManager: dockerManager,
+			resultsCh:     resultsCh,
+			abort:         &abort,
+			repository:    repository,
+			version:       version,
+		})
+	}
+	go func() {
+		for i := 0; i < len(roles); i++ {
+			if result := <-resultsCh; result != nil {
+				abort = true
+				err = result
+			}
+		}
+	}()
+	worker.RunUntilDone()
+
+	return err
+}
+
 // GetRoleImageName generates a docker image name to be used as a role image
 func GetRoleImageName(repository string, role *model.Role, version string) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s-%s",
@@ -256,4 +356,13 @@ func GetRoleDevImageName(repository string, role *model.Role, version string) st
 		role.Name,
 		version,
 	))
+}
+
+func newColoredLogger(roleImageName string, ui *termui.UI) func(io.Reader) {
+	return func(stdout io.Reader) {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
+		}
+	}
 }

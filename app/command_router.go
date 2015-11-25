@@ -113,6 +113,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("default-consul-address"),
 			c.String("default-config-store-prefix"),
 			c.String("version"),
+			c.Int("workers"),
 		)
 	case "images list-roles":
 		err = f.ListRoleImages(
