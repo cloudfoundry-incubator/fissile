@@ -8,9 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/hpcloud/fissile/util"
 
@@ -239,8 +239,8 @@ func (r *Release) loadLicense() error {
 			return err
 		}
 		for _, name := range names {
-			lowerName := strings.ToLower(name)
-			if strings.Contains(lowerName, "license") || strings.Contains(lowerName, "notice") {
+			namePrefix := name[:len(name)-len(path.Ext(name))]
+			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
 				buf, err := ioutil.ReadFile(filepath.Join(r.Path, name))
 				if err != nil {
 					return err
@@ -268,9 +268,9 @@ func (r *Release) loadLicense() error {
 		io.TeeReader(targz, hash),
 		r.licenseArchivePath(),
 		func(licenseFile *tar.Reader, header *tar.Header) error {
-			name := strings.ToLower(header.Name)
-
-			if strings.Contains(name, "license") || strings.Contains(name, "notice") {
+			name := path.Base(header.Name)
+			namePrefix := name[:len(name)-len(path.Ext(name))]
+			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
 				buf, err := ioutil.ReadAll(licenseFile)
 				if err != nil {
 					return err
