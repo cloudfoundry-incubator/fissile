@@ -11,15 +11,7 @@ LABEL "role"="{{ $role.Name }}" "version"="{{ index $context "image_version" }}"
 {{ end }}
 
 # Add packages
-{{ with $context := . }}
-{{ with $role := index . "role" }}
-{{ with $job := index $role.Jobs 0}}
-{{ if not $job.Release.Dev }}
 ADD packages /var/vcap/packages/
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
 
 # Add job sources
 ADD jobs /var/vcap/jobs-src/
