@@ -94,25 +94,19 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 			}
 
 			packageDir := filepath.Join(packagesDir, pkg.Name)
-			if role.Jobs[0].Release.Dev {
 
-				if err := os.Symlink(compiledDir, packageDir); err != nil {
-					return "", err
-				}
-			} else {
-				err := shutil.CopyTree(
-					compiledDir,
-					packageDir,
-					&shutil.CopyTreeOptions{
-						Symlinks:               true,
-						Ignore:                 nil,
-						CopyFunction:           shutil.Copy,
-						IgnoreDanglingSymlinks: false},
-				)
+			err := shutil.CopyTree(
+				compiledDir,
+				packageDir,
+				&shutil.CopyTreeOptions{
+					Symlinks:               true,
+					Ignore:                 nil,
+					CopyFunction:           shutil.Copy,
+					IgnoreDanglingSymlinks: false},
+			)
 
-				if err != nil {
-					return "", err
-				}
+			if err != nil {
+				return "", err
 			}
 		}
 	}
