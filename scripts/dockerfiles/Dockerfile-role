@@ -6,21 +6,6 @@ MAINTAINER hcf@hpe.com
 
 LABEL "role"="{{ .role.Name }}" "version"="{{ .image_version }}"
 
-# Add packages
-ADD packages /var/vcap/packages/
-
-# Add job sources
-ADD jobs /var/vcap/jobs-src/
-
-# Add custom startup role scripts
-ADD role-startup /opt/hcf/startup/
-
-# Add run.sh
-ADD run.sh /opt/hcf/
-
-# Add license and/or notice file
-{{ if gt (len .licenses) 0 }}
-ADD {{ range $name, $_ := .licenses }}{{$name}} {{end}} /opt/hcf/share/doc/
-{{ end }}
+ADD root /
 
 ENTRYPOINT ["/bin/bash", "/opt/hcf/run.sh"]

@@ -70,20 +70,27 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 
 	// Create a dir for the role
 	roleDir := filepath.Join(r.targetPath, role.Name)
+	rootDir := filepath.Join(roleDir, "root")
 	if err := os.MkdirAll(roleDir, 0755); err != nil {
 		return "", err
 	}
 
 	// Write out license files
-	for filename, contents := range role.Jobs[0].Release.License.Files {
-		err := ioutil.WriteFile(filepath.Join(roleDir, filename), contents, 0644)
-		if err != nil {
-			return "", fmt.Errorf("failed to write out license file %s: %v", filename, err)
+	if len(role.Jobs[0].Release.License.Files) > 0 {
+		docDir := filepath.Join(rootDir, "opt/hcf/share/doc")
+		if err := os.MkdirAll(docDir, 0755); err != nil {
+			return "", err
+		}
+		for filename, contents := range role.Jobs[0].Release.License.Files {
+			err := ioutil.WriteFile(filepath.Join(docDir, filename), contents, 0644)
+			if err != nil {
+				return "", fmt.Errorf("failed to write out license file %s: %v", filename, err)
+			}
 		}
 	}
 
 	// Copy compiled packages
-	packagesDir := filepath.Join(roleDir, "packages")
+	packagesDir := filepath.Join(rootDir, "var/vcap/packages")
 	if err := os.MkdirAll(packagesDir, 0755); err != nil {
 		return "", err
 	}
@@ -126,7 +133,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	}
 
 	// Copy jobs templates and monit
-	jobsDir := filepath.Join(roleDir, "jobs")
+	jobsDir := filepath.Join(rootDir, "var/vcap/jobs-src")
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
 		return "", err
 	}
@@ -152,7 +159,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	}
 
 	// Copy role startup scripts
-	startupDir := filepath.Join(roleDir, "role-startup")
+	startupDir := filepath.Join(rootDir, "opt/hcf/startup")
 	if err := os.MkdirAll(startupDir, 0755); err != nil {
 		return "", err
 	}
@@ -173,7 +180,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 	if err != nil {
 		return "", err
 	}
-	runScriptPath := filepath.Join(roleDir, "run.sh")
+	runScriptPath := filepath.Join(rootDir, "opt/hcf/run.sh")
 	if err := ioutil.WriteFile(runScriptPath, runScriptContents, 0744); err != nil {
 		return "", err
 	}

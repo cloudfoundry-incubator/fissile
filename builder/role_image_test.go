@@ -56,7 +56,6 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 		fmt.Sprintf(`LABEL "role"="%s" "version"="%s"`, rolesManifest.Roles[0].Name, releaseVersion),
 		"Expected role label",
 	)
-	assert.Contains(dockerfileString, "ADD LICENSE.md  /opt/hcf/share/doc")
 
 	release.Dev = true
 	dockerfileContents, err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
@@ -135,22 +134,33 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
 	assert.Nil(err)
+	defer os.RemoveAll(dockerfileDir)
 
 	assert.Equal(filepath.Join(targetPath, "myrole"), dockerfileDir)
 
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole"), true, "role dir"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "LICENSE.md"), false, "license file"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "run.sh"), false, "run script"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "Dockerfile"), false, "Dockerfile"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "packages", "tor"), true, "package dir"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "packages", "tor", "bar"), false, "compilation artifact"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "monit"), false, "job monit file"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "templates", "bin", "monit_debugger"), false, "job template file"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "role-startup"), true, "role startup scripts dir"))
-	assert.Nil(util.ValidatePath(filepath.Join(targetPath, "myrole", "role-startup", "myrole.sh"), false, "role specific startup script"))
+	for _, info := range []struct {
+		path  string
+		isDir bool
+		desc  string
+	}{
+		{path: ".", isDir: true, desc: "role dir"},
+		{path: "Dockerfile", isDir: false, desc: "Dockerfile"},
+		{path: "root", isDir: true, desc: "image root"},
+		{path: "root/opt/hcf/share/doc/LICENSE.md", isDir: false, desc: "license file"},
+		{path: "root/opt/hcf/run.sh", isDir: false, desc: "run script"},
+		{path: "root/opt/hcf/startup/", isDir: true, desc: "role startup scripts dir"},
+		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
+		{path: "root/var/vcap/jobs-src/tor/monit", isDir: false, desc: "job monit file"},
+		{path: "root/var/vcap/jobs-src/tor/templates/bin/monit_debugger", isDir: false, desc: "job template file"},
+		{path: "root/var/vcap/packages/tor", isDir: true, desc: "package dir"},
+		{path: "root/var/vcap/packages/tor/bar", isDir: false, desc: "compilation artifact"},
+	} {
+		path := filepath.ToSlash(filepath.Join(targetPath, "myrole", info.path))
+		assert.Nil(util.ValidatePath(path, info.isDir, info.desc))
+	}
 
 	// job.MF should not be there
-	assert.NotNil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "job.MF"), false, "job manifest file"))
+	assert.NotNil(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
 }
 
 type buildImageCallback func(name string) error
