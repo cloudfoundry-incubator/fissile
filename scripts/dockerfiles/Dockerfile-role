@@ -1,14 +1,10 @@
 FROM {{ index . "base_image" }}
 
+{{ if not .dev }}
 MAINTAINER hcf@hpe.com
+{{ end }}
 
-{{ with $context := . }}
-{{ with $role := index . "role" }}
-{{ with $job := index $role.Jobs 0}}
-LABEL "role"="{{ $role.Name }}" "version"="{{ index $context "image_version" }}"
-{{ end }}
-{{ end }}
-{{ end }}
+LABEL "role"="{{ .role.Name }}" "version"="{{ .image_version }}"
 
 # Add packages
 ADD packages /var/vcap/packages/

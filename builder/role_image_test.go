@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,6 +23,8 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 		nil,
 	)
 
+	releaseVersion := "3.14.15"
+
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
@@ -29,6 +32,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
+	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
@@ -37,14 +41,26 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", releaseVersion, "6.28.30", ui)
 
 	dockerfileContents, err := roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
 	assert.Nil(err)
 
 	dockerfileString := string(dockerfileContents)
 	assert.Contains(dockerfileString, "foo-role-base:6.28.30")
+	assert.Contains(dockerfileString, "MAINTAINER", "release images should contain maintainer information")
+	assert.Contains(
+		dockerfileString,
+		fmt.Sprintf(`LABEL "role"="%s" "version"="%s"`, rolesManifest.Roles[0].Name, releaseVersion),
+		"Expected role label",
+	)
 	assert.Contains(dockerfileString, "ADD LICENSE.md  /opt/hcf/share/doc")
+
+	release.Dev = true
+	dockerfileContents, err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
+	assert.Nil(err)
+	dockerfileString = string(dockerfileContents)
+	assert.NotContains(dockerfileString, "MAINTAINER", "dev mode should not generate a maintainer layer")
 }
 
 func TestGenerateRoleImageRunScript(t *testing.T) {
