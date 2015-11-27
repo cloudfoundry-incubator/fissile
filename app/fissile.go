@@ -101,10 +101,14 @@ func (f *Fissile) VerifyRelease(releasePath string) error {
 	}
 
 	if release.License.SHA1 != "" {
-		if release.License.SHA1 != release.License.ActualSHA1 {
-			return fmt.Errorf("Computed SHA1 (%s) is different than manifest sha1 (%s) for license file\n", release.License.ActualSHA1, release.License.SHA1)
+		if release.License.ActualSHA1 == "" {
+			f.ui.Printf("WARNING: Skipping license integrity check, no %s.\n", color.YellowString("license.tgz"))
+		} else {
+			if release.License.SHA1 != release.License.ActualSHA1 {
+				return fmt.Errorf("Computed SHA1 (%s) is different than manifest sha1 (%s) for license file\n", release.License.ActualSHA1, release.License.SHA1)
+			}
+			f.ui.Println("Verified license file")
 		}
-		f.ui.Println("Verified license file")
 	}
 
 	f.ui.Printf("Release %s (%s) verified successfully\n", color.GreenString(release.Name), color.YellowString(release.Path))

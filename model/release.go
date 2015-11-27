@@ -8,9 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/hpcloud/fissile/util"
 
@@ -206,6 +206,8 @@ func (r *Release) loadDependenciesForPackages() error {
 }
 
 func (r *Release) loadLicense() error {
+	r.License.Files = make(map[string][]byte)
+
 	if licenseInfo, ok := r.manifest["license"].(map[interface{}]interface{}); ok {
 		if licenseHash, ok := licenseInfo["sha1"].(string); ok {
 			r.License.SHA1 = licenseHash
@@ -213,21 +215,62 @@ func (r *Release) loadLicense() error {
 	}
 
 	targz, err := os.Open(r.licenseArchivePath())
+	if os.IsNotExist(err) {
+		if r.License.SHA1 == "" {
+			// There were never licenses to load.
+			return nil
+		}
+
+		// If we get here, we've encountered a bosh-created release archive.
+		// It has a checksum for licenses.tgz, but the actual tgz is missing
+		// (instead, bosh placed all the files _inside_ the license archive in
+		// the top level of the release archive).  We can't do anything with the
+		// checksum, but we can still put the license files into the release.
+		// It is unclear why (some of) the releases downloaded from bosh.io do
+		// contain license.tgz.
+
+		parent, err := os.Open(r.Path)
+		if err != nil {
+			return err
+		}
+		defer parent.Close()
+		names, err := parent.Readdirnames(0)
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			namePrefix := name[:len(name)-len(path.Ext(name))]
+			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
+				buf, err := ioutil.ReadFile(filepath.Join(r.Path, name))
+				if err != nil {
+					return err
+				}
+				r.License.Files[name] = buf
+			}
+		}
+
+		if len(r.License.Files) == 0 {
+			// We had an expected license checksum, but missing license.tgz and
+			// no extra license files that were just lying around either.
+			return fmt.Errorf("License file is missing")
+		}
+
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 	defer targz.Close()
 
-	r.License.Files = make(map[string][]byte)
 	hash := sha1.New()
 
 	err = targzIterate(
 		io.TeeReader(targz, hash),
 		r.licenseArchivePath(),
 		func(licenseFile *tar.Reader, header *tar.Header) error {
-			name := strings.ToLower(header.Name)
-
-			if strings.Contains(name, "license") || strings.Contains(name, "notice") {
+			name := path.Base(header.Name)
+			namePrefix := name[:len(name)-len(path.Ext(name))]
+			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
 				buf, err := ioutil.ReadAll(licenseFile)
 				if err != nil {
 					return err
