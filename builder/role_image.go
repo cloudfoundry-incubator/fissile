@@ -260,14 +260,16 @@ type roleBuildJob struct {
 	noBuild       bool
 	dockerManager dockerImageBuilder
 	resultsCh     chan<- error
-	abort         *bool
+	abort         <-chan struct{}
 	repository    string
 	version       string
 }
 
 func (j roleBuildJob) Run() {
-	if *j.abort {
+	select {
+	case <-j.abort:
 		return
+	default:
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
@@ -277,27 +279,29 @@ func (j roleBuildJob) Run() {
 		return
 	}
 
-	if !j.noBuild {
-		if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
-			dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
-		}
-
-		j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
-
-		roleImageName := GetRoleImageName(j.repository, j.role, j.version)
-
-		err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, j.ui))
-		if err != nil {
-			j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
-			return
-		}
-	} else {
+	if j.noBuild {
 		j.ui.Println("Skipping image build because of flag.")
+		j.resultsCh <- nil
+		return
 	}
 
+	if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
+		dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
+	}
+
+	j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+
+	roleImageName := GetRoleImageName(j.repository, j.role, j.version)
+
+	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, j.ui))
+	if err != nil {
+		j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
+		return
+	}
 	j.resultsCh <- nil
 }
 
+// BuildRoleImages triggers the building of the role docker images in parallel
 func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, version string, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
@@ -312,7 +316,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, vers
 	worker := workerLib.NewWorker()
 
 	resultsCh := make(chan error)
-	abort := false
+	abort := make(chan struct{})
 	for _, role := range roles {
 		worker.Add(roleBuildJob{
 			role:          role,
@@ -321,15 +325,19 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, vers
 			noBuild:       noBuild,
 			dockerManager: dockerManager,
 			resultsCh:     resultsCh,
-			abort:         &abort,
+			abort:         abort,
 			repository:    repository,
 			version:       version,
 		})
 	}
 	go func() {
+		aborted := false
 		for i := 0; i < len(roles); i++ {
 			if result := <-resultsCh; result != nil {
-				abort = true
+				if !aborted {
+					close(abort)
+					aborted = true
+				}
 				err = result
 			}
 		}
