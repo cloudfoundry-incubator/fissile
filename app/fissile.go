@@ -455,7 +455,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 }
 
 // GenerateRoleImages generates all role images
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePaths []string, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool, releasePaths []string, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix, version string, workerCount int) error {
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		release, err := model.NewRelease(releasePath)
@@ -471,11 +471,6 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
 	roleBuilder := builder.NewRoleImageBuilder(
 		repository,
 		compiledPackagesPath,
@@ -487,35 +482,13 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild bool
 		f.ui,
 	)
 
-	for _, role := range rolesManifest.Roles {
-		f.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
-		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
-		if err != nil {
-			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
-		}
-
-		if !noBuild {
-			if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
-				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
-			}
-
-			f.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
-
-			roleImageName := builder.GetRoleImageName(repository, role, version)
-
-			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, f.ui))
-			if err != nil {
-				return fmt.Errorf("Error building image: %s", err.Error())
-			}
-
-		} else {
-			f.ui.Println("Skipping image build because of flag.")
-		}
+	if err = roleBuilder.BuildRoleImages(rolesManifest.Roles, repository, version, noBuild, workerCount); err != nil {
+		return err
 	}
 
 	f.ui.Println(color.GreenString("Done."))
 
-	return nil
+	return err
 }
 
 // ListRoleImages lists all role images

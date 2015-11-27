@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/util"
 
@@ -79,6 +81,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
+	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
@@ -119,6 +122,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
+	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
@@ -147,4 +151,127 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	// job.MF should not be there
 	assert.NotNil(util.ValidatePath(filepath.Join(targetPath, "myrole", "jobs", "tor", "job.MF"), false, "job manifest file"))
+}
+
+type buildImageCallback func(name string) error
+
+type mockDockerImageBuilder struct {
+	callback buildImageCallback
+}
+
+func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutProcessor docker.ProcessOutStream) error {
+	return m.callback(name)
+}
+
+func TestBuildRoleImages(t *testing.T) {
+
+	origNewDockerImageBuilder := newDockerImageBuilder
+	defer func() {
+		newDockerImageBuilder = origNewDockerImageBuilder
+	}()
+
+	type dockerBuilderMock struct {
+	}
+
+	mockBuilder := mockDockerImageBuilder{}
+	newDockerImageBuilder = func() (dockerImageBuilder, error) {
+		return &mockBuilder, nil
+	}
+
+	assert := assert.New(t)
+
+	ui := termui.New(
+		os.Stdin,
+		ioutil.Discard,
+		nil,
+	)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
+	targetPath, err := ioutil.TempDir("", "fissile-test")
+	assert.Nil(err)
+	defer os.RemoveAll(targetPath)
+
+	release, err := model.NewRelease(releasePath)
+	assert.Nil(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	assert.Nil(err)
+
+	roleImageBuilder := NewRoleImageBuilder(
+		"test-repository",
+		compiledPackagesDir,
+		targetPath,
+		"http://127.0.0.1:8500",
+		"hcf",
+		"3.14.15",
+		"6.28.30",
+		ui,
+	)
+
+	// Check that making the first wait for the second job works
+	secondJobReady := make(chan struct{})
+	mockBuilder.callback = func(name string) error {
+		if strings.Contains(name, "-myrole:") {
+			<-secondJobReady
+			return nil
+		}
+		if strings.Contains(name, "-foorole:") {
+			close(secondJobReady)
+			return nil
+		}
+		t.Errorf("Got unexpected job %s", name)
+		return fmt.Errorf("Unknown docker image name %s", name)
+	}
+
+	err = roleImageBuilder.BuildRoleImages(
+		rolesManifest.Roles,
+		"test-repository",
+		"3.14.15",
+		false,
+		2,
+	)
+	assert.Nil(err)
+
+	err = os.RemoveAll(targetPath)
+	assert.Nil(err, "Failed to remove target")
+
+	// Should not allow invalid worker counts
+	err = roleImageBuilder.BuildRoleImages(
+		rolesManifest.Roles,
+		"test-repository",
+		"3.14.15",
+		false,
+		0,
+	)
+	assert.NotNil(err, "Invalid worker count should result in an error")
+	assert.Contains(err.Error(), "count", "Building the image should have failed due to invalid worker count")
+
+	// Check that failing the first job will not run the second job
+	hasRunSecondJob := false
+	mockBuilder.callback = func(name string) error {
+		if strings.Contains(name, "-myrole:") {
+			return fmt.Errorf("Deliberate failure")
+		}
+		if strings.Contains(name, "-foorole:") {
+			assert.False(hasRunSecondJob, "Second job should not run if first job failed")
+			hasRunSecondJob = true
+		}
+		t.Errorf("Got unexpected job %s", name)
+		return fmt.Errorf("Unknown docker image name %s", name)
+	}
+
+	err = roleImageBuilder.BuildRoleImages(
+		rolesManifest.Roles,
+		"test-repository",
+		"3.14.15",
+		false,
+		1,
+	)
+	assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
+	assert.False(hasRunSecondJob, "Second job should not have run")
 }

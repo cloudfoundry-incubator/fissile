@@ -313,6 +313,11 @@ func main() {
 							Name:  "version, v",
 							Usage: "Used as a version label for the created images",
 						},
+						cli.IntFlag{
+							Name:  "workers, w",
+							Value: 1,
+							Usage: "Number of workers to use.",
+						},
 					},
 					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest.",
 					Action: fissile.CommandRouter,
