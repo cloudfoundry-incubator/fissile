@@ -217,6 +217,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 		"image_version": r.version,
 		"role":          role,
 		"licenses":      role.Jobs[0].Release.License.Files,
+		"dev":           role.Jobs[0].Release.Dev,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
