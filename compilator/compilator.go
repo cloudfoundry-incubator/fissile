@@ -135,6 +135,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		}
 	}
 	go func() {
+		killed := false
 		for result := range doneCh {
 			if result.Err == nil {
 				close(c.packageDone[result.Pkg.Name])
@@ -151,7 +152,10 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 			)
 
 			err = result.Err
-			close(killCh)
+			if !killed {
+				close(killCh)
+				killed = true
+			}
 		}
 	}()
 	worker.RunUntilDone()

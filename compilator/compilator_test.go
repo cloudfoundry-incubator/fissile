@@ -125,6 +125,34 @@ func TestCompilationSkipCompiled(t *testing.T) {
 	<-waitCh
 }
 
+// TestCompilationMultipleErrors checks that we correctly deal with multiple compilations failing
+func TestCompilationMultipleErrors(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		return fmt.Errorf("Intentional error compiling %s", pkg.Name)
+	}
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return false, nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+
+	err = c.Compile(1, release)
+	assert.NotNil(err)
+}
+
 func TestGetPackageStatusCompiled(t *testing.T) {
 	assert := assert.New(t)
 
