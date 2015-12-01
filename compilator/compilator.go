@@ -172,14 +172,14 @@ func (j compileJob) Run() {
 		for !done {
 			select {
 			case <-j.killCh:
-				c.ui.Printf("killed:  %s", color.MagentaString(j.pkg.Name))
+				c.ui.Printf("killed:  %s\n", color.MagentaString(j.pkg.Name))
 				j.doneCh <- compileResult{Pkg: j.pkg, Err: errWorkerAbort}
 				return
 			case <-time.After(5 * time.Second):
-				c.ui.Printf("waiting: %s - %s",
+				c.ui.Printf("waiting: %s - %s\n",
 					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
 			case <-c.packageDone[dep.Name]:
-				c.ui.Printf("depdone: %s - %s",
+				c.ui.Printf("depdone: %s - %s\n",
 					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
 				done = true
 			}

@@ -332,7 +332,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 
 	baseImage, err := dockerManager.FindImage(baseImageName)
 	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
+		return fmt.Errorf("Error looking up base image %s: %s", baseImageName, err)
 	}
 
 	f.ui.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
