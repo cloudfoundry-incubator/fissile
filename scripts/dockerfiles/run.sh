@@ -100,6 +100,10 @@ bash /opt/hcf/startup/{{ $script }}
 {{ end }}
 {{ end }}
 
+# Run rsyslog and cron
+rsyslogd
+cron
+
 # Run
 {{ with $role := index . "role" }}
 {{ if .IsTask }}

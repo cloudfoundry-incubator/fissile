@@ -53,6 +53,15 @@ func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath s
 		return err
 	}
 
+	rsyslogConfigPath := filepath.Join(targetDir, "rsyslog_conf.tgz")
+	rsyslogConfigContents, err := dockerfiles.Asset("scripts/dockerfiles/rsyslog_conf.tgz")
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(rsyslogConfigPath, rsyslogConfigContents, 0600); err != nil {
+		return err
+	}
+
 	return nil
 }
 
