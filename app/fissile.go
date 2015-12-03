@@ -49,7 +49,7 @@ func (f *Fissile) ListPackages(releasePath string) error {
 	}
 
 	f.ui.Printf(
-		"There are %s packages present.",
+		"There are %s packages present.\n",
 		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
 	)
 
@@ -70,7 +70,7 @@ func (f *Fissile) ListJobs(releasePath string) error {
 	}
 
 	f.ui.Printf(
-		"There are %s jobs present.",
+		"There are %s jobs present.\n",
 		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
 	)
 
@@ -196,7 +196,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 	}
 
 	f.ui.Printf(
-		"There are %s unique configuration keys present. %s of them have default values.",
+		"There are %s unique configuration keys present. %s of them have default values.\n",
 		color.GreenString(fmt.Sprintf("%d", len(propertiesGroupedUsageCounts))),
 		color.GreenString(fmt.Sprintf("%d", keysWithDefaults)),
 	)
@@ -266,23 +266,23 @@ func (f *Fissile) PrintTemplateReport(releasePath string) error {
 	}
 
 	f.ui.Printf(
-		"There are %s templates present.",
+		"There are %s templates present.\n",
 		color.GreenString("%d", templateCount),
 	)
 
 	f.ui.Printf(
-		"There are %s text blocks that we don't need to touch.",
+		"There are %s text blocks that we don't need to touch.\n",
 		color.GreenString("%d", countText),
 	)
 
 	f.ui.Printf(
-		"There are %s print blocks, and we can transform %s of them.",
+		"There are %s print blocks, and we can transform %s of them.\n",
 		color.MagentaString("%d", countPrint),
 		color.GreenString("%d", countPrintTransformed),
 	)
 
 	f.ui.Printf(
-		"There are %s code blocks, and we can transform %s of them.",
+		"There are %s code blocks, and we can transform %s of them.\n",
 		color.MagentaString("%d", countCode),
 		color.GreenString("%d", countCodeTransformed),
 	)
@@ -307,18 +307,18 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	f.ui.Printf("Image: %s", color.GreenString(baseImage))
-	f.ui.Printf("ID: %s", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Image: %s\n", color.GreenString(baseImage))
+	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 
 	image, err = dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	f.ui.Printf("Image: %s", color.GreenString(comp.BaseImageName()))
-	f.ui.Printf("ID: %s", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Image: %s\n", color.GreenString(comp.BaseImageName()))
+	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
 
 	return nil
 }
@@ -393,7 +393,7 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	f.ui.Print(color.GreenString("Done."))
+	f.ui.Println(color.GreenString("Done."))
 
 	return nil
 }
