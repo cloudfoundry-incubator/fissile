@@ -232,7 +232,7 @@ func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, relea
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	f.ui.Print(color.GreenString("Done."))
+	f.ui.Println(color.GreenString("Done."))
 
 	return nil
 }
