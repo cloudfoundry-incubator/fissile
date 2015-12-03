@@ -22,8 +22,8 @@ RUN useradd -m --comment 'hcf user' vcap && \
     DEBIAN_FRONTEND=noninteractive locale-gen en_US.UTF-8 && \
     dpkg-reconfigure -fnoninteractive -pcritical tzdata && \
     dpkg-reconfigure locales && \
-	useradd --system --user-group --no-create-home syslog || true && \
-	usermod -G vcap syslog
+    (useradd --system --user-group --no-create-home syslog || true) && \
+    usermod -G vcap syslog
 
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
