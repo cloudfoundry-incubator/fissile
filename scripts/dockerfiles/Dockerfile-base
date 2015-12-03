@@ -21,10 +21,17 @@ RUN useradd -m --comment 'hcf user' vcap && \
     echo 'UTC' > /etc/timezone && \
     DEBIAN_FRONTEND=noninteractive locale-gen en_US.UTF-8 && \
     dpkg-reconfigure -fnoninteractive -pcritical tzdata && \
-    dpkg-reconfigure locales
+    dpkg-reconfigure locales && \
+	useradd --system --user-group --no-create-home syslog || true && \
+	usermod -G vcap syslog
 
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin
-
 ADD configgin /opt/hcf/configgin/
+
+# Add rsyslog configuration
+ADD rsyslog_conf.tgz /
+
+# Make logrotate run hourly, not daily
+RUN mv /etc/cron.daily/logrotate /etc/cron.hourly/logrotate
