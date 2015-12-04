@@ -85,8 +85,9 @@ chmod 0600 /etc/monitrc
 # Create run dir
 mkdir -p /var/vcap/sys/run
 
-# Start rsyslog
+# Start rsyslog and cron
 service rsyslog start
+cron
 
 # Run custom role scripts
 export CONSUL_ADDRESS=$consul_address
@@ -99,10 +100,6 @@ export DNS_RECORD_NAME=$dns_record_name
 bash /opt/hcf/startup/{{ $script }}
 {{ end }}
 {{ end }}
-
-# Run rsyslog and cron
-rsyslogd
-cron
 
 # Run
 {{ with $role := index . "role" }}
