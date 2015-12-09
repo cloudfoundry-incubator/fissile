@@ -31,4 +31,4 @@ ln -s /fissile-out $BOSH_INSTALL_TARGET
 cd $BOSH_COMPILE_TARGET
 bash ./packaging
 
-chown -R ${HOST_USERID}:${HOST_USERGID} /fissile-out
+chown -R ${HOST_USERID}:${HOST_USERGID} /fissile-out 2>/dev/null || echo "Warning - could not change ownership of compiled artifacts" 1>&2
