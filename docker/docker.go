@@ -3,6 +3,8 @@ package docker
 import (
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -125,22 +127,33 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
 	exitCode = -1
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
 	currentUID := syscall.Geteuid()
 	currentGID := syscall.Getegid()
+	var actualCmd, containerCmd []string
+	if keepContainer {
+		// 12 hours is more than enough time to compile a package and
+		// investigate the container if compilation failed.
+		containerCmd = []string{"sleep", "12h"}
+		actualCmd = cmd
+	} else {
+		containerCmd = cmd
+		// actualCmd not used
+	}
 
 	cco := dockerclient.CreateContainerOptions{
 		Config: &dockerclient.Config{
+			Tty:          false,
 			AttachStdin:  false,
 			AttachStdout: true,
 			AttachStderr: true,
 			Hostname:     "compiler",
 			Domainname:   "fissile",
-			Cmd:          cmd,
+			Cmd:          containerCmd,
 			WorkingDir:   "/",
 			Image:        imageName,
 			Env: []string{
@@ -214,45 +227,103 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 
 	var processorsGroup sync.WaitGroup
+	runFileProcessors := func() {
+		if stdoutProcessor != nil {
+			processorsGroup.Add(1)
 
+			go func() {
+				defer processorsGroup.Done()
+				stdoutProcessor(stdoutReader)
+			}()
+		}
+
+		if stderrProcessor != nil {
+			processorsGroup.Add(1)
+
+			go func() {
+				defer processorsGroup.Done()
+				stderrProcessor(stderrReader)
+			}()
+		}
+	}
+	closeFiles := func() {
+		if stdoutWriter != nil {
+			stdoutWriter.Close()
+		}
+		if stderrWriter != nil {
+			stderrWriter.Close()
+		}
+
+		if stdoutReader != nil {
+			stdoutReader.Close()
+		}
+		if stderrReader != nil {
+			stderrReader.Close()
+		}
+	}
+
+	if !keepContainer {
+		runFileProcessors()
+		exitCode, err = d.client.WaitContainer(container.ID)
+		closeFiles()
+		if err != nil {
+			return -1, container, err
+		}
+
+		processorsGroup.Wait()
+		return exitCode, container, nil
+	}
+	// KeepContainer mode:
+	// Run the cmd with 'docker exec ...' so we can keep the container around.
+	// Note that this time we'll need to stop it if it doesn't fail
+	cmd_args := []string{"exec", "-i", container.ID}
+	for _, s := range actualCmd {
+		cmd_args = append(cmd_args, s)
+	}
+
+	// Couldn't get this to work with dockerclient.Exec, so do it this way
+	execCmd := exec.Command("docker", cmd_args...)
 	if stdoutProcessor != nil {
-		processorsGroup.Add(1)
-
-		go func() {
-			defer processorsGroup.Done()
-			stdoutProcessor(stdoutReader)
-		}()
+		stdoutReader, err = execCmd.StdoutPipe()
+		if err != nil {
+			return -1, container, err
+		}
 	}
-
 	if stderrProcessor != nil {
-		processorsGroup.Add(1)
-
-		go func() {
-			defer processorsGroup.Done()
-			stderrProcessor(stderrReader)
-		}()
+		stderrReader, err = execCmd.StderrPipe()
+		if err != nil {
+			return -1, container, err
+		}
 	}
-
-	exitCode, err = d.client.WaitContainer(container.ID)
+	stdin, err := execCmd.StdinPipe()
 	if err != nil {
 		return -1, container, err
 	}
-
-	if stdoutWriter != nil {
-		stdoutWriter.Close()
+	err = execCmd.Start()
+	if err != nil {
+		return -1, container, err
 	}
-	if stderrWriter != nil {
-		stderrWriter.Close()
+	runFileProcessors()
+	err = execCmd.Wait()
+	if err != nil {
+		return -1, container, err
 	}
-
-	if stdoutReader != nil {
-		stdoutReader.Close()
-	}
-	if stderrReader != nil {
-		stderrReader.Close()
-	}
-
+	stdin.Close()
+	closeFiles()
 	processorsGroup.Wait()
-
-	return exitCode, container, nil
+	// Now we want to kill off this container?
+	err = d.client.KillContainer(dockerclient.KillContainerOptions{
+		ID: container.ID,
+	})
+	if err != nil {
+		return -1, container, err
+	}
+	err = d.client.RemoveContainer(dockerclient.RemoveContainerOptions{
+		ID:    container.ID,
+		Force: true})
+	if err != nil {
+		// Return 0 anyway, as there's nothing we can look at.
+		fmt.Fprintf(os.Stderr, "fissile: unexpected condition: client.RemoveContainer failed, err:%v\n", err)
+	}
+	return 0, container, nil
 }
