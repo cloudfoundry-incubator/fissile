@@ -136,9 +136,11 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	currentGID := syscall.Getegid()
 	var actualCmd, containerCmd []string
 	if keepContainer {
-		// 12 hours is more than enough time to compile a package and
-		// investigate the container if compilation failed.
-		containerCmd = []string{"sleep", "12h"}
+		// Sleep effectively forever so if something goes wrong we can
+		// docker exec -it bash into the container, investigate, and
+		// manually kill the container. Most of the time the compile step
+		// will succeed and the container will be killed and removed.
+		containerCmd = []string{"sleep", "365d"}
 		actualCmd = cmd
 	} else {
 		containerCmd = cmd
@@ -276,10 +278,7 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	// KeepContainer mode:
 	// Run the cmd with 'docker exec ...' so we can keep the container around.
 	// Note that this time we'll need to stop it if it doesn't fail
-	cmd_args := []string{"exec", "-i", container.ID}
-	for _, s := range actualCmd {
-		cmd_args = append(cmd_args, s)
-	}
+	cmd_args := append([]string{"exec", "-i", container.ID}, actualCmd...)
 
 	// Couldn't get this to work with dockerclient.Exec, so do it this way
 	execCmd := exec.Command("docker", cmd_args...)
