@@ -278,10 +278,10 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	// KeepContainer mode:
 	// Run the cmd with 'docker exec ...' so we can keep the container around.
 	// Note that this time we'll need to stop it if it doesn't fail
-	cmd_args := append([]string{"exec", "-i", container.ID}, actualCmd...)
+	cmdArgs := append([]string{"exec", "-i", container.ID}, actualCmd...)
 
 	// Couldn't get this to work with dockerclient.Exec, so do it this way
-	execCmd := exec.Command("docker", cmd_args...)
+	execCmd := exec.Command("docker", cmdArgs...)
 	if stdoutProcessor != nil {
 		stdoutReader, err = execCmd.StdoutPipe()
 		if err != nil {
@@ -317,9 +317,7 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	if err != nil {
 		return -1, container, err
 	}
-	err = d.client.RemoveContainer(dockerclient.RemoveContainerOptions{
-		ID:    container.ID,
-		Force: true})
+	err = d.RemoveContainer(container.ID)
 	if err != nil {
 		// Return 0 anyway, as there's nothing we can look at.
 		fmt.Fprintf(os.Stderr, "fissile: unexpected condition: client.RemoveContainer failed, err:%v\n", err)
