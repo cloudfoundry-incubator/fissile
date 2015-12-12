@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -310,17 +309,5 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	stdin.Close()
 	closeFiles()
 	processorsGroup.Wait()
-	// Now we want to kill off this container?
-	err = d.client.KillContainer(dockerclient.KillContainerOptions{
-		ID: container.ID,
-	})
-	if err != nil {
-		return -1, container, err
-	}
-	err = d.RemoveContainer(container.ID)
-	if err != nil {
-		// Return 0 anyway, as there's nothing we can look at.
-		fmt.Fprintf(os.Stderr, "fissile: unexpected condition: client.RemoveContainer failed, err:%v\n", err)
-	}
 	return 0, container, nil
 }
