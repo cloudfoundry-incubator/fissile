@@ -373,9 +373,9 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		},
 	)
 
-	if container != nil && (err == nil || exitCode == 0 || !c.keepContainer) {
+	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
 		defer func() {
-			// Remove container
+			// Remove container - DockerManager.RemoveContainer does a force-rm
 
 			if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
 				if err == nil {
