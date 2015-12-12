@@ -277,7 +277,16 @@ func TestCreateImageOk(t *testing.T) {
 	assert.Nil(err)
 }
 
+func TestVerifySuccessfulDebugContainerStays(t *testing.T) {
+	verifyDebugContainerStays(t, true)
+}
+
 func TestVerifyFailedDebugContainerStays(t *testing.T) {
+	verifyDebugContainerStays(t, false)
+}
+
+func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
+
 	assert := assert.New(t)
 
 	dockerManager, err := NewImageManager()
@@ -285,18 +294,25 @@ func TestVerifyFailedDebugContainerStays(t *testing.T) {
 	assert.Nil(err)
 	testName := getTestName()
 
+	// Run /bin/true to succeed, /bin/false to fail
 	exitCode, container, err := dockerManager.RunInContainer(
 		testName,
 		dockerImageName,
-		[]string{"/bin/false"},
+		[]string{fmt.Sprintf("/bin/%t", cmdShouldSucceed)},
 		"",
 		"",
 		true,
 		nil,
 		nil,
 	)
-	assert.NotNil(err)
-	assert.Equal(-1, exitCode)
+	if cmdShouldSucceed {
+		assert.Nil(err)
+		assert.Equal(0, exitCode)
+	} else {
+		assert.NotNil(err)
+		assert.Equal(-1, exitCode)
+	}
+
 	// Run ps to get the values
 	cmd := exec.Command("docker", "ps", "--format", "{{.Names}}::{{.ID}}::{{.Command}}", "--no-trunc")
 	output, err := cmd.CombinedOutput()
