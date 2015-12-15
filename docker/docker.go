@@ -125,22 +125,35 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
 	exitCode = -1
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
 	currentUID := syscall.Geteuid()
 	currentGID := syscall.Getegid()
+	var actualCmd, containerCmd []string
+	if keepContainer {
+		// Sleep effectively forever so if something goes wrong we can
+		// docker exec -it bash into the container, investigate, and
+		// manually kill the container. Most of the time the compile step
+		// will succeed and the container will be killed and removed.
+		containerCmd = []string{"sleep", "365d"}
+		actualCmd = cmd
+	} else {
+		containerCmd = cmd
+		// actualCmd not used
+	}
 
 	cco := dockerclient.CreateContainerOptions{
 		Config: &dockerclient.Config{
+			Tty:          false,
 			AttachStdin:  false,
 			AttachStdout: true,
 			AttachStderr: true,
 			Hostname:     "compiler",
 			Domainname:   "fissile",
-			Cmd:          cmd,
+			Cmd:          containerCmd,
 			WorkingDir:   "/",
 			Image:        imageName,
 			Env: []string{
@@ -214,45 +227,93 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 
 	var processorsGroup sync.WaitGroup
+	runFileProcessors := func() {
+		if stdoutProcessor != nil {
+			processorsGroup.Add(1)
 
-	if stdoutProcessor != nil {
-		processorsGroup.Add(1)
+			go func() {
+				defer processorsGroup.Done()
+				stdoutProcessor(stdoutReader)
+			}()
+		}
 
-		go func() {
-			defer processorsGroup.Done()
-			stdoutProcessor(stdoutReader)
-		}()
+		if stderrProcessor != nil {
+			processorsGroup.Add(1)
+
+			go func() {
+				defer processorsGroup.Done()
+				stderrProcessor(stderrReader)
+			}()
+		}
+	}
+	closeFiles := func() {
+		if stdoutWriter != nil {
+			stdoutWriter.Close()
+		}
+		if stderrWriter != nil {
+			stderrWriter.Close()
+		}
+
+		if stdoutReader != nil {
+			stdoutReader.Close()
+		}
+		if stderrReader != nil {
+			stderrReader.Close()
+		}
 	}
 
-	if stderrProcessor != nil {
-		processorsGroup.Add(1)
+	if !keepContainer {
+		runFileProcessors()
+		exitCode, err = d.client.WaitContainer(container.ID)
+		closeFiles()
+		if err != nil {
+			return -1, container, err
+		}
 
-		go func() {
-			defer processorsGroup.Done()
-			stderrProcessor(stderrReader)
-		}()
+		processorsGroup.Wait()
+		return exitCode, container, nil
 	}
-
-	exitCode, err = d.client.WaitContainer(container.ID)
+	// KeepContainer mode:
+	// Run the cmd with 'docker exec ...' so we can keep the container around.
+	execOptions := dockerclient.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          actualCmd,
+		Container:    container.ID,
+	}
+	exec, err := d.client.CreateExec(execOptions)
 	if err != nil {
 		return -1, container, err
 	}
 
-	if stdoutWriter != nil {
-		stdoutWriter.Close()
+	startExecOptions := dockerclient.StartExecOptions{}
+	if stdoutProcessor != nil {
+		reader, writer := io.Pipe()
+		stdoutReader = reader
+		startExecOptions.OutputStream = writer
 	}
-	if stderrWriter != nil {
-		stderrWriter.Close()
+	if stderrProcessor != nil {
+		reader, writer := io.Pipe()
+		stderrReader = reader
+		startExecOptions.ErrorStream = writer
+	}
+	err = d.client.StartExec(exec.ID, startExecOptions)
+	if err != nil {
+		return -1, container, err
 	}
 
-	if stdoutReader != nil {
-		stdoutReader.Close()
+	runFileProcessors()
+
+	inspect, err := d.client.InspectExec(exec.ID)
+	if err != nil {
+		return -1, container, err
 	}
-	if stderrReader != nil {
-		stderrReader.Close()
+	if inspect.ExitCode != 0 {
+		return -1, container, fmt.Errorf("Container exited with code %v", inspect.ExitCode)
 	}
 
+	closeFiles()
 	processorsGroup.Wait()
-
-	return exitCode, container, nil
+	return 0, container, nil
 }

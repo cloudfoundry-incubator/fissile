@@ -10,6 +10,8 @@ const (
 	UbuntuBase = "ubuntu"
 	// FakeBase is the name of the fake base image
 	FakeBase = "fake"
+	// For testing purposes, "FailBase" tests fail
+	FailBase = "fail"
 
 	// CompilationScript is the compilation script
 	CompilationScript = "compile"

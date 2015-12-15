@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pborman/uuid"
@@ -70,6 +72,7 @@ func TestRunInContainer(t *testing.T) {
 		[]string{"ping", "127.0.0.1", "-c", "1"},
 		"",
 		"",
+		false,
 		func(stdout io.Reader) {
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(stdout)
@@ -101,6 +104,7 @@ func TestRunInContainerStderr(t *testing.T) {
 		[]string{"ping", "-foo"},
 		"",
 		"",
+		false,
 		nil,
 		func(stderr io.Reader) {
 			buf := new(bytes.Buffer)
@@ -132,6 +136,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		[]string{"ls", ContainerInPath},
 		"/",
 		"",
+		false,
 		func(stdout io.Reader) {
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(stdout)
@@ -161,6 +166,7 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 		[]string{"touch", filepath.Join(ContainerInPath, "fissile-test.txt")},
 		"/",
 		"",
+		false,
 		nil,
 		nil,
 	)
@@ -187,6 +193,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 		[]string{"ls", ContainerOutPath},
 		"",
 		"/tmp",
+		false,
 		func(stdout io.Reader) {
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(stdout)
@@ -216,6 +223,7 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 		[]string{"touch", filepath.Join(ContainerOutPath, "fissile-test.txt")},
 		"",
 		"/tmp",
+		false,
 		nil,
 		nil,
 	)
@@ -240,6 +248,7 @@ func TestCreateImageOk(t *testing.T) {
 		[]string{"ping", "127.0.0.1", "-c", "1"},
 		"",
 		"",
+		false,
 		nil,
 		nil,
 	)
@@ -266,6 +275,73 @@ func TestCreateImageOk(t *testing.T) {
 
 	err = dockerManager.RemoveImage(fmt.Sprintf("%s:%s", testRepo, testTag))
 	assert.Nil(err)
+}
+
+func TestVerifySuccessfulDebugContainerStays(t *testing.T) {
+	verifyDebugContainerStays(t, true)
+}
+
+func TestVerifyFailedDebugContainerStays(t *testing.T) {
+	verifyDebugContainerStays(t, false)
+}
+
+func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
+
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+
+	assert.Nil(err)
+	testName := getTestName()
+
+	// Run /bin/true to succeed, /bin/false to fail
+	exitCode, container, err := dockerManager.RunInContainer(
+		testName,
+		dockerImageName,
+		[]string{fmt.Sprintf("/bin/%t", cmdShouldSucceed)},
+		"",
+		"",
+		true,
+		nil,
+		nil,
+	)
+	if cmdShouldSucceed {
+		assert.Nil(err)
+		assert.Equal(0, exitCode)
+	} else {
+		assert.NotNil(err)
+		assert.Equal(-1, exitCode)
+	}
+
+	// Run ps to get the values
+	cmd := exec.Command("docker", "ps", "--format", "{{.Names}}::{{.ID}}::{{.Command}}", "--no-trunc")
+	output, err := cmd.CombinedOutput()
+	assert.Nil(err)
+	outputLines := strings.Split(string(output), "\n")
+	wantedOutputLine := ""
+	for _, s := range outputLines {
+		if strings.Index(s, container.ID) >= 0 {
+			assert.Equal("", wantedOutputLine, fmt.Sprintf("Found multiple hits for a running container: %s", container.ID))
+			wantedOutputLine = s
+		}
+	}
+	assert.NotEqual("", wantedOutputLine, fmt.Sprintf("Didn't find a hit for running container: %s", container.ID))
+	if wantedOutputLine != "" {
+		parts := strings.Split(wantedOutputLine, "::")
+		assert.Equal(3, len(parts), fmt.Sprintf("Splitting up '%s' => %d parts", wantedOutputLine, len(parts)))
+		assert.Equal(testName, parts[0], wantedOutputLine)
+		assert.Equal("\"sleep 365d\"", parts[2])
+	}
+
+	err = dockerManager.RemoveContainer(container.ID)
+	assert.Nil(err)
+
+	// Make sure the container is gone now
+	// Run ps to get the values
+	cmd = exec.Command("docker", "ps", "--format", "{{.ID}}:", "--no-trunc")
+	output, err = cmd.CombinedOutput()
+	assert.Nil(err)
+	assert.Equal(-1, strings.Index(string(output), container.ID))
 }
 
 func getTestName() string {

@@ -266,6 +266,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		[]string{"bash", "-c", containerScriptPath},
 		tempScriptDir,
 		"",
+		false, // There is never a need to keep this container on failure
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
@@ -357,6 +358,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		[]string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		c.getTargetPackageSourcesDir(pkg),
 		c.getPackageCompiledTempDir(pkg),
+		c.keepContainer,
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
@@ -371,20 +373,19 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		},
 	)
 
-	defer func() {
-		// Remove container
-		if container == nil || c.keepContainer {
-			return
-		}
+	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
+		defer func() {
+			// Remove container - DockerManager.RemoveContainer does a force-rm
 
-		if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
-			if err == nil {
-				err = removeErr
-			} else {
-				err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
+			if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
+				if err == nil {
+					err = removeErr
+				} else {
+					err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error compiling package %s: %s", pkg.Name, err.Error())

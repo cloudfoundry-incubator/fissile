@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -123,6 +124,90 @@ func TestCompilationSkipCompiled(t *testing.T) {
 	assert.Equal(<-compileChan, "go-1.4")
 	assert.Equal(<-compileChan, "consul")
 	<-waitCh
+}
+
+func getContainerIDs() (string, error) {
+	val, err := exec.Command("docker", "ps", "-a", "--format={{.ID}}").CombinedOutput()
+	return string(val), err
+}
+
+func TestContainerKeptAfterCompilationWithErrors(t *testing.T) {
+	doTestContainerKeptAfterCompilationWithErrors(t, true)
+	doTestContainerKeptAfterCompilationWithErrors(t, false)
+}
+
+func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer bool) {
+	assert := assert.New(t)
+
+	compilationWorkDir, err := util.TempDir("", "fissile-tests")
+	assert.Nil(err)
+
+	dockerManager, err := docker.NewImageManager()
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+
+	releasePath := filepath.Join(workDir, "../test-assets/corrupt-releases/corrupt-package")
+	release, err := model.NewRelease(releasePath)
+	assert.Nil(err)
+
+	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
+
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
+	assert.Nil(err)
+
+	imageName := comp.BaseImageName()
+
+	_, err = comp.CreateCompilationBase(dockerImageName)
+	defer func() {
+		err = dockerManager.RemoveImage(imageName)
+		assert.Nil(err)
+	}()
+	assert.Nil(err)
+	beforeCompileContainers, err := getContainerIDs()
+	assert.Nil(err)
+
+	comp.BaseType = compilation.FailBase
+	err = comp.compilePackage(release.Packages[0])
+	// We expect the package to fail this time.
+	assert.NotNil(err)
+	afterCompileContainers, err := getContainerIDs()
+	assert.Nil(err)
+
+	// If keepInContainer is on,
+	// We expect one more container, so we'll need to explicitly
+	// remove it so the deferred func can call dockerManager.RemoveImage
+
+	// Because all container IDs are the same length and separated
+	// by newlines in the string, we can use a simple strings.Contains
+	// do find instances of one container in the other.
+	beforeIDs := strings.Split(beforeCompileContainers, "\n")
+	droppedIDs := []string{}
+	for _, id := range beforeIDs {
+		if !strings.Contains(afterCompileContainers, id) {
+			droppedIDs = append(droppedIDs, id)
+		}
+	}
+	assert.Equal(len(droppedIDs), 0, fmt.Sprintf("%d IDs were dropped during the failed compile", len(droppedIDs)))
+
+	afterIDs := strings.Split(afterCompileContainers, "\n")
+	addedIDs := []string{}
+	for _, id := range afterIDs {
+		if !strings.Contains(beforeCompileContainers, id) {
+			addedIDs = append(addedIDs, id)
+		}
+	}
+	if keepInContainer {
+		assert.Equal(1, len(addedIDs))
+	} else {
+		assert.Equal(0, len(addedIDs))
+	}
+	if len(addedIDs) == 1 {
+		// Do this so the deferred function that will remove
+		// the container's image will succeed
+		err = dockerManager.RemoveContainer(addedIDs[0])
+		assert.Nil(err)
+	}
 }
 
 // TestCompilationMultipleErrors checks that we correctly deal with multiple compilations failing
@@ -278,6 +363,11 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 }
 
 func TestCompilePackage(t *testing.T) {
+	doTestCompilePackage(t, true)
+	doTestCompilePackage(t, false)
+}
+
+func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
@@ -293,7 +383,7 @@ func TestCompilePackage(t *testing.T) {
 
 	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", false, ui)
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.Nil(err)
 
 	imageName := comp.BaseImageName()
@@ -304,9 +394,14 @@ func TestCompilePackage(t *testing.T) {
 		assert.Nil(err)
 	}()
 	assert.Nil(err)
+	beforeCompileContainers, err := getContainerIDs()
+	assert.Nil(err)
 
 	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
+	afterCompileContainers, err := getContainerIDs()
+	assert.Nil(err)
+	assert.Equal(string(beforeCompileContainers), string(afterCompileContainers))
 }
 
 func TestCreateDepBuckets(t *testing.T) {
