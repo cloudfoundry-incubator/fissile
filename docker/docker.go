@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 	"io"
-	"os/exec"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -276,37 +275,44 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 	// KeepContainer mode:
 	// Run the cmd with 'docker exec ...' so we can keep the container around.
-	// Note that this time we'll need to stop it if it doesn't fail
-	cmdArgs := append([]string{"exec", "-i", container.ID}, actualCmd...)
+	execOptions := dockerclient.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          actualCmd,
+		Container:    container.ID,
+	}
+	exec, err := d.client.CreateExec(execOptions)
+	if err != nil {
+		return -1, container, err
+	}
 
-	// Couldn't get this to work with dockerclient.Exec, so do it this way
-	execCmd := exec.Command("docker", cmdArgs...)
+	startExecOptions := dockerclient.StartExecOptions{}
 	if stdoutProcessor != nil {
-		stdoutReader, err = execCmd.StdoutPipe()
-		if err != nil {
-			return -1, container, err
-		}
+		reader, writer := io.Pipe()
+		stdoutReader = reader
+		startExecOptions.OutputStream = writer
 	}
 	if stderrProcessor != nil {
-		stderrReader, err = execCmd.StderrPipe()
-		if err != nil {
-			return -1, container, err
-		}
+		reader, writer := io.Pipe()
+		stderrReader = reader
+		startExecOptions.ErrorStream = writer
 	}
-	stdin, err := execCmd.StdinPipe()
+	err = d.client.StartExec(exec.ID, startExecOptions)
 	if err != nil {
 		return -1, container, err
 	}
-	err = execCmd.Start()
-	if err != nil {
-		return -1, container, err
-	}
+
 	runFileProcessors()
-	err = execCmd.Wait()
+
+	inspect, err := d.client.InspectExec(exec.ID)
 	if err != nil {
 		return -1, container, err
 	}
-	stdin.Close()
+	if inspect.ExitCode != 0 {
+		return -1, container, fmt.Errorf("Container exited with code %v", inspect.ExitCode)
+	}
+
 	closeFiles()
 	processorsGroup.Wait()
 	return 0, container, nil
