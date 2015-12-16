@@ -1,8 +1,6 @@
 package model
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -264,21 +262,15 @@ func (r *Release) loadLicense() error {
 
 	hash := sha1.New()
 
-	err = targzIterate(
-		io.TeeReader(targz, hash),
+	r.License.Files, err = util.LoadLicenseFiles(
 		r.licenseArchivePath(),
-		func(licenseFile *tar.Reader, header *tar.Header) error {
-			name := path.Base(header.Name)
-			namePrefix := name[:len(name)-len(path.Ext(name))]
-			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
-				buf, err := ioutil.ReadAll(licenseFile)
-				if err != nil {
-					return err
-				}
-				r.License.Files[filepath.Base(header.Name)] = buf
-			}
-			return nil
-		})
+		io.TeeReader(targz, hash),
+		util.DefaultLicensePrefixFilters...,
+	)
+
+	if err != nil {
+		return err
+	}
 
 	r.License.ActualSHA1 = fmt.Sprintf("%02x", hash.Sum(nil))
 
@@ -323,28 +315,4 @@ func (r *Release) manifestFilePath() string {
 	}
 
 	return filepath.Join(r.Path, manifestFile)
-}
-
-// targzIterate iterates over the files it finds in a tar.gz file and calls a
-// callback for each file encountered.
-func targzIterate(targz io.Reader, filename string, fn func(*tar.Reader, *tar.Header) error) error {
-	gzipReader, err := gzip.NewReader(targz)
-	if err != nil {
-		return fmt.Errorf("%s could not be read: %v", filename, err)
-	}
-
-	tarfile := tar.NewReader(gzipReader)
-	for {
-		header, err := tarfile.Next()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("%s's tar'd files failed to read: %v", filename, err)
-		}
-
-		err = fn(tarfile, header)
-		if err != nil {
-			return err
-		}
-	}
 }
