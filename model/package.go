@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hpcloud/fissile/util"
 	"github.com/pivotal-golang/archiver/extractor"
 )
 
@@ -19,6 +20,7 @@ type Package struct {
 	Release      *Release
 	Path         string
 	Dependencies Packages
+	LicenseFiles map[string][]byte
 
 	packageReleaseInfo map[interface{}]interface{}
 }
@@ -131,6 +133,21 @@ func (p *Package) loadPackageDependencies() (err error) {
 	}
 
 	return nil
+}
+
+func (p *Package) loadLicenseFiles() (err error) {
+	targz, err := os.Open(p.Path)
+	if err != nil {
+		return err
+	}
+	defer targz.Close()
+
+	p.LicenseFiles, err = util.LoadLicenseFiles(p.Path, targz, util.DefaultLicensePrefixFilters...)
+	if err != nil {
+		return fmt.Errorf("Failed to read package [%s] licenses: %v", p.Name, err)
+	}
+
+	return err
 }
 
 func (p *Package) packageArchivePath() string {

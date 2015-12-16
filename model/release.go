@@ -66,6 +66,10 @@ func NewRelease(path string) (*Release, error) {
 		return nil, err
 	}
 
+	if err := release.loadPackageLicenses(); err != nil {
+		return nil, err
+	}
+
 	if err := release.loadDependenciesForPackages(); err != nil {
 		return nil, err
 	}
@@ -188,6 +192,16 @@ func (r *Release) loadPackages() (err error) {
 		}
 
 		r.Packages = append(r.Packages, p)
+	}
+
+	return nil
+}
+
+func (r *Release) loadPackageLicenses() error {
+	for _, pkg := range r.Packages {
+		if err := pkg.loadLicenseFiles(); err != nil {
+			return fmt.Errorf("package [%s] licenses could not be read: %v", pkg.Name, err)
+		}
 	}
 
 	return nil

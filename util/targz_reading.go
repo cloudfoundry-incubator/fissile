@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
-	"path/filepath"
 )
 
 var (
@@ -41,7 +40,7 @@ func LoadLicenseFiles(filename string, targz io.Reader, prefixFilters ...string)
 				return err
 			}
 
-			files[filepath.Base(header.Name)] = buf
+			files[header.Name] = buf
 			return nil
 		})
 

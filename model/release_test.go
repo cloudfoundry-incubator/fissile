@@ -224,7 +224,7 @@ func TestReleaseLicenseOk(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(40, len(release.License.ActualSHA1))
 	assert.NotEmpty(release.License.Files)
-	assert.NotNil(release.License.Files["LICENSE"])
+	assert.NotNil(release.License.Files["./LICENSE"])
 }
 
 func TestReleaseLicenseNotOk(t *testing.T) {

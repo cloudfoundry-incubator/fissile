@@ -75,16 +75,47 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 		return "", err
 	}
 
-	// Write out license files
-	if len(role.Jobs[0].Release.License.Files) > 0 {
+	// Write out release license files
+	releaseLicensesWritten := map[string]struct{}{}
+	packageLicensesWritten := map[string]struct{}{}
+	for _, job := range role.Jobs {
 		docDir := filepath.Join(rootDir, "opt/hcf/share/doc")
-		if err := os.MkdirAll(docDir, 0755); err != nil {
-			return "", err
+
+		if _, ok := releaseLicensesWritten[job.Release.Name]; !ok {
+			if len(job.Release.License.Files) == 0 {
+				continue
+			}
+
+			releaseDir := filepath.Join(docDir, job.Release.Name)
+			if err := os.MkdirAll(releaseDir, 0755); err != nil {
+				return "", err
+			}
+
+			for filename, contents := range job.Release.License.Files {
+				err := ioutil.WriteFile(filepath.Join(releaseDir, filename), contents, 0644)
+				if err != nil {
+					return "", fmt.Errorf("failed to write out release license file %s: %v", filename, err)
+				}
+			}
 		}
-		for filename, contents := range role.Jobs[0].Release.License.Files {
-			err := ioutil.WriteFile(filepath.Join(docDir, filename), contents, 0644)
-			if err != nil {
-				return "", fmt.Errorf("failed to write out license file %s: %v", filename, err)
+
+		for _, pkg := range job.Packages {
+			if len(pkg.LicenseFiles) == 0 {
+				continue
+			} else if _, ok := packageLicensesWritten[pkg.Name]; ok {
+				continue
+			}
+
+			for filename, contents := range pkg.LicenseFiles {
+				packageLicensePath := filepath.Join(docDir, pkg.Release.Name, pkg.Name, filename)
+				if err := os.MkdirAll(filepath.Dir(packageLicensePath), 0755); err != nil {
+					return "", err
+				}
+
+				err := ioutil.WriteFile(packageLicensePath, contents, 0644)
+				if err != nil {
+					return "", fmt.Errorf("failed to write out package license file %s: %v", filename, err)
+				}
 			}
 		}
 	}
