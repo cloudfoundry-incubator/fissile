@@ -5,16 +5,14 @@ packages:
     ZTNmYjhhYjk3NmFjYTliOWVhMmE2YjI4Yjc2NTA2ZjAxMzBiYTI5Ng==
   fingerprint: !binary |-
     ZTNmYjhhYjk3NmFjYTliOWVhMmE2YjI4Yjc2NTA2ZjAxMzBiYTI5Ng==
-  sha1: !binary |-
-    MDMyOTkwN2VlMTYzMDQ3YjJkNDYxZGYzZThiNDY3NmRkZTc5MTY1MA==
+  sha1: f68e522200e34fba839d24a94a115c9ffbe47817
   dependencies: []
 - name: tor
   version: !binary |-
     NTk1MjNiMWNjNDA0MmRmZjEyMTdhYjViNzlmZjg4NWNkZDJkZTAzMg==
   fingerprint: !binary |-
     NTk1MjNiMWNjNDA0MmRmZjEyMTdhYjViNzlmZjg4NWNkZDJkZTAzMg==
-  sha1: !binary |-
-    YTA5YjU1NWE5ZGU3ZTg2NjcxYjVlYjBkNmMzZTBlYzMzMjg0NzE3MQ==
+  sha1: 8115c7350624ea04f37cd53b7c60347e38175bb2
   dependencies:
   - libevent
 jobs:
