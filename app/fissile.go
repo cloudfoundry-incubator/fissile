@@ -555,7 +555,7 @@ func newColoredLogger(roleImageName string, ui *termui.UI) func(io.Reader) {
 	return func(stdout io.Reader) {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
+			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
 		}
 	}
 }
