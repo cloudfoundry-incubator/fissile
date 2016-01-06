@@ -270,13 +270,13 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %%s"), color.WhiteString(scanner.Text()))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %%s"), color.RedString(scanner.Text()))
 			}
 		},
 	)
