@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 
@@ -17,6 +18,8 @@ var version string
 
 func main() {
 	var ui *termui.UI
+
+	boshCacheDir := fmt.Sprintf("%s/%s", os.Getenv("HOME"), ".bosh/cache")
 
 	if runtime.GOOS == "windows" {
 		ui = termui.New(
@@ -384,7 +387,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
@@ -414,7 +418,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 					},
@@ -444,7 +449,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 						cli.StringFlag{
@@ -498,7 +504,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 						cli.StringFlag{
@@ -571,7 +578,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 						cli.StringFlag{
@@ -614,7 +622,8 @@ func main() {
 						},
 						cli.StringFlag{
 							Name:   "cache-dir, cd",
-							Usage:  "Local BOSH cache directory; this should be ~/.bosh/cache",
+							Usage:  "Local BOSH cache directory",
+							Value:  boshCacheDir,
 							EnvVar: "FISSILE_DEV_CACHE_DIR",
 						},
 						cli.StringFlag{
