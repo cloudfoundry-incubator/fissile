@@ -325,9 +325,11 @@ func (j roleBuildJob) Run() {
 	j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
 	roleImageName := GetRoleImageName(j.repository, j.role, j.version)
+	log := new(bytes.Buffer)
 
-	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, j.ui))
+	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, log))
 	if err != nil {
+		log.WriteTo(j.ui)
 		j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
 		return
 	}
@@ -399,11 +401,11 @@ func GetRoleDevImageName(repository string, role *model.Role, version string) st
 	))
 }
 
-func newColoredLogger(roleImageName string, ui *termui.UI) func(io.Reader) {
+func newColoredLogger(roleImageName string, log *bytes.Buffer) func(io.Reader) {
 	return func(stdout io.Reader) {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
+			fmt.Fprintln(log, color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
 		}
 	}
 }
