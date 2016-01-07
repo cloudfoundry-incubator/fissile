@@ -52,18 +52,7 @@ func main() {
 		EnvVar: "FISSILE_DEV_CACHE_DIR",
 	}
 
-	// 2x base-image, usage differences -> TODO(andreask): combine in generator function
-
-	baseImageFlag := cli.StringFlag{ // 2: comp bb, comp sb
-		Name:  "base-image, b",
-		Usage: "Base image.",
-		Value: "ubuntu:14.04",
-	}
-	baseImageFromFlag := cli.StringFlag{ // 1: img cb
-		Name:  "base-image, b",
-		Usage: "Name of base image to build FROM in the Dockerfile.",
-		Value: "ubuntu:14.04",
-	}
+	baseImageFlag := baseImageFlagFor("Base image.")
 
 	// 4x release - defaults vs not,
 	//            - env var vs not,
@@ -428,7 +417,7 @@ func main() {
 							Usage:  "Path to the tarball containing configgin.",
 							EnvVar: "FISSILE_CONFIGGIN_PATH",
 						},
-						baseImageFromFlag,
+						baseImageFlagFor("Name of base image to build FROM in the Dockerfile."),
 						noBuildFlag,
 						repositoryEnvFlag,
 					},
@@ -567,5 +556,13 @@ func main() {
 	if err := cliApp.Run(os.Args); err != nil {
 		ui.Println(color.RedString("%v", err))
 		sigint.DefaultHandler.Exit(1)
+	}
+}
+
+func baseImageFlagFor(usage string) cli.StringFlag {
+	return cli.StringFlag{
+		Name:  "base-image, b",
+		Usage: usage,
+		Value: "ubuntu:14.04",
 	}
 }
