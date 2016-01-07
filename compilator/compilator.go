@@ -270,13 +270,13 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-container > %s", color.WhiteString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %s", color.WhiteString("%s", scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-container > %s", color.RedString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-container > %s", color.RedString("%s", scanner.Text())))
 			}
 		},
 	)
@@ -362,13 +362,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		func(stdout io.Reader) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("%s", scanner.Text())))
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString(scanner.Text())))
+				c.ui.Println(color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString("%s", scanner.Text())))
 			}
 		},
 	)

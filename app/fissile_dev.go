@@ -33,7 +33,7 @@ func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []
 
 		f.ui.Printf(
 			"There are %s packages present.\n\n",
-			color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
+			color.GreenString("%d", len(release.Packages)),
 		)
 	}
 
@@ -57,7 +57,7 @@ func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []stri
 
 		f.ui.Printf(
 			"There are %s jobs present.\n\n",
-			color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
+			color.GreenString("%d", len(release.Jobs)),
 		)
 	}
 
@@ -208,7 +208,7 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 			f.ui.Printf(
 				"%s (%sMB)\n",
 				color.GreenString(imageName),
-				color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+				color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)),
 			)
 		} else {
 			f.ui.Println(imageName)

@@ -50,7 +50,7 @@ func (f *Fissile) ListPackages(releasePath string) error {
 
 	f.ui.Printf(
 		"There are %s packages present.\n",
-		color.GreenString(fmt.Sprintf("%d", len(release.Packages))),
+		color.GreenString("%d", len(release.Packages)),
 	)
 
 	return nil
@@ -71,7 +71,7 @@ func (f *Fissile) ListJobs(releasePath string) error {
 
 	f.ui.Printf(
 		"There are %s jobs present.\n",
-		color.GreenString(fmt.Sprintf("%d", len(release.Jobs))),
+		color.GreenString("%d", len(release.Jobs)),
 	)
 
 	return nil
@@ -158,7 +158,7 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 		f.ui.Printf(
 			"====== %s ======\nUsage count: %s\n",
 			color.GreenString(name),
-			color.MagentaString(fmt.Sprintf("%d", propertiesGroupedUsageCounts[name])),
+			color.MagentaString("%d", propertiesGroupedUsageCounts[name]),
 		)
 
 		defaults := propertiesGroupedDefaults[name]
@@ -197,8 +197,8 @@ func (f *Fissile) ListFullConfiguration(releasePath string) error {
 
 	f.ui.Printf(
 		"There are %s unique configuration keys present. %s of them have default values.\n",
-		color.GreenString(fmt.Sprintf("%d", len(propertiesGroupedUsageCounts))),
-		color.GreenString(fmt.Sprintf("%d", keysWithDefaults)),
+		color.GreenString("%d", len(propertiesGroupedUsageCounts)),
+		color.GreenString("%d", keysWithDefaults),
 	)
 
 	return nil
@@ -309,7 +309,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 
 	f.ui.Printf("Image: %s\n", color.GreenString(baseImage))
 	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
 	image, err = dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
@@ -318,7 +318,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 
 	f.ui.Printf("Image: %s\n", color.GreenString(comp.BaseImageName()))
 	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))))
+	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
 	return nil
 }
@@ -538,7 +538,7 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 				f.ui.Printf(
 					"%s (%sMB)\n",
 					color.GreenString(imageName),
-					color.YellowString(fmt.Sprintf("%.2f", float64(image.VirtualSize)/(1024*1024))),
+					color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)),
 				)
 			} else {
 				f.ui.Println(imageName)
@@ -555,7 +555,7 @@ func newColoredLogger(roleImageName string, ui *termui.UI) func(io.Reader) {
 	return func(stdout io.Reader) {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString(scanner.Text())))
+			ui.Println(color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
 		}
 	}
 }
