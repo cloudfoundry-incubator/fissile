@@ -275,17 +275,12 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
 				fmt.Fprintln(log, color.GreenString("compilation-container > %s", color.WhiteString("%s", scanner.Text())))
-				// Note: The original c.ui.Println
-				// result (#written, error) was not
-				// used, nor checked, so I am doing
-				// the same now, for the Fprintln.
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
 				fmt.Fprintln(log, color.GreenString("compilation-container > %s", color.RedString("%s", scanner.Text())))
-				// Note: s.a.
 			}
 		},
 	)
@@ -377,17 +372,12 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
 				fmt.Fprintln(log, color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("%s", scanner.Text())))
-				// Note: The original c.ui.Println
-				// result (#written, error) was not
-				// used, nor checked, so I am doing
-				// the same now, for the Fprintln.
 			}
 		},
 		func(stderr io.Reader) {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
 				fmt.Fprintln(log, color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString("%s", scanner.Text())))
-				// Note: s.a.
 			}
 		},
 	)
