@@ -69,10 +69,6 @@ func main() {
 		Usage: "Path to a BOSH release.",
 		Value: ".",
 	}
-	releaseRequiredFlag := cli.StringFlag{
-		Name:  "release, r",
-		Usage: "Path to a BOSH release.",
-	}
 	releasesFlag := cli.StringSliceFlag{
 		Name:  "release, r",
 		Usage: "Path to BOSH release(s).",
@@ -247,7 +243,7 @@ func main() {
 					Name:    "packages-report",
 					Aliases: []string{"pr"},
 					Flags: []cli.Flag{
-						releaseRequiredFlag,
+						releaseOptionalFlag,
 					},
 					Usage:  "List all packages in a BOSH release",
 					Action: fissile.CommandRouter,
@@ -294,7 +290,7 @@ func main() {
 					Aliases: []string{"st"},
 					Flags: []cli.Flag{
 						repositoryFlag,
-						releaseRequiredFlag,
+						releaseOptionalFlag,
 						targetCompiledFlag,
 						workersFlag,
 						debugFlag,
@@ -313,7 +309,7 @@ func main() {
 					Name:    "report",
 					Aliases: []string{"rep"},
 					Flags: []cli.Flag{
-						releaseRequiredFlag,
+						releaseOptionalFlag,
 					},
 					Usage:  "List all configurations for all jobs in a release",
 					Action: fissile.CommandRouter,
@@ -342,7 +338,7 @@ func main() {
 					Name:    "report",
 					Aliases: []string{"rep"},
 					Flags: []cli.Flag{
-						releaseRequiredFlag,
+						releaseOptionalFlag,
 					},
 					Usage:  "Print all templates for all jobs in a release",
 					Action: fissile.CommandRouter,
