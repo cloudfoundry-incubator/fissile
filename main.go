@@ -91,33 +91,17 @@ func main() {
 		EnvVar: "FISSILE_DEV_RELEASE_VERSION",
 	}
 
-	// 2x repository, with and without fallback to environment
-	//    - Can we use only the variant with fallback ?
-
-	repositoryFlag := cli.StringFlag{ // 5: comp bb, comp sb, comp st, img cr, img lr
-		Name:  "repository, p",
-		Value: "fissile",
-		Usage: "Repository name prefix used to create image names.",
-	}
-	repositoryEnvFlag := cli.StringFlag{ // 4: img cb, dev comp, dev ci, dev lr
+	repositoryFlag := cli.StringFlag{
 		Name:   "repository, p",
 		Value:  "fissile",
 		Usage:  "Repository name prefix used to create image names.",
 		EnvVar: "FISSILE_REPOSITORY",
 	}
-
-	// 2x roles-manifest, with and without environment fallback
-
 	rolesManifestFlag := cli.StringFlag{
-		Name:  "roles-manifest, m",
-		Usage: "Path to a yaml file that details which jobs are used for each role",
-	}
-	rolesManifestEnvFlag := cli.StringFlag{
 		Name:   "roles-manifest, m",
 		Usage:  "Path to a yaml file that details which jobs are used for each role",
 		EnvVar: "FISSILE_ROLES_MANIFEST",
 	}
-
 	debugFlag := cli.BoolFlag{
 		Name:  "debug, d",
 		Usage: "If specified, containers won't be deleted when their build fails.",
@@ -162,74 +146,36 @@ func main() {
 		EnvVar: "FISSILE_DOCKERFILES_DIR",
 	}
 
-	// 2x prefix
-
 	prefixFlag := cli.StringFlag{
-		Name:  "prefix, p",
-		Usage: "Prefix to be used for all configuration keys.",
-		Value: "hcf",
-	}
-	prefixEnvFlag := cli.StringFlag{
 		Name:   "prefix, p",
 		Usage:  "Prefix to be used for all configuration keys.",
 		Value:  "hcf",
 		EnvVar: "FISSILE_CONFIG_PREFIX",
 	}
-
-	// 2x compiled-packages, default-consul-address, default-config-store-prefix
-
 	compiledPackagesFlag := cli.StringFlag{
-		Name:  "compiled-packages, c",
-		Usage: "Path to the directory that contains all compiled packages",
-	}
-	compiledPackagesEnvFlag := cli.StringFlag{
 		Name:   "compiled-packages, c",
 		Usage:  "Path to the directory that contains all compiled packages",
 		Value:  "/var/fissile/compilation",
 		EnvVar: "FISSILE_COMPILATION_DIR",
 	}
-
 	defaultConsulAddressFlag := cli.StringFlag{
-		Name:  "default-consul-address",
-		Usage: "Default consul address that the container image will try to connect to when run, if not specified",
-		Value: "http://127.0.0.1:8500",
-	}
-	defaultConsulAddressEnvFlag := cli.StringFlag{
 		Name:   "default-consul-address",
 		Usage:  "Default consul address that the container image will try to connect to when run, if not specified",
 		Value:  "http://127.0.0.1:8500",
 		EnvVar: "FISSILE_DEFAULT_CONSUL_ADDRESS",
 	}
-
 	defaultConfigStorePrefixFlag := cli.StringFlag{
-		Name:  "default-config-store-prefix",
-		Usage: "Default configuration store prefix that is used by the container, if not specified",
-		Value: "hcf",
-	}
-	defaultConfigStorePrefixEnvFlag := cli.StringFlag{
 		Name:   "default-config-store-prefix",
 		Usage:  "Default configuration store prefix that is used by the container, if not specified",
 		Value:  "hcf",
 		EnvVar: "FISSILE_DEFAULT_CONFIG_STORE_PREFIX",
 	}
-
-	// 2x light-opinions, dark-opinions
-
 	lightOpinionsFlag := cli.StringFlag{
-		Name:  "light-opinions, l",
-		Usage: "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
-	}
-	lightOpinionsEnvFlag := cli.StringFlag{
 		Name:   "light-opinions, l",
 		Usage:  "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
 		EnvVar: "FISSILE_LIGHT_OPINIONS",
 	}
-
 	darkOpinionsFlag := cli.StringFlag{
-		Name:  "dark-opinions, d",
-		Usage: "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
-	}
-	darkOpinionsEnvFlag := cli.StringFlag{
 		Name:   "dark-opinions, d",
 		Usage:  "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
 		EnvVar: "FISSILE_DARK_OPINIONS",
@@ -419,7 +365,7 @@ func main() {
 						},
 						baseImageFlagFor("Name of base image to build FROM in the Dockerfile."),
 						noBuildFlag,
-						repositoryEnvFlag,
+						repositoryFlag,
 					},
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
 					Action: fissile.CommandRouter,
@@ -485,7 +431,7 @@ func main() {
 						releaseVersionFlag,
 						cacheDirFlag,
 						targetCompiledEnvFlag,
-						repositoryEnvFlag,
+						repositoryFlag,
 						workersEnvFlag,
 					},
 					Usage:  "Compiles packages from dev releases using parallel workers",
@@ -500,11 +446,11 @@ func main() {
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						repositoryEnvFlag,
-						rolesManifestEnvFlag,
-						compiledPackagesEnvFlag,
-						defaultConsulAddressEnvFlag,
-						defaultConfigStorePrefixEnvFlag,
+						repositoryFlag,
+						rolesManifestFlag,
+						compiledPackagesFlag,
+						defaultConsulAddressFlag,
+						defaultConfigStorePrefixFlag,
 						noBuildFlag,
 						cli.BoolFlag{
 							Name:  "force, f",
@@ -518,12 +464,12 @@ func main() {
 					Name:    "list-roles",
 					Aliases: []string{"lr"},
 					Flags: []cli.Flag{
-						repositoryEnvFlag,
+						repositoryFlag,
 						releaseOptionalEnvFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						rolesManifestEnvFlag,
+						rolesManifestFlag,
 						dockerOnlyFlag,
 						withSizesFlag,
 					},
@@ -539,9 +485,9 @@ func main() {
 						releaseVersionFlag,
 						cacheDirFlag,
 						targetConfigEnvFlag,
-						lightOpinionsEnvFlag,
-						darkOpinionsEnvFlag,
-						prefixEnvFlag,
+						lightOpinionsFlag,
+						darkOpinionsFlag,
+						prefixFlag,
 						providerFlag,
 					},
 					Usage:  "Generates a configuration base that can be loaded into something like consul.",
