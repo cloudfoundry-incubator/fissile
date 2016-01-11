@@ -54,26 +54,19 @@ func main() {
 
 	baseImageFlag := baseImageFlagFor("Base image.")
 
-	// 4x release - defaults vs not,
-	//            - env var vs not,
-	//            - single/multiple,
-	//            - usage differences
+	// 2x release - single/multiple, usage differences
 
-	releaseOptionalEnvFlag := cli.StringSliceFlag{
+	releaseOptionalFlag := cli.StringFlag{
 		Name:   "release, r",
-		Usage:  "Path to a dev BOSH release",
+		Usage:  "Path to a BOSH release.",
+		Value:  ".",
 		EnvVar: "FISSILE_RELEASE",
 	}
-	releaseOptionalFlag := cli.StringFlag{
-		Name:  "release, r",
-		Usage: "Path to a BOSH release.",
-		Value: ".",
-	}
 	releasesFlag := cli.StringSliceFlag{
-		Name:  "release, r",
-		Usage: "Path to BOSH release(s).",
+		Name:   "release, r",
+		Usage:  "Path to dev BOSH release(s).",
+		EnvVar: "FISSILE_RELEASE",
 	}
-
 	releaseNameFlag := cli.StringSliceFlag{
 		Name:   "release-name, rn",
 		Usage:  "Name of a dev BOSH release; if empty, default configured dev release name will be used",
@@ -86,7 +79,6 @@ func main() {
 		Value:  &cli.StringSlice{},
 		EnvVar: "FISSILE_DEV_RELEASE_VERSION",
 	}
-
 	repositoryFlag := cli.StringFlag{
 		Name:   "repository, p",
 		Value:  "fissile",
@@ -212,7 +204,7 @@ func main() {
 	}
 
 	devReportCommandFlags := []cli.Flag{
-		releaseOptionalEnvFlag,
+		releasesFlag,
 		releaseNameFlag,
 		releaseVersionFlag,
 		cacheDirFlag,
@@ -415,7 +407,7 @@ func main() {
 					Name:    "compile",
 					Aliases: []string{"comp"},
 					Flags: []cli.Flag{
-						releaseOptionalEnvFlag,
+						releasesFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
@@ -431,7 +423,7 @@ func main() {
 					Aliases: []string{"ci"},
 					Flags: []cli.Flag{
 						targetDocker2EnvFlag,
-						releaseOptionalEnvFlag,
+						releasesFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
@@ -454,7 +446,7 @@ func main() {
 					Aliases: []string{"lr"},
 					Flags: []cli.Flag{
 						repositoryFlag,
-						releaseOptionalEnvFlag,
+						releasesFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
@@ -469,7 +461,7 @@ func main() {
 					Name:    "config-gen",
 					Aliases: []string{"cg"},
 					Flags: []cli.Flag{
-						releaseOptionalEnvFlag,
+						releasesFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
