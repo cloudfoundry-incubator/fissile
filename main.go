@@ -91,8 +91,9 @@ func main() {
 		EnvVar: "FISSILE_ROLES_MANIFEST",
 	}
 	debugFlag := cli.BoolFlag{
-		Name:  "debug, d",
-		Usage: "If specified, containers won't be deleted when their build fails.",
+		Name:   "debug, d",
+		Usage:  "If specified, containers won't be deleted when their build fails.",
+		EnvVar: "FISSILE_DEBUG",
 	}
 
 	// Seven! target variants (2x config, 3x docker)
@@ -171,32 +172,37 @@ func main() {
 		EnvVar: "FISSILE_COMPILATION_WORKER_COUNT",
 	}
 	workersBFlag := cli.IntFlag{
-		Name:  "workers, w",
-		Value: 1,
-		Usage: "Number of workers to use.",
+		Name:   "workers, w",
+		Value:  1,
+		Usage:  "Number of workers to use.",
 		EnvVar: "FISSILE_WORKER_COUNT",
 	}
 
 	noBuildFlag := cli.BoolFlag{
 		Name:  "no-build, n",
 		Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
+EnvVar: "FISSILE_NO_BUILD",
 	}
 	dockerOnlyFlag := cli.BoolFlag{
-		Name:  "docker-only, d",
-		Usage: "If the flag is set, only show images that are available on docker",
+		Name:   "docker-only, d",
+		Usage:  "If the flag is set, only show images that are available on docker",
+		EnvVar: "FISSILE_DOCKER_ONLY",
 	}
 	withSizesFlag := cli.BoolFlag{
-		Name:  "with-sizes, s",
-		Usage: "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
+		Name:   "with-sizes, s",
+		Usage:  "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
+		EnvVar: "FISSILE_WITH_SIZES",
 	}
 	versionFlag := cli.StringFlag{
-		Name:  "version, v",
-		Usage: "Used as a version label for the created images",
+		Name:   "version, v",
+		Usage:  "Used as a version label for the created images",
+		EnvVar: "FISSILE_VERSION",
 	}
 	providerFlag := cli.StringFlag{
-		Name:  "provider, o",
-		Usage: "Provider to use when generating the configuration base.",
-		Value: configstore.DirTreeProvider,
+		Name:   "provider, o",
+		Usage:  "Provider to use when generating the configuration base.",
+		Value:  configstore.DirTreeProvider,
+		EnvVar: "FISSILE_PROVIDER",
 	}
 
 	devReportCommandFlags := []cli.Flag{
