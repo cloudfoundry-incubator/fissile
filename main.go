@@ -103,28 +103,21 @@ func main() {
 		Usage: "If specified, containers won't be deleted when their build fails.",
 	}
 
-	// Seven! target variants (2x compiled, 2x config, 3x docker)
+	// Seven! target variants (2x config, 3x docker)
 
 	targetCompiledFlag := cli.StringFlag{
-		Name:  "target, t",
-		Usage: "Path to the location of the compiled packages.",
-	}
-	targetCompiledEnvFlag := cli.StringFlag{
 		Name:   "target, t",
 		Usage:  "Path to the location of the compiled packages.",
 		Value:  "/var/fissile/compilation",
 		EnvVar: "FISSILE_COMPILATION_DIR",
 	}
 	targetConfigFlag := cli.StringFlag{
-		Name:  "target, t",
-		Usage: "Path to the location of the generated configuration base.",
-	}
-	targetConfigEnvFlag := cli.StringFlag{
 		Name:   "target, t",
 		Usage:  "Path to the location of the generated configuration base.",
 		Value:  "/var/fissile/dockerfiles", // ATTENTION - TYPO ?? - BAD VALUE ?? - COPY ERROR ??
 		EnvVar: "FISSILE_CONFIG_OUTPUT_DIR",
 	}
+
 	targetDockerFlag := cli.StringFlag{
 		Name:  "target, t",
 		Usage: "Path to the location of the generated Dockerfile and assets.",
@@ -426,7 +419,7 @@ func main() {
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						targetCompiledEnvFlag,
+						targetCompiledFlag,
 						repositoryFlag,
 						workersEnvFlag,
 					},
@@ -480,7 +473,7 @@ func main() {
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						targetConfigEnvFlag,
+						targetConfigFlag,
 						lightOpinionsFlag,
 						darkOpinionsFlag,
 						prefixFlag,
