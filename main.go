@@ -162,14 +162,9 @@ func main() {
 		EnvVar: "FISSILE_DARK_OPINIONS",
 	}
 
-	// 3x workers
+	// 2x workers
 
 	workersFlag := cli.IntFlag{
-		Name:  "workers, w",
-		Value: 2,
-		Usage: "Number of compiler workers to use.",
-	}
-	workersEnvFlag := cli.IntFlag{
 		Name:   "workers, w",
 		Value:  2,
 		Usage:  "Number of compiler workers to use.",
@@ -179,6 +174,7 @@ func main() {
 		Name:  "workers, w",
 		Value: 1,
 		Usage: "Number of workers to use.",
+		EnvVar: "FISSILE_WORKER_COUNT",
 	}
 
 	noBuildFlag := cli.BoolFlag{
@@ -413,7 +409,7 @@ func main() {
 						cacheDirFlag,
 						targetCompiledFlag,
 						repositoryFlag,
-						workersEnvFlag,
+						workersFlag,
 					},
 					Usage:  "Compiles packages from dev releases using parallel workers",
 					Action: fissile.CommandRouter,
