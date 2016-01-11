@@ -96,7 +96,7 @@ func main() {
 		EnvVar: "FISSILE_DEBUG",
 	}
 
-	// Seven! target variants (2x config, 3x docker)
+	// 3x target
 
 	targetCompiledFlag := cli.StringFlag{
 		Name:   "target, t",
@@ -112,10 +112,6 @@ func main() {
 	}
 
 	targetDockerFlag := cli.StringFlag{
-		Name:  "target, t",
-		Usage: "Path to the location of the generated Dockerfile and assets.",
-	}
-	targetDockerEnvFlag := cli.StringFlag{
 		Name:   "target, t",
 		Usage:  "Path to the location of the generated Dockerfile and assets.",
 		Value:  "/var/fissile/base_dockerfile/",
@@ -340,7 +336,7 @@ EnvVar: "FISSILE_NO_BUILD",
 					Name:    "create-base",
 					Aliases: []string{"cb"},
 					Flags: []cli.Flag{
-						targetDockerEnvFlag,
+						targetDockerFlag,
 						cli.StringFlag{
 							Name:   "configgin, c",
 							Usage:  "Path to the tarball containing configgin.",
@@ -436,8 +432,9 @@ EnvVar: "FISSILE_NO_BUILD",
 						defaultConfigStorePrefixFlag,
 						noBuildFlag,
 						cli.BoolFlag{
-							Name:  "force, f",
-							Usage: "If specified, image creation will proceed even when images already exist.",
+							Name:   "force, f",
+							Usage:  "If specified, image creation will proceed even when images already exist.",
+							EnvVar: "FISSILE_FORCE",
 						},
 					},
 					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest",
