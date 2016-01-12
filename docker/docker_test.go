@@ -40,8 +40,7 @@ func TestFindImageOK(t *testing.T) {
 
 	image, err := dockerManager.FindImage(dockerImageName)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.NotEmpty(image.ID)
@@ -84,8 +83,7 @@ func TestRunInContainer(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -119,8 +117,7 @@ func TestRunInContainerStderr(t *testing.T) {
 		},
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(2, exitCode)
@@ -154,8 +151,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -183,8 +179,7 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.NotEqual(0, exitCode)
@@ -217,8 +212,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -246,8 +240,7 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -274,8 +267,7 @@ func TestCreateImageOk(t *testing.T) {
 		nil,
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -291,8 +283,7 @@ func TestCreateImageOk(t *testing.T) {
 		[]string{"ping", "127.0.0.1", "-c", "1"},
 	)
 
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.NotEmpty(image.ID)
@@ -333,14 +324,12 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 		nil,
 	)
 	if cmdShouldSucceed {
-		assert.Nil(err)
-		if err != nil {
+		if !assert.Nil(err) {
 			return
 		}
 		assert.Equal(0, exitCode)
 	} else {
-		assert.NotNil(err)
-		if err == nil {
+		if !assert.NotNil(err) {
 			return
 		}
 		assert.Equal(-1, exitCode)
@@ -349,8 +338,7 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	// Run ps to get the values
 	cmd := exec.Command("docker", "ps", "--format", "{{.Names}}::{{.ID}}::{{.Command}}", "--no-trunc")
 	output, err := cmd.CombinedOutput()
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	outputLines := strings.Split(string(output), "\n")
@@ -376,8 +364,7 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	// Run ps to get the values
 	cmd = exec.Command("docker", "ps", "--format", "{{.ID}}:", "--no-trunc")
 	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
-	if err != nil {
+	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(-1, strings.Index(string(output), container.ID))
