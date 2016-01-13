@@ -105,7 +105,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		)
 	case "images create-roles":
 		err = f.GenerateRoleImages(
-			paths["base-docker-file"],
+			paths["docker-dir"],
 			c.String("repository"),
 			c.Bool("no-build"),
 			releasePaths,
