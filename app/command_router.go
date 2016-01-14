@@ -23,7 +23,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		"images list-roles",
 		"images create-roles":
 		{
-			paths, err = absolutePathsForFlags(c, "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
+			paths, err = absolutePathsForFlags(c, "work-dir", "light-opinions", "dark-opinions", "roles-manifest", "cache-dir")
 			if err != nil {
 				f.cmdErr = err
 				return
@@ -37,7 +37,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 	default:
 		{
-			paths, err = absolutePathsForFlags(c, "release", "target", "light-opinions", "dark-opinions", "roles-manifest", "compiled-packages", "cache-dir")
+			paths, err = absolutePathsForFlags(c, "release", "work-dir", "configgin", "light-opinions", "dark-opinions", "roles-manifest", "cache-dir")
 			if err != nil {
 				f.cmdErr = err
 				return
@@ -45,6 +45,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 	}
 
+	extendPathsFromWorkDirectory(paths)
 	switch c.Command.FullName() {
 	case "release jobs-report":
 		err = f.ListJobs(
@@ -73,7 +74,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.Compile(
 			paths["release"],
 			c.String("repository"),
-			paths["target"],
+			paths["compilation-dir"],
 			c.Int("workers"),
 			c.Bool("debug"),
 		)
@@ -90,26 +91,26 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			releasePaths,
 			paths["light-opinions"],
 			paths["dark-opinions"],
-			paths["target"],
+			paths["config-dir"],
 			c.String("prefix"),
 			c.String("provider"),
 		)
 	case "images create-base":
 		err = f.GenerateBaseDockerImage(
-			paths["target"],
-			c.String("configgin"),
+			paths["base-docker-file"],
+			paths["configgin"],
 			c.String("base-image"),
 			c.Bool("no-build"),
 			c.String("repository"),
 		)
 	case "images create-roles":
 		err = f.GenerateRoleImages(
-			paths["target"],
+			paths["docker-dir"],
 			c.String("repository"),
 			c.Bool("no-build"),
 			releasePaths,
 			paths["roles-manifest"],
-			paths["compiled-packages"],
+			paths["compilation-dir"],
 			c.String("default-consul-address"),
 			c.String("default-config-store-prefix"),
 			c.String("version"),
@@ -157,7 +158,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 			c.String("repository"),
-			paths["target"],
+			paths["config-dir"],
 			c.Int("workers"),
 		)
 	case "dev create-images":
@@ -166,7 +167,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 
 		err = f.GenerateRoleDevImages(
-			paths["target"],
+			paths["docker-dir"],
 			c.String("repository"),
 			c.Bool("no-build"),
 			c.Bool("force"),
@@ -175,7 +176,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 			paths["roles-manifest"],
-			paths["compiled-packages"],
+			paths["compilation-dir"],
 			c.String("default-consul-address"),
 			c.String("default-config-store-prefix"),
 		)
@@ -206,13 +207,49 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["cache-dir"],
 			paths["light-opinions"],
 			paths["dark-opinions"],
-			paths["target"],
+			paths["config-dir"],
 			c.String("prefix"),
 			c.String("provider"),
 		)
 	}
 
 	f.cmdErr = err
+}
+
+// extendPathsFromWorkDirectory takes the paths map pulled from the commands
+// options and extends it with a number of entries derived from the
+// --work-dir.
+func extendPathsFromWorkDirectory(paths map[string]string) {
+
+	workDir := paths["work-dir"]
+
+	defaults := []struct {
+		key   string
+		check bool
+		path  string
+	} {
+		// Paths which are unconditionally created from the --work-dir
+		{"compilation-dir",  false, "compilation"},
+		{"config-dir",       false, "config"},
+		{"base-docker-file", false, "base_dockerfile"},
+		{"docker-dir",       false, "dockerfiles"},
+
+		// Paths which have a --work-dir derived default. I.e. are not set
+		// if they exist already
+		{"configgin",        true,  "configgin.tar.gz"},
+		{"light-opinions",   true,  "opinions.yml"},
+		{"dark-opinions",    true,  "dark-opinions.yml"},
+		{"roles-manifest",   true,  "role-manifest.yml"},
+	}
+
+	for _, v := range defaults {
+		if v.check {
+			if _, ok := paths[v.key]; ok {
+				continue
+			}
+		}
+		paths[v.key] = filepath.Join(workDir, v.path)
+	}
 }
 
 func validateDevReleaseArgs(c *cli.Context) error {

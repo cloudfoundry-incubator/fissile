@@ -96,32 +96,11 @@ func main() {
 		EnvVar: "FISSILE_DEBUG",
 	}
 
-	// 3x target
-
-	targetCompiledFlag := cli.StringFlag{
-		Name:   "target, t",
-		Usage:  "Path to the location of the compiled packages.",
-		Value:  "/var/fissile/compilation",
-		EnvVar: "FISSILE_COMPILATION_DIR",
-	}
-	targetConfigFlag := cli.StringFlag{
-		Name:   "target, t",
-		Usage:  "Path to the location of the generated configuration base.",
-		Value:  "/var/fissile/dockerfiles", // ATTENTION - TYPO ?? - BAD VALUE ?? - COPY ERROR ??
-		EnvVar: "FISSILE_CONFIG_OUTPUT_DIR",
-	}
-
-	targetDockerFlag := cli.StringFlag{
-		Name:   "target, t",
-		Usage:  "Path to the location of the generated Dockerfile and assets.",
-		Value:  "/var/fissile/base_dockerfile/",
-		EnvVar: "FISSILE_ROLE_BASE_DOCKERFILE_DIR",
-	}
-	targetDocker2EnvFlag := cli.StringFlag{
-		Name:   "target, t",
-		Usage:  "Path to the location of the generated Dockerfile and assets.",
-		Value:  "/var/fissile/dockerfiles",
-		EnvVar: "FISSILE_DOCKERFILES_DIR",
+	workdirFlag := cli.StringFlag{
+		Name:   "work-dir, wd",
+		Usage:  "Path to the location of the work directory.",
+		Value:  "/var/fissile",
+		EnvVar: "FISSILE_WORK_DIR",
 	}
 
 	prefixFlag := cli.StringFlag{
@@ -129,12 +108,6 @@ func main() {
 		Usage:  "Prefix to be used for all configuration keys.",
 		Value:  "hcf",
 		EnvVar: "FISSILE_CONFIG_PREFIX",
-	}
-	compiledPackagesFlag := cli.StringFlag{
-		Name:   "compiled-packages, c",
-		Usage:  "Path to the directory that contains all compiled packages",
-		Value:  "/var/fissile/compilation",
-		EnvVar: "FISSILE_COMPILATION_DIR",
 	}
 	defaultConsulAddressFlag := cli.StringFlag{
 		Name:   "default-consul-address",
@@ -177,7 +150,7 @@ func main() {
 	noBuildFlag := cli.BoolFlag{
 		Name:  "no-build, n",
 		Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
-EnvVar: "FISSILE_NO_BUILD",
+		EnvVar: "FISSILE_NO_BUILD",
 	}
 	dockerOnlyFlag := cli.BoolFlag{
 		Name:   "docker-only, d",
@@ -274,7 +247,7 @@ EnvVar: "FISSILE_NO_BUILD",
 					Flags: []cli.Flag{
 						repositoryFlag,
 						releaseOptionalFlag,
-						targetCompiledFlag,
+						workdirFlag,
 						workersFlag,
 						debugFlag,
 					},
@@ -304,7 +277,7 @@ EnvVar: "FISSILE_NO_BUILD",
 						releasesFlag,
 						lightOpinionsFlag,
 						darkOpinionsFlag,
-						targetConfigFlag,
+						workdirFlag,
 						prefixFlag,
 						providerFlag,
 					},
@@ -336,7 +309,7 @@ EnvVar: "FISSILE_NO_BUILD",
 					Name:    "create-base",
 					Aliases: []string{"cb"},
 					Flags: []cli.Flag{
-						targetDockerFlag,
+						workdirFlag,
 						cli.StringFlag{
 							Name:   "configgin, c",
 							Usage:  "Path to the tarball containing configgin.",
@@ -353,12 +326,11 @@ EnvVar: "FISSILE_NO_BUILD",
 					Name:    "create-roles",
 					Aliases: []string{"cr"},
 					Flags: []cli.Flag{
-						targetDockerFlag,
+						workdirFlag,
 						noBuildFlag,
 						repositoryFlag,
 						releasesFlag,
 						rolesManifestFlag,
-						compiledPackagesFlag,
 						defaultConsulAddressFlag,
 						defaultConfigStorePrefixFlag,
 						versionFlag,
@@ -409,7 +381,7 @@ EnvVar: "FISSILE_NO_BUILD",
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						targetCompiledFlag,
+						workdirFlag,
 						repositoryFlag,
 						workersFlag,
 					},
@@ -420,14 +392,13 @@ EnvVar: "FISSILE_NO_BUILD",
 					Name:    "create-images",
 					Aliases: []string{"ci"},
 					Flags: []cli.Flag{
-						targetDocker2EnvFlag,
+						workdirFlag,
 						releasesFlag,
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
 						repositoryFlag,
 						rolesManifestFlag,
-						compiledPackagesFlag,
 						defaultConsulAddressFlag,
 						defaultConfigStorePrefixFlag,
 						noBuildFlag,
@@ -464,7 +435,7 @@ EnvVar: "FISSILE_NO_BUILD",
 						releaseNameFlag,
 						releaseVersionFlag,
 						cacheDirFlag,
-						targetConfigFlag,
+						workdirFlag,
 						lightOpinionsFlag,
 						darkOpinionsFlag,
 						prefixFlag,

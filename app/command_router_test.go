@@ -10,6 +10,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestExtendPathsFromWorkDirectory(t *testing.T) {
+	assert := assert.New(t)
+
+	set := flag.NewFlagSet("test", 0)
+	set.String("work-dir", "state directory", "directory path")
+	set.Set("work-dir", "/var/fissile")
+
+	c := cli.NewContext(nil, set, nil)
+
+	paths, err := absolutePathsForFlags(c, "work-dir")
+	assert.Nil(err)
+
+	extendPathsFromWorkDirectory(paths)
+
+	assert.Equal(paths["work-dir"],         "/var/fissile")
+	assert.Equal(paths["compilation-dir"],  "/var/fissile/compilation")
+	assert.Equal(paths["config-dir"],       "/var/fissile/config")
+	assert.Equal(paths["base-docker-file"], "/var/fissile/base_dockerfile")
+	assert.Equal(paths["docker-dir"],       "/var/fissile/dockerfiles")
+	assert.Equal(paths["configgin"],        "/var/fissile/configgin.tar.gz")
+	assert.Equal(paths["light-opinions"],   "/var/fissile/opinions.yml")
+	assert.Equal(paths["dark-opinions"],    "/var/fissile/dark-opinions.yml")
+	assert.Equal(paths["roles-manifest"],   "/var/fissile/role-manifest.yml")
+}
+
 func TestFindAbsolutePaths(t *testing.T) {
 	assert := assert.New(t)
 
