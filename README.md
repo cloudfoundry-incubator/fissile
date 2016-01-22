@@ -122,8 +122,8 @@ The following diagram shows the ordering of things. The highlighted items are co
 - `configuration generate`
 
  - `--release <RELEASE_PATH>` path to BOSH release(s) - you can specify this parameter multiple times **(not optional)**
- - `--light-opinions <LIGHT_OPINIONS_YAML_PATH>` path to a BOSH YAML deployment manifest generated using the instructions found [here](https://docs.cloudfoundry.org/deploying/openstack/install_cf_openstack.html#deploy-cf) **(not optional)**
- - `--dark-opinions <DARK_OPINIONS_YAML_PATH>` path to a `cf-stub` BOSH YAML deployment manifest, that, like it's documented [here](https://docs.cloudfoundry.org/deploying/cf-stub-openstack.html) **(not optional)**
+ - `--light-opinions <LIGHT_OPINIONS_YAML_PATH>` path to a BOSH YAML deployment manifest generated using the instructions found [here](https://docs.cloudfoundry.org/deploying/common/create_a_manifest.html#generate-manifest) **(not optional)** 
+ - `--dark-opinions <DARK_OPINIONS_YAML_PATH>`. Normally, the path should point to an edited version of the `cf-stub` BOSH YAML deployment manifest as documented [here](https://docs.cloudfoundry.org/deploying/openstack/cf-stub.html) **(not optional)**.
  - `--target <TARGET_DIRECTORY>` path to a directory where the command will write the configuration **(not optional)**
  - `--prefix <CONFIGURATION_KEYS_PREFIX>` a prefix to be used for all the BOSH keys; defaults to `hcf`
  - `--provider <GENERATION_PROVIDER>` the provider to use when generating the configuration; defaults to `dirtree` (this is the only provider currently available)
