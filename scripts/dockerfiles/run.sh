@@ -64,7 +64,7 @@ run_configgin \
 {{ end }}
 {{ if not $role.IsTask }}
 # ============================================================================
-#         Templates for job {{ $job.Name }}
+#         Monit templates for job {{ $job.Name }}
 # ============================================================================
 run_configgin \
     "/var/vcap/jobs-src/${the_job}/monit" \
