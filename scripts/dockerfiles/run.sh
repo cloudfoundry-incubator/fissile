@@ -30,54 +30,54 @@ fi
 
 ip_address=$(/bin/hostname -i)
 
+# Usage: run_configin <role-description> <role> <release> <job> <input>  <output>
+#                     json               name   name      name  template destination
 function run_configgin()
 {
-    input="$1"
-    output="$2"
+    role_desc="$1"
+    role_name="$2"
+    release_name="$3"
+    job_name="$4"
+    input="$5"
+    output="$6"
     /opt/hcf/configgin/configgin \
-	--data    "${role_data}" \
+	--data    "${role_desc}" \
 	--output  "${output}" \
 	--consul  "${consul_address}" \
 	--prefix  "${config_store_prefix}" \
-	--role    "${the_role}" \
-	--release "${the_release}" \
-	--job     "${the_job}" \
+	--role    "${role_name}" \
+	--release "${release_name}" \
+	--job     "${job_name}" \
 	"${input}"
 }
 
 # Process templates
 {{ with $role := index . "role" }}
-the_role="{{$role.Name}}"
-role_data='{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}'
+the_role_desc='{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}'
 # =====================================================
 {{ range $i, $job := .Jobs}}
-the_release="{{$job.Release.Name}}"
-the_job="{{$job.Name}}"
 # ============================================================================
 #         Templates for job {{ $job.Name }}
 # ============================================================================
 {{ range $j, $template := $job.Templates }}
-run_configgin \
-    "/var/vcap/jobs-src/${the_job}/templates/{{ $template.SourcePath }}" \
-    "/var/vcap/jobs/${the_job}/{{$template.DestinationPath}}"
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+    "/var/vcap/jobs-src/{{$job.Name}}/templates/{{ $template.SourcePath }}" \
+    "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
 # =====================================================
 {{ end }}
 {{ if not $role.IsTask }}
 # ============================================================================
 #         Monit templates for job {{ $job.Name }}
 # ============================================================================
-run_configgin \
-    "/var/vcap/jobs-src/${the_job}/monit" \
-    "/var/vcap/monit/${the_job}.monitrc"
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+    "/var/vcap/jobs-src/{{$job.Name}}/monit" \
+    "/var/vcap/monit/{{$job.Name}}.monitrc"
 # =====================================================
 {{ end }}
 {{ end }}
-
 {{ if not .IsTask }}
 # Process monitrc.erb template
-the_release="{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}"
-the_job="hcf-monit-master"
-run_configgin \
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" "hcf-monit-master" \
     "/opt/hcf/monitrc.erb" \
     "/etc/monitrc"
 chmod 0600 /etc/monitrc
