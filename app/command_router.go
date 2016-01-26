@@ -227,19 +227,19 @@ func extendPathsFromWorkDirectory(paths map[string]string) {
 		key   string
 		check bool
 		path  string
-	} {
+	}{
 		// Paths which are unconditionally created from the --work-dir
-		{"compilation-dir",  false, "compilation"},
-		{"config-dir",       false, "config"},
+		{"compilation-dir", false, "compilation"},
+		{"config-dir", false, "config"},
 		{"base-docker-file", false, "base_dockerfile"},
-		{"docker-dir",       false, "dockerfiles"},
+		{"docker-dir", false, "dockerfiles"},
 
 		// Paths which have a --work-dir derived default. I.e. are not set
 		// if they exist already
-		{"configgin",        true,  "configgin.tar.gz"},
-		{"light-opinions",   true,  "opinions.yml"},
-		{"dark-opinions",    true,  "dark-opinions.yml"},
-		{"roles-manifest",   true,  "role-manifest.yml"},
+		{"configgin", true, "configgin.tar.gz"},
+		{"light-opinions", true, "opinions.yml"},
+		{"dark-opinions", true, "dark-opinions.yml"},
+		{"roles-manifest", true, "role-manifest.yml"},
 	}
 
 	for _, v := range defaults {
