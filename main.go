@@ -148,8 +148,8 @@ func main() {
 	}
 
 	noBuildFlag := cli.BoolFlag{
-		Name:  "no-build, n",
-		Usage: "If specified, the Dockerfile and assets will be created, but the image won't be built.",
+		Name:   "no-build, n",
+		Usage:  "If specified, the Dockerfile and assets will be created, but the image won't be built.",
 		EnvVar: "FISSILE_NO_BUILD",
 	}
 	dockerOnlyFlag := cli.BoolFlag{
