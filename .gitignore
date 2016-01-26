@@ -2,6 +2,7 @@
 /fissile
 coverage.xml
 build/
+fissile-*.tgz
 scripts/compilation/compilation.go
 scripts/dockerfiles/dockerfiles.go
 scripts/templates/transformations.go

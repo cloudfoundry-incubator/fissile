@@ -6,65 +6,73 @@ PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
 
 include version.mk
 
-BRANCH:=$(shell git rev-parse --short HEAD)
-BUILD:=$(shell whoami)-$(BRANCH)-$(shell date -u +%Y%m%d%H%M%S)
-APP_VERSION=$(VERSION)-$(BUILD)
+BRANCH:=$(shell git rev-parse --abbrev-ref HEAD)
+COMMIT:=$(shell git describe --tags --long | sed -r 's/[0-9.]+-([0-9]+)-(g[a-f0-9]+)/$(VERSION)+\1.\2/')
+ARCH:=$(shell go env GOOS).$(shell go env GOARCH)
+APP_VERSION=$(COMMIT).$(BRANCH)
 
-.PHONY: all clean format lint vet bindata build test
+print_status = @printf "$(OK_COLOR)==> $(1)$(NO_COLOR)\n"
 
-all: clean format lint vet bindata build test
+.PHONY: all clean format lint vet bindata build test docker-deps
+
+all: clean format lint vet bindata build test docker-deps
 
 clean:
-	@echo "$(OK_COLOR)==> Cleaning$(NO_COLOR)"
+	$(call print_status, Cleaning)
 	rm -rf build/
+	rm -f ./fissile
+	rm -f ./scripts/compilation/compilation.go
+	rm -f ./scripts/dockerfiles/dockerfiles.go
+	rm -f ./scripts/templates/transformations.go
 
 format:
-	@echo "$(OK_COLOR)==> Checking format$(NO_COLOR)"
-	goimports -e -l .
-	@echo "$(NO_COLOR)\c"
+	$(call print_status, Checking format)
+	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
+		test 0 -eq `goimports -d -e . | tee /dev/fd/2 | wc -l`
 
 lint:
-	@echo "$(OK_COLOR)==> Linting$(NO_COLOR)"
-	@echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p}
-	@echo "$(NO_COLOR)\c"
+	$(call print_status, Linting)
+	test 0 -eq `echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p} | tee /dev/fd/2 | wc -l`
 
 vet:
-	@echo "$(OK_COLOR)==> Vetting$(NO_COLOR)"
+	$(call print_status, Vetting)
 	go vet ./...
-	@echo "$(NO_COLOR)\c"
 
 bindata:
-	@echo "$(OK_COLOR)==> Generating code$(NO_COLOR)"
+	$(call print_status, Generating .go resource files)
 	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh && \
 	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh ./scripts/dockerfiles/rsyslog_conf.tgz && \
 	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
-	@echo "$(NO_COLOR)\c"
 
 build: bindata
-	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
+	$(call print_status, Building)
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
 		gox -verbose \
-			-ldflags="-X main.version $(APP_VERSION) " \
-			-os="linux darwin " \
+			-ldflags="-X main.version=$(APP_VERSION) " \
+			-os="linux" \
 			-arch="amd64" \
-			-output="build/{{.OS}}-{{.Arch}}/{{.Dir}}" ./...
-	@echo "$(NO_COLOR)\c"
+			-output="build/{{.OS}}.{{.Arch}}/{{.Dir}}" ./...
+
+dist: build
+	$(call print_status, Disting)
+	tar czf fissile-$(APP_VERSION)-$(ARCH).tgz -C ./build/$(ARCH) fissile
+
+docker-deps:
+	$(call print_status, Installing Docker Image Dependencies)
+	docker pull ubuntu:14.04
 
 tools:
-	@echo "$(OK_COLOR)==> Installing tools$(NO_COLOR)"
-	docker pull ubuntu:14.04
+	$(call print_status, Installing Tools)
+	go get -u golang.org/x/tools/cmd/vet
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/golang/lint/golint
-	go get -u github.com/axw/gocov/...
 	go get -u github.com/AlekSi/gocov-xml
 	go get -u github.com/jteeuwen/go-bindata/...
 	go get -u github.com/tools/godep
 	go get -u github.com/mitchellh/gox
-	@echo "$(NO_COLOR)\c"
 
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
-	@echo "$(OK_COLOR)==> Testing$(NO_COLOR)"
+	$(call print_status, Testing)
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
-	gocov test ./... | gocov-xml > coverage.xml
-	@echo "$(NO_COLOR)\c"
+		go test -cover ./...
