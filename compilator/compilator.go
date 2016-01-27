@@ -136,30 +136,32 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		}
 	}
 	go func() {
-		killed := false
-		for result := range doneCh {
-			if result.Err == nil {
-				close(c.packageDone[result.Pkg.Name])
-				c.ui.Printf("%s   > success: %s\n",
-					color.YellowString("result"), color.GreenString(result.Pkg.Name))
-				continue
-			}
-
-			c.ui.Printf(
-				"%s   > failure: %s - %s\n",
-				color.YellowString("result"),
-				color.RedString(result.Pkg.Name),
-				color.RedString(result.Err.Error()),
-			)
-
-			err = result.Err
-			if !killed {
-				close(killCh)
-				killed = true
-			}
-		}
+		worker.RunUntilDone()
+		close(doneCh)
 	}()
-	worker.RunUntilDone()
+
+	killed := false
+	for result := range doneCh {
+		if result.Err == nil {
+			close(c.packageDone[result.Pkg.Name])
+			c.ui.Printf("%s   > success: %s\n",
+				color.YellowString("result"), color.GreenString(result.Pkg.Name))
+			continue
+		}
+
+		c.ui.Printf(
+			"%s   > failure: %s - %s\n",
+			color.YellowString("result"),
+			color.RedString(result.Pkg.Name),
+			color.RedString(result.Err.Error()),
+		)
+
+		err = result.Err
+		if !killed {
+			close(killCh)
+			killed = true
+		}
+	}
 
 	return err
 }
