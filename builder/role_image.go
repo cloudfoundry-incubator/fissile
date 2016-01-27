@@ -301,6 +301,7 @@ type roleBuildJob struct {
 func (j roleBuildJob) Run() {
 	select {
 	case <-j.abort:
+		j.resultsCh <- nil
 		return
 	default:
 	}
