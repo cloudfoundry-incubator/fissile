@@ -1,9 +1,3 @@
-NO_COLOR=\033[0m
-OK_COLOR=\033[32;01m
-ERROR_COLOR=\033[31;01m
-WARN_COLOR=\033[33;01m
-PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
-
 include version.mk
 
 BRANCH:=$(shell git rev-parse --abbrev-ref HEAD)
@@ -11,10 +5,11 @@ COMMIT:=$(shell git describe --tags --long | sed -r 's/[0-9.]+-([0-9]+)-(g[a-f0-
 ARCH:=$(shell go env GOOS).$(shell go env GOARCH)
 APP_VERSION=$(COMMIT).$(BRANCH)
 
-print_status = @printf "$(OK_COLOR)==> $(1)$(NO_COLOR)\n"
+PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
+
+print_status = @printf "\033[32;01m==> $(1)\033[0m\n"
 
 .PHONY: all clean format lint vet bindata build test docker-deps
-
 all: clean format lint vet bindata build test docker-deps
 
 clean:
@@ -27,7 +22,7 @@ clean:
 
 format:
 	$(call print_status, Checking format)
-	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
+	export GOPATH=$(shell godep path):$(GOPATH) && \
 		test 0 -eq `goimports -d -e . | tee /dev/fd/2 | wc -l`
 
 lint:
@@ -46,16 +41,13 @@ bindata:
 
 build: bindata
 	$(call print_status, Building)
-	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
-		gox -verbose \
-			-ldflags="-X main.version=$(APP_VERSION) " \
-			-os="linux" \
-			-arch="amd64" \
-			-output="build/{{.OS}}.{{.Arch}}/{{.Dir}}" ./...
+	export GOPATH=$(shell godep path):$(GOPATH) && \
+		go build -ldflags="-X main.version=$(APP_VERSION)"
+
 
 dist: build
 	$(call print_status, Disting)
-	tar czf fissile-$(APP_VERSION)-$(ARCH).tgz -C ./build/$(ARCH) fissile
+	tar czf fissile-$(APP_VERSION)-$(ARCH).tgz fissile
 
 docker-deps:
 	$(call print_status, Installing Docker Image Dependencies)
@@ -69,10 +61,9 @@ tools:
 	go get -u github.com/AlekSi/gocov-xml
 	go get -u github.com/jteeuwen/go-bindata/...
 	go get -u github.com/tools/godep
-	go get -u github.com/mitchellh/gox
 
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
 	$(call print_status, Testing)
-	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
+	export GOPATH=$(shell godep path):$(GOPATH) &&\
 		go test -cover ./...
