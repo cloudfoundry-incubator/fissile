@@ -158,7 +158,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 			c.String("repository"),
-			paths["config-dir"],
+			paths["compilation-dir"],
 			c.Int("workers"),
 		)
 	case "dev create-images":
