@@ -103,21 +103,21 @@ func (w *FormattingWriter) color(s string) string {
 }
 
 // BuildImage builds a docker image using a directory that contains a Dockerfile
-func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcessor io.WriteCloser) error {
+func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter io.WriteCloser) error {
 
 	bio := dockerclient.BuildImageOptions{
 		Name:         name,
 		NoCache:      true,
 		ContextDir:   filepath.Dir(dockerfileDirPath),
-		OutputStream: stdoutProcessor,
+		OutputStream: stdoutWriter,
 	}
 
 	if err := d.client.BuildImage(bio); err != nil {
 		return err
 	}
 
-	if stdoutProcessor != nil {
-		stdoutProcessor.Close()
+	if stdoutWriter != nil {
+		stdoutWriter.Close()
 	}
 
 	return nil
@@ -166,7 +166,7 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutProcessor io.WriteCloser, stderrProcessor io.WriteCloser) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.WriteCloser, stderrWriter io.WriteCloser) (exitCode int, container *dockerclient.Container, err error) {
 	exitCode = 0
 
 	// Get current user info to map to container
@@ -227,12 +227,12 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 		Container: container.ID,
 
 		InputStream:  nil,
-		OutputStream: stdoutProcessor,
-		ErrorStream:  stderrProcessor,
+		OutputStream: stdoutWriter,
+		ErrorStream:  stderrWriter,
 
 		Stdin:       false,
-		Stdout:      stdoutProcessor != nil,
-		Stderr:      stderrProcessor != nil,
+		Stdout:      stdoutWriter != nil,
+		Stderr:      stderrWriter != nil,
 		Stream:      true,
 		RawTerminal: false,
 
@@ -248,11 +248,11 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 
 	closeFiles := func() {
-		if stdoutProcessor != nil {
-			stdoutProcessor.Close()
+		if stdoutWriter != nil {
+			stdoutWriter.Close()
 		}
-		if stderrProcessor != nil {
-			stderrProcessor.Close()
+		if stderrWriter != nil {
+			stderrWriter.Close()
 		}
 	}
 
@@ -272,8 +272,8 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 
 	// Couldn't get this to work with dockerclient.Exec, so do it this way
 	execCmd := exec.Command("docker", cmdArgs...)
-	execCmd.Stdout = stdoutProcessor
-	execCmd.Stderr = stderrProcessor
+	execCmd.Stdout = stdoutWriter
+	execCmd.Stderr = stderrWriter
 	err = execCmd.Run()
 	// No need to wait on execCmd or on attachCloseWaiter
 	if err != nil {
