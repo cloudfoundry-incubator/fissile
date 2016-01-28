@@ -232,6 +232,12 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	if err != nil {
 		return -1, nil, err
 	}
+	//TODO(ericpromislow): Synchronizing with AttachToContainerNonBlocking
+	//sometimes results in aufs-device-busy errors but we don't know why.
+	// Commented out code:
+	// Before AttachToContainerNonBlocking: attached := make(chan struct{})
+	// In the struct: Success: attached,
+	// After AttachToContainerNonBlocking: attached <- <-attached
 
 	attachCloseWaiter, attachErr := d.client.AttachToContainerNonBlocking(dockerclient.AttachToContainerOptions{
 		Container: container.ID,
@@ -245,8 +251,6 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 		Stderr:      stderrWriter != nil,
 		Stream:      true,
 		RawTerminal: false,
-
-		Success: nil,
 	})
 	if attachErr != nil {
 		return -1, container, fmt.Errorf("Error running in container: %s. Error attaching to container: %s", container.ID, attachErr.Error())
