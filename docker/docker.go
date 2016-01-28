@@ -112,12 +112,14 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 		OutputStream: stdoutWriter,
 	}
 
+	defer func() {
+		if stdoutWriter != nil {
+			stdoutWriter.Close()
+		}
+	}()
+
 	if err := d.client.BuildImage(bio); err != nil {
 		return err
-	}
-
-	if stdoutWriter != nil {
-		stdoutWriter.Close()
 	}
 
 	return nil
