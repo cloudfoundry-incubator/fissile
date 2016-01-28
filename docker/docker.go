@@ -94,9 +94,8 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 func (w *FormattingWriter) Close() error {
 	if w.isClosed {
 		return nil
-	} else {
-		w.isClosed = true
 	}
+	w.isClosed = true
 	if w.remainder.Len() == 0 {
 		return nil
 	}
@@ -121,11 +120,11 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 		OutputStream: stdoutWriter,
 	}
 
-	defer func() {
-		if stdoutWriter != nil {
+	if stdoutWriter != nil {
+		defer func() {
 			stdoutWriter.Close()
-		}
-	}()
+		}()
+	}
 
 	if err := d.client.BuildImage(bio); err != nil {
 		return err
