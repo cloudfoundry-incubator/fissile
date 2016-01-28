@@ -1,9 +1,6 @@
 {
 	"ImportPath": "github.com/hpcloud/fissile",
-	"GoVersion": "go1.4.2",
-	"Packages": [
-		"./..."
-	],
+	"GoVersion": "go1.4",
 	"Deps": [
 		{
 			"ImportPath": "github.com/benbjohnson/ego",
@@ -26,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "c9ad0ce23f68428421adfc6ced9e6123f54788a5"
+			"Rev": "02a8beb401b20e112cff3ea740545960b667eab1"
 		},
 		{
 			"ImportPath": "github.com/hpcloud/termui",
@@ -37,28 +34,24 @@
 			"Rev": "a61940202e76c0397a5783b77113673a2b23656a"
 		},
 		{
-			"ImportPath": "github.com/mattn/go-isatty",
-			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "3dac7b4f76f6e17fb39b768b89e3783d16e237fe"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor",
 			"Rev": "cdabc654f61ff99a82622c888f738c808c38cfa9"
 		},
 		{
-			"ImportPath": "github.com/shiena/ansicolor",
-			"Rev": "a5e2b567a4dd6cc74545b8a4f27c9d63b9e7735b"
-		},
-		{
-			"ImportPath": "github.com/stretchr/testify/assert",
-			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
-		},
-		{
 			"ImportPath": "github.com/termie/go-shutil",
 			"Rev": "bcacb06fecaeec8dc42af03c87c6949f4a05c74c"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "eb2c74142fd19a79b3f237334c7384d5167b1b46"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
