@@ -53,6 +53,7 @@ type FormattingWriter struct {
 	io.Closer
 	colorizer StringFormatter
 	remainder *bytes.Buffer
+	isClosed  bool
 }
 
 //NewFormattingWriter - Get a FormattingWriter here. aColorizer can be nil
@@ -61,6 +62,9 @@ func NewFormattingWriter(writer io.Writer, aColorizer StringFormatter) *Formatti
 }
 
 func (w *FormattingWriter) Write(data []byte) (int, error) {
+	if w.isClosed {
+		return 0, fmt.Errorf("Attempt to write to a closed FormattingWriter")
+	}
 	lastEOL := bytes.LastIndex(data, []byte("\n"))
 	if lastEOL == -1 {
 		_, err := w.remainder.Write(data)
@@ -88,6 +92,11 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 
 // Close ensures the remaining data is written to the io.Writer
 func (w *FormattingWriter) Close() error {
+	if w.isClosed {
+		return nil
+	} else {
+		w.isClosed = true
+	}
 	if w.remainder.Len() == 0 {
 		return nil
 	}
@@ -169,7 +178,6 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 
 // RunInContainer will execute a set of commands within a running Docker container
 func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.WriteCloser, stderrWriter io.WriteCloser) (exitCode int, container *dockerclient.Container, err error) {
-	exitCode = 0
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
@@ -278,8 +286,10 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	execCmd.Stderr = stderrWriter
 	err = execCmd.Run()
 	// No need to wait on execCmd or on attachCloseWaiter
-	if err != nil {
-		return -1, container, err
+	if err == nil {
+		exitCode = 0
+	} else {
+		exitCode = -1
 	}
 	closeFiles()
 	return exitCode, container, err
