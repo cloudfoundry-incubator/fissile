@@ -126,9 +126,23 @@ func TestCompilationSkipCompiled(t *testing.T) {
 	<-waitCh
 }
 
-func getContainerIDs() (string, error) {
-	val, err := exec.Command("docker", "ps", "-a", "--format={{.ID}}").CombinedOutput()
-	return string(val), err
+func getContainerIDs(testRepository string) (string, error) {
+	val, err := exec.Command("docker", "ps", "-a", "--format={{.ID}}/{{.Image}}").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	idsOfInterest := []string{}
+	slashIdx := 12 // length of an ID
+	postSlashIdx := slashIdx + 1
+	strVal := string(val)
+	for len(strVal) > 0 {
+		eolIdx := strings.Index(strVal, "\n")
+		if strings.Index(strVal[postSlashIdx:eolIdx], testRepository) == 0 {
+			idsOfInterest = append(idsOfInterest, strVal[0:slashIdx])
+		}
+		strVal = strVal[eolIdx+1:]
+	}
+	return strings.Join(idsOfInterest, "\n"), nil
 }
 
 func TestContainerKeptAfterCompilationWithErrors(t *testing.T) {
@@ -151,7 +165,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
 
-	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
+	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
 	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.Nil(err)
@@ -164,14 +178,14 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer
 		assert.Nil(err)
 	}()
 	assert.Nil(err)
-	beforeCompileContainers, err := getContainerIDs()
+	beforeCompileContainers, err := getContainerIDs("fissile-test-compilator")
 	assert.Nil(err)
 
 	comp.BaseType = compilation.FailBase
 	err = comp.compilePackage(release.Packages[0])
 	// We expect the package to fail this time.
 	assert.NotNil(err)
-	afterCompileContainers, err := getContainerIDs()
+	afterCompileContainers, err := getContainerIDs("fissile-test-compilator")
 	assert.Nil(err)
 
 	// If keepInContainer is on,
@@ -202,9 +216,13 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer
 	} else {
 		assert.Equal(0, len(addedIDs))
 	}
-	if len(addedIDs) == 1 {
+	if keepInContainer && len(addedIDs) == 1 {
 		// Do this so the deferred function that will remove
-		// the container's image will succeed
+		// the container's image will succeed.
+		// Sometimes the sleep command needs an explicit stop before
+		// removing the container.
+		err = exec.Command("docker", "stop", addedIDs[0]).Run()
+		assert.Nil(err)
 		err = dockerManager.RemoveContainer(addedIDs[0])
 		assert.Nil(err)
 	}
@@ -252,7 +270,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	compilator.initPackageMaps(release)
@@ -284,7 +302,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	compilator.initPackageMaps(release)
@@ -309,7 +327,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -338,7 +356,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	pkg, err := release.LookupPackage("tor")
@@ -381,7 +399,7 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 	release, err := model.NewRelease(ntpReleasePath)
 	assert.Nil(err)
 
-	testRepository := fmt.Sprintf("fissile-test-%s", uuid.New())
+	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
 	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.Nil(err)
@@ -394,12 +412,12 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 		assert.Nil(err)
 	}()
 	assert.Nil(err)
-	beforeCompileContainers, err := getContainerIDs()
+	beforeCompileContainers, err := getContainerIDs("fissile-test-compilator")
 	assert.Nil(err)
 
 	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
-	afterCompileContainers, err := getContainerIDs()
+	afterCompileContainers, err := getContainerIDs("fissile-test-compilator")
 	assert.Nil(err)
 	assert.Equal(string(beforeCompileContainers), string(afterCompileContainers))
 }

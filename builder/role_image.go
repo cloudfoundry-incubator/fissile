@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -33,7 +32,7 @@ var (
 
 // dockerImageBuilder is the interface to shim around docker.RoleImageBuilder for the unit test
 type dockerImageBuilder interface {
-	BuildImage(dockerfileDirPath, name string, stdoutProcessor docker.ProcessOutStream) error
+	BuildImage(dockerfileDirPath, name string, stdoutProcessor io.WriteCloser) error
 }
 
 // RoleImageBuilder represents a builder of docker role images
@@ -326,9 +325,14 @@ func (j roleBuildJob) Run() {
 	j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
 	roleImageName := GetRoleImageName(j.repository, j.role, j.version)
-	log := new(bytes.Buffer)
 
-	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, log))
+	log := new(bytes.Buffer)
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		docker.ColoredBuildStringFunc(roleImageName),
+	)
+
+	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
 	if err != nil {
 		log.WriteTo(j.ui)
 		j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
@@ -366,19 +370,20 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, vers
 			version:       version,
 		})
 	}
-	go func() {
-		aborted := false
-		for i := 0; i < len(roles); i++ {
-			if result := <-resultsCh; result != nil {
-				if !aborted {
-					close(abort)
-					aborted = true
-				}
-				err = result
+
+	go worker.RunUntilDone()
+
+	aborted := false
+	for i := 0; i < len(roles); i++ {
+		result := <-resultsCh
+		if result != nil {
+			if !aborted {
+				close(abort)
+				aborted = true
 			}
+			err = result
 		}
-	}()
-	worker.RunUntilDone()
+	}
 
 	return err
 }
@@ -400,13 +405,4 @@ func GetRoleDevImageName(repository string, role *model.Role, version string) st
 		role.Name,
 		version,
 	))
-}
-
-func newColoredLogger(roleImageName string, log *bytes.Buffer) func(io.Reader) {
-	return func(stdout io.Reader) {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			fmt.Fprintln(log, color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
-		}
-	}
 }

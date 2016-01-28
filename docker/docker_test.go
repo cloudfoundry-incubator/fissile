@@ -3,7 +3,6 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,7 +65,8 @@ func TestRunInContainer(t *testing.T) {
 
 	assert.Nil(err)
 
-	var output string
+	buf := new(bytes.Buffer)
+	stdoutWriter := NewFormattingWriter(buf, nil)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -75,11 +75,7 @@ func TestRunInContainer(t *testing.T) {
 		"",
 		"",
 		false,
-		func(stdout io.Reader) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(stdout)
-			output = buf.String()
-		},
+		stdoutWriter,
 		nil,
 	)
 
@@ -87,7 +83,7 @@ func TestRunInContainer(t *testing.T) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEmpty(output)
+	assert.NotEqual(0, buf.Len())
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
@@ -100,7 +96,10 @@ func TestRunInContainerStderr(t *testing.T) {
 
 	assert.Nil(err)
 
-	var output string
+	buf2 := new(bytes.Buffer)
+	stdoutWriter := NewFormattingWriter(buf2, nil)
+	buf := new(bytes.Buffer)
+	stderrWriter := NewFormattingWriter(buf, nil)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -109,19 +108,15 @@ func TestRunInContainerStderr(t *testing.T) {
 		"",
 		"",
 		false,
-		nil,
-		func(stderr io.Reader) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(stderr)
-			output = buf.String()
-		},
+		stdoutWriter,
+		stderrWriter,
 	)
 
 	if !assert.Nil(err) {
 		return
 	}
 	assert.Equal(2, exitCode)
-	assert.NotEmpty(output)
+	assert.NotEqual(0, buf.Len())
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
@@ -134,7 +129,8 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 
 	assert.Nil(err)
 
-	var output string
+	buf := new(bytes.Buffer)
+	stdoutWriter := NewFormattingWriter(buf, nil)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -143,11 +139,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		"/",
 		"",
 		false,
-		func(stdout io.Reader) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(stdout)
-			output = buf.String()
-		},
+		stdoutWriter,
 		nil,
 	)
 
@@ -155,7 +147,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEmpty(output)
+	assert.NotEqual(0, buf.Len())
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
@@ -195,7 +187,8 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 
 	assert.Nil(err)
 
-	var output string
+	buf := new(bytes.Buffer)
+	stdoutWriter := NewFormattingWriter(buf, nil)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -204,11 +197,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 		"",
 		"/tmp",
 		false,
-		func(stdout io.Reader) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(stdout)
-			output = buf.String()
-		},
+		stdoutWriter,
 		nil,
 	)
 
@@ -216,7 +205,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEmpty(output)
+	assert.NotEqual(0, buf.Len())
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
