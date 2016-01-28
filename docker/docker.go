@@ -75,10 +75,6 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 		return 0, err
 	}
 	scanner := bufio.NewScanner(w.remainder)
-	err = scanner.Err()
-	if err != nil {
-		return 0, err
-	}
 	amtWritten := 0
 	for scanner.Scan() {
 		n, err := fmt.Fprintln(w.Writer, w.color(scanner.Text()))
@@ -87,7 +83,7 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 		}
 		amtWritten += n
 	}
-	return amtWritten, nil
+	return amtWritten, scanner.Err()
 }
 
 // Close ensures the remaining data is written to the io.Writer
