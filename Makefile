@@ -66,7 +66,7 @@ tools:
 test:
 	@echo "$(OK_COLOR)==> Testing$(NO_COLOR)"
 	# Remove exited test containers
-	docker ps -a | awk '/fissile-test.*Exited.*ago/ {print $$1}' | xargs --no-run-if-empty docker rm
+	docker ps --filter=status=exited --filter=image=fissile-test- --quiet | xargs --no-run-if-empty docker rm
 	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	gocov test ./... | gocov-xml > coverage.xml
 	@echo "$(NO_COLOR)\c"
