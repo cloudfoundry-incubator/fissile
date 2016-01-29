@@ -65,5 +65,7 @@ tools:
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
 	$(call print_status, Testing)
+	# Remove exited test containers
+	docker ps -a --filter=status=exited | awk '/fissile-test-/ {print $$1}' | xargs --no-run-if-empty docker rm
 	export GOPATH=$(shell godep path):$(GOPATH) &&\
 		go test -cover ./...

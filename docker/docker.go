@@ -1,13 +1,15 @@
 package docker
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"syscall"
 
+	"github.com/fatih/color"
 	dockerclient "github.com/fsouza/go-dockerclient"
 )
 
@@ -22,9 +24,6 @@ var (
 	// ErrImageNotFound is the error returned when an image is not found.
 	ErrImageNotFound = fmt.Errorf("Image not found")
 )
-
-// ProcessOutStream is stdout of the process
-type ProcessOutStream func(io.Reader)
 
 // ImageManager handles Docker images
 type ImageManager struct {
@@ -45,21 +44,74 @@ func NewImageManager() (*ImageManager, error) {
 	return manager, nil
 }
 
+// StringFormatter is a formatting string function
+type StringFormatter func(line string) string
+
+// FormattingWriter wraps an io.WriteCloser so lines can be individually formatted.
+type FormattingWriter struct {
+	io.Writer
+	io.Closer
+	colorizer StringFormatter
+	remainder *bytes.Buffer
+	isClosed  bool
+}
+
+//NewFormattingWriter - Get a FormattingWriter here. aColorizer can be nil
+func NewFormattingWriter(writer io.Writer, aColorizer StringFormatter) *FormattingWriter {
+	return &FormattingWriter{Writer: writer, colorizer: aColorizer, remainder: &bytes.Buffer{}}
+}
+
+func (w *FormattingWriter) Write(data []byte) (int, error) {
+	if w.isClosed {
+		return 0, fmt.Errorf("Attempt to write to a closed FormattingWriter")
+	}
+	lastEOL := bytes.LastIndex(data, []byte("\n"))
+	if lastEOL == -1 {
+		_, err := w.remainder.Write(data)
+		return 0, err
+	}
+	defer func() {
+		w.remainder.Reset()
+		w.remainder.Write(data[lastEOL+1:])
+	}()
+	_, err := w.remainder.Write(data[0 : lastEOL+1])
+	if err != nil {
+		return 0, err
+	}
+	scanner := bufio.NewScanner(w.remainder)
+	amtWritten := 0
+	for scanner.Scan() {
+		n, err := fmt.Fprintln(w.Writer, w.color(scanner.Text()))
+		if err != nil {
+			return amtWritten, err
+		}
+		amtWritten += n
+	}
+	return amtWritten, scanner.Err()
+}
+
+// Close ensures the remaining data is written to the io.Writer
+func (w *FormattingWriter) Close() error {
+	if w.isClosed {
+		return nil
+	}
+	w.isClosed = true
+	if w.remainder.Len() == 0 {
+		return nil
+	}
+	_, err := fmt.Fprintln(w.Writer, w.color(w.remainder.String()))
+	return err
+}
+
+func (w *FormattingWriter) color(s string) string {
+	if w.colorizer != nil {
+		return w.colorizer(s)
+	}
+	return s
+}
+
 // BuildImage builds a docker image using a directory that contains a Dockerfile
-func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcessor ProcessOutStream) error {
-
-	var stdoutReader io.ReadCloser
-	var stdoutWriter io.WriteCloser
-
-	if stdoutProcessor != nil {
-		stdoutReader, stdoutWriter = io.Pipe()
-	}
-
-	if stdoutProcessor != nil {
-		go func() {
-			stdoutProcessor(stdoutReader)
-		}()
-	}
+func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter io.WriteCloser) error {
 
 	bio := dockerclient.BuildImageOptions{
 		Name:         name,
@@ -68,16 +120,14 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutProcesso
 		OutputStream: stdoutWriter,
 	}
 
+	if stdoutWriter != nil {
+		defer func() {
+			stdoutWriter.Close()
+		}()
+	}
+
 	if err := d.client.BuildImage(bio); err != nil {
 		return err
-	}
-
-	if stdoutWriter != nil {
-		stdoutWriter.Close()
-	}
-
-	if stdoutReader != nil {
-		stdoutReader.Close()
 	}
 
 	return nil
@@ -126,8 +176,7 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutProcessor ProcessOutStream, stderrProcessor ProcessOutStream) (exitCode int, container *dockerclient.Container, err error) {
-	exitCode = -1
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.WriteCloser, stderrWriter io.WriteCloser) (exitCode int, container *dockerclient.Container, err error) {
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
@@ -182,71 +231,35 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	if err != nil {
 		return -1, nil, err
 	}
+	//TODO(ericpromislow): Synchronizing with AttachToContainerNonBlocking
+	//sometimes results in aufs-device-busy errors but we don't know why.
+	// Commented out code:
+	// Before AttachToContainerNonBlocking: attached := make(chan struct{})
+	// In the struct: Success: attached,
+	// After AttachToContainerNonBlocking: attached <- <-attached
 
-	attached := make(chan struct{})
+	attachCloseWaiter, attachErr := d.client.AttachToContainerNonBlocking(dockerclient.AttachToContainerOptions{
+		Container: container.ID,
 
-	var stdoutReader, stderrReader io.ReadCloser
-	var stdoutWriter, stderrWriter io.WriteCloser
+		InputStream:  nil,
+		OutputStream: stdoutWriter,
+		ErrorStream:  stderrWriter,
 
-	if stdoutProcessor != nil {
-		stdoutReader, stdoutWriter = io.Pipe()
+		Stdin:       false,
+		Stdout:      stdoutWriter != nil,
+		Stderr:      stderrWriter != nil,
+		Stream:      true,
+		RawTerminal: false,
+	})
+	if attachErr != nil {
+		return -1, container, fmt.Errorf("Error running in container: %s. Error attaching to container: %s", container.ID, attachErr.Error())
 	}
-
-	if stderrProcessor != nil {
-		stderrReader, stderrWriter = io.Pipe()
-	}
-
-	go func() {
-		if attachErr := d.client.AttachToContainer(dockerclient.AttachToContainerOptions{
-			Container: container.ID,
-
-			InputStream:  nil,
-			OutputStream: stdoutWriter,
-			ErrorStream:  stderrWriter,
-
-			Stdin:       false,
-			Stdout:      stdoutProcessor != nil,
-			Stderr:      stderrProcessor != nil,
-			Stream:      true,
-			RawTerminal: false,
-
-			Success: attached,
-		}); attachErr != nil {
-			if err == nil {
-				err = attachErr
-			} else {
-				err = fmt.Errorf("Error running in container: %s. Error attaching to container: %s", err.Error(), attachErr.Error())
-			}
-		}
-	}()
-
-	attached <- <-attached
 
 	err = d.client.StartContainer(container.ID, container.HostConfig)
 	if err != nil {
 		return -1, container, err
 	}
 
-	var processorsGroup sync.WaitGroup
-	runFileProcessors := func() {
-		if stdoutProcessor != nil {
-			processorsGroup.Add(1)
-
-			go func() {
-				defer processorsGroup.Done()
-				stdoutProcessor(stdoutReader)
-			}()
-		}
-
-		if stderrProcessor != nil {
-			processorsGroup.Add(1)
-
-			go func() {
-				defer processorsGroup.Done()
-				stderrProcessor(stderrReader)
-			}()
-		}
-	}
 	closeFiles := func() {
 		if stdoutWriter != nil {
 			stdoutWriter.Close()
@@ -254,24 +267,15 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 		if stderrWriter != nil {
 			stderrWriter.Close()
 		}
-
-		if stdoutReader != nil {
-			stdoutReader.Close()
-		}
-		if stderrReader != nil {
-			stderrReader.Close()
-		}
 	}
 
 	if !keepContainer {
-		runFileProcessors()
 		exitCode, err = d.client.WaitContainer(container.ID)
+		attachCloseWaiter.Wait()
 		closeFiles()
 		if err != nil {
-			return -1, container, err
+			exitCode = -1
 		}
-
-		processorsGroup.Wait()
 		return exitCode, container, nil
 	}
 	// KeepContainer mode:
@@ -281,33 +285,22 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 
 	// Couldn't get this to work with dockerclient.Exec, so do it this way
 	execCmd := exec.Command("docker", cmdArgs...)
-	if stdoutProcessor != nil {
-		stdoutReader, err = execCmd.StdoutPipe()
-		if err != nil {
-			return -1, container, err
-		}
+	execCmd.Stdout = stdoutWriter
+	execCmd.Stderr = stderrWriter
+	err = execCmd.Run()
+	// No need to wait on execCmd or on attachCloseWaiter
+	if err == nil {
+		exitCode = 0
+	} else {
+		exitCode = -1
 	}
-	if stderrProcessor != nil {
-		stderrReader, err = execCmd.StderrPipe()
-		if err != nil {
-			return -1, container, err
-		}
-	}
-	stdin, err := execCmd.StdinPipe()
-	if err != nil {
-		return -1, container, err
-	}
-	err = execCmd.Start()
-	if err != nil {
-		return -1, container, err
-	}
-	runFileProcessors()
-	err = execCmd.Wait()
-	if err != nil {
-		return -1, container, err
-	}
-	stdin.Close()
 	closeFiles()
-	processorsGroup.Wait()
-	return 0, container, nil
+	return exitCode, container, err
+}
+
+// ColoredBuildStringFunc returns a formatting function for colorizing strings.
+func ColoredBuildStringFunc(buildName string) StringFormatter {
+	return func(s string) string {
+		return color.GreenString("build-%s > %s", color.MagentaString(buildName), color.WhiteString("%s", s))
+	}
 }

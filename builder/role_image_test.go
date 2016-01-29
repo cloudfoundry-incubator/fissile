@@ -2,13 +2,13 @@ package builder
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/util"
 
@@ -172,7 +172,7 @@ type mockDockerImageBuilder struct {
 	callback buildImageCallback
 }
 
-func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutProcessor docker.ProcessOutStream) error {
+func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutProcessor io.WriteCloser) error {
 	return m.callback(name)
 }
 

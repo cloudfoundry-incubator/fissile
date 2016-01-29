@@ -1,7 +1,6 @@
 package compilator
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -136,30 +135,32 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 		}
 	}
 	go func() {
-		killed := false
-		for result := range doneCh {
-			if result.Err == nil {
-				close(c.packageDone[result.Pkg.Name])
-				c.ui.Printf("%s   > success: %s\n",
-					color.YellowString("result"), color.GreenString(result.Pkg.Name))
-				continue
-			}
-
-			c.ui.Printf(
-				"%s   > failure: %s - %s\n",
-				color.YellowString("result"),
-				color.RedString(result.Pkg.Name),
-				color.RedString(result.Err.Error()),
-			)
-
-			err = result.Err
-			if !killed {
-				close(killCh)
-				killed = true
-			}
-		}
+		worker.RunUntilDone()
+		close(doneCh)
 	}()
-	worker.RunUntilDone()
+
+	killed := false
+	for result := range doneCh {
+		if result.Err == nil {
+			close(c.packageDone[result.Pkg.Name])
+			c.ui.Printf("%s   > success: %s\n",
+				color.YellowString("result"), color.GreenString(result.Pkg.Name))
+			continue
+		}
+
+		c.ui.Printf(
+			"%s   > failure: %s - %s\n",
+			color.YellowString("result"),
+			color.RedString(result.Pkg.Name),
+			color.RedString(result.Err.Error()),
+		)
+
+		err = result.Err
+		if !killed {
+			close(killCh)
+			killed = true
+		}
+	}
 
 	return err
 }
@@ -264,6 +265,18 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	// in-memory buffer of the log
 	log := new(bytes.Buffer)
 
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		func(line string) string {
+			return color.GreenString("compilation-container > %s", color.WhiteString("%s", line))
+		},
+	)
+	stderrWriter := docker.NewFormattingWriter(
+		log,
+		func(line string) string {
+			return color.GreenString("compilation-container > %s", color.RedString("%s", line))
+		},
+	)
 	exitCode, container, err := c.DockerManager.RunInContainer(
 		containerName,
 		baseImageName,
@@ -271,18 +284,8 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		tempScriptDir,
 		"",
 		false, // There is never a need to keep this container on failure
-		func(stdout io.Reader) {
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				fmt.Fprintln(log, color.GreenString("compilation-container > %s", color.WhiteString("%s", scanner.Text())))
-			}
-		},
-		func(stderr io.Reader) {
-			scanner := bufio.NewScanner(stderr)
-			for scanner.Scan() {
-				fmt.Fprintln(log, color.GreenString("compilation-container > %s", color.RedString("%s", scanner.Text())))
-			}
-		},
+		stdoutWriter,
+		stderrWriter,
 	)
 	defer func() {
 		if container != nil && !c.keepContainer {
@@ -361,6 +364,18 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	// in-memory buffer of the log
 	log := new(bytes.Buffer)
 
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		func(line string) string {
+			return color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("%s", line))
+		},
+	)
+	stderrWriter := docker.NewFormattingWriter(
+		log,
+		func(line string) string {
+			return color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString("%s", line))
+		},
+	)
 	exitCode, container, err := c.DockerManager.RunInContainer(
 		containerName,
 		c.BaseImageName(),
@@ -368,18 +383,8 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		c.getTargetPackageSourcesDir(pkg),
 		c.getPackageCompiledTempDir(pkg),
 		c.keepContainer,
-		func(stdout io.Reader) {
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				fmt.Fprintln(log, color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.WhiteString("%s", scanner.Text())))
-			}
-		},
-		func(stderr io.Reader) {
-			scanner := bufio.NewScanner(stderr)
-			for scanner.Scan() {
-				fmt.Fprintln(log, color.GreenString("compilation-%s > %s", color.MagentaString(pkg.Name), color.RedString("%s", scanner.Text())))
-			}
-		},
+		stdoutWriter,
+		stderrWriter,
 	)
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {

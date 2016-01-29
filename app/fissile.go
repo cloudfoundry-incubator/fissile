@@ -1,10 +1,8 @@
 package app
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strings"
@@ -441,8 +439,12 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 		log := new(bytes.Buffer)
+		stdoutWriter := docker.NewFormattingWriter(
+			log,
+			docker.ColoredBuildStringFunc(baseImageName),
+		)
 
-		err = dockerManager.BuildImage(targetPath, baseImageName, newColoredLogger(baseImageName, log))
+		err = dockerManager.BuildImage(targetPath, baseImageName, stdoutWriter)
 		if err != nil {
 			log.WriteTo(f.ui)
 			return fmt.Errorf("Error building base image: %s", err.Error())
@@ -552,13 +554,4 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 	}
 
 	return nil
-}
-
-func newColoredLogger(roleImageName string, log *bytes.Buffer) func(io.Reader) {
-	return func(stdout io.Reader) {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			fmt.Fprintln(log, color.GreenString("build-%s > %s", color.MagentaString(roleImageName), color.WhiteString("%s", scanner.Text())))
-		}
-	}
 }

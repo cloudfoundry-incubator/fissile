@@ -149,8 +149,12 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 
 			f.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 			log := new(bytes.Buffer)
+			stdoutWriter := docker.NewFormattingWriter(
+				log,
+				docker.ColoredBuildStringFunc(roleImageName),
+			)
 
-			err = dockerManager.BuildImage(dockerfileDir, roleImageName, newColoredLogger(roleImageName, log))
+			err = dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
 			if err != nil {
 				log.WriteTo(f.ui)
 				return fmt.Errorf("Error building image: %s", err.Error())
