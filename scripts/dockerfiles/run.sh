@@ -28,59 +28,61 @@ if [[ -z $dns_record_name ]]; then
   dns_record_name="localhost"
 fi
 
-ip_address=`/bin/hostname -i`
+ip_address=$(/bin/hostname -i)
+
+# Usage: run_configin <role-description> <role> <release> <job> <input>  <output>
+#                     json               name   name      name  template destination
+function run_configgin()
+{
+    role_desc="$1"
+    role_name="$2"
+    release_name="$3"
+    job_name="$4"
+    input="$5"
+    output="$6"
+    /opt/hcf/configgin/configgin \
+	--data    "${role_desc}" \
+	--output  "${output}" \
+	--consul  "${consul_address}" \
+	--prefix  "${config_store_prefix}" \
+	--role    "${role_name}" \
+	--release "${release_name}" \
+	--job     "${job_name}" \
+	"${input}"
+}
 
 # Process templates
 {{ with $role := index . "role" }}
+the_role_desc='{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}'
+# =====================================================
 {{ range $i, $job := .Jobs}}
 # ============================================================================
 #         Templates for job {{ $job.Name }}
 # ============================================================================
 {{ range $j, $template := $job.Templates }}
-/opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
-  --output  "/var/vcap/jobs/{{ $job.Name }}/{{$template.DestinationPath}}" \
-  --consul  "${consul_address}" \
-  --prefix  "${config_store_prefix}" \
-  --role    "{{$role.Name}}" \
-  --release "{{$job.Release.Name}}" \
-  --job     "{{$job.Name}}" \
-  "/var/vcap/jobs-src/{{ $job.Name }}/templates/{{ $template.SourcePath }}"
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+    "/var/vcap/jobs-src/{{$job.Name}}/templates/{{ $template.SourcePath }}" \
+    "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
 # =====================================================
 {{ end }}
 {{ if not $role.IsTask }}
 # ============================================================================
-#         Templates for job {{ $job.Name }}
+#         Monit templates for job {{ $job.Name }}
 # ============================================================================
-/opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
-  --output  "/var/vcap/monit/{{ $job.Name }}.monitrc" \
-  --consul  "${consul_address}" \
-  --prefix  "${config_store_prefix}" \
-  --role    "{{$role.Name}}" \
-  --release "{{$job.Release.Name}}" \
-  --job     "{{$job.Name}}" \
-  "/var/vcap/jobs-src/{{ $job.Name }}/monit"
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+    "/var/vcap/jobs-src/{{$job.Name}}/monit" \
+    "/var/vcap/monit/{{$job.Name}}.monitrc"
 # =====================================================
 {{ end }}
 {{ end }}
-
 {{ if not .IsTask }}
 # Process monitrc.erb template
-/opt/hcf/configgin/configgin \
-  --data '{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}' \
-  --output  "/etc/monitrc" \
-  --consul  "${consul_address}" \
-  --prefix  "${config_store_prefix}" \
-  --role    "{{$role.Name}}" \
-  --release "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" \
-  --job     "hcf-monit-master" \
-  "/opt/hcf/monitrc.erb"
+run_configgin "$the_role_desc" "{{$role.Name}}" "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" "hcf-monit-master" \
+    "/opt/hcf/monitrc.erb" \
+    "/etc/monitrc"
 chmod 0600 /etc/monitrc
 {{ end }}
-
 {{ end }}
-
 
 # Create run dir
 mkdir -p /var/vcap/sys/run
@@ -120,7 +122,7 @@ killer() {
 
 trap killer INT TERM
 
-( while `sleep 1`; do true; done )
+( while $(sleep 1); do true; done )
 
 {{ end }}
 {{ end }}
