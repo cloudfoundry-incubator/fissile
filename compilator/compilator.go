@@ -287,8 +287,8 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		stdoutWriter,
 		stderrWriter,
 	)
-	defer func() {
-		if container != nil && !c.keepContainer {
+	if container != nil {
+		defer func() {
 			removeErr := c.DockerManager.RemoveContainer(container.ID)
 			if removeErr != nil {
 				if err == nil {
@@ -301,8 +301,8 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 					)
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	if err != nil {
 		log.WriteTo(c.ui)
