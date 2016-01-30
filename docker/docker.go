@@ -58,7 +58,11 @@ type FormattingWriter struct {
 
 //NewFormattingWriter - Get a FormattingWriter here. aColorizer can be nil
 func NewFormattingWriter(writer io.Writer, aColorizer StringFormatter) *FormattingWriter {
-	return &FormattingWriter{Writer: writer, colorizer: aColorizer, remainder: &bytes.Buffer{}}
+	return &FormattingWriter{
+		Writer:    writer,
+		colorizer: aColorizer,
+		remainder: &bytes.Buffer{},
+	}
 }
 
 func (w *FormattingWriter) Write(data []byte) (int, error) {
@@ -67,8 +71,7 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 	}
 	lastEOL := bytes.LastIndex(data, []byte("\n"))
 	if lastEOL == -1 {
-		_, err := w.remainder.Write(data)
-		return 0, err
+		return w.remainder.Write(data)
 	}
 	defer func() {
 		w.remainder.Reset()
@@ -79,15 +82,13 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 		return 0, err
 	}
 	scanner := bufio.NewScanner(w.remainder)
-	amtWritten := 0
 	for scanner.Scan() {
-		n, err := fmt.Fprintln(w.Writer, w.color(scanner.Text()))
+		_, err := fmt.Fprintln(w.Writer, w.color(scanner.Text()))
 		if err != nil {
-			return amtWritten, err
+			return len(data), err
 		}
-		amtWritten += n
 	}
-	return amtWritten, scanner.Err()
+	return len(data), scanner.Err()
 }
 
 // Close ensures the remaining data is written to the io.Writer
@@ -176,7 +177,7 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.WriteCloser, stderrWriter io.WriteCloser) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.Writer, stderrWriter io.Writer) (exitCode int, container *dockerclient.Container, err error) {
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
@@ -261,11 +262,11 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 
 	closeFiles := func() {
-		if stdoutWriter != nil {
-			stdoutWriter.Close()
+		if stdoutCloser, ok := stdoutWriter.(io.Closer); ok {
+			stdoutCloser.Close()
 		}
-		if stderrWriter != nil {
-			stderrWriter.Close()
+		if stderrCloser, ok := stderrWriter.(io.Closer); ok {
+			stderrCloser.Close()
 		}
 	}
 
