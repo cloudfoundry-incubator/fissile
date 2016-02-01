@@ -543,7 +543,7 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 
 // baseCompilationContainerName will return the compilation container's name
 func (c *Compilator) baseCompilationContainerName() string {
-	return fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion)
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion))
 }
 
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
@@ -552,7 +552,7 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 
 // BaseCompilationImageTag will return the compilation image tag
 func (c *Compilator) baseCompilationImageTag() string {
-	return fmt.Sprintf("%s", c.FissileVersion)
+	return util.SanitizeDockerName(fmt.Sprintf("%s", c.FissileVersion))
 }
 
 // baseCompilationImageRepository will return the compilation image repository
