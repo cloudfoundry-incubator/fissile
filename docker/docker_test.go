@@ -84,6 +84,7 @@ func TestRunInContainer(t *testing.T) {
 	}
 	assert.Equal(0, exitCode)
 	assert.NotEqual(0, buf.Len())
+	assert.Contains(buf.String(), "received")
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
@@ -117,6 +118,7 @@ func TestRunInContainerStderr(t *testing.T) {
 	}
 	assert.Equal(2, exitCode)
 	assert.NotEqual(0, buf.Len())
+	assert.Contains(buf.String(), "invalid option")
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
@@ -361,4 +363,38 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 
 func getTestName() string {
 	return fmt.Sprintf("fissile-test-%s", uuid.New())
+}
+
+func verifyWriteOutput(t *testing.T, inputs ...string) {
+
+	assert := assert.New(t)
+
+	fullInput := strings.Join(inputs, "")
+	expected := strings.Split(strings.TrimSuffix(fullInput, "\n"), "\n")
+	expectedAmount := len(fullInput)
+
+	buf := &bytes.Buffer{}
+	writer := NewFormattingWriter(buf, func(line string) string {
+		return fmt.Sprintf(">>>%s<<<", strings.TrimSuffix(line, "\n"))
+	})
+
+	totalWritten := 0
+	for _, input := range inputs {
+		amountWritten, err := writer.Write([]byte(input))
+		assert.NoError(err)
+		totalWritten += amountWritten
+	}
+	writer.Close()
+	assert.Equal(fmt.Sprintf(">>>%s<<<\n", strings.Join(expected, "<<<\n>>>")),
+		buf.String(), "Unexpected data written for %#v", inputs)
+	assert.Equal(expectedAmount, totalWritten, "Unexpected amount written for %#v", inputs)
+}
+
+func TestFormatWriterOneLine(t *testing.T) {
+	verifyWriteOutput(t, "hello\n")
+	verifyWriteOutput(t, "hello\nworld\n")
+	verifyWriteOutput(t, "hello")
+	verifyWriteOutput(t, "aaa\nbbb\nccc")
+	verifyWriteOutput(t, "multipl", "e\ncalls")
+	verifyWriteOutput(t, "multipl", "e\ncalls\n")
 }
