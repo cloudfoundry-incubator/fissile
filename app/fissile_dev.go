@@ -66,7 +66,7 @@ func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []stri
 }
 
 // CompileDev will compile a list of dev BOSH releases
-func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []string, cacheDir, repository, targetPath string, workerCount int) error {
+func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []string, cacheDir, repository, targetPath string, packageFilter []string, workerCount int, keepContainer bool) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -80,12 +80,12 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 	for _, release := range releases {
 		f.ui.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
-		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.ui)
+		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, keepContainer, f.ui)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 
-		if err := comp.Compile(workerCount, release); err != nil {
+		if err := comp.Compile(workerCount, release, packageFilter); err != nil {
 			return fmt.Errorf("Error compiling packages: %s", err.Error())
 		}
 	}

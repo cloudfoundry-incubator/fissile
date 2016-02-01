@@ -106,11 +106,22 @@ type compileResult struct {
 //   compiled by each active worker.
 // - synchronizer will greedily drain the <-todoCh to starve the workers out
 //   and won't wait for the <-doneCh for the N packages it drained.
-func (c *Compilator) Compile(workerCount int, release *model.Release) error {
+func (c *Compilator) Compile(workerCount int, release *model.Release, packageFilter []string) error {
 	c.initPackageMaps(release)
 	packages, err := c.removeCompiledPackages(release.Packages)
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
+	}
+	if len(packageFilter) > 0 {
+		var filteredPackages []*model.Package
+		for _, filterName := range packageFilter {
+			for _, pkg := range packages {
+				if pkg.Name == filterName || strings.HasPrefix(pkg.Name, filterName+"-") {
+					filteredPackages = append(filteredPackages, pkg)
+				}
+			}
+		}
+		packages = filteredPackages
 	}
 	if 0 == len(packages) {
 		c.ui.Println("No package needed to be built")

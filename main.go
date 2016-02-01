@@ -95,6 +95,11 @@ func main() {
 		Usage:  "If specified, containers won't be deleted when their build fails.",
 		EnvVar: "FISSILE_DEBUG",
 	}
+	packageFilterFlag := cli.StringSliceFlag{
+		Name:   "package-filter",
+		Usage:  "Compile only the selected packages",
+		EnvVar: "FISSILE_PACKAGE_FILTER",
+	}
 
 	workdirFlag := cli.StringFlag{
 		Name:   "work-dir, wd",
@@ -383,7 +388,9 @@ func main() {
 						cacheDirFlag,
 						workdirFlag,
 						repositoryFlag,
+						packageFilterFlag,
 						workersFlag,
+						debugFlag,
 					},
 					Usage:  "Compiles packages from dev releases using parallel workers",
 					Action: fissile.CommandRouter,
