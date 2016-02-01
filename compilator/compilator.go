@@ -231,7 +231,7 @@ func createDepBuckets(packages []*model.Package) [][]*model.Package {
 
 // CreateCompilationBase will create the compiler container
 func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
-	imageTag := c.BaseCompilationImageTag()
+	imageTag := c.baseCompilationImageTag()
 	imageName := c.BaseImageName()
 	c.ui.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
@@ -551,7 +551,7 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 }
 
 // BaseCompilationImageTag will return the compilation image tag
-func (c *Compilator) BaseCompilationImageTag() string {
+func (c *Compilator) baseCompilationImageTag() string {
 	return fmt.Sprintf("%s", c.FissileVersion)
 }
 
@@ -562,7 +562,7 @@ func (c *Compilator) baseCompilationImageRepository() string {
 
 // BaseImageName returns the name of the compilation base image
 func (c *Compilator) BaseImageName() string {
-	return fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.BaseCompilationImageTag())
+	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
 }
 
 func (c *Compilator) initPackageMaps(release *model.Release) {
