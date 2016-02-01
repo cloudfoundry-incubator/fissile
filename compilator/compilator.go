@@ -552,7 +552,7 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 
 // BaseCompilationImageTag will return the compilation image tag
 func (c *Compilator) baseCompilationImageTag() string {
-	return fmt.Sprintf("%s", c.FissileVersion)
+	return util.SanitizeDockerName(fmt.Sprintf("%s", c.FissileVersion))
 }
 
 // baseCompilationImageRepository will return the compilation image repository
