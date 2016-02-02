@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
+	"github.com/hpcloud/fissile/util"
 	"github.com/pivotal-golang/archiver/extractor"
 )
 
@@ -103,5 +104,5 @@ func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
 
 // GetBaseImageName generates a docker image name to be used as a role image base
 func GetBaseImageName(repository, fissileVersion string) string {
-	return fmt.Sprintf("%s-role-base:%s", repository, fissileVersion)
+	return util.SanitizeDockerName(fmt.Sprintf("%s-role-base:%s", repository, fissileVersion))
 }
