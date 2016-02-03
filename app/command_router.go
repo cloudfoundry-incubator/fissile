@@ -159,7 +159,9 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["cache-dir"],
 			c.String("repository"),
 			paths["compilation-dir"],
+			c.StringSlice("package-filter"),
 			c.Int("workers"),
+			c.Bool("debug"),
 		)
 	case "dev create-images":
 		if err = validateDevReleaseArgs(c); err != nil {

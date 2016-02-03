@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hpcloud/fissile/docker"
@@ -51,7 +52,7 @@ func TestCompilationEmpty(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		err := c.Compile(1, genTestCase())
+		err := c.Compile(1, genTestCase(), nil)
 		close(waitCh)
 		assert.Nil(err)
 	}()
@@ -80,7 +81,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
@@ -117,7 +118,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
@@ -252,8 +253,45 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	err = c.Compile(1, release)
+	err = c.Compile(1, release, nil)
 	assert.NotNil(err)
+}
+
+func TestCompilationPackageFilter(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	assert := assert.New(t)
+
+	mutex := sync.Mutex{}
+	compiled := make([]string, 0, 2)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		mutex.Lock()
+		defer mutex.Unlock()
+		compiled = append(compiled, pkg.Name)
+		return nil
+	}
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return false, nil
+	}
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.Nil(err)
+
+	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+	assert.NotNil(release)
+
+	err = c.Compile(1, release, []string{"ruby", "go-1.4"})
+	assert.Nil(err, "Compile returned error %v", err)
+	assert.Contains(compiled, "ruby-2.5")
+	assert.Contains(compiled, "go-1.4")
+	assert.NotContains(compiled, "consul")
+	assert.Equal(2, len(compiled), "Unexpected compiled packages [%s]", strings.Join(compiled, ","))
 }
 
 func TestGetPackageStatusCompiled(t *testing.T) {

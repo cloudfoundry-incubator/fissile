@@ -367,7 +367,7 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, release); err != nil {
+	if err := comp.Compile(workerCount, release, nil); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
