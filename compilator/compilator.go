@@ -181,10 +181,10 @@ func (j compileJob) Run() {
 				j.doneCh <- compileResult{Pkg: j.pkg, Err: errWorkerAbort}
 				return
 			case <-time.After(5 * time.Second):
-				c.ui.Printf("waiting: %s on: %s\n",
+				c.ui.Printf("waiting: %s - %s\n",
 					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
 			case <-c.packageDone[dep.Name]:
-				c.ui.Printf("depdone: %s got: %s\n",
+				c.ui.Printf("depdone: %s - %s\n",
 					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
 				done = true
 			}
@@ -219,13 +219,13 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 	// P reaches 0 then P can be queued, and in turn bump the
 	// counters of all packages using it.
 
-	user := make(map[string][]*model.Package)
+	revDeps := make(map[string][]*model.Package)
 	depCount := make(map[string]int)
 
 	for _, pkg := range packages {
 		depCount[pkg.Name] = len(pkg.Dependencies)
 		for _, dep := range pkg.Dependencies {
-			user[dep.Name] = append(user[dep.Name], pkg)
+			revDeps[dep.Name] = append(revDeps[dep.Name], pkg)
 		}
 	}
 
@@ -243,7 +243,6 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 
 			// Still has dependencies waiting (> 0), or is enqueued (< 0)
 			if depCount[pkg.Name] != 0 {
-				fmt.Printf("  Skip %s (wait %d)\n", pkg.Name, depCount[pkg.Name])
 				continue
 			}
 
@@ -253,7 +252,7 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 			keepRunning = true
 
 			// notify users that one more of their dependencies is handled
-			for _, usr := range user[pkg.Name] {
+			for _, usr := range revDeps[pkg.Name] {
 				depCount[usr.Name]--
 			}
 
