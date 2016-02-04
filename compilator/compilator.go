@@ -210,8 +210,8 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 	// only after all of its dependencies.
 
 	// helper data structures:
-	// 1. map package -> #(unqueued deps)
-	// 2. map from packages to users (inverted dependencies)
+	// 1. map: package -> #(unqueued deps)
+	// 2. map: packages -> using package (inverted dependencies)
 	//
 	// The counters in the 1st map are initialized with the number
 	// of actual dependencies, and then counted down as
