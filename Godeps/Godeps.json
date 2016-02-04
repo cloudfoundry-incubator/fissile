@@ -12,8 +12,8 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-163-g70e3fa5",
-			"Rev": "70e3fa51ebed95df8c0fbe1519c1c1f9bc16bb13"
+			"Comment": "1.2.0-197-gcf1f63a",
+			"Rev": "cf1f63a7274872768d4037305d572b70b1199397"
 		},
 		{
 			"ImportPath": "github.com/cppforlife/go-semi-semantic/version",
