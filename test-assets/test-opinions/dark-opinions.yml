@@ -41,6 +41,8 @@ properties:
     disk_mb: 2048
     memory_mb: 1024
   domain: example.com
+  has:
+    dark-opinion: this is a dark opinion
   loggregator_endpoint:
     shared_secret: loggregator_endpoint_secret
   nats:

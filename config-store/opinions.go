@@ -37,14 +37,14 @@ func newOpinions(lightFile, darkFile string) (*opinions, error) {
 	return result, nil
 }
 
-func (o *opinions) GetOpinionForKey(keyPieces []string) (result interface{}) {
+func (o *opinions) GetOpinionForKey(keyPieces []string) (masked bool, result interface{}) {
 	darkValue := getDeepValueFromManifest(o.Dark, keyPieces)
 
 	if darkValue != nil {
-		return nil
+		return true, nil
 	}
 
-	return getDeepValueFromManifest(o.Light, keyPieces)
+	return false, getDeepValueFromManifest(o.Light, keyPieces)
 }
 
 func getDeepValueFromManifest(manifest map[interface{}]interface{}, keyPieces []string) (result interface{}) {

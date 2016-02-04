@@ -6,6 +6,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestInvalidBaseConfigProvider(t *testing.T) {
+	assert := assert.New(t)
+
+	confStore := NewConfigStoreBuilder("foo", "invalid-provider", "", "", "")
+	err := confStore.WriteBaseConfig(nil)
+	assert.Error(err)
+	assert.Contains(err.Error(), "invalid-provider", "Incorrect error")
+}
+
 func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 	assert := assert.New(t)
 

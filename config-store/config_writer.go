@@ -1,6 +1,9 @@
 package configstore
 
+import "github.com/hpcloud/fissile/model"
+
 type configWriter interface {
-	WriteConfig(configKey string, value interface{}) error
+	WriteConfigsFromRelease(release *model.Release, c *Builder) error
 	Save(targetPath string) error
+	CleanUp() error
 }

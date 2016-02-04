@@ -901,6 +901,8 @@ properties:
       - 0.0.0.2
       password: nats_password
       username: nats_user
+  has:
+    opinion: this is an opinion
   hm9000:
     url: https://hm9000.example.com
   logger_endpoint:
