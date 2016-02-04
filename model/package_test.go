@@ -96,6 +96,8 @@ func TestPackageExtractOk(t *testing.T) {
 	assert.Equal(1, len(release.Packages))
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
+	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 
 	packageDir, err := release.Packages[0].Extract(tempDir)
 	assert.Nil(err)

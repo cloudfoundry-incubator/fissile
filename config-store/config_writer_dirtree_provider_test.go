@@ -22,6 +22,7 @@ func TestConfigStoreDirTreeWriter(t *testing.T) {
 
 	tmpDir, err := ioutil.TempDir("", "fissile-config-dirtree-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(tmpDir)
 	outDir := filepath.Join(tmpDir, "store")
 
 	confStore := NewConfigStoreBuilder("foo", DirTreeProvider, opinionsFile, opinionsFileDark, outDir)

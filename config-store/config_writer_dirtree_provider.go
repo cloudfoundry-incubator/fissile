@@ -50,6 +50,8 @@ func (d *dirTreeConfigWriterProvider) Save(targetPath string) error {
 	configDirSource := filepath.Join(d.tempDir, d.prefix)
 	configDirDest := filepath.Join(targetPath, d.prefix)
 
+	defer os.RemoveAll(d.tempDir)
+
 	if err := os.RemoveAll(configDirDest); err != nil {
 		return err
 	}
