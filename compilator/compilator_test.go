@@ -460,6 +460,24 @@ func TestCreateDepBuckets(t *testing.T) {
 	assert.Equal(t, buckets[2][0].Name, "cloud_controller_go")
 }
 
+func TestCreateDepBucketsOnChain(t *testing.T) {
+	t.Parallel()
+
+	packages := []*model.Package{
+		{ Name: "A", Dependencies: nil },
+		{ Name: "B", Dependencies: []*model.Package{ {Name: "C"} } },
+		{ Name: "C", Dependencies: []*model.Package{ {Name: "A"} } },
+	}
+
+	buckets := createDepBuckets(packages)
+	assert.Equal(t, len(buckets), 2)
+	assert.Equal(t, len(buckets[0]), 1)
+	assert.Equal(t, buckets[0][0].Name, "A")
+	assert.Equal(t, len(buckets[1]), 2)
+	assert.Equal(t, buckets[1][0].Name, "C")
+	assert.Equal(t, buckets[1][1].Name, "B")
+}
+
 func TestRemoveCompiledPackages(t *testing.T) {
 	saveIsPackageCompiled := isPackageCompiledHarness
 	defer func() {
