@@ -151,3 +151,35 @@ func TestDiffConfigurations(t *testing.T) {
 		assert.Equal("[\"0.0.0.3\"]", v[1])
 	}
 }
+
+func TestDiffConfigurationsBadArgs(t *testing.T) {
+	ui := termui.New(bytes.NewBufferString(""), ioutil.Discard, nil)
+	assert := assert.New(t)
+	prefix := "hcf"
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+	assetsPath := filepath.Join(workDir, "../test-assets/corrupt-releases")
+
+	f := NewFissileApplication("version", ui)
+	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
+	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
+	releasePaths := []string{releasePath1, releasePath2}
+	lightOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
+	darkOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
+	err = f.DiffConfigurationBases([]string{}, lightOpinionsPaths, darkOpinionsPaths, prefix)
+	assert.Error(err, "expected two release paths, got 0")
+	err = f.DiffConfigurationBases([]string{releasePath1}, lightOpinionsPaths, darkOpinionsPaths, prefix)
+	assert.Error(err, "expected two release paths, got 1")
+	err = f.DiffConfigurationBases(releasePaths, []string{}, darkOpinionsPaths, prefix)
+	assert.Error(err, "expected two light-opinion paths, got 0")
+	err = f.DiffConfigurationBases(releasePaths, []string{lightOpinionsPaths[0]}, darkOpinionsPaths, prefix)
+	assert.Error(err, "expected two light-opinion paths, got 1")
+	err = f.DiffConfigurationBases(releasePaths, []string{}, []string{}, prefix)
+	assert.Error(err, "expected two light-opinion paths, got 0")
+	assert.Error(err, "expected two dark-opinion paths, got 0")
+	err = f.DiffConfigurationBases([]string{}, []string{}, []string{}, prefix)
+	assert.Error(err, "expected two release paths, got 0")
+	assert.Error(err, "expected two light-opinion paths, got 0")
+	assert.Error(err, "expected two dark-opinion paths, got 0")
+}
