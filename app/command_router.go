@@ -19,6 +19,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		"dev create-images",
 		"dev list-roles",
 		"dev config-gen",
+		"configuration generate",
 		"images list-roles",
 		"images create-roles":
 		{
