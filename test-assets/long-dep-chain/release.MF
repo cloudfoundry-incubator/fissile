@@ -1,0 +1,41 @@
+---
+packages:
+- name: foo
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d782
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d782
+  sha1:        e42db26038a42994b0255939d0d046ca58071a45
+  dependencies: []
+- name: bar
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d78a
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d78a
+  sha1:        e42db26038a42994b0255939d0d046ca58071a4a
+  dependencies: ["foo"]
+- name: br
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d78b
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d78b
+  sha1:        e42db26038a42994b0255939d0d046ca58071a4b
+  dependencies: ["bar"]
+- name: fubar
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d78c
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d78c
+  sha1:        e42db26038a42994b0255939d0d046ca58071a4c
+  dependencies: ["br"]
+- name: cf
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d78d
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d78d
+  sha1:        e42db26038a42994b0255939d0d046ca58071a4d
+  dependencies: ["snafu"]
+- name: snafu
+  version:     543219fbdaf6ec6f8af2956016055f2fb100d78e
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d78e
+  sha1:        e42db26038a42994b0255939d0d046ca58071a4e
+  dependencies: ["fubar"]
+jobs: []
+license:
+  version: 596316b93cdeded339f835660a5b50eac2ecc57a
+  fingerprint: 596316b93cdeded339f835660a5b50eac2ecc57a
+  sha1: 1bed533e3817f9789a6a63050139e03e39154af1
+commit_hash: bbece039
+uncommitted_changes: false
+name: anything
+version: '2'

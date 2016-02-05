@@ -88,24 +88,27 @@ type compileResult struct {
 }
 
 // Compile concurrency works like this:
-// 1 routine producing (todoCh<-)
-// n workers consuming (<-todoCh)
-// 1 synchronizer consuming EXACTLY 1 <-doneCh for every <-todoCh
+// 1 routine producing (todoCh<-)                                  <=> Compile() itself
+// n workers consuming (<-todoCh)                                  <=> compileJob.Run()'s
+// 1 synchronizer consuming EXACTLY 1 <-doneCh for every <-todoCh  <=> Compile() again.
 //
 // Dependencies:
-// Packages with the least dependencies are queued first
-// workers wait for their dependencies by waiting on a map of broadcasting
-// channels that are closed by the synchronizer when something is done
-// compiling successfully
+// - Packages with the least dependencies are queued first.
+// - Workers wait for their dependencies by waiting on a map of
+//   broadcasting channels that are closed by the synchronizer when
+//   something is done compiling successfully
+//   ==> c.packageDone [<name>]
 //
 // In the event of an error:
-// - workers will try to bail out of waiting on <-todo or <-c.packageDone[name]
-//   early if it finds the killCh has been activated. There is a "race" here
-//   to see if the synchronizer will drain <-todoCh or if they will select on
-//   <-killCh before <-todoCh. In the worst case, an extra package will be
-//   compiled by each active worker.
-// - synchronizer will greedily drain the <-todoCh to starve the workers out
-//   and won't wait for the <-doneCh for the N packages it drained.
+// - workers will try to bail out of waiting on <-todo or
+//   <-c.packageDone[name] early if it finds the killCh has been
+//   activated. There is a "race" here to see if the synchronizer will
+//   drain <-todoCh or if they will select on <-killCh before
+//   <-todoCh. In the worst case, an extra package will be compiled by
+//   each active worker.
+// - synchronizer will greedily drain the <-todoCh to starve the
+//   workers out and won't wait for the <-doneCh for the N packages it
+//   drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 	c.initPackageMaps(release)
 	packages, err := c.removeCompiledPackages(release.Packages)
@@ -124,16 +127,16 @@ func (c *Compilator) Compile(workerCount int, release *model.Release) error {
 
 	worker := workerLib.NewWorker()
 	buckets := createDepBuckets(packages)
-	for _, bucketPackages := range buckets {
-		for _, pkg := range bucketPackages {
-			worker.Add(compileJob{
-				pkg:        pkg,
-				compilator: c,
-				killCh:     killCh,
-				doneCh:     doneCh,
-			})
-		}
+
+	for _, pkg := range buckets {
+		worker.Add(compileJob{
+			pkg:        pkg,
+			compilator: c,
+			killCh:     killCh,
+			doneCh:     doneCh,
+		})
 	}
+
 	go func() {
 		worker.RunUntilDone()
 		close(doneCh)
@@ -196,35 +199,76 @@ func (j compileJob) Run() {
 	j.doneCh <- compileResult{Pkg: j.pkg, Err: workerErr}
 }
 
-func createDepBuckets(packages []*model.Package) [][]*model.Package {
-	var buckets [][]*model.Package
+func createDepBuckets(packages []*model.Package) []*model.Package {
+	var buckets []*model.Package
 
 	// ruby takes forever and has no deps,
 	// so optimize by moving ruby packages to the front
 	var rubies []*model.Package
 
+	// topological sort, ensuring that each package X is queued
+	// only after all of its dependencies.
+
+	// helper data structures:
+	// 1. map: package -> #(unqueued deps)
+	// 2. map: packages -> using package (inverted dependencies)
+	//
+	// The counters in the 1st map are initialized with the number
+	// of actual dependencies, and then counted down as
+	// dependencies are queued up. When the counter for a package
+	// P reaches 0 then P can be queued, and in turn bump the
+	// counters of all packages using it.
+
+	revDeps := make(map[string][]*model.Package)
+	depCount := make(map[string]int)
+
 	for _, pkg := range packages {
-		depCount := len(pkg.Dependencies)
-		for depCount >= len(buckets) {
-			buckets = append(buckets, nil)
+		depCount[pkg.Name] = len(pkg.Dependencies)
+		for _, dep := range pkg.Dependencies {
+			revDeps[dep.Name] = append(revDeps[dep.Name], pkg)
 		}
+	}
 
-		if strings.HasPrefix(pkg.Name, "ruby-2.") {
-			rubies = append(rubies, pkg)
-			continue
+	// Iterate until we have handled all packages.  We expect each
+	// iteration to handle at least one package, because the input
+	// is a DAG, i.e. has no cycles. Therefore each iteration will
+	// have at least one package with no dependencies, and being
+	// handled.
+
+	keepRunning := true
+	for keepRunning {
+		keepRunning = false
+
+		for _, pkg := range packages {
+
+			// Still has dependencies waiting (> 0), or is enqueued (< 0)
+			if depCount[pkg.Name] != 0 {
+				continue
+			}
+
+			// == 0, queue package, keep outer loop, and take
+			// package out of circulation for the following loops.
+			depCount[pkg.Name]--
+			keepRunning = true
+
+			// notify users that one more of their dependencies is handled
+			for _, usr := range revDeps[pkg.Name] {
+				depCount[usr.Name]--
+			}
+
+			// rubies are special, see notes at top of function
+			if strings.HasPrefix(pkg.Name, "ruby-2.") {
+				rubies = append(rubies, pkg)
+				continue
+			}
+
+			// queue regular
+			buckets = append(buckets, pkg)
 		}
-
-		buckets[depCount] = append(buckets[depCount], pkg)
 	}
 
 	// prepend rubies to get them out of the way first
-	bucket0 := buckets[0]
-	bucket0 = append(bucket0, rubies...)
-	for i := range rubies {
-		bucket0[i], bucket0[len(bucket0)-i-1] =
-			bucket0[len(bucket0)-i-1], bucket0[i]
-	}
-	buckets[0] = bucket0
+	buckets = append(rubies, buckets...)
 
 	return buckets
 }
