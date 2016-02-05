@@ -72,7 +72,7 @@ func (w *jsonConfigWriterProvider) WriteConfigsFromRelease(release *model.Releas
 
 		// Write out the configuration
 		jobPath := filepath.Join(w.tempDir, w.prefix, release.Name, job.Name+".json")
-		jobJSON, err := json.Marshal(jobConfig)
+		jobJSON, err := json.MarshalIndent(jobConfig, "", "  ")
 		if err != nil {
 			return err
 		}
