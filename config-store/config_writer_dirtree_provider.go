@@ -31,32 +31,30 @@ func newDirTreeConfigWriterProvider(prefix string) (*dirTreeConfigWriterProvider
 	}, nil
 }
 
-func (d *dirTreeConfigWriterProvider) WriteConfigsFromRelease(release *model.Release, c *Builder) error {
-	if err := d.writeDescriptionConfigs(release, c); err != nil {
+func (d *dirTreeConfigWriterProvider) WriteConfigs(role *model.Role, job *model.Job, c *Builder) error {
+	if err := d.writeDescriptionConfigs(job.Release, c); err != nil {
 		return err
 	}
-	if err := d.writeSpecConfigs(release, c); err != nil {
+	if err := d.writeSpecConfigs(job, c); err != nil {
 		return err
 	}
-	if err := d.writeOpinionsConfigs(release, c); err != nil {
+	if err := d.writeOpinionsConfigs(job.Release, c); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (d *dirTreeConfigWriterProvider) writeSpecConfigs(release *model.Release, c *Builder) error {
+func (d *dirTreeConfigWriterProvider) writeSpecConfigs(job *model.Job, c *Builder) error {
 
-	for _, job := range release.Jobs {
-		for _, property := range job.Properties {
-			key, err := c.boshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), SpecStore)
-			if err != nil {
-				return err
-			}
+	for _, property := range job.Properties {
+		key, err := c.boshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", job.Release.Name, job.Name, property.Name), SpecStore)
+		if err != nil {
+			return err
+		}
 
-			if err := d.writeConfig(key, property.Default); err != nil {
-				return err
-			}
+		if err := d.writeConfig(key, property.Default); err != nil {
+			return err
 		}
 	}
 

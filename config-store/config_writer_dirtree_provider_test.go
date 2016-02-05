@@ -31,7 +31,11 @@ func TestConfigStoreDirTreeWriter(t *testing.T) {
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
 
-	err = confStore.WriteBaseConfig([]*model.Release{release})
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	assert.Nil(err)
+
+	err = confStore.WriteBaseConfig(rolesManifest.Roles)
 
 	assert.Nil(err)
 

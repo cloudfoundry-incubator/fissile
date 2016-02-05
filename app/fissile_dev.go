@@ -226,16 +226,21 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 }
 
 //GenerateDevConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
-func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) error {
+func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) error {
 
 	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 	if err != nil {
 		return err
 	}
 
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
 
-	if err := configStore.WriteBaseConfig(releases); err != nil {
+	if err := configStore.WriteBaseConfig(rolesManifest.Roles); err != nil {
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 

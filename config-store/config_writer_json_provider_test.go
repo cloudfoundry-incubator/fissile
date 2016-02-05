@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestJsonConfigWriterProvider(t *testing.T) {
+func TestJSONConfigWriterProvider(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -31,16 +31,27 @@ func TestJsonConfigWriterProvider(t *testing.T) {
 	release, err := model.NewRelease(releasePath)
 	assert.Nil(err)
 
-	err = builder.WriteBaseConfig([]*model.Release{release})
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	jsonPath := filepath.Join(outDir, "foo", "tor", "new_hostname.json")
+	err = builder.WriteBaseConfig(rolesManifest.Roles)
+	assert.Nil(err)
+
+	jsonPath := filepath.Join(outDir, "foo", "myrole", "new_hostname.json")
 	buf, err := ioutil.ReadFile(jsonPath)
 	assert.Nil(err, "Failed to read output %s\n", jsonPath)
 
 	var result map[string]interface{}
 	err = json.Unmarshal(buf, &result)
 	assert.Nil(err, "Error unmarshalling output")
+
+	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
+
+	templates := result["job"].(map[string]interface{})["templates"]
+	assert.Contains(templates, map[string]interface{}{"name": "tor"})
+	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
+	assert.Len(templates, 2)
 
 	var expected map[string]interface{}
 	err = json.Unmarshal([]byte(`{

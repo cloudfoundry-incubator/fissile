@@ -46,7 +46,7 @@ func NewConfigStoreBuilder(prefix, provider, lightOpinionsPath, darkOpinionsPath
 }
 
 // WriteBaseConfig generates the configuration base for a BOSH release
-func (c *Builder) WriteBaseConfig(releases []*model.Release) error {
+func (c *Builder) WriteBaseConfig(roles []*model.Role) error {
 	var writer configWriter
 	var err error
 
@@ -66,10 +66,12 @@ func (c *Builder) WriteBaseConfig(releases []*model.Release) error {
 	}
 	defer writer.CleanUp()
 
-	for _, release := range releases {
-		if err := writer.WriteConfigsFromRelease(release, c); err != nil {
-			fmt.Printf("Error writing configs for %s: %+v\n", release.Name, err)
-			return err
+	for _, role := range roles {
+		for _, job := range role.Jobs {
+			if err := writer.WriteConfigs(role, job, c); err != nil {
+				fmt.Printf("Error writing configs for job %s: %+v\n", job.Name, err)
+				return err
+			}
 		}
 	}
 

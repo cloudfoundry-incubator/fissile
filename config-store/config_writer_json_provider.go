@@ -28,19 +28,30 @@ func newJSONConfigWriterProvider(prefix string) (*jsonConfigWriterProvider, erro
 	}, nil
 }
 
-func (w *jsonConfigWriterProvider) WriteConfigsFromRelease(release *model.Release, builder *Builder) error {
+func (w *jsonConfigWriterProvider) WriteConfigs(role *model.Role, job *model.Job, builder *Builder) error {
 
-	if err := os.MkdirAll(filepath.Join(w.tempDir, w.prefix, release.Name), 0755); err != nil && err != os.ErrExist {
+	if err := os.MkdirAll(filepath.Join(w.tempDir, w.prefix, role.Name), 0755); err != nil && err != os.ErrExist {
 		return err
 	}
 
-	for _, job := range release.Jobs {
+	for _, job := range role.Jobs {
+		config, err := initializeConfigJSON()
+
+		// Get job information
+		config["job"].(map[string]interface{})["name"] = role.Name
+
+		var templates []map[string]string
+		for _, roleJob := range role.Jobs {
+			templates = append(templates, map[string]string{"name": roleJob.Name})
+		}
+		config["job"].(map[string]interface{})["templates"] = templates
+
 		// Get configs from the specs
-		jobConfig, err := initializeConfigJSON()
 		if err != nil {
 			return err
 		}
-		params := jobConfig["parameters"].(map[string]interface{})
+
+		params := config["parameters"].(map[string]interface{})
 		for _, property := range job.Properties {
 			if err := insertConfig(params, property.Name, property.Default); err != nil {
 				return err
@@ -52,27 +63,27 @@ func (w *jsonConfigWriterProvider) WriteConfigsFromRelease(release *model.Releas
 		if err != nil {
 			return err
 		}
-		for _, config := range release.GetUniqueConfigs() {
-			keyPieces, err := getKeyGrams(config.Name)
+		for _, uniqueConfig := range job.Release.GetUniqueConfigs() {
+			keyPieces, err := getKeyGrams(uniqueConfig.Name)
 			if err != nil {
 				return err
 			}
 			masked, value := opinions.GetOpinionForKey(keyPieces)
 			if masked {
-				deleteConfig(params, config.Name)
+				deleteConfig(params, uniqueConfig.Name)
 				continue
 			}
 			if value == nil {
 				continue
 			}
-			if err := insertConfig(params, config.Name, value); err != nil {
+			if err := insertConfig(params, uniqueConfig.Name, value); err != nil {
 				return err
 			}
 		}
 
 		// Write out the configuration
-		jobPath := filepath.Join(w.tempDir, w.prefix, release.Name, job.Name+".json")
-		jobJSON, err := json.MarshalIndent(jobConfig, "", "  ")
+		jobPath := filepath.Join(w.tempDir, w.prefix, role.Name, job.Name+".json")
+		jobJSON, err := json.MarshalIndent(config, "", "  ")
 		if err != nil {
 			return err
 		}
