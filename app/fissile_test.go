@@ -168,18 +168,31 @@ func TestDiffConfigurationsBadArgs(t *testing.T) {
 	lightOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
 	darkOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
 	err = f.DiffConfigurationBases([]string{}, lightOpinionsPaths, darkOpinionsPaths, prefix)
-	assert.Error(err, "expected two release paths, got 0")
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two release paths, got 0")
+	}
 	err = f.DiffConfigurationBases([]string{releasePath1}, lightOpinionsPaths, darkOpinionsPaths, prefix)
-	assert.Error(err, "expected two release paths, got 1")
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two release paths, got 1")
+	}
 	err = f.DiffConfigurationBases(releasePaths, []string{}, darkOpinionsPaths, prefix)
-	assert.Error(err, "expected two light-opinion paths, got 0")
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
+	}
 	err = f.DiffConfigurationBases(releasePaths, []string{lightOpinionsPaths[0]}, darkOpinionsPaths, prefix)
-	assert.Error(err, "expected two light-opinion paths, got 1")
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two light-opinion paths, got 1")
+	}
 	err = f.DiffConfigurationBases(releasePaths, []string{}, []string{}, prefix)
-	assert.Error(err, "expected two light-opinion paths, got 0")
-	assert.Error(err, "expected two dark-opinion paths, got 0")
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
+		assert.Contains(err.Error(), "expected two dark-opinion paths, got 0")
+	}
 	err = f.DiffConfigurationBases([]string{}, []string{}, []string{}, prefix)
-	assert.Error(err, "expected two release paths, got 0")
-	assert.Error(err, "expected two light-opinion paths, got 0")
-	assert.Error(err, "expected two dark-opinion paths, got 0")
+
+	if assert.Error(err, "Expected an error for bad args") {
+		assert.Contains(err.Error(), "expected two release paths, got 0")
+		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
+		assert.Contains(err.Error(), "expected two dark-opinion paths, got 0")
+	}
 }
