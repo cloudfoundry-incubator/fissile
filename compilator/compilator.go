@@ -211,20 +211,56 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 
 	// helper data structures:
 	// 1. map: package -> #(unqueued deps)
-	// 2. map: packages -> using package (inverted dependencies)
+	// 2. map: package -> list of using packages (inverted dependencies)
 	//
 	// The counters in the 1st map are initialized with the number
 	// of actual dependencies, and then counted down as
-	// dependencies are queued up. When the counter for a package
-	// P reaches 0 then P can be queued, and in turn bump the
-	// counters of all packages using it.
+	// these dependencies are queued up.
+	//
+	// When the counter for a package P reaches 0 then P can be
+	// queued, and in turn bump the counters of all packages using
+	// it.
+	//
+	// The counters additionally serve as flags for when a package
+	// is queued/processed, saving us a separate boolean
+	// flag. This is done by dropping the respective depCount to -1 (**).
 
 	revDeps := make(map[string][]*model.Package)
 	depCount := make(map[string]int)
 
+	// Initialize the depCount first. In the next loop we can use
+	// the presence of a package P in depCount as the indicator
+	// that this package P is not yet compiled. No need to check
+	// with 'isPackageCompiledHarness' and incurring a dependency
+	// on a Compilator structure.
+
 	for _, pkg := range packages {
-		depCount[pkg.Name] = len(pkg.Dependencies)
+		depCount[pkg.Name] = 0
+	}
+
+	// Finalize the depCount and initialize the map of reverse
+	// dependencies.
+
+	for _, pkg := range packages {
+		// Note! While the packages we loop over are all not yet
+		// compiled (due to coming out of
+		// 'removeCompiledPackages') we have to check this for
+		// the dependencies as well.  Otherwise we list
+		// dependencies which are not real.
+
 		for _, dep := range pkg.Dependencies {
+			// (dep in packages)
+			// <=> (dep in depCount[])
+			// <=> (dep not compiled, use dep)
+
+			if _, known := depCount[dep.Name]; !known {
+				// The package is compiled and thus
+				// not a true dependency. Skip it.
+				continue
+			}
+
+			// Record the true dependency
+			depCount[pkg.Name]++
 			revDeps[dep.Name] = append(revDeps[dep.Name], pkg)
 		}
 	}
@@ -241,17 +277,22 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 
 		for _, pkg := range packages {
 
-			// Still has dependencies waiting (> 0), or is enqueued (< 0)
+			// The package either still has dependencies waiting (depCount > 0),
+			// or is enqueued and processed ((**) depCount == -1 < 0)
 			if depCount[pkg.Name] != 0 {
 				continue
 			}
 
-			// == 0, queue package, keep outer loop, and take
-			// package out of circulation for the following loops.
+			// depCount == 0, time to
+			// - queue the package
+			// - notify the outer loop to keep running, and
+			// - force the following iterations to ignore
+			//   the package (See (**)).
 			depCount[pkg.Name]--
 			keepRunning = true
 
-			// notify users that one more of their dependencies is handled
+			// notify the users of the queued that another
+			// of their dependencies is handled
 			for _, usr := range revDeps[pkg.Name] {
 				depCount[usr.Name]--
 			}
