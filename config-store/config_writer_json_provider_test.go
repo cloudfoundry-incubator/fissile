@@ -15,13 +15,13 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
 	tmpDir, err := ioutil.TempDir("", "fissile-config-json-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(tmpDir)
 	outDir := filepath.Join(tmpDir, "store")
 
@@ -29,22 +29,26 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
 	release, err := model.NewRelease(releasePath)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
-	err = builder.WriteBaseConfig(rolesManifest.Roles)
-	assert.Nil(err)
+	err = builder.WriteBaseConfig(rolesManifest)
+	assert.NoError(err)
 
 	jsonPath := filepath.Join(outDir, "foo", "myrole", "new_hostname.json")
 	buf, err := ioutil.ReadFile(jsonPath)
-	assert.Nil(err, "Failed to read output %s\n", jsonPath)
+	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
+		return
+	}
 
 	var result map[string]interface{}
 	err = json.Unmarshal(buf, &result)
-	assert.Nil(err, "Error unmarshalling output")
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
 
 	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
 
@@ -70,17 +74,27 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 		},
 		"has": {
 			"opinion": "this is an opinion"
+		},
+		"cc": {
+			"app_events": {
+				"cutoff_age_in_days": 31
+			},
+			"droplets": {}
 		}
 	}`), &expected)
-	assert.Nil(err, "Failed to unmarshal expected data")
+	assert.NoError(err, "Failed to unmarshal expected data")
+	// We don't care about the "tor" branch of the parameters; that comes from upstream
+	// All the things we want to test are the custom stuff we added.
+	delete(result["parameters"].(map[string]interface{}), "tor")
 	assert.Equal(expected, result["parameters"], "Unexpected parameters")
+
 }
 
 func TestInitializeConfigJSON(t *testing.T) {
 	assert := assert.New(t)
 
 	config, err := initializeConfigJSON()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	jobConfig, ok := config["job"].(map[string]interface{})
 	assert.True(ok, "Job config should be a map with string keys")
@@ -97,52 +111,22 @@ func TestInitializeConfigJSON(t *testing.T) {
 	assert.True(ok, "Network defaults should be a map")
 }
 
-func TestInsertConfig(t *testing.T) {
-	assert := assert.New(t)
-	var config, tempMap map[string]interface{}
-	var err error
-	var ok bool
-	var buf []byte
-
-	config = make(map[string]interface{})
-	err = insertConfig(config, "hello.world", 123)
-	assert.Nil(err)
-	buf, err = json.Marshal(config)
-	assert.Nil(err, "Error marshalling: %+v", err)
-	err = json.Unmarshal(buf, &tempMap)
-	assert.Nil(err, "Error unmarshalling: %+v", err)
-	tempMap, ok = config["hello"].(map[string]interface{})
-	assert.True(ok, "config does not have hello")
-	assert.Equal(tempMap["world"], 123)
-
-	config = make(map[string]interface{})
-	err = insertConfig(config, "hello", map[interface{}]interface{}{
-		"world": 123,
-	})
-	assert.Nil(err)
-	buf, err = json.Marshal(config)
-	assert.Nil(err, "Error marshalling: %+v", err)
-	err = json.Unmarshal(buf, &tempMap)
-	assert.Nil(err, "Error unmarshalling: %+v", err)
-	tempMap, ok = config["hello"].(map[string]interface{})
-	assert.True(ok, "config does not have hello")
-	assert.Equal(tempMap["world"], 123)
-}
-
 func TestDeleteConfig(t *testing.T) {
 	assert := assert.New(t)
 	config := make(map[string]interface{})
 	err := insertConfig(config, "hello.world", 123)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = insertConfig(config, "hello.foo.bar", 111)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = insertConfig(config, "hello.foo.quux", 222)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = deleteConfig(config, "hello.world")
-	assert.Nil(err)
+	assert.NoError(err)
 	err = deleteConfig(config, "hello.foo.bar")
-	assert.Nil(err)
+	assert.NoError(err)
+	err = deleteConfig(config, "hello.does.not.exist")
+	assert.IsType(&errConfigNotExist{}, err)
 
 	hello, ok := config["hello"].(map[string]interface{})
 	assert.True(ok)

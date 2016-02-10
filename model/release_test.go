@@ -308,5 +308,5 @@ func TestGetDeploymentConfig(t *testing.T) {
 	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
-	assert.Equal(7, len(configs))
+	assert.Equal(9, len(configs))
 }

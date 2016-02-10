@@ -240,7 +240,7 @@ func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, relea
 
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
 
-	if err := configStore.WriteBaseConfig(rolesManifest.Roles); err != nil {
+	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 

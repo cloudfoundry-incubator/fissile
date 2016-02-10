@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/hpcloud/fissile/model"
-	"github.com/termie/go-shutil"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,30 +15,52 @@ const (
 )
 
 type dirTreeConfigWriterProvider struct {
-	tempDir string
-	prefix  string
+	opinions   *opinions
+	allParams  map[string]interface{}
+	outputPath string
 }
 
-func newDirTreeConfigWriterProvider(prefix string) (*dirTreeConfigWriterProvider, error) {
-	tempDir, err := ioutil.TempDir("", "fissile-config-writer-dirtree")
-	if err != nil {
-		return nil, err
-	}
-
+func newDirTreeConfigWriterProvider(opinions *opinions, allParams map[string]interface{}) (*dirTreeConfigWriterProvider, error) {
 	return &dirTreeConfigWriterProvider{
-		tempDir: tempDir,
+		opinions:  opinions,
+		allParams: allParams,
 	}, nil
 }
 
-func (d *dirTreeConfigWriterProvider) WriteConfigs(role *model.Role, job *model.Job, c *Builder) error {
-	if err := d.writeDescriptionConfigs(job.Release, c); err != nil {
+func (d *dirTreeConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest, builder *Builder) error {
+
+	allReleases := make(map[*model.Release]bool)
+
+	for _, role := range roleManifest.Roles {
+		for _, job := range role.Jobs {
+			allReleases[job.Release] = true
+		}
+	}
+
+	d.outputPath = builder.targetLocation
+
+	if err := os.RemoveAll(d.outputPath); err != nil && err != os.ErrNotExist {
 		return err
 	}
-	if err := d.writeSpecConfigs(job, c); err != nil {
-		return err
+
+	for release := range allReleases {
+		if err := d.writeDescriptionConfigs(release, builder); err != nil {
+			return err
+		}
 	}
-	if err := d.writeOpinionsConfigs(job.Release, c); err != nil {
-		return err
+
+	for _, role := range roleManifest.Roles {
+		for _, job := range role.Jobs {
+			if err := d.writeSpecConfigs(job, builder); err != nil {
+				return err
+			}
+		}
+	}
+
+	for release := range allReleases {
+		if err := d.writeOpinionsConfigs(release, builder); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -112,7 +133,7 @@ func (d *dirTreeConfigWriterProvider) writeOpinionsConfigs(release *model.Releas
 }
 
 func (d *dirTreeConfigWriterProvider) writeConfig(configKey string, value interface{}) error {
-	path := filepath.Join(d.tempDir, configKey)
+	path := filepath.Join(d.outputPath, configKey)
 
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return err
@@ -126,30 +147,4 @@ func (d *dirTreeConfigWriterProvider) writeConfig(configKey string, value interf
 	}
 
 	return ioutil.WriteFile(filePath, buf, 0755)
-}
-
-func (d *dirTreeConfigWriterProvider) Save(targetPath string) error {
-	configDirSource := filepath.Join(d.tempDir, d.prefix)
-	configDirDest := filepath.Join(targetPath, d.prefix)
-
-	if err := os.RemoveAll(configDirDest); err != nil {
-		return err
-	}
-
-	return shutil.CopyTree(
-		configDirSource,
-		configDirDest,
-		&shutil.CopyTreeOptions{
-			Symlinks:               true,
-			Ignore:                 nil,
-			CopyFunction:           shutil.Copy,
-			IgnoreDanglingSymlinks: false},
-	)
-}
-
-func (d *dirTreeConfigWriterProvider) CleanUp() error {
-	if err := os.RemoveAll(d.tempDir); err != nil && err != os.ErrNotExist {
-		return err
-	}
-	return nil
 }

@@ -3,7 +3,6 @@ package configstore
 import "github.com/hpcloud/fissile/model"
 
 type configWriter interface {
-	WriteConfigs(role *model.Role, job *model.Job, c *Builder) error
-	Save(targetPath string) error
-	CleanUp() error
+	// WriteConfigs writes the configuration used in a role manifest to a Builder's targetLocation
+	WriteConfigs(roleManifest *model.RoleManifest, c *Builder) error
 }

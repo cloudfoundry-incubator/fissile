@@ -48,3 +48,35 @@ func TestValueToJSONable(t *testing.T) {
 		},
 	}))
 }
+
+func TestInsertConfig(t *testing.T) {
+	assert := assert.New(t)
+	var config, tempMap map[string]interface{}
+	var err error
+	var ok bool
+	var buf []byte
+
+	config = make(map[string]interface{})
+	err = insertConfig(config, "hello.world", 123)
+	assert.NoError(err)
+	buf, err = json.Marshal(config)
+	assert.NoError(err, "Error marshalling")
+	err = json.Unmarshal(buf, &tempMap)
+	assert.NoError(err, "Error unmarshalling")
+	tempMap, ok = config["hello"].(map[string]interface{})
+	assert.True(ok, "config does not have hello")
+	assert.Equal(tempMap["world"], 123)
+
+	config = make(map[string]interface{})
+	err = insertConfig(config, "hello", map[interface{}]interface{}{
+		"world": 123,
+	})
+	assert.NoError(err)
+	buf, err = json.Marshal(config)
+	assert.NoError(err, "Error marshalling")
+	err = json.Unmarshal(buf, &tempMap)
+	assert.NoError(err, "Error unmarshalling")
+	tempMap, ok = config["hello"].(map[string]interface{})
+	assert.True(ok, "config does not have hello")
+	assert.Equal(tempMap["world"], 123)
+}
