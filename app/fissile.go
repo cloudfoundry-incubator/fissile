@@ -609,7 +609,6 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, prefix string
 	hashes := [2]keyHash{keyHash{}, keyHash{}}
 	for idx, release := range releases {
 		configs := release.GetUniqueConfigs()
-		// Get the descriptions (do we care?)
 		for _, config := range configs {
 			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore, prefix)
 			if err != nil {
