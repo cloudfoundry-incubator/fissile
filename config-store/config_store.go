@@ -35,15 +35,6 @@ type Builder struct {
 	targetLocation    string
 }
 
-type keyHash map[string]string
-
-// HashDiffs summarizes the diffs between the two configs
-type HashDiffs struct {
-	AddedKeys     []string
-	DeletedKeys   []string
-	ChangedValues map[string][2]string
-}
-
 // NewConfigStoreBuilder creates a new configstore.Builder
 func NewConfigStoreBuilder(prefix, provider, lightOpinionsPath, darkOpinionsPath, targetLocation string) *Builder {
 	configStoreManager := &Builder{
@@ -187,64 +178,4 @@ func checkKeysInProperties(opinions, props map[string]interface{}, opinionName s
 	}
 
 	return nil
-}
-
-// DiffConfigurations calculates the differences in configs across two releases.
-func (c *Builder) DiffConfigurations(releasePath1, releasePath2 string) (*HashDiffs, error) {
-	var err error
-	releases := [2]*model.Release{}
-	releases[0], err = model.NewRelease(releasePath1)
-	if err != nil {
-		return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath1, err.Error())
-	}
-	releases[1], err = model.NewRelease(releasePath2)
-	if err != nil {
-		return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath2, err.Error())
-	}
-	hashes := [2]keyHash{keyHash{}, keyHash{}}
-	// hashes := [2]{map[string]string{}, map[string]string{}}
-	for idx, release := range releases {
-		configs := release.GetUniqueConfigs()
-		// Get the descriptions (do we care?)
-		for _, config := range configs {
-			key, err := BoshKeyToConsulPath(config.Name, DescriptionsStore, c.prefix)
-			if err != nil {
-				return nil, fmt.Errorf("Error getting config %s for release path %s: %s", config.Name, releasePath1, err.Error())
-			}
-			hashes[idx][key] = config.Description
-		}
-		// Get the spec configs
-		for _, job := range release.Jobs {
-			for _, property := range job.Properties {
-				key, err := BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), SpecStore, c.prefix)
-				if err != nil {
-					return nil, err
-				}
-				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
-			}
-		}
-	}
-	return c.compareHashes(hashes[0], hashes[1]), nil
-}
-
-func (c *Builder) compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
-	changed := map[string][2]string{}
-	deleted := []string{}
-	added := []string{}
-
-	for k, v := range v1Hash {
-		v2, ok := v2Hash[k]
-		if !ok {
-			deleted = append(deleted, k)
-		} else if v != v2 {
-			changed[k] = [2]string{v, v2}
-		}
-	}
-	for k := range v2Hash {
-		_, ok := v1Hash[k]
-		if !ok {
-			added = append(added, k)
-		}
-	}
-	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
 }

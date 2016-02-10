@@ -561,13 +561,18 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 	return nil
 }
 
+type keyHash map[string]string
+
+// HashDiffs summarizes the diffs between the two configs
+type HashDiffs struct {
+	AddedKeys     []string
+	DeletedKeys   []string
+	ChangedValues map[string][2]string
+}
+
 // DiffConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
 func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) error {
-	if len(releasePaths) != 2 {
-		return fmt.Errorf("configuration diff: expected two release paths, got %d", len(releasePaths))
-	}
-	configStore := configstore.NewConfigStoreBuilder(prefix, "", "", "", "")
-	hashDiffs, err := configStore.DiffConfigurations(releasePaths[0], releasePaths[1])
+	hashDiffs, err := f.GetDiffConfigurationBases(releasePaths, prefix)
 	if err != nil {
 		return err
 	}
@@ -586,4 +591,64 @@ func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) e
 		}
 	}
 	return nil
+}
+
+// GetDiffConfigurationBases calcs the difference in configs and returns a hash
+func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, prefix string) (*HashDiffs, error) {
+	var err error
+	if len(releasePaths) != 2 {
+		return nil, fmt.Errorf("configuration diff: expected two release paths, got %d", len(releasePaths))
+	}
+	releases := [2]*model.Release{}
+	for idx, releasePath := range releasePaths {
+		releases[idx], err = model.NewRelease(releasePath)
+		if err != nil {
+			return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath, err.Error())
+		}
+	}
+	hashes := [2]keyHash{keyHash{}, keyHash{}}
+	for idx, release := range releases {
+		configs := release.GetUniqueConfigs()
+		// Get the descriptions (do we care?)
+		for _, config := range configs {
+			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore, prefix)
+			if err != nil {
+				return nil, fmt.Errorf("Error getting config %s for release path %s: %s", config.Name, releasePaths[idx], err.Error())
+			}
+			hashes[idx][key] = config.Description
+		}
+		// Get the spec configs
+		for _, job := range release.Jobs {
+			for _, property := range job.Properties {
+				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore, prefix)
+				if err != nil {
+					return nil, err
+				}
+				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
+			}
+		}
+	}
+	return compareHashes(hashes[0], hashes[1]), nil
+}
+
+func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
+	changed := map[string][2]string{}
+	deleted := []string{}
+	added := []string{}
+
+	for k, v := range v1Hash {
+		v2, ok := v2Hash[k]
+		if !ok {
+			deleted = append(deleted, k)
+		} else if v != v2 {
+			changed[k] = [2]string{v, v2}
+		}
+	}
+	for k := range v2Hash {
+		_, ok := v1Hash[k]
+		if !ok {
+			added = append(added, k)
+		}
+	}
+	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
 }

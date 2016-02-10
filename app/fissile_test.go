@@ -9,7 +9,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )
@@ -117,6 +116,7 @@ func TestVerifyRelease(t *testing.T) {
 }
 
 func TestDiffConfigurations(t *testing.T) {
+	ui := termui.New(bytes.NewBufferString(""), ioutil.Discard, nil)
 	assert := assert.New(t)
 	workDir, err := os.Getwd()
 	assetsPath := filepath.Join(workDir, "../test-assets/config-diffs")
@@ -124,10 +124,10 @@ func TestDiffConfigurations(t *testing.T) {
 	prefix := "hcf"
 	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
 	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
-	configStore := configstore.NewConfigStoreBuilder(prefix, "", "", "", "")
-	hashDiffs, err := configStore.DiffConfigurations(releasePath1, releasePath2)
+	f := NewFissileApplication("version", ui)
+	hashDiffs, err := f.GetDiffConfigurationBases([]string{releasePath1, releasePath2}, prefix)
 
-	if !assert.Nil(err, "DiffConfigurations failed") {
+	if !assert.Nil(err, "GetDiffConfigurationBases failed") {
 		return
 	}
 	if assert.Equal(2, len(hashDiffs.AddedKeys), fmt.Sprintf("Expected 2 added key, got %d: %s", len(hashDiffs.AddedKeys), hashDiffs.AddedKeys)) {
