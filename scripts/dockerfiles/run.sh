@@ -28,7 +28,7 @@ if [[ -z $dns_record_name ]]; then
   dns_record_name="localhost"
 fi
 
-ip_address=$(/bin/hostname -i)
+ip_address=$(/bin/hostname -i | awk '{print $1}')
 
 # Usage: run_configin <role-description> <role> <release> <job> <input>  <output>
 #                     json               name   name      name  template destination
