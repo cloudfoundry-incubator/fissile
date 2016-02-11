@@ -155,6 +155,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
@@ -261,6 +262,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
@@ -293,6 +295,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
@@ -318,6 +321,7 @@ func TestPackageFolderStructure(t *testing.T) {
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
@@ -347,6 +351,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)
@@ -390,6 +395,7 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
 	assert.Nil(err)

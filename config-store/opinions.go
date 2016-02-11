@@ -7,8 +7,8 @@ import (
 )
 
 type opinions struct {
-	Light map[interface{}]interface{}
-	Dark  map[interface{}]interface{}
+	Light map[string]interface{}
+	Dark  map[string]interface{}
 }
 
 func newOpinions(lightFile, darkFile string) (*opinions, error) {
@@ -37,17 +37,17 @@ func newOpinions(lightFile, darkFile string) (*opinions, error) {
 	return result, nil
 }
 
-func (o *opinions) GetOpinionForKey(keyPieces []string) (result interface{}) {
+func (o *opinions) GetOpinionForKey(keyPieces []string) (masked bool, result interface{}) {
 	darkValue := getDeepValueFromManifest(o.Dark, keyPieces)
 
 	if darkValue != nil {
-		return nil
+		return true, nil
 	}
 
-	return getDeepValueFromManifest(o.Light, keyPieces)
+	return false, getDeepValueFromManifest(o.Light, keyPieces)
 }
 
-func getDeepValueFromManifest(manifest map[interface{}]interface{}, keyPieces []string) (result interface{}) {
+func getDeepValueFromManifest(manifest map[string]interface{}, keyPieces []string) (result interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = nil

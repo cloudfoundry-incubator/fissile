@@ -81,6 +81,8 @@ func TestJobExtractOk(t *testing.T) {
 	assert.Equal(1, len(release.Jobs))
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
+	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 
 	jobDir, err := release.Jobs[0].Extract(tempDir)
 	assert.Nil(err)

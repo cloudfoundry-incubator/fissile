@@ -375,7 +375,7 @@ func (f *Fissile) Compile(releasePath, repository, targetPath string, workerCoun
 }
 
 //GenerateConfigurationBase generates a configuration base using a BOSH release and opinions from manifests
-func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) error {
+func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifestPath, darkManifestPath, rolesManifestPath, targetPath, prefix, provider string) error {
 	releases := make([]*model.Release, len(releasePaths))
 	for idx, releasePath := range releasePaths {
 		release, err := model.NewRelease(releasePath)
@@ -386,9 +386,14 @@ func (f *Fissile) GenerateConfigurationBase(releasePaths []string, lightManifest
 		f.ui.Println(color.GreenString("Release %s loaded successfully", color.YellowString(release.Name)))
 	}
 
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
 	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
 
-	if err := configStore.WriteBaseConfig(releases); err != nil {
+	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 

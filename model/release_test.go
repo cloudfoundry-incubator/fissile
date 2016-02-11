@@ -27,6 +27,7 @@ func TestReleaseValidationNonExistingPath(t *testing.T) {
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 
 	releaseDir := filepath.Join(tempDir, uuid.New())
 
@@ -41,6 +42,7 @@ func TestReleaseValidationReleasePathIsAFile(t *testing.T) {
 
 	tempFile, err := ioutil.TempFile("", "fissile-tests")
 	tempFile.Close()
+	defer os.Remove(tempFile.Name())
 
 	assert.Nil(err)
 
@@ -55,6 +57,7 @@ func TestReleaseValidationStructure(t *testing.T) {
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 	releaseDir := filepath.Join(tempDir, uuid.New())
 
 	// Create an empty release dir
@@ -305,5 +308,5 @@ func TestGetDeploymentConfig(t *testing.T) {
 	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
-	assert.Equal(4, len(configs))
+	assert.Equal(9, len(configs))
 }

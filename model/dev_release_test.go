@@ -238,6 +238,7 @@ func TestDevReleasePackageExtractOk(t *testing.T) {
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 
 	extractedPath, err := barPkg.Extract(tempDir)
 	assert.Nil(err)
@@ -289,6 +290,7 @@ func TestDevReleaseJobExtractOk(t *testing.T) {
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(tempDir)
 
 	extractedPath, err := barJob.Extract(tempDir)
 	assert.Nil(err)

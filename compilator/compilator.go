@@ -339,6 +339,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	if err != nil {
 		return nil, fmt.Errorf("Could not create temp dir %s: %s", tempScriptDir, err.Error())
 	}
+	defer os.RemoveAll(tempScriptDir)
 
 	targetScriptName := "compilation-prerequisites.sh"
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)

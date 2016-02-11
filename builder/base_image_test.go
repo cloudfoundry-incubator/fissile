@@ -49,6 +49,7 @@ func TestBaseImageCreateDockerfileDir(t *testing.T) {
 
 	targetDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.Nil(err)
+	defer os.RemoveAll(targetDir)
 
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
 
