@@ -85,8 +85,8 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 	assert.NoError(err, "Failed to unmarshal expected data")
 	// We don't care about the "tor" branch of the parameters; that comes from upstream
 	// All the things we want to test are the custom stuff we added.
-	delete(result["parameters"].(map[string]interface{}), "tor")
-	assert.Equal(expected, result["parameters"], "Unexpected parameters")
+	delete(result["properties"].(map[string]interface{}), "tor")
+	assert.Equal(expected, result["properties"], "Unexpected properties")
 
 }
 
@@ -104,6 +104,9 @@ func TestInitializeConfigJSON(t *testing.T) {
 
 	_, ok = config["parameters"].(map[string]interface{})
 	assert.True(ok, "Parameters should be a map")
+
+	_, ok = config["properties"].(map[string]interface{})
+	assert.True(ok, "Properties should be a map")
 
 	networks, ok := config["networks"].(map[string]interface{})
 	assert.True(ok, "Networks should be a map")

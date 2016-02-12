@@ -71,12 +71,12 @@ func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 }
 
 // getKeys is a helper method to get all the keys in a nested JSON structure, as BOSH-style dot-separated names
-func getKeys(params map[string]interface{}) []string {
+func getKeys(props map[string]interface{}) []string {
 	var results []string
-	var innerFunc func(params map[string]interface{}, prefix []string)
+	var innerFunc func(props map[string]interface{}, prefix []string)
 
-	innerFunc = func(params map[string]interface{}, prefix []string) {
-		for key, value := range params {
+	innerFunc = func(props map[string]interface{}, prefix []string) {
+		for key, value := range props {
 			fullKey := append(prefix, key)
 			if valueStringMap, ok := value.(map[string]interface{}); ok {
 				innerFunc(valueStringMap, fullKey)
@@ -86,11 +86,11 @@ func getKeys(params map[string]interface{}) []string {
 		}
 	}
 
-	innerFunc(params, []string{})
+	innerFunc(props, []string{})
 	return results
 }
 
-func TestGetAllParamsForRoleManifest(t *testing.T) {
+func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -104,10 +104,10 @@ func TestGetAllParamsForRoleManifest(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	allParams, err := getAllParamsForRoleManifest(rolesManifest)
+	allProps, err := getAllPropertiesForRoleManifest(rolesManifest)
 	assert.NoError(err)
 
-	keys := getKeys(allParams)
+	keys := getKeys(allProps)
 	sort.Strings(keys)
 	assert.Equal([]string{
 		"cc.app_events.cutoff_age_in_days",
@@ -124,10 +124,10 @@ func TestGetAllParamsForRoleManifest(t *testing.T) {
 	}, keys)
 }
 
-func TestCheckKeysInParams(t *testing.T) {
+func TestCheckKeysInProperties(t *testing.T) {
 	assert := assert.New(t)
 
-	var opinions, params map[string]interface{}
+	var opinions, props map[string]interface{}
 
 	err := yaml.Unmarshal([]byte(strings.Replace(`
 		properties:
@@ -142,11 +142,11 @@ func TestCheckKeysInParams(t *testing.T) {
 		"parent": {
 			"missing-key": 4
 		}
-	}`), &params)
+	}`), &props)
 	assert.NoError(err)
 
 	warningBuf := bytes.Buffer{}
-	err = checkKeysInParams(opinions, params, "testing", &warningBuf)
+	err = checkKeysInProperties(opinions, props, "testing", &warningBuf)
 	assert.NoError(err)
 	assert.Contains(warningBuf.String(), "testing opinions")
 	assert.Contains(warningBuf.String(), "parent.extra-key")
@@ -158,7 +158,7 @@ func TestCheckKeysInParams(t *testing.T) {
 	opinions = map[string]interface{}{
 		"properties": make(map[interface{}]interface{}),
 	}
-	err = checkKeysInParams(opinions, params, "testing-two", &warningBuf)
+	err = checkKeysInProperties(opinions, props, "testing-two", &warningBuf)
 	assert.NoError(err)
 	assert.Empty(warningBuf.String())
 }

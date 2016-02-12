@@ -58,19 +58,19 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 		return err
 	}
 
-	allParams, err := getAllParamsForRoleManifest(roleManifest)
+	allProps, err := getAllPropertiesForRoleManifest(roleManifest)
 	if err != nil {
 		return err
 	}
 
 	switch {
 	case c.provider == DirTreeProvider:
-		writer, err = newDirTreeConfigWriterProvider(opinions, allParams)
+		writer, err = newDirTreeConfigWriterProvider(opinions, allProps)
 		if err != nil {
 			return err
 		}
 	case c.provider == JSONProvider:
-		writer, err = newJSONConfigWriterProvider(opinions, allParams)
+		writer, err = newJSONConfigWriterProvider(opinions, allProps)
 		if err != nil {
 			return err
 		}
@@ -78,10 +78,10 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 		return fmt.Errorf("Invalid config writer provider %s", c.provider)
 	}
 
-	if err := checkKeysInParams(opinions.Light, allParams, "light", os.Stderr); err != nil {
+	if err := checkKeysInProperties(opinions.Light, allProps, "light", os.Stderr); err != nil {
 		return err
 	}
-	if err := checkKeysInParams(opinions.Dark, allParams, "dark", os.Stderr); err != nil {
+	if err := checkKeysInProperties(opinions.Dark, allProps, "dark", os.Stderr); err != nil {
 		return err
 	}
 
@@ -102,40 +102,40 @@ func (c *Builder) boshKeyToConsulPath(key, store string) (string, error) {
 	return strings.Join(keyGrams, "/"), nil
 }
 
-// getAllParamsForRoleManifest returns all of the parameters available from a role manifest's specs
-func getAllParamsForRoleManifest(roleManifest *model.RoleManifest) (map[string]interface{}, error) {
-	params := make(map[string]interface{})
+// getAllPropertiesForRoleManifest returns all of the properties available from a role manifest's specs
+func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[string]interface{}, error) {
+	props := make(map[string]interface{})
 
 	for _, role := range roleManifest.Roles {
 		for _, job := range role.Jobs {
 			for _, property := range job.Properties {
-				if err := insertConfig(params, property.Name, property.Default); err != nil {
+				if err := insertConfig(props, property.Name, property.Default); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
 
-	return params, nil
+	return props, nil
 }
 
-// checkKeysInParams ensures that all opinons override values in params.
+// checkKeysInProperties ensures that all opinons override values in props.
 // The type of opinion (light or dark) is given in opinionName for messages.
 // Only the top level key being missing can generate errors; if any child is missing (e.g. uaa.clients),
 // they are emitted as warnings on warningWriter.
-func checkKeysInParams(opinions, params map[string]interface{}, opinionName string, warningWriter io.Writer) error {
+func checkKeysInProperties(opinions, props map[string]interface{}, opinionName string, warningWriter io.Writer) error {
 	var results []string
 	var warnings []string
 
 	// Declare checkInner to capture itself in a closure so we can recurse
-	var checkInner func(opinions map[interface{}]interface{}, params map[string]interface{}, keyGramPrefix []string)
+	var checkInner func(opinions map[interface{}]interface{}, props map[string]interface{}, keyGramPrefix []string)
 
-	checkInner = func(opinions map[interface{}]interface{}, params map[string]interface{}, keyGramPrefix []string) {
+	checkInner = func(opinions map[interface{}]interface{}, props map[string]interface{}, keyGramPrefix []string) {
 		for key, value := range opinions {
 			keyStr := key.(string)
 			newKeyGramPrefix := append(keyGramPrefix, keyStr)
 			if opinionValue, ok := value.(map[interface{}]interface{}); ok {
-				if paramValue, ok := params[keyStr].(map[string]interface{}); !ok {
+				if paramValue, ok := props[keyStr].(map[string]interface{}); !ok {
 					if len(newKeyGramPrefix) > 1 {
 						warnings = append(warnings, strings.Join(newKeyGramPrefix, "."))
 					} else {
@@ -145,7 +145,7 @@ func checkKeysInParams(opinions, params map[string]interface{}, opinionName stri
 					checkInner(opinionValue, paramValue, newKeyGramPrefix)
 				}
 			} else {
-				if _, ok := params[keyStr]; !ok {
+				if _, ok := props[keyStr]; !ok {
 					if len(newKeyGramPrefix) > 1 {
 						warnings = append(warnings, strings.Join(newKeyGramPrefix, "."))
 					} else {
@@ -160,7 +160,7 @@ func checkKeysInParams(opinions, params map[string]interface{}, opinionName stri
 	if !ok {
 		return fmt.Errorf("failed to load %s opinions from %+v", opinionName, opinions)
 	}
-	checkInner(properties, params, []string{})
+	checkInner(properties, props, []string{})
 
 	if len(results) > 0 {
 		indent := "\n    "
