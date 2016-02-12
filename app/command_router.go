@@ -10,7 +10,7 @@ import (
 // CommandRouter will dispatch CLI commands to their relevant functions
 func (f *Fissile) CommandRouter(c *cli.Context) {
 	var paths map[string]string
-	var releasePaths []string
+	var releasePaths, releaseNames, releaseVersions []string
 	var err error
 	switch c.Command.FullName() {
 	case "dev jobs-report",
@@ -38,6 +38,24 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	case "configuration diff":
 		{
 			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+		}
+	case "dev config-diff":
+		{
+			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+			releaseNames, err = absolutePathsForArray(c.StringSlice("release-name"))
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+			releaseVersions, err = absolutePathsForArray(c.StringSlice("release-version"))
 			if err != nil {
 				f.cmdErr = err
 				return
@@ -226,6 +244,17 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("prefix"),
 			c.String("provider"),
 		)
+	case "dev config-diff":
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
+		}
+		err = f.DiffDevConfigurationBases(
+			releasePaths,
+			releaseNames,
+			releaseVersions,
+			paths["cache-dir"],
+			c.String("prefix"),
+		)
 	}
 
 	f.cmdErr = err
@@ -274,17 +303,18 @@ func validateDevReleaseArgs(c *cli.Context) error {
 	releasePathsCount := len(c.StringSlice("release"))
 	releaseNamesCount := len(c.StringSlice("release-name"))
 	releaseVersionsCount := len(c.StringSlice("release-version"))
+	argList := fmt.Sprintf("validateDevReleaseArgs: paths:%s (%d), names:%s (%d), versions:%s (%d)\n", c.StringSlice("release"), releasePathsCount, c.StringSlice("release-name"), releaseNamesCount, c.StringSlice("release-version"), releaseVersionsCount)
 
 	if releasePathsCount == 0 {
-		return fmt.Errorf("Please specify at least one release path")
+		return fmt.Errorf("Please specify at least one release path. Args: %s", argList)
 	}
 
 	if releaseNamesCount != 0 && releaseNamesCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release names, you need to do it for all of them")
+		return fmt.Errorf("If you specify custom release names, you need to do it for all of them. Args: %s", argList)
 	}
 
 	if releaseVersionsCount != 0 && releaseVersionsCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them")
+		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them. Args: %s", argList)
 	}
 
 	return nil

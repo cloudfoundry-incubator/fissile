@@ -455,6 +455,19 @@ func main() {
 					Usage:  "Generates a configuration base that can be loaded into something like consul.",
 					Action: fissile.CommandRouter,
 				},
+				{
+					Name:    "config-diff",
+					Aliases: []string{"cd"},
+					Flags: []cli.Flag{
+						releasesFlag,
+						releaseNameFlag,
+						releaseVersionFlag,
+						cacheDirFlag,
+						prefixFlag,
+					},
+					Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
+					Action: fissile.CommandRouter,
+				},
 			},
 		},
 	}

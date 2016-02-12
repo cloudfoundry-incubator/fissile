@@ -274,23 +274,43 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 	return releases, nil
 }
 
-/*
-// DiffDevConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
-func (f *Fissile) DiffDevConfigurationBases(releasePath1, lightManifestPath1, darkManifestPath1, releasePath2, lightManifestPath2, darkManifestPath2, targetPath, prefix, provider string) error {
-	releases, err := loadDevReleases([]string{releasePath1, releasePath2}, releaseNames, releaseVersions, cacheDir)
+// DiffDevConfigurationBases generates a diff comparing the specs for two different BOSH releases
+func (f *Fissile) DiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions []string, cacheDir, prefix string) error {
+	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions, cacheDir, prefix)
 	if err != nil {
-		return fmt.Errorf("Error loading release information for release path %s: %s", releasePath1, err.Error())
+		return err
 	}
-
-	configStore1 := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath1, darkManifestPath1, targetPath)
-	configStore2 := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath2, darkManifestPath2, targetPath)
-
-	if err := configStore.WriteBaseConfig(releases); err != nil {
-		return fmt.Errorf("Error writing base config: %s", err.Error())
-	}
-
-	f.ui.Println(color.GreenString("Done."))
-
+	f.reportHashDiffs(hashDiffs)
 	return nil
 }
-*/
+
+// GetDiffDevConfigurationBases calcs the difference in configs and returns a hash
+func (f *Fissile) GetDiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions []string, cacheDir, prefix string) (*HashDiffs, error) {
+	var err error
+	var problems []string
+	if len(releasePaths) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two release paths, got %d", len(releasePaths)))
+	}
+	if len(releaseNames) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two release names, got %d", len(releaseNames)))
+	}
+	if len(releaseVersions) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two release versions, got %d", len(releaseVersions)))
+	}
+	if len(problems) > 0 {
+		var s, firstSep string
+		if len(problems) > 1 {
+			s = "s"
+			firstSep = "\n  "
+		} else {
+			firstSep = " "
+		}
+		return nil, fmt.Errorf("dev config diff: error%s:%s%s", s, firstSep, strings.Join(problems, firstSep))
+	}
+
+	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
+	}
+	return getDiffsFromReleases(releases, prefix)
+}

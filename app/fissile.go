@@ -576,6 +576,11 @@ func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) e
 	if err != nil {
 		return err
 	}
+	f.reportHashDiffs(hashDiffs)
+	return nil
+}
+
+func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	if len(hashDiffs.DeletedKeys) > 0 {
 		f.ui.Println(color.RedString("Dropped keys:"))
 		f.ui.Printf("  %s\n", strings.Join(hashDiffs.DeletedKeys, "\n  "))
@@ -590,7 +595,6 @@ func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) e
 			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
 		}
 	}
-	return nil
 }
 
 // GetDiffConfigurationBases calcs the difference in configs and returns a hash
@@ -599,20 +603,24 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, prefix string
 	if len(releasePaths) != 2 {
 		return nil, fmt.Errorf("configuration diff: expected two release paths, got %d", len(releasePaths))
 	}
-	releases := [2]*model.Release{}
+	releases := make([]*model.Release, 2)
 	for idx, releasePath := range releasePaths {
 		releases[idx], err = model.NewRelease(releasePath)
 		if err != nil {
 			return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath, err.Error())
 		}
 	}
+	return getDiffsFromReleases(releases, prefix)
+}
+
+func getDiffsFromReleases(releases []*model.Release, prefix string) (*HashDiffs, error) {
 	hashes := [2]keyHash{keyHash{}, keyHash{}}
 	for idx, release := range releases {
 		configs := release.GetUniqueConfigs()
 		for _, config := range configs {
 			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore, prefix)
 			if err != nil {
-				return nil, fmt.Errorf("Error getting config %s for release path %s: %s", config.Name, releasePaths[idx], err.Error())
+				return nil, fmt.Errorf("Error getting config %s for release %s: %s", config.Name, release.Name, err.Error())
 			}
 			hashes[idx][key] = config.Description
 		}
