@@ -18,8 +18,8 @@ const (
 )
 
 type jsonConfigWriterProvider struct {
-	opinions  *opinions
-	allParams map[string]interface{}
+	opinions *opinions
+	allProps map[string]interface{}
 }
 
 type errConfigNotExist struct {
@@ -32,10 +32,10 @@ func newErrorConfigNotExist(key string) error {
 	}
 }
 
-func newJSONConfigWriterProvider(opinions *opinions, allParams map[string]interface{}) (*jsonConfigWriterProvider, error) {
+func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]interface{}) (*jsonConfigWriterProvider, error) {
 	return &jsonConfigWriterProvider{
-		opinions:  opinions,
-		allParams: allParams,
+		opinions: opinions,
+		allProps: allProps,
 	}, nil
 }
 
@@ -68,11 +68,11 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 				return err
 			}
 
-			params, err := getParamsForJob(job, w.allParams, w.opinions)
+			properties, err := getPropertiesForJob(job, w.allProps, w.opinions)
 			if err != nil {
 				return err
 			}
-			config["parameters"] = params
+			config["properties"] = properties
 
 			// Write out the configuration
 			jobPath := filepath.Join(outputPath, role.Name, job.Name+jobConfigFileExtension)
@@ -89,16 +89,16 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 	return nil
 }
 
-// getParamsForJob returns the parameters for the give job, using its specs and opinions
-func getParamsForJob(job *model.Job, allParams map[string]interface{}, opinions *opinions) (map[string]interface{}, error) {
-	params, err := deepCopy(allParams)
+// getPropertiesForJob returns the parameters for the give job, using its specs and opinions
+func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinions *opinions) (map[string]interface{}, error) {
+	props, err := deepCopy(allProps)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get configs from the specs
 	for _, property := range job.Properties {
-		if err := insertConfig(params, property.Name, property.Default); err != nil {
+		if err := insertConfig(props, property.Name, property.Default); err != nil {
 			return nil, err
 		}
 	}
@@ -111,11 +111,11 @@ func getParamsForJob(job *model.Job, allParams map[string]interface{}, opinions 
 		}
 		masked, value := opinions.GetOpinionForKey(keyPieces)
 		if masked {
-			if err = deleteConfig(params, uniqueConfig.Name); err != nil {
+			if err = deleteConfig(props, uniqueConfig.Name); err != nil {
 				if _, ok := err.(*errConfigNotExist); ok {
 					// Some keys, like uaa.client.*, only have the top level :|
 					topLevelKey := strings.SplitN(uniqueConfig.Name, ".", 2)[0]
-					if _, ok = params[topLevelKey]; !ok {
+					if _, ok = props[topLevelKey]; !ok {
 						// If the top level key is missing too, it's a hard error
 						return nil, err
 					}
@@ -128,11 +128,11 @@ func getParamsForJob(job *model.Job, allParams map[string]interface{}, opinions 
 		if value == nil {
 			continue
 		}
-		if err := insertConfig(params, uniqueConfig.Name, value); err != nil {
+		if err := insertConfig(props, uniqueConfig.Name, value); err != nil {
 			return nil, err
 		}
 	}
-	return params, nil
+	return props, nil
 }
 
 // initializeConfigJSON returns the scaffolding for the BOSH-style JSON structure
@@ -143,6 +143,7 @@ func initializeConfigJSON() (map[string]interface{}, error) {
 			"templates": []
 		},
 		"parameters": {},
+		"properties": {},
 		"networks": {
 			"default": {}
 		}

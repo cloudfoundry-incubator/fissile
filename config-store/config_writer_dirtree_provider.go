@@ -16,14 +16,12 @@ const (
 
 type dirTreeConfigWriterProvider struct {
 	opinions   *opinions
-	allParams  map[string]interface{}
 	outputPath string
 }
 
-func newDirTreeConfigWriterProvider(opinions *opinions, allParams map[string]interface{}) (*dirTreeConfigWriterProvider, error) {
+func newDirTreeConfigWriterProvider(opinions *opinions, allProps map[string]interface{}) (*dirTreeConfigWriterProvider, error) {
 	return &dirTreeConfigWriterProvider{
-		opinions:  opinions,
-		allParams: allParams,
+		opinions: opinions,
 	}, nil
 }
 
