@@ -251,3 +251,4 @@ It is important to note the following:
 > BOSH allows you to group your jobs into roles on-the-fly, allowing the flexibility to have a different set of configs for each new role that you create. This ability is currently used only when deploying on multiple availability zones, and you need some config values to be different for each of them (e.g. the metron agent zone).
 > The approach HCF should take for this scenario (multiple AZs) is TBD
 
+LOL
