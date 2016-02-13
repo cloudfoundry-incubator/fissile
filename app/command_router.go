@@ -10,7 +10,7 @@ import (
 // CommandRouter will dispatch CLI commands to their relevant functions
 func (f *Fissile) CommandRouter(c *cli.Context) {
 	var paths map[string]string
-	var releasePaths, releaseNames, releaseVersions []string
+	var releasePaths []string
 	var err error
 	switch c.Command.FullName() {
 	case "dev jobs-report",
@@ -50,12 +50,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 				f.cmdErr = err
 				return
 			}
-			releaseNames, err = absolutePathsForArray(c.StringSlice("release-name"))
-			if err != nil {
-				f.cmdErr = err
-				return
-			}
-			releaseVersions, err = absolutePathsForArray(c.StringSlice("release-version"))
+			paths, err = absolutePathsForFlags(c, "cache-dir")
 			if err != nil {
 				f.cmdErr = err
 				return
@@ -250,8 +245,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		}
 		err = f.DiffDevConfigurationBases(
 			releasePaths,
-			releaseNames,
-			releaseVersions,
 			paths["cache-dir"],
 			c.String("prefix"),
 		)

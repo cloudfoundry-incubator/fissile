@@ -275,8 +275,8 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 }
 
 // DiffDevConfigurationBases generates a diff comparing the specs for two different BOSH releases
-func (f *Fissile) DiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions []string, cacheDir, prefix string) error {
-	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions, cacheDir, prefix)
+func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) error {
+	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, cacheDir, prefix)
 	if err != nil {
 		return err
 	}
@@ -285,17 +285,11 @@ func (f *Fissile) DiffDevConfigurationBases(releasePaths, releaseNames, releaseV
 }
 
 // GetDiffDevConfigurationBases calcs the difference in configs and returns a hash
-func (f *Fissile) GetDiffDevConfigurationBases(releasePaths, releaseNames, releaseVersions []string, cacheDir, prefix string) (*HashDiffs, error) {
+func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) (*HashDiffs, error) {
 	var err error
 	var problems []string
 	if len(releasePaths) != 2 {
 		problems = append(problems, fmt.Sprintf("expected two release paths, got %d", len(releasePaths)))
-	}
-	if len(releaseNames) != 2 {
-		problems = append(problems, fmt.Sprintf("expected two release names, got %d", len(releaseNames)))
-	}
-	if len(releaseVersions) != 2 {
-		problems = append(problems, fmt.Sprintf("expected two release versions, got %d", len(releaseVersions)))
 	}
 	if len(problems) > 0 {
 		var s, firstSep string
@@ -308,7 +302,8 @@ func (f *Fissile) GetDiffDevConfigurationBases(releasePaths, releaseNames, relea
 		return nil, fmt.Errorf("dev config diff: error%s:%s%s", s, firstSep, strings.Join(problems, firstSep))
 	}
 
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
+	defaultValues := []string{}
+	releases, err := loadDevReleases(releasePaths, defaultValues, defaultValues, cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}

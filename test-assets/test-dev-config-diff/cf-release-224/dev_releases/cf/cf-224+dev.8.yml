@@ -1,0 +1,108 @@
+---
+packages:
+- name: acceptance-tests
+  version: !binary |-
+    ZmIyMDBiYmRhNDFiYzg4YmFmOGMxZDdmMzMxMTRlYzRhOTMwOTk4MA==
+  fingerprint: !binary |-
+    ZmIyMDBiYmRhNDFiYzg4YmFmOGMxZDdmMzMxMTRlYzRhOTMwOTk4MA==
+  sha1: !binary |-
+    NmVmY2M3MGU0NWE2NTVlZDU2ZDk2OTQxODBlMmZmNmNlMjRlMmI2OQ==
+  dependencies:
+  - cli
+  - golang1.4
+  - rtr
+
+- name: cli
+  version: !binary |-
+    NmZiNTJjNTc4YWFkNTIzYmEzYzc4YmMzNTAzMTNkNGFhNGRiN2RhOQ==
+  fingerprint: !binary |-
+    NmZiNTJjNTc4YWFkNTIzYmEzYzc4YmMzNTAzMTNkNGFhNGRiN2RhOQ==
+  sha1: 1b1356cac95a32d875c58a8835c55d29f5fa20c6
+  dependencies: []
+
+- name: cloud_controller_ng
+  version: !binary |-
+    N2NhNzlhYmVkZWUyMTlmNWM3OTQxNTNkZTkwZDFkMmM0MjM1ZDE0NA==
+  fingerprint: !binary |-
+    N2NhNzlhYmVkZWUyMTlmNWM3OTQxNTNkZTkwZDFkMmM0MjM1ZDE0NA==
+  sha1: 24aa17003c58d76d385e852b77f16c979e8adfc1
+  dependencies:
+  - libpq
+  - mysqlclient-5.5
+  - ruby-2.2.3
+
+- name: golang1.4
+  version: !binary |-
+    NzE0Njk4YmMzNTJkMmExZGJlMzIxMzc2ZjA2NzYwMzc1NjgxNDdiYg==
+  fingerprint: !binary |-
+    NzE0Njk4YmMzNTJkMmExZGJlMzIxMzc2ZjA2NzYwMzc1NjgxNDdiYg==
+  sha1: aa1df24b3fae3d49cdbccb0e8bee1fa38e53b8b0
+  dependencies: []
+
+- name: libpq
+  version: !binary |-
+    ZTkzODNkYTQ1MTQzNGJlZDE4MzgyNGEyODY5MzI2ODU5NmY3YTU3OA==
+  fingerprint: !binary |-
+    ZTkzODNkYTQ1MTQzNGJlZDE4MzgyNGEyODY5MzI2ODU5NmY3YTU3OA==
+  sha1: 8e53112afcc570db64471b4fc89c971751fcb73f
+  dependencies: []
+
+- name: mysqlclient-5.5
+  version: !binary |-
+    Yzk3YmU2ODQ2MzAyYWM2N2Q4YWQ1NGVmMDhkZTRmNzQxZjgyNTNlYQ==
+  fingerprint: !binary |-
+    Yzk3YmU2ODQ2MzAyYWM2N2Q4YWQ1NGVmMDhkZTRmNzQxZjgyNTNlYQ==
+  sha1: 66a48e521494d298615f8780beec0132be1e0466
+  dependencies: []
+
+- name: rtr
+  version: !binary |-
+    MmQ3ZGU0ZjZmYzI1OTM4YzIxYzViZTg3MTc0Zjk1NTgzZmViMTRiNQ==
+  fingerprint: !binary |-
+    MmQ3ZGU0ZjZmYzI1OTM4YzIxYzViZTg3MTc0Zjk1NTgzZmViMTRiNQ==
+  sha1: e5f2a064fc455b5901082eaec4bd071a7631de86
+  dependencies: []
+
+- name: ruby-2.1.7
+  version: !binary |-
+    Yzk3NzAyNmI5NjdlYWI2ZmFkMmIwM2E4MjBkY2E2Zjg0YTkwMGY5Mg==
+  fingerprint: !binary |-
+    Yzk3NzAyNmI5NjdlYWI2ZmFkMmIwM2E4MjBkY2E2Zjg0YTkwMGY5Mg==
+  sha1: e426fcf4dae07152df4ea717d8e90a1dff5172de
+  dependencies: []
+
+- name: ruby-2.2.3
+  version: !binary |-
+    YjEzMjBlMTFjN2FkOTk3YTY4MTAzMDQyZDNkMWMzODI3MDMwOTM4Nw==
+  fingerprint: !binary |-
+    YjEzMjBlMTFjN2FkOTk3YTY4MTAzMDQyZDNkMWMzODI3MDMwOTM4Nw==
+  sha1: 947fcd0a34bea8447b6363115976529d2515c0a2
+  dependencies: []
+
+jobs:
+
+- name: acceptance-tests
+  version: !binary |-
+    ZDIxODJkODIxNTI3ZjliNTlhNjViODZlZWJkYWFlZDQzNjJkMWVjNA==
+  fingerprint: !binary |-
+    ZDIxODJkODIxNTI3ZjliNTlhNjViODZlZWJkYWFlZDQzNjJkMWVjNA==
+  sha1: 003ae39d789042b2996e98cef234d383fdefcebb
+
+- name: cloud_controller_ng
+  version: !binary |-
+    NmE3OWY3Yjk1MzBkMWRlZmEwNDIyM2Q0MjcwYWQ2YzdkOTA3YzVhMg==
+  fingerprint: !binary |-
+    NmE3OWY3Yjk1MzBkMWRlZmEwNDIyM2Q0MjcwYWQ2YzdkOTA3YzVhMg==
+  sha1: f29061732ee95c91481620dcea400080535a67ab
+
+license:
+  version: !binary |-
+    ODYxZDgyYzBkOTc0NTc4NGFjZmNkMDI2Y2NmNDRlOTQyNTc5ODI0YQ==
+  fingerprint: !binary |-
+    ODYxZDgyYzBkOTc0NTc4NGFjZmNkMDI2Y2NmNDRlOTQyNTc5ODI0YQ==
+  sha1: !binary |-
+    NWM5MDg2ZmU5YWMwM2Y4M2FhZTUzMzg4OTk1ODI2OWU3ZWFjZmNkZA==
+commit_hash: 55e40e21
+uncommitted_changes: false
+name: cf
+version: 224+dev.8

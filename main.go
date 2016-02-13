@@ -460,8 +460,6 @@ func main() {
 					Aliases: []string{"cd"},
 					Flags: []cli.Flag{
 						releasesFlag,
-						releaseNameFlag,
-						releaseVersionFlag,
 						cacheDirFlag,
 						prefixFlag,
 					},

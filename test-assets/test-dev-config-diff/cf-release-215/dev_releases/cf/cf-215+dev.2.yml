@@ -1,0 +1,127 @@
+---
+packages:
+
+- name: acceptance-tests
+  version: !binary |-
+    MzVjZWVmNWU5N2Q2MTJlNzkxOTU5Zjg1MzE1YTE0MWI4YWMzNTc2Yw==
+  fingerprint: !binary |-
+    MzVjZWVmNWU5N2Q2MTJlNzkxOTU5Zjg1MzE1YTE0MWI4YWMzNTc2Yw==
+  sha1: 05e42a74b6ec1cb9ed7794d11931514e2c1571bf
+  dependencies:
+  - cli
+  - golang1.4
+  - rtr
+
+- name: cli
+  version: !binary |-
+    NmZiNTJjNTc4YWFkNTIzYmEzYzc4YmMzNTAzMTNkNGFhNGRiN2RhOQ==
+  fingerprint: !binary |-
+    NmZiNTJjNTc4YWFkNTIzYmEzYzc4YmMzNTAzMTNkNGFhNGRiN2RhOQ==
+  sha1: 1b1356cac95a32d875c58a8835c55d29f5fa20c6
+  dependencies: []
+
+- name: common
+  version: !binary |-
+    ZTQwMTgxNmE0NzQ4MjkyMTYzNjc5ZmFmY2JkOGY4MThlZDgxNTRhNQ==
+  fingerprint: !binary |-
+    ZTQwMTgxNmE0NzQ4MjkyMTYzNjc5ZmFmY2JkOGY4MThlZDgxNTRhNQ==
+  sha1: 3b9d31a4adfa8b2f252364bcddb091444e95fef4
+  dependencies: []
+
+- name: cloud_controller_ng
+  version: !binary |-
+    ZTBjNDA2YWUwNDkxNDA5Njk1MjY4Njc2MTk3MmMxMDQyZDlkMGYyYw==
+  fingerprint: !binary |-
+    ZTBjNDA2YWUwNDkxNDA5Njk1MjY4Njc2MTk3MmMxMDQyZDlkMGYyYw==
+  sha1: 935efa059ee4ba3469bbd565db19f67ddf2e23d3
+  dependencies:
+  - libpq
+  - mysqlclient
+  - ruby-2.1.6
+
+- name: golang1.4
+  version: !binary |-
+    ZjU3ZGRiYzhkNTVkN2EwZjA4Nzc1YmY3NmJiNmEyN2RjOThjN2VhNw==
+  fingerprint: !binary |-
+    ZjU3ZGRiYzhkNTVkN2EwZjA4Nzc1YmY3NmJiNmEyN2RjOThjN2VhNw==
+  sha1: !binary |-
+    YzAzZGIyZGIyY2VmYzlkOWM1MGMzYjY1NTA4MTUwNTlmZWJmZjBjMA==
+  dependencies: []
+
+- name: libpq
+  version: !binary |-
+    ZTkzODNkYTQ1MTQzNGJlZDE4MzgyNGEyODY5MzI2ODU5NmY3YTU3OA==
+  fingerprint: !binary |-
+    ZTkzODNkYTQ1MTQzNGJlZDE4MzgyNGEyODY5MzI2ODU5NmY3YTU3OA==
+  sha1: 8e53112afcc570db64471b4fc89c971751fcb73f
+  dependencies: []
+
+- name: mysqlclient
+  version: !binary |-
+    OGI1ZDljZTI4NzM0MTA0ODM3Nzk5N2E5YjNmZTRmZjNlNmExYzY4Zg==
+  fingerprint: !binary |-
+    OGI1ZDljZTI4NzM0MTA0ODM3Nzk5N2E5YjNmZTRmZjNlNmExYzY4Zg==
+  sha1: !binary |-
+    NzU5NmMxYTVmYTdkNzBmNGI0YTliMzQ0Zjc3YTliYzIyN2VhYTdlZg==
+  dependencies: []
+
+- name: nginx_newrelic_plugin
+  version: !binary |-
+    ZGE0MDNlN2E4NTFhYjMzMzcwYmE3OWJjZDZhZTEzNWRiOWY5ZTdmNg==
+  fingerprint: !binary |-
+    ZGE0MDNlN2E4NTFhYjMzMzcwYmE3OWJjZDZhZTEzNWRiOWY5ZTdmNg==
+  sha1: 7320db013ce7ec3f5b1109c30b9edf237d8551b0
+  dependencies:
+  - ruby-2.1.6
+
+- name: nginx
+  version: !binary |-
+    NzlmNjA4N2NmZWVjMjJmMTZmOTE4MmI0MmQwYTY2OTdmNzM2MGMyMg==
+  fingerprint: !binary |-
+    NzlmNjA4N2NmZWVjMjJmMTZmOTE4MmI0MmQwYTY2OTdmNzM2MGMyMg==
+  sha1: 9fe079f6ff55e597b884a49c160c1ec882cf95ba
+  dependencies: []
+
+- name: rtr
+  version: !binary |-
+    Y2VlYWRhNWQxNTJlNmZjMjUxMzE5MDQxN2E5MWNmZmZjOTdmNzUzZQ==
+  fingerprint: !binary |-
+    Y2VlYWRhNWQxNTJlNmZjMjUxMzE5MDQxN2E5MWNmZmZjOTdmNzUzZQ==
+  sha1: 4dda8b564ab15ec29cf1a9f1a01f4cd6bb6cf8f1
+  dependencies: []
+
+- name: ruby-2.1.6
+  version: !binary |-
+    ZDE5OGJmYTk3NmNmODc3MTBiMGJmYzM5OTM1MTc1Y2YwZWE3NzczZg==
+  fingerprint: !binary |-
+    ZDE5OGJmYTk3NmNmODc3MTBiMGJmYzM5OTM1MTc1Y2YwZWE3NzczZg==
+  sha1: 7cec01fc467c55bc2c4677e117eef0bb87bbe295
+  dependencies: []
+
+jobs:
+
+- name: acceptance-tests
+  version: !binary |-
+    ZDRlNWJlNGY5ZWZmZTM5MTY4ZTQ0YzIyNDBlZGNhODM3OTYzNjIyYg==
+  fingerprint: !binary |-
+    ZDRlNWJlNGY5ZWZmZTM5MTY4ZTQ0YzIyNDBlZGNhODM3OTYzNjIyYg==
+  sha1: ac162a0b8330877dfd05ff68b9bac0ddaed097ed
+
+- name: cloud_controller_ng
+  version: !binary |-
+    NWQ2YTliNTkyZjZmOGYzZGMxNmJjNDRiZmRjMjg3YzAyNmExMDk5ZA==
+  fingerprint: !binary |-
+    NWQ2YTliNTkyZjZmOGYzZGMxNmJjNDRiZmRjMjg3YzAyNmExMDk5ZA==
+  sha1: fda9fdd55af282a9f8324663294c32967bf2e188
+
+license:
+  version: !binary |-
+    ODYxZDgyYzBkOTc0NTc4NGFjZmNkMDI2Y2NmNDRlOTQyNTc5ODI0YQ==
+  fingerprint: !binary |-
+    ODYxZDgyYzBkOTc0NTc4NGFjZmNkMDI2Y2NmNDRlOTQyNTc5ODI0YQ==
+  sha1: !binary |-
+    NWM5MDg2ZmU5YWMwM2Y4M2FhZTUzMzg4OTk1ODI2OWU3ZWFjZmNkZA==
+commit_hash: 5fa14702
+uncommitted_changes: true
+name: cf
+version: 215+dev.2
