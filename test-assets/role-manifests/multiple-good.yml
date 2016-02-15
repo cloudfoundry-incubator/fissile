@@ -10,7 +10,7 @@ roles:
   - name: ntpd
     release_name: ntp
 - name: foorole
-  is_task: true
+  type: bosh-task
   jobs:
   - name: tor
     release_name: tor

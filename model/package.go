@@ -151,9 +151,5 @@ func (p *Package) loadLicenseFiles() (err error) {
 }
 
 func (p *Package) packageArchivePath() string {
-	if p.Release.Dev {
-		return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
-	}
-
-	return fmt.Sprintf("%s.tgz", filepath.Join(p.Release.packagesDirPath(), p.Name))
+	return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
 }

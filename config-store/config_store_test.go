@@ -28,15 +28,16 @@ func TestInvalidBaseConfigProvider(t *testing.T) {
 	lightOpinionsPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	darkOpinionsPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := model.NewRelease(releasePath)
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	confStore := NewConfigStoreBuilder("foo", "invalid-provider", lightOpinionsPath, darkOpinionsPath, outputPath)
+	confStore := NewConfigStoreBuilder("invalid-provider", lightOpinionsPath, darkOpinionsPath, outputPath)
 	err = confStore.WriteBaseConfig(rolesManifest)
 	assert.Error(err)
 	assert.Contains(err.Error(), "invalid-provider", "Incorrect error")
@@ -45,24 +46,29 @@ func TestInvalidBaseConfigProvider(t *testing.T) {
 func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 	assert := assert.New(t)
 
+	confStore := NewConfigStoreBuilder("", "", "", "")
+
 	boshKey := "this.is.a.bosh.key"
 
-	consulPath, err := BoshKeyToConsulPath(boshKey, DescriptionsStore, "foo")
+	consulPath, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
 
-	if assert.NoError(err) {
-		assert.Equal("/foo/descriptions/this/is/a/bosh/key", consulPath)
-	}
+	assert.NoError(err)
+
+	assert.Equal("/descriptions/this/is/a/bosh/key", consulPath)
+
 }
 
 func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 	assert := assert.New(t)
 
-	boshKey := ""
-	_, err := BoshKeyToConsulPath(boshKey, DescriptionsStore, "foo")
+	confStore := NewConfigStoreBuilder("", "", "", "")
 
-	if assert.Error(err) {
-		assert.Contains(err.Error(), "BOSH config key cannot be empty")
-	}
+	boshKey := ""
+
+	_, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
+
+	assert.Error(err)
+	assert.Contains(err.Error(), "BOSH config key cannot be empty")
 }
 
 // getKeys is a helper method to get all the keys in a nested JSON structure, as BOSH-style dot-separated names
@@ -91,8 +97,9 @@ func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := model.NewRelease(releasePath)
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
@@ -105,13 +112,6 @@ func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 	keys := getKeys(allProps)
 	sort.Strings(keys)
 	assert.Equal([]string{
-		"cc.app_events.cutoff_age_in_days",
-		"cc.droplets.droplet_directory_key",
-		"has.dark-opinion",
-		"has.opinion",
-		"test.property.name.array",
-		"test.property.name.key",
-		"test.property.name.number",
 		"tor.client_keys",
 		"tor.hashed_control_password",
 		"tor.hostname",

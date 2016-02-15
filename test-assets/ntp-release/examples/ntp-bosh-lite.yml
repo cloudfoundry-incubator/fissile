@@ -1,0 +1,70 @@
+---
+name: ntp-server
+director_uuid: PLACEHOLDER-DIRECTOR-UUID
+compilation:
+  cloud_properties:
+    ram: 2048
+    disk: 4096
+    cpu: 2
+  network: default
+  reuse_compilation_vms: true
+  workers: 1
+jobs:
+- instances: 1
+  name: ntpd
+  networks:
+  - default:
+    - dns
+    - gateway
+    name: default
+    static_ips:
+    - 10.244.0.66
+  persistent_disk: 16
+  resource_pool: ntp_pool
+  templates:
+  - { release: ntp, name: ntpd }
+  properties:
+    ntp_conf: |
+      # Our upstream timekeepers
+      # change 'us' to your countries two-letter domain
+      server 0.us.pool.ntp.org
+      server 1.us.pool.ntp.org
+      server 2.us.pool.ntp.org
+      # "Batten down the hatches!"
+      restrict default kod nomodify notrap nopeer noquery
+      restrict -6 default kod nomodify notrap nopeer noquery
+      restrict 127.0.0.0 mask 255.0.0.0
+      restrict -6 ::1
+networks:
+- name: default
+  subnets:
+  - range: 10.244.0.64/30
+    dns:
+      - 8.8.8.8
+    gateway: 10.244.0.65
+    static: [10.244.0.66]
+    cloud_properties: {}
+  - range: 10.244.0.68/30
+    dns:
+      - 8.8.8.8
+    gateway: 10.244.0.69
+    cloud_properties: {}
+releases:
+  - name: ntp
+    version: latest
+resource_pools:
+- cloud_properties:
+    ram: 2048
+    disk: 8192
+    cpu: 1
+  name: ntp_pool
+  network: default
+  stemcell:
+    name: bosh-warden-boshlite-centos-go_agent
+    version: latest
+update:
+  canaries: 1
+  canary_watch_time: 30000 - 600000
+  max_in_flight: 8
+  serial: false
+  update_watch_time: 30000 - 600000

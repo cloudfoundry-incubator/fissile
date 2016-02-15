@@ -103,24 +103,6 @@ func main() {
 		EnvVar: "FISSILE_WORK_DIR",
 	}
 
-	prefixFlag := cli.StringFlag{
-		Name:   "prefix, p",
-		Usage:  "Prefix to be used for all configuration keys.",
-		Value:  "hcf",
-		EnvVar: "FISSILE_CONFIG_PREFIX",
-	}
-	defaultConsulAddressFlag := cli.StringFlag{
-		Name:   "default-consul-address",
-		Usage:  "Default consul address that the container image will try to connect to when run, if not specified",
-		Value:  "http://127.0.0.1:8500",
-		EnvVar: "FISSILE_DEFAULT_CONSUL_ADDRESS",
-	}
-	defaultConfigStorePrefixFlag := cli.StringFlag{
-		Name:   "default-config-store-prefix",
-		Usage:  "Default configuration store prefix that is used by the container, if not specified",
-		Value:  "hcf",
-		EnvVar: "FISSILE_DEFAULT_CONFIG_STORE_PREFIX",
-	}
 	lightOpinionsFlag := cli.StringFlag{
 		Name:   "light-opinions, l",
 		Usage:  "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
@@ -183,39 +165,6 @@ func main() {
 
 	cliApp.Commands = []cli.Command{
 		{
-			Name:    "release",
-			Aliases: []string{"rel"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "jobs-report",
-					Aliases: []string{"jr"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all jobs in a BOSH release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "packages-report",
-					Aliases: []string{"pr"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all packages in a BOSH release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "verify",
-					Aliases: []string{"v"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "Verify that the release is intact.",
-					Action: fissile.CommandRouter,
-				},
-			},
-		},
-		{
 			Name:    "compilation",
 			Aliases: []string{"comp"},
 			Subcommands: []cli.Command{
@@ -258,60 +207,6 @@ func main() {
 			},
 		},
 		{
-			Name:    "configuration",
-			Aliases: []string{"conf"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "report",
-					Aliases: []string{"rep"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all configurations for all jobs in a release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "generate",
-					Aliases: []string{"gen"},
-					Flags: []cli.Flag{
-						releasesFlag,
-						lightOpinionsFlag,
-						darkOpinionsFlag,
-						rolesManifestFlag,
-						workdirFlag,
-						prefixFlag,
-						providerFlag,
-					},
-					Usage:  "Generates a configuration base that can be loaded into something like consul",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name: "diff",
-					Flags: []cli.Flag{
-						releasesFlag,
-						prefixFlag,
-					},
-					Usage:  "Shows the diffs between configs of two releases",
-					Action: fissile.CommandRouter,
-				},
-			},
-		},
-		{
-			Name:    "templates",
-			Aliases: []string{"tmpl"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "report",
-					Aliases: []string{"rep"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "Print all templates for all jobs in a release",
-					Action: fissile.CommandRouter,
-				},
-			},
-		},
-		{
 			Name:    "images",
 			Aliases: []string{"img"},
 			Subcommands: []cli.Command{
@@ -341,26 +236,10 @@ func main() {
 						repositoryFlag,
 						releasesFlag,
 						rolesManifestFlag,
-						defaultConsulAddressFlag,
-						defaultConfigStorePrefixFlag,
 						versionFlag,
 						workersBFlag,
 					},
 					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest.",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "list-roles",
-					Aliases: []string{"lr"},
-					Flags: []cli.Flag{
-						repositoryFlag,
-						releasesFlag,
-						rolesManifestFlag,
-						versionFlag,
-						dockerOnlyFlag,
-						withSizesFlag,
-					},
-					Usage:  "Lists role images.",
 					Action: fissile.CommandRouter,
 				},
 			},
@@ -409,8 +288,6 @@ func main() {
 						cacheDirFlag,
 						repositoryFlag,
 						rolesManifestFlag,
-						defaultConsulAddressFlag,
-						defaultConfigStorePrefixFlag,
 						noBuildFlag,
 						cli.BoolFlag{
 							Name:   "force, f",
@@ -449,21 +326,20 @@ func main() {
 						workdirFlag,
 						lightOpinionsFlag,
 						darkOpinionsFlag,
-						prefixFlag,
 						providerFlag,
 					},
-					Usage:  "Generates a configuration base that can be loaded into something like consul.",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "config-diff",
-					Aliases: []string{"cd"},
-					Flags: []cli.Flag{
-						releasesFlag,
-						cacheDirFlag,
-						prefixFlag,
+					{
+						Name:    "config-diff",
+						Aliases: []string{"cd"},
+						Flags: []cli.Flag{
+							releasesFlag,
+							cacheDirFlag,
+							prefixFlag,
+						},
+						Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
+						Action: fissile.CommandRouter,
 					},
-					Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
+					Usage:  "Generates a configuration base.",
 					Action: fissile.CommandRouter,
 				},
 			},

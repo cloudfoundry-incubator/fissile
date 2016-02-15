@@ -1,0 +1,7 @@
+---
+name: foo
+
+dependencies:
+
+files:
+- foo/*.txt

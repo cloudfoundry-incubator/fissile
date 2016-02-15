@@ -1,0 +1,8 @@
+---
+name: bar
+
+dependencies:
+- foo
+
+files:
+- bar/*.txt

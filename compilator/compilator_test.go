@@ -163,7 +163,8 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer
 	workDir, err := os.Getwd()
 
 	releasePath := filepath.Join(workDir, "../test-assets/corrupt-releases/corrupt-package")
-	release, err := model.NewRelease(releasePath)
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.Nil(err)
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
@@ -268,8 +269,9 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
@@ -301,8 +303,9 @@ func TestGetPackageStatusNone(t *testing.T) {
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
@@ -327,8 +330,9 @@ func TestPackageFolderStructure(t *testing.T) {
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
@@ -357,8 +361,9 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := model.NewRelease(ntpReleasePath)
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	assert.Nil(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
@@ -401,8 +406,9 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 	assert.Nil(err)
 
 	workDir, err := os.Getwd()
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := model.NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
