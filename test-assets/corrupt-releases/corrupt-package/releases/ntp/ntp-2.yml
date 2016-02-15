@@ -1,0 +1,20 @@
+---
+packages:
+- name: ntp-4.2.8p2
+  version: 543219fbdaf6ec6f8af2956016055f2fb100d782
+  fingerprint: 543219fbdaf6ec6f8af2956016055f2fb100d782
+  sha1: e42db26038a42994b0255939d0d046ca58071a45
+  dependencies: []
+jobs:
+- name: ntpd
+  version: 80450dd04a4b0248b67ab4a8cc1f8b2cfb4deea5
+  fingerprint: 80450dd04a4b0248b67ab4a8cc1f8b2cfb4deea5
+  sha1: b47366e160f9d139c8ce8bef4a8fef1f72e0f151
+license:
+  version: 596316b93cdeded339f835660a5b50eac2ecc57a
+  fingerprint: 596316b93cdeded339f835660a5b50eac2ecc57a
+  sha1: 1bed533e3817f9789a6a63050139e03e39154af1
+commit_hash: bbece039
+uncommitted_changes: false
+name: ntp
+version: '2'
