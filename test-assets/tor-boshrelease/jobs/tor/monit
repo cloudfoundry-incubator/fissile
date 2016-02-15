@@ -1,0 +1,5 @@
+check process tor
+  with pidfile /var/vcap/sys/run/tor/tor.pid
+  start program "/var/vcap/jobs/tor/bin/monit_debugger tor_ctl '/var/vcap/jobs/tor/bin/tor_ctl start'"
+  stop program "/var/vcap/jobs/tor/bin/monit_debugger tor_ctl '/var/vcap/jobs/tor/bin/tor_ctl stop'"
+  group vcap

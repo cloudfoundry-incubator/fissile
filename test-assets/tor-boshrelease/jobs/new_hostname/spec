@@ -1,0 +1,10 @@
+---
+name: new_hostname
+packages:
+- libevent
+- tor
+templates:
+  bin/run: bin/run
+  helpers/ctl_setup.sh: helpers/ctl_setup.sh
+  helpers/ctl_utils.sh: helpers/ctl_utils.sh
+  config/torrc.erb: config/torrc

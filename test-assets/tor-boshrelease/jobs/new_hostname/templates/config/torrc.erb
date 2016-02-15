@@ -1,0 +1,31 @@
+## Send all messages of level 'notice' or higher to @LOCALSTATEDIR@/log/tor/notices.log
+Log notice file /var/vcap/sys/log/new_hostname/notices.log
+## Send every possible message to @LOCALSTATEDIR@/log/tor/debug.log
+#Log debug file /var/vcap/sys/log/new_hostname/debug.log
+## Use the system log instead of Tor's logfiles
+#Log notice syslog
+## To send all messages to stderr:
+#Log debug stderr
+
+## Uncomment this to start the process in the background... or use
+## --runasdaemon 1 on the command line. This is ignored on Windows;
+## see the FAQ entry if you want Tor to run as an NT service.
+RunAsDaemon 1
+PidFile /var/vcap/sys/run/new_hostname/new_hostname.pid
+
+## The directory for keeping all the keys/etc. By default, we store
+## things in $HOME/.tor on Unix, and in Application Data\tor on Windows.
+DataDirectory /var/vcap/sys/run/new_hostname/data
+
+############### This section is just for location-hidden services ###
+
+## Once you have configured a hidden service, you can look at the
+## contents of the file ".../hidden_service/hostname" for the address
+## to tell people.
+##
+## HiddenServicePort x y:z says to redirect requests on port x to the
+## address y:z.
+
+HiddenServiceDir /var/vcap/sys/run/tor_hidden_service/
+HiddenServicePort 80 127.0.0.1:80
+HiddenServicePort 433 127.0.0.1:433

@@ -1,0 +1,34 @@
+meta:
+  environment: ~
+
+update:
+  canaries: 1
+  max_in_flight: 50
+  canary_watch_time: 1000-30000
+  update_watch_time: 1000-30000
+  serial: false
+
+jobs:
+  - name: tor
+    templates:
+    - {name: tor, release: tor}
+    instances: 0
+    persistent_disk: 0
+    resource_pool: small_z1
+    networks: (( merge ))
+    properties:
+      tor:
+        hostname: ~
+        private_key: ~
+  - name: new_hostname
+    lifecycle: errand
+    templates:
+    - {name: new_hostname, release: tor}
+    instances: 1
+    persistent_disk: 0
+    resource_pool: small_z1
+    networks: (( jobs.tor.networks ))
+
+networks: (( merge ))
+
+properties: {}

@@ -1,0 +1,266 @@
+groups:
+- name: build
+  jobs:
+  - testflight
+  - rc
+  - shipit
+- name: version
+  jobs:
+  - patch
+  - minor
+  - major
+
+jobs:
+- name: testflight
+  public: true
+  serial: true
+  plan:
+  - do:
+    - aggregate:
+      - get: tor-boshrelease
+        resource: git-tor-boshrelease
+      - get: git-tor-boshrelease-release-changes
+        trigger: true
+    - task: create-release-and-deploy
+      config:
+        platform: linux
+        image: {{docker-hub-task-image}}
+        inputs:
+        - {name: tor-boshrelease, path: .}
+        run:
+          path: ./ci/scripts/create_release_and_deploy.sh
+          args: []
+        params:
+          bosh_target: {{bosh-lite-build-target}}
+          bosh_username: {{bosh-lite-build-username}}
+          bosh_password: {{bosh-lite-build-password}}
+          bosh_deployment_name: tor-warden
+      on_failure:
+        put: slack-devs
+        params:
+          text: <!here> testflight initial deployment failed http://ci.starkandwayne.com:8080/pipelines/tor-boshrelease
+          channel: {{slack-channel}}
+          username: concourse
+          icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    - task: new-hostname
+      config:
+        platform: linux
+        image: {{docker-hub-task-image}}
+        inputs:
+          - {name: create-release-and-deploy, path: .}
+        run:
+          path: ./ci/scripts/new_hostname_errand.sh
+          args: []
+        params:
+          bosh_target: {{bosh-lite-build-target}}
+          bosh_username: {{bosh-lite-build-username}}
+          bosh_password: {{bosh-lite-build-password}}
+      on_failure:
+        put: slack-devs
+        params:
+          text: <!here> testflight new-hostname errand failed http://ci.starkandwayne.com:8080/pipelines/tor-boshrelease
+          channel: {{slack-channel}}
+          username: concourse
+          icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    - task: deploy-and-run
+      config:
+        platform: linux
+        image: {{docker-hub-task-image}}
+        inputs:
+        - {name: tor-boshrelease, path: .}
+        run:
+          path: ./ci/scripts/run_tor.sh
+          args: []
+        params:
+          bosh_target: {{bosh-lite-build-target}}
+          bosh_username: {{bosh-lite-build-username}}
+          bosh_password: {{bosh-lite-build-password}}
+      on_failure:
+        put: slack-devs
+        params:
+          text: <!here> testflight deploy & run failed http://ci.starkandwayne.com:8080/pipelines/tor-boshrelease
+          channel: {{slack-channel}}
+          username: concourse
+          icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    # - task: bosh-run-errand-acceptance-tests
+    #   config:
+    #     platform: linux
+    #     image: {{docker-hub-task-image}}
+    #     inputs:
+    #       - {name: create-release-and-deploy, path: .}
+    #     run:
+    #       path: ./ci/scripts/acceptance_tests.sh
+    #       args: []
+    #     params:
+    #       bosh_target: {{bosh-lite-build-target}}
+    #       bosh_username: {{bosh-lite-build-username}}
+    #       bosh_password: {{bosh-lite-build-password}}
+    #   on_failure:
+    #     put: slack-devs
+    #     params:
+    #       text: <!here> acceptance tests failed http://ci.starkandwayne.com:8080/pipelines/tor-boshrelease (testflight job)
+    #       channel: {{slack-channel}}
+    #       username: concourse
+    #       icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    on_success:
+      put: slack-devs
+      params:
+        text: <!here> testflight success!
+        channel: {{slack-channel}}
+        username: concourse
+        icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
+- name: rc
+  public: true
+  plan:
+  - aggregate:
+    - get: boshrelease
+      resource: git-tor-boshrelease
+      passed: [testflight]
+      trigger: true
+    - get: version
+      trigger: false
+      params: {bump: patch, pre: rc}
+  - put: version
+    params: {file: version/number}
+
+- name: patch
+  public: true
+  plan:
+  - aggregate:
+    - get: version
+      trigger: false
+      params: {bump: patch}
+  - put: version
+    params: {file: version/number}
+
+- name: minor
+  public: true
+  plan:
+  - aggregate:
+    - get: version
+      trigger: false
+      params: {bump: minor}
+  - put: version
+    params: {file: version/number}
+
+- name: major
+  public: true
+  plan:
+  - aggregate:
+    - get: version
+      trigger: false
+      params: {bump: major}
+  - put: version
+    params: {file: version/number}
+
+- name: shipit
+  public: true
+  serial: true
+  plan:
+  - do:
+    - aggregate:
+      - get: version
+        passed: [rc]
+        params: {bump: final}
+      - get: boshrelease
+        resource: git-tor-boshrelease
+        passed: [rc]
+    - task: create-final-release
+      config:
+        platform: linux
+        image: {{docker-hub-task-image}}
+        inputs:
+        - {name: boshrelease, path: tor-boshrelease}
+        - {name: version}
+        run:
+          path: ./tor-boshrelease/ci/scripts/shipit.sh
+          args: []
+        params:
+          release_name: "Tor"
+          bosh_target: {{bosh-lite-build-target}}
+          bosh_username: {{bosh-lite-build-username}}
+          bosh_password: {{bosh-lite-build-password}}
+          bosh_deployment_name: {{bosh-lite-build-deployment-name}}
+          aws_access_key_id: {{pipeline-aws-access-key-id}}
+          aws_secret_access_key: {{pipeline-aws-secret-access-key}}
+          promotion_branch: master
+          ci_git_email: {{ci-git-email}}
+    - put: git-tor-boshrelease
+      params:
+        repository: create-final-release/tor-boshrelease
+        rebase: true
+    - aggregate:
+      - put: version
+        params: {file: version/number}
+      - put: final-release
+        params: {from: create-final-release/tor-boshrelease/releases/tor/tor-(.*).tgz}
+      - put: github-final-release
+        params:
+          name: create-final-release/tor-boshrelease/tmp/release_info/name
+          tag: create-final-release/tor-boshrelease/tmp/release_info/tag
+          body: create-final-release/tor-boshrelease/tmp/release_info/notes.md
+          globs: [create-final-release/tor-boshrelease/releases/tor/tor-*.tgz]
+    on_failure:
+      put: slack-devs
+      params:
+        text: <!here> shipit job failed http://ci.starkandwayne.com:8080/pipelines/tor-boshrelease
+        channel: {{slack-channel}}
+        username: concourse
+        icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+    on_success:
+      put: slack-devs
+      params:
+        text_file: create-final-release/tor-boshrelease/tmp/release_info/slack_success_message.txt
+        channel: {{slack-channel}}
+        username: concourse
+        icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+
+resources:
+- name: version
+  type: semver
+  source:
+    key: current-version
+    bucket: {{pipeline-aws-bucket}}
+    access_key_id: {{pipeline-aws-access-key-id}}
+    secret_access_key: {{pipeline-aws-secret-access-key}}
+    initial_version: 0.0.0
+
+- name: git-tor-boshrelease
+  type: git
+  source:
+    uri: git@github.com:cloudfoundry-community/tor-boshrelease.git
+    branch: master
+    private_key: {{github-private-key}}
+
+- name: git-tor-boshrelease-release-changes
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-community/tor-boshrelease.git
+    branch: master
+    paths:
+      - src/**/*
+      - jobs/**/*
+      - packages/**/*
+      - config/blobs.yml
+      - templates/**/*
+
+- name: github-final-release
+  type: github-release
+  source:
+    user: cloudfoundry-community
+    repository: tor-boshrelease
+    access_token: {{github-access-token}}
+
+- name: final-release
+  type: s3
+  source:
+    bucket: {{pipeline-aws-bucket}}
+    regexp: tor-(.*).tgz
+    access_key_id: {{pipeline-aws-access-key-id}}
+    secret_access_key: {{pipeline-aws-secret-access-key}}
+
+- name: slack-devs
+  type: slack-notification
+  source:
+    url: {{slack-devs-webhook}}

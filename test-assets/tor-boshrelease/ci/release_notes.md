@@ -1,0 +1,1 @@
+-	Includes tor 0.2.6.10 \[[changelog](https://gitweb.torproject.org/tor.git/plain/ReleaseNotes?id=tor-0.2.6.10)\]

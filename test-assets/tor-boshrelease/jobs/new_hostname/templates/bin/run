@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e # exit immediately if a simple command exits with a non-zero status
+set -u # report the usage of uninitialized variables
+
+# Setup env vars and folders for the webapp_ctl script
+source /var/vcap/jobs/new_hostname/helpers/ctl_setup.sh 'new_hostname'
+
+EXITSTATUS=0
+
+service_dir=/var/vcap/sys/run/tor_hidden_service
+mkdir -p ${service_dir}
+chown vcap:vcap ${service_dir}
+chmod 700 ${service_dir}
+
+chpst -u vcap:vcap tor -f $JOB_DIR/config/torrc
+
+sleep 10
+kill $(cat $PIDFILE)
+
+cd ${service_dir}
+tail -n 200 *
+
+echo "Errand new_hostname is complete; exit status $EXITSTATUS"
+exit $EXITSTATUS
