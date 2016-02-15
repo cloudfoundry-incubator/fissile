@@ -21,7 +21,7 @@ function run_configgin()
 	/opt/hcf/configgin/configgin \
 	--input-erb ${template_file} \
 	--output ${output_file} \
-	--base /var/vcap/jobs-src/${job-name}/config_spec.json \
+	--base /var/vcap/jobs-src/${job_name}/config_spec.json \
 	--env2conf /opt/hcf/env2conf.yml
 }
 
