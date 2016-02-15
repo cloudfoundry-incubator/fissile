@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
@@ -19,10 +20,12 @@ import (
 	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/termie/go-shutil"
+	"gopkg.in/yaml.v2"
 )
 
 const (
-	binPrefix = "bin"
+	binPrefix             = "bin"
+	jobConfigSpecFilename = "config_spec"
 )
 
 var (
@@ -37,32 +40,28 @@ type dockerImageBuilder interface {
 
 // RoleImageBuilder represents a builder of docker role images
 type RoleImageBuilder struct {
-	repository               string
-	compiledPackagesPath     string
-	targetPath               string
-	defaultConsulAddress     string
-	defaultConfigStorePrefix string
-	version                  string
-	fissileVersion           string
-	ui                       *termui.UI
+	repository           string
+	compiledPackagesPath string
+	targetPath           string
+	version              string
+	fissileVersion       string
+	ui                   *termui.UI
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, defaultConsulAddress, defaultConfigStorePrefix, version, fissileVersion string, ui *termui.UI) *RoleImageBuilder {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, fissileVersion string, ui *termui.UI) *RoleImageBuilder {
 	return &RoleImageBuilder{
-		repository:               repository,
-		compiledPackagesPath:     compiledPackagesPath,
-		targetPath:               targetPath,
-		defaultConsulAddress:     defaultConsulAddress,
-		defaultConfigStorePrefix: defaultConfigStorePrefix,
-		version:                  version,
-		fissileVersion:           fissileVersion,
-		ui:                       ui,
+		repository:           repository,
+		compiledPackagesPath: compiledPackagesPath,
+		targetPath:           targetPath,
+		version:              version,
+		fissileVersion:       fissileVersion,
+		ui:                   ui,
 	}
 }
 
 // CreateDockerfileDir generates a Dockerfile and assets in the targetDir and returns a path to the dir
-func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error) {
+func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir string) (string, error) {
 	if len(role.Jobs) == 0 {
 		return "", fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 	}
@@ -162,7 +161,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 		}
 	}
 
-	// Copy jobs templates and monit
+	// Copy jobs templates, spec configs and monit
 	jobsDir := filepath.Join(rootDir, "var/vcap/jobs-src")
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
 		return "", err
@@ -186,6 +185,25 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role) (string, error)
 				os.Chmod(templatePath, 0644)
 			}
 		}
+
+		// Copy spec configuration file
+		// from <JSON_SPEC_DIR>/<ROLE_NAME>/<JOB>.json
+		specConfigSource := filepath.Join(jsonSpecsDir, role.Name, job.Name+configstore.JobConfigFileExtension)
+		// into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
+		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename+configstore.JobConfigFileExtension)
+		if shutil.CopyFile(specConfigSource, specConfigDestination, true); err != nil {
+			return "", err
+		}
+	}
+
+	// Create env2conf templates file in /opt/hcf/env2conf.yml
+	configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
+	if err != nil {
+		return "", err
+	}
+	configTemplatesFilePath := filepath.Join(rootDir, "opt/hcf/env2conf.yml")
+	if err := ioutil.WriteFile(configTemplatesFilePath, configTemplatesBytes, 0644); err != nil {
+		return "", err
 	}
 
 	// Copy role startup scripts
@@ -236,8 +254,6 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 
 	runScriptTemplate := template.New("role-runscript")
 	context := map[string]interface{}{
-		"default_consul_address":      r.defaultConsulAddress,
-		"default_config_store_prefix": r.defaultConfigStorePrefix,
 		"role": role,
 	}
 	runScriptTemplate, err = runScriptTemplate.Parse(string(asset))
@@ -268,7 +284,6 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 		"image_version": r.version,
 		"role":          role,
 		"licenses":      role.Jobs[0].Release.License.Files,
-		"dev":           role.Jobs[0].Release.Dev,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
@@ -295,6 +310,7 @@ type roleBuildJob struct {
 	abort         <-chan struct{}
 	repository    string
 	version       string
+	configSpecDir string
 }
 
 func (j roleBuildJob) Run() {
@@ -306,7 +322,7 @@ func (j roleBuildJob) Run() {
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
-	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role)
+	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.configSpecDir)
 	if err != nil {
 		j.resultsCh <- fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
 		return
@@ -342,7 +358,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, version string, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, configSpecDir, version string, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -368,6 +384,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, vers
 			abort:         abort,
 			repository:    repository,
 			version:       version,
+			configSpecDir: configSpecDir,
 		})
 	}
 

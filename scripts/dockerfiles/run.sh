@@ -65,7 +65,7 @@ run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.
     "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
 # =====================================================
 {{ end }}
-{{ if not $role.IsTask }}
+{{ if not (eq $role.Type "bosh-task") }}
 # ============================================================================
 #         Monit templates for job {{ $job.Name }}
 # ============================================================================
@@ -75,7 +75,7 @@ run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.
 # =====================================================
 {{ end }}
 {{ end }}
-{{ if not .IsTask }}
+{{ if not (eq .Type "bosh-task") }}
 # Process monitrc.erb template
 run_configgin "$the_role_desc" "{{$role.Name}}" "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" "hcf-monit-master" \
     "/opt/hcf/monitrc.erb" \
@@ -105,7 +105,7 @@ bash /opt/hcf/startup/{{ $script }}
 
 # Run
 {{ with $role := index . "role" }}
-{{ if .IsTask }}
+{{ if eq .Type "bosh-task" }}
 {{ range $i, $job := .Jobs}}
 /var/vcap/jobs/{{ $job.Name }}/bin/run
 {{ end }}

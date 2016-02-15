@@ -15,7 +15,6 @@ import (
 func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, error) {
 	release := &Release{
 		Path:            path,
-		Dev:             true,
 		Name:            releaseName,
 		Version:         version,
 		DevBOSHCacheDir: boshCacheDir,
@@ -60,6 +59,14 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 	}
 
 	if err := release.loadJobs(); err != nil {
+		return nil, err
+	}
+
+	if err := release.loadLicense(); err != nil {
+		return nil, err
+	}
+
+	if err := release.loadPackageLicenses(); err != nil {
 		return nil, err
 	}
 

@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	jobConfigFileExtension = ".json"
-	jobConfigPrefix        = ""
-	jobConfigIndent        = "    "
+	JobConfigFileExtension = ".json"
+
+	jobConfigPrefix = ""
+	jobConfigIndent = "    "
 )
 
 type jsonConfigWriterProvider struct {
@@ -41,7 +42,7 @@ func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]interfa
 
 func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest, builder *Builder) error {
 
-	outputPath := filepath.Join(builder.targetLocation, builder.prefix)
+	outputPath := builder.targetLocation
 
 	if err := os.RemoveAll(outputPath); err != nil && err != os.ErrNotExist {
 		return err
@@ -75,7 +76,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 			config["properties"] = properties
 
 			// Write out the configuration
-			jobPath := filepath.Join(outputPath, role.Name, job.Name+jobConfigFileExtension)
+			jobPath := filepath.Join(outputPath, role.Name, job.Name+JobConfigFileExtension)
 			jobJSON, err := json.MarshalIndent(config, jobConfigPrefix, jobConfigIndent)
 			if err != nil {
 				return err
