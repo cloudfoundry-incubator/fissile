@@ -88,6 +88,13 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		role.calculateRoleConfigurationTemplates()
 	}
 
+	if rolesManifest.Configuration == nil {
+		rolesManifest.Configuration = &configuration{}
+	}
+	if rolesManifest.Configuration.Templates == nil {
+		rolesManifest.Configuration.Templates = map[string]string{}
+	}
+
 	return &rolesManifest, nil
 }
 
@@ -136,6 +143,11 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 		r.Configuration.Templates = map[string]string{}
 	}
 
-	// First create a base from the global variables
-	// Then set the role configs on top
+	roleConfigs := r.rolesManifest.Configuration.Templates
+
+	for k, v := range r.Configuration.Templates {
+		roleConfigs[k] = v
+	}
+
+	r.Configuration.Templates = roleConfigs
 }
