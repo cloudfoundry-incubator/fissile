@@ -98,7 +98,6 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/startup/myrole.sh")
 	assert.Contains(string(runScriptContents), "monit -vI")
-	assert.Contains(string(runScriptContents), "\"templates\":[{\"name\":\"new_hostname\"},{\"name\":\"tor\"}]")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
 	assert.Nil(err)
