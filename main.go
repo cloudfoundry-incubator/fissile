@@ -288,6 +288,8 @@ func main() {
 						cacheDirFlag,
 						repositoryFlag,
 						rolesManifestFlag,
+						lightOpinionsFlag,
+						darkOpinionsFlag,
 						noBuildFlag,
 						cli.BoolFlag{
 							Name:   "force, f",
