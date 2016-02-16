@@ -286,22 +286,9 @@ func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir, pre
 
 // GetDiffDevConfigurationBases calcs the difference in configs and returns a hash
 func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) (*HashDiffs, error) {
-	var err error
-	var problems []string
 	if len(releasePaths) != 2 {
-		problems = append(problems, fmt.Sprintf("expected two release paths, got %d", len(releasePaths)))
+		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
-	if len(problems) > 0 {
-		var s, firstSep string
-		if len(problems) > 1 {
-			s = "s"
-			firstSep = "\n  "
-		} else {
-			firstSep = " "
-		}
-		return nil, fmt.Errorf("dev config diff: error%s:%s%s", s, firstSep, strings.Join(problems, firstSep))
-	}
-
 	defaultValues := []string{}
 	releases, err := loadDevReleases(releasePaths, defaultValues, defaultValues, cacheDir)
 	if err != nil {
