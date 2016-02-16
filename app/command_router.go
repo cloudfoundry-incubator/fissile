@@ -10,7 +10,7 @@ import (
 // CommandRouter will dispatch CLI commands to their relevant functions
 func (f *Fissile) CommandRouter(c *cli.Context) {
 	var paths map[string]string
-	var releasePaths, lightOpinionDiffPaths, darkOpinionDiffPaths []string
+	var releasePaths []string
 	var err error
 	switch c.Command.FullName() {
 	case "dev jobs-report",
@@ -38,16 +38,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	case "configuration diff":
 		{
 			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
-			if err != nil {
-				f.cmdErr = err
-				return
-			}
-			lightOpinionDiffPaths, err = absolutePathsForArray(c.StringSlice("light-opinion-diffs"))
-			if err != nil {
-				f.cmdErr = err
-				return
-			}
-			darkOpinionDiffPaths, err = absolutePathsForArray(c.StringSlice("dark-opinion-diffs"))
 			if err != nil {
 				f.cmdErr = err
 				return
@@ -117,8 +107,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	case "configuration diff":
 		err = f.DiffConfigurationBases(
 			releasePaths,
-			lightOpinionDiffPaths,
-			darkOpinionDiffPaths,
 			c.String("prefix"),
 		)
 	case "images create-base":

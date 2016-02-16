@@ -131,18 +131,6 @@ func main() {
 		Usage:  "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
 		EnvVar: "FISSILE_DARK_OPINIONS",
 	}
-	lightOpinionDiffsFlag := cli.StringSliceFlag{
-		Name:   "light-opinion-diffs, lod",
-		Usage:  "Paths to BOSH deployment manifest files that contain properties to be used as defaults.",
-		Value:  &cli.StringSlice{},
-		EnvVar: "FISSILE_LIGHT_OPINION_DIFFS",
-	}
-	darkOpinionDiffsFlag := cli.StringSliceFlag{
-		Name:   "dark-opinion-diffs, dod",
-		Usage:  "Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
-		Value:  &cli.StringSlice{},
-		EnvVar: "FISSILE_DARK_OPINION_DIFFS",
-	}
 
 	// 2x workers
 
@@ -301,8 +289,6 @@ func main() {
 					Name: "diff",
 					Flags: []cli.Flag{
 						releasesFlag,
-						lightOpinionDiffsFlag,
-						darkOpinionDiffsFlag,
 						prefixFlag,
 					},
 					Usage:  "Shows the diffs between configs of two releases",

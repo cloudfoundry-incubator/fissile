@@ -191,7 +191,7 @@ func checkKeysInProperties(opinions, props map[string]interface{}, opinionName s
 }
 
 // DiffConfigurations calculates the differences in configs across two releases.
-func (c *Builder) DiffConfigurations(releasePath1, releasePath2, lightOpinionsPath2, darkOpinionsPath2 string) (*HashDiffs, error) {
+func (c *Builder) DiffConfigurations(releasePath1, releasePath2 string) (*HashDiffs, error) {
 	var err error
 	releases := [2]*model.Release{}
 	releases[0], err = model.NewRelease(releasePath1)
@@ -202,8 +202,6 @@ func (c *Builder) DiffConfigurations(releasePath1, releasePath2, lightOpinionsPa
 	if err != nil {
 		return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath2, err.Error())
 	}
-	lightOpinions := [2]string{c.lightOpinionsPath, lightOpinionsPath2}
-	darkOpinions := [2]string{c.darkOpinionsPath, darkOpinionsPath2}
 	hashes := [2]keyHash{keyHash{}, keyHash{}}
 	// hashes := [2]{map[string]string{}, map[string]string{}}
 	for idx, release := range releases {
@@ -227,30 +225,6 @@ func (c *Builder) DiffConfigurations(releasePath1, releasePath2, lightOpinionsPa
 				if err != nil {
 					return nil, err
 				}
-			}
-		}
-		// Get the opinions
-		opinions, err := newOpinions(lightOpinions[idx], darkOpinions[idx])
-		if err != nil {
-			return nil, err
-		}
-		for _, config := range configs {
-			keyPieces, err := getKeyGrams(config.Name)
-			if err != nil {
-				return nil, err
-			}
-
-			masked, value := opinions.GetOpinionForKey(keyPieces)
-			if masked || value == nil {
-				continue
-			}
-			key, err := BoshKeyToConsulPath(config.Name, OpinionsStore, c.prefix)
-			if err != nil {
-				return nil, err
-			}
-			hashes[idx][key], err = stringify(value)
-			if err != nil {
-				return nil, err
 			}
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/hpcloud/fissile/config-store"
@@ -123,32 +124,36 @@ func TestDiffConfigurations(t *testing.T) {
 	prefix := "hcf"
 	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
 	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
-	lightOpinionsPaths := [2]string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
-	darkOpinionsPaths := [2]string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
-	configStore := configstore.NewConfigStoreBuilder(prefix, "", lightOpinionsPaths[0], darkOpinionsPaths[0], "")
-	hashDiffs, err := configStore.DiffConfigurations(releasePath1, releasePath2, lightOpinionsPaths[1], darkOpinionsPaths[1])
+	configStore := configstore.NewConfigStoreBuilder(prefix, "", "", "", "")
+	hashDiffs, err := configStore.DiffConfigurations(releasePath1, releasePath2)
 
 	if !assert.Nil(err, "DiffConfigurations failed") {
 		return
 	}
-	assert.Equal(1, len(hashDiffs.AddedKeys))
-	assert.Equal("/hcf/opinions/nats/trace", hashDiffs.AddedKeys[0])
-	assert.Equal(1, len(hashDiffs.DeletedKeys))
-	assert.Equal("/hcf/opinions/nats/monitor_port", hashDiffs.DeletedKeys[0])
-	assert.Equal(2, len(hashDiffs.ChangedValues))
-	v, ok := hashDiffs.ChangedValues["/hcf/opinions/nats/port"]
-	assert.True(ok)
-	if ok {
-		assert.Equal("4222", v[0])
-		assert.Equal("beefalo", v[1])
+	if assert.Equal(2, len(hashDiffs.AddedKeys), fmt.Sprintf("Expected 2 added key, got %d: %s", len(hashDiffs.AddedKeys), hashDiffs.AddedKeys)) {
+		sort.Strings(hashDiffs.AddedKeys)
+		assert.Equal("/hcf/descriptions/nats/key_for_v222", hashDiffs.AddedKeys[0])
+		assert.Equal("/hcf/spec/cf/nats/nats/key_for_v222", hashDiffs.AddedKeys[1])
 	}
-	v, ok = hashDiffs.ChangedValues["/hcf/opinions/nats/kingcole"]
+	if assert.Equal(2, len(hashDiffs.DeletedKeys), fmt.Sprintf("Expected 2 dropped key, got %d: %s", len(hashDiffs.DeletedKeys), hashDiffs.DeletedKeys)) {
+		sort.Strings(hashDiffs.DeletedKeys)
+		assert.Equal("/hcf/descriptions/nats/key_for_v217", hashDiffs.DeletedKeys[0])
+		assert.Equal("/hcf/spec/cf/nats/nats/key_for_v217", hashDiffs.DeletedKeys[1])
+	}
+	if assert.Equal(2, len(hashDiffs.ChangedValues)) {
+		v, ok := hashDiffs.ChangedValues["/hcf/spec/cf/nats/nats/debug"]
+		if assert.True(ok) {
+			assert.Equal("FALSE", v[0])
+			assert.Equal("TRUE", v[1])
+		}
+	}
+	v, ok := hashDiffs.ChangedValues["/hcf/spec/cf/nats/kingcole"]
 	assert.False(ok)
-	v, ok = hashDiffs.ChangedValues["/hcf/opinions/nats/machines"]
-	assert.True(ok)
+	v, ok = hashDiffs.ChangedValues["/hcf/spec/cf/nats/nats/authorization_timeout"]
+	assert.True(ok, fmt.Sprintf("%s", hashDiffs.ChangedValues))
 	if ok {
-		assert.Equal("[\"0.0.0.2\"]", v[0])
-		assert.Equal("[\"0.0.0.3\"]", v[1])
+		assert.Equal("15", v[0])
+		assert.Equal("16", v[1])
 	}
 }
 
@@ -163,37 +168,13 @@ func TestDiffConfigurationsBadArgs(t *testing.T) {
 
 	f := NewFissileApplication("version", ui)
 	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
-	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
-	releasePaths := []string{releasePath1, releasePath2}
-	lightOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
-	darkOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
-	err = f.DiffConfigurationBases([]string{}, lightOpinionsPaths, darkOpinionsPaths, prefix)
+	err = f.DiffConfigurationBases([]string{}, prefix)
 	if assert.Error(err, "Expected an error for bad args") {
 		assert.Contains(err.Error(), "expected two release paths, got 0")
 	}
-	err = f.DiffConfigurationBases([]string{releasePath1}, lightOpinionsPaths, darkOpinionsPaths, prefix)
+	err = f.DiffConfigurationBases([]string{releasePath1}, prefix)
 	if assert.Error(err, "Expected an error for bad args") {
 		assert.Contains(err.Error(), "expected two release paths, got 1")
-	}
-	err = f.DiffConfigurationBases(releasePaths, []string{}, darkOpinionsPaths, prefix)
-	if assert.Error(err, "Expected an error for bad args") {
-		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
-	}
-	err = f.DiffConfigurationBases(releasePaths, []string{lightOpinionsPaths[0]}, darkOpinionsPaths, prefix)
-	if assert.Error(err, "Expected an error for bad args") {
-		assert.Contains(err.Error(), "expected two light-opinion paths, got 1")
-	}
-	err = f.DiffConfigurationBases(releasePaths, []string{}, []string{}, prefix)
-	if assert.Error(err, "Expected an error for bad args") {
-		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
-		assert.Contains(err.Error(), "expected two dark-opinion paths, got 0")
-	}
-	err = f.DiffConfigurationBases([]string{}, []string{}, []string{}, prefix)
-
-	if assert.Error(err, "Expected an error for bad args") {
-		assert.Contains(err.Error(), "expected two release paths, got 0")
-		assert.Contains(err.Error(), "expected two light-opinion paths, got 0")
-		assert.Contains(err.Error(), "expected two dark-opinion paths, got 0")
 	}
 }
 
@@ -208,47 +189,16 @@ func TestDiffConfigurationsNoSuchPaths(t *testing.T) {
 
 	f := NewFissileApplication("version", ui)
 	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
-	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
-	releasePaths := []string{releasePath1, releasePath2}
-	lightOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
-	darkOpinionsPaths := []string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
 	badReleasePaths := []string{filepath.Join(assetsPath, "**bogus**/releases/cf-v217"), filepath.Join(assetsPath, "**bogus**/releases/cf-v222")}
-	badLightPaths := []string{filepath.Join(assetsPath, "**bogus**/opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "**bogus**/opinions/cf-v222/opinions.yml")}
-	badDarkPaths := []string{filepath.Join(assetsPath, "**bogus**/opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "**bogus**/opinions/cf-v222/dark-opinions.yml")}
 
 	// all bad
-	err = f.DiffConfigurationBases(badReleasePaths, badLightPaths, badDarkPaths, prefix)
+	err = f.DiffConfigurationBases(badReleasePaths, prefix)
 	if assert.Error(err, "Expected an error for bogus paths") {
 		assert.Contains(err.Error(), fmt.Sprintf("Path %s (release directory) does not exist", badReleasePaths[0]))
 	}
 	// good rel1, bad rel2, rest bad
-	err = f.DiffConfigurationBases([]string{releasePath1, badReleasePaths[1]}, badLightPaths, badDarkPaths, prefix)
+	err = f.DiffConfigurationBases([]string{releasePath1, badReleasePaths[1]}, prefix)
 	if assert.Error(err, "Expected an error for bogus paths") {
 		assert.Contains(err.Error(), fmt.Sprintf("Path %s (release directory) does not exist", badReleasePaths[1]))
-	}
-	// good rel, rest bad
-	err = f.DiffConfigurationBases(releasePaths, badLightPaths, badDarkPaths, prefix)
-	if assert.Error(err, "Expected an error for bogus paths") {
-		assert.Equal(err.Error(), fmt.Sprintf("open %s: no such file or directory", badLightPaths[0]))
-	}
-	// good rel, good first dark, rest bad
-	err = f.DiffConfigurationBases(releasePaths, badLightPaths, []string{darkOpinionsPaths[0], badDarkPaths[1]}, "prefix")
-	if assert.Error(err, "Expected an error for bogus paths") {
-		assert.Equal(err.Error(), fmt.Sprintf("open %s: no such file or directory", badLightPaths[0]))
-	}
-	// good rel, first light good, first dark good
-	err = f.DiffConfigurationBases(releasePaths, []string{lightOpinionsPaths[0], badLightPaths[1]}, []string{darkOpinionsPaths[0], badDarkPaths[1]}, "prefix")
-	if assert.Error(err, "Expected an error for bogus paths") {
-		assert.Equal(err.Error(), fmt.Sprintf("open %s: no such file or directory", badLightPaths[1]))
-	}
-	// good rel, good light, first dark good
-	err = f.DiffConfigurationBases(releasePaths, lightOpinionsPaths, []string{darkOpinionsPaths[0], badDarkPaths[1]}, "prefix")
-	if assert.Error(err, "Expected an error for bogus paths") {
-		assert.Equal(err.Error(), fmt.Sprintf("open %s: no such file or directory", badDarkPaths[1]))
-	}
-	// good rel, good dark, first light good
-	err = f.DiffConfigurationBases(releasePaths, []string{lightOpinionsPaths[0], badLightPaths[1]}, darkOpinionsPaths, "prefix")
-	if assert.Error(err, "Expected an error for bogus paths") {
-		assert.Equal(err.Error(), fmt.Sprintf("open %s: no such file or directory", badLightPaths[1]))
 	}
 }
