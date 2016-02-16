@@ -560,3 +560,40 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 
 	return nil
 }
+
+// DiffConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
+func (f *Fissile) DiffConfigurationBases(releasePaths, lightOpinionsPaths, darkOpinionsPaths []string, prefix string) error {
+	problems := []string{}
+	if len(releasePaths) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two release paths, got %d", len(releasePaths)))
+	}
+	if len(lightOpinionsPaths) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two light-opinion paths, got %d", len(lightOpinionsPaths)))
+	}
+	if len(darkOpinionsPaths) != 2 {
+		problems = append(problems, fmt.Sprintf("expected two dark-opinion paths, got %d", len(darkOpinionsPaths)))
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf("configuration diff:\n  %s\n", strings.Join(problems, "\n  "))
+	}
+	configStore := configstore.NewConfigStoreBuilder(prefix, "", lightOpinionsPaths[0], darkOpinionsPaths[0], "")
+	hashDiffs, err := configStore.DiffConfigurations(releasePaths[0], releasePaths[1], lightOpinionsPaths[1], darkOpinionsPaths[1])
+	if err != nil {
+		return err
+	}
+	if len(hashDiffs.DeletedKeys) > 0 {
+		f.ui.Println(color.RedString("Dropped keys:"))
+		f.ui.Printf("  %s\n", strings.Join(hashDiffs.DeletedKeys, "\n  "))
+	}
+	if len(hashDiffs.AddedKeys) > 0 {
+		f.ui.Println(color.GreenString("Added keys:"))
+		f.ui.Printf("  %s\n", strings.Join(hashDiffs.AddedKeys, "\n  "))
+	}
+	if len(hashDiffs.ChangedValues) > 0 {
+		f.ui.Println(color.BlueString("Changed values:"))
+		for k, v := range hashDiffs.ChangedValues {
+			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
+		}
+	}
+	return nil
+}

@@ -273,3 +273,24 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 
 	return releases, nil
 }
+
+/*
+// DiffDevConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
+func (f *Fissile) DiffDevConfigurationBases(releasePath1, lightManifestPath1, darkManifestPath1, releasePath2, lightManifestPath2, darkManifestPath2, targetPath, prefix, provider string) error {
+	releases, err := loadDevReleases([]string{releasePath1, releasePath2}, releaseNames, releaseVersions, cacheDir)
+	if err != nil {
+		return fmt.Errorf("Error loading release information for release path %s: %s", releasePath1, err.Error())
+	}
+
+	configStore1 := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath1, darkManifestPath1, targetPath)
+	configStore2 := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath2, darkManifestPath2, targetPath)
+
+	if err := configStore.WriteBaseConfig(releases); err != nil {
+		return fmt.Errorf("Error writing base config: %s", err.Error())
+	}
+
+	f.ui.Println(color.GreenString("Done."))
+
+	return nil
+}
+*/

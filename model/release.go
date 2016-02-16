@@ -126,6 +126,9 @@ func (r *Release) loadMetadata() (err error) {
 	)
 
 	err = yaml.Unmarshal([]byte(manifestContents), &r.manifest)
+	if err != nil {
+		return err
+	}
 
 	r.CommitHash = r.manifest["commit_hash"].(string)
 	r.UncommittedChanges = r.manifest["uncommitted_changes"].(bool)

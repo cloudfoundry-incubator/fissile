@@ -67,7 +67,7 @@ func (d *dirTreeConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManif
 func (d *dirTreeConfigWriterProvider) writeSpecConfigs(job *model.Job, c *Builder) error {
 
 	for _, property := range job.Properties {
-		key, err := c.boshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", job.Release.Name, job.Name, property.Name), SpecStore)
+		key, err := BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", job.Release.Name, job.Name, property.Name), SpecStore, c.prefix)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func (d *dirTreeConfigWriterProvider) writeDescriptionConfigs(release *model.Rel
 	configs := release.GetUniqueConfigs()
 
 	for _, config := range configs {
-		key, err := c.boshKeyToConsulPath(config.Name, DescriptionsStore)
+		key, err := BoshKeyToConsulPath(config.Name, DescriptionsStore, c.prefix)
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func (d *dirTreeConfigWriterProvider) writeOpinionsConfigs(release *model.Releas
 			continue
 		}
 
-		key, err := c.boshKeyToConsulPath(config.Name, OpinionsStore)
+		key, err := BoshKeyToConsulPath(config.Name, OpinionsStore, c.prefix)
 		if err != nil {
 			return err
 		}

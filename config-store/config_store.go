@@ -1,6 +1,7 @@
 package configstore
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -33,6 +34,15 @@ type Builder struct {
 	lightOpinionsPath string
 	darkOpinionsPath  string
 	targetLocation    string
+}
+
+type keyHash map[string]string
+
+// HashDiffs summarizes the diffs between the two configs
+type HashDiffs struct {
+	AddedKeys     []string
+	DeletedKeys   []string
+	ChangedValues map[string][2]string
 }
 
 // NewConfigStoreBuilder creates a new configstore.Builder
@@ -92,13 +102,14 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 	return nil
 }
 
-func (c *Builder) boshKeyToConsulPath(key, store string) (string, error) {
+// BoshKeyToConsulPath maps dotted names to slash-delimited names
+func BoshKeyToConsulPath(key, store, prefix string) (string, error) {
 	keyGrams, err := getKeyGrams(key)
 	if err != nil {
 		return "", err
 	}
 
-	keyGrams = append([]string{"", c.prefix, store}, keyGrams...)
+	keyGrams = append([]string{"", prefix, store}, keyGrams...)
 	return strings.Join(keyGrams, "/"), nil
 }
 
@@ -177,4 +188,119 @@ func checkKeysInProperties(opinions, props map[string]interface{}, opinionName s
 	}
 
 	return nil
+}
+
+// DiffConfigurations calculates the differences in configs across two releases.
+func (c *Builder) DiffConfigurations(releasePath1, releasePath2, lightOpinionsPath2, darkOpinionsPath2 string) (*HashDiffs, error) {
+	var err error
+	releases := [2]*model.Release{}
+	releases[0], err = model.NewRelease(releasePath1)
+	if err != nil {
+		return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath1, err.Error())
+	}
+	releases[1], err = model.NewRelease(releasePath2)
+	if err != nil {
+		return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath2, err.Error())
+	}
+	lightOpinions := [2]string{c.lightOpinionsPath, lightOpinionsPath2}
+	darkOpinions := [2]string{c.darkOpinionsPath, darkOpinionsPath2}
+	hashes := [2]keyHash{keyHash{}, keyHash{}}
+	// hashes := [2]{map[string]string{}, map[string]string{}}
+	for idx, release := range releases {
+		configs := release.GetUniqueConfigs()
+		// Get the descriptions (do we care?)
+		for _, config := range configs {
+			key, err := BoshKeyToConsulPath(config.Name, DescriptionsStore, c.prefix)
+			if err != nil {
+				return nil, fmt.Errorf("Error getting config %s for release path %s: %s", config.Name, releasePath1, err.Error())
+			}
+			hashes[idx][key] = config.Description
+		}
+		// Get the spec configs
+		for _, job := range release.Jobs {
+			for _, property := range job.Properties {
+				key, err := BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), SpecStore, c.prefix)
+				if err != nil {
+					return nil, err
+				}
+				hashes[idx][key], err = stringify(property.Default)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		// Get the opinions
+		opinions, err := newOpinions(lightOpinions[idx], darkOpinions[idx])
+		if err != nil {
+			return nil, err
+		}
+		for _, config := range configs {
+			keyPieces, err := getKeyGrams(config.Name)
+			if err != nil {
+				return nil, err
+			}
+
+			masked, value := opinions.GetOpinionForKey(keyPieces)
+			if masked || value == nil {
+				continue
+			}
+			key, err := BoshKeyToConsulPath(config.Name, OpinionsStore, c.prefix)
+			if err != nil {
+				return nil, err
+			}
+			hashes[idx][key], err = stringify(value)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return c.compareHashes(hashes[0], hashes[1]), nil
+}
+
+func stringify(v interface{}) (string, error) {
+	switch v1 := v.(type) {
+	case int, uint:
+		return fmt.Sprintf("%d", v1), nil
+	case nil:
+		return "", nil
+	case bool:
+		if v1 {
+			return "TRUE", nil
+		}
+		return "FALSE", nil
+	case string:
+		return v1, nil
+	default:
+		bSlice, err := json.Marshal(v)
+		if err == nil {
+			return string(bSlice), err
+		}
+		res := fmt.Sprintf("%v", v)
+		if res != "" {
+			return res, nil
+		}
+		return string(bSlice), err
+	}
+}
+
+func (c *Builder) compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
+	changed := map[string][2]string{}
+	deleted := []string{}
+	added := []string{}
+
+	for k, v := range v1Hash {
+		v2, ok := v2Hash[k]
+		if !ok {
+			deleted = append(deleted, k)
+		} else if v != v2 {
+			changed[k] = [2]string{v, v2}
+		}
+	}
+	for k := range v2Hash {
+		_, ok := v1Hash[k]
+		if !ok {
+			added = append(added, k)
+		}
+	}
+	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
 }

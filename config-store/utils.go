@@ -8,12 +8,10 @@ import (
 
 // getKeyGrams converts a config key to its constituent parts
 func getKeyGrams(key string) ([]string, error) {
-	keyGrams := strings.FieldsFunc(key, func(c rune) bool { return c == '.' })
-	if len(keyGrams) == 0 {
+	if len(key) == 0 {
 		return nil, fmt.Errorf("BOSH config key cannot be empty")
 	}
-
-	return keyGrams, nil
+	return strings.Split(key, "."), nil
 }
 
 // insertConfig adds a configuration value into the configuration map

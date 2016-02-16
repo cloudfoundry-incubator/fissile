@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )
@@ -112,4 +113,41 @@ func TestVerifyRelease(t *testing.T) {
 	err = f.VerifyRelease(filepath.Join(assetsPath, "corrupt-license"))
 	assert.Error(err, "Expected corrupt license to fail release verification")
 	assert.Contains(fmt.Sprintf("%v", err), "license")
+}
+
+func TestDiffConfigurations(t *testing.T) {
+	assert := assert.New(t)
+	workDir, err := os.Getwd()
+	assetsPath := filepath.Join(workDir, "../test-assets/config-diffs")
+
+	prefix := "hcf"
+	releasePath1 := filepath.Join(assetsPath, "releases/cf-v217")
+	releasePath2 := filepath.Join(assetsPath, "releases/cf-v222")
+	lightOpinionsPaths := [2]string{filepath.Join(assetsPath, "opinions/cf-v217/opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/opinions.yml")}
+	darkOpinionsPaths := [2]string{filepath.Join(assetsPath, "opinions/cf-v217/dark-opinions.yml"), filepath.Join(assetsPath, "opinions/cf-v222/dark-opinions.yml")}
+	configStore := configstore.NewConfigStoreBuilder(prefix, "", lightOpinionsPaths[0], darkOpinionsPaths[0], "")
+	hashDiffs, err := configStore.DiffConfigurations(releasePath1, releasePath2, lightOpinionsPaths[1], darkOpinionsPaths[1])
+
+	if !assert.Nil(err, "DiffConfigurations failed") {
+		return
+	}
+	assert.Equal(1, len(hashDiffs.AddedKeys))
+	assert.Equal("/hcf/opinions/nats/trace", hashDiffs.AddedKeys[0])
+	assert.Equal(1, len(hashDiffs.DeletedKeys))
+	assert.Equal("/hcf/opinions/nats/monitor_port", hashDiffs.DeletedKeys[0])
+	assert.Equal(2, len(hashDiffs.ChangedValues))
+	v, ok := hashDiffs.ChangedValues["/hcf/opinions/nats/port"]
+	assert.True(ok)
+	if ok {
+		assert.Equal("4222", v[0])
+		assert.Equal("beefalo", v[1])
+	}
+	v, ok = hashDiffs.ChangedValues["/hcf/opinions/nats/kingcole"]
+	assert.False(ok)
+	v, ok = hashDiffs.ChangedValues["/hcf/opinions/nats/machines"]
+	assert.True(ok)
+	if ok {
+		assert.Equal("[\"0.0.0.2\"]", v[0])
+		assert.Equal("[\"0.0.0.3\"]", v[1])
+	}
 }

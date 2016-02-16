@@ -45,29 +45,24 @@ func TestInvalidBaseConfigProvider(t *testing.T) {
 func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreBuilder("foo", "", "", "", "")
-
 	boshKey := "this.is.a.bosh.key"
 
-	consulPath, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
+	consulPath, err := BoshKeyToConsulPath(boshKey, DescriptionsStore, "foo")
 
-	assert.NoError(err)
-
-	assert.Equal("/foo/descriptions/this/is/a/bosh/key", consulPath)
-
+	if assert.NoError(err) {
+		assert.Equal("/foo/descriptions/this/is/a/bosh/key", consulPath)
+	}
 }
 
 func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreBuilder("foo", "", "", "", "")
-
 	boshKey := ""
+	_, err := BoshKeyToConsulPath(boshKey, DescriptionsStore, "foo")
 
-	_, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
-
-	assert.Error(err)
-	assert.Contains(err.Error(), "BOSH config key cannot be empty")
+	if assert.Error(err) {
+		assert.Contains(err.Error(), "BOSH config key cannot be empty")
+	}
 }
 
 // getKeys is a helper method to get all the keys in a nested JSON structure, as BOSH-style dot-separated names
