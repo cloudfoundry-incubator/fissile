@@ -90,7 +90,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 	return nil
 }
 
-// getPropertiesForJob returns the parameters for the give job, using its specs and opinions
+// getPropertiesForJob returns the parameters for the given job, using its specs and opinions
 func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinions *opinions) (map[string]interface{}, error) {
 	props, err := deepCopy(allProps)
 	if err != nil {

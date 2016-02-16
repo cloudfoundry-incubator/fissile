@@ -8,8 +8,8 @@ EOL
 exit 0
 fi
 
-IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
-DNS_RECORD_NAME=$(/bin/hostname)
+export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
+export DNS_RECORD_NAME=$(/bin/hostname)
 
 # Usage: run_configin <job> <input>  <output>
 #                     name  template destination
