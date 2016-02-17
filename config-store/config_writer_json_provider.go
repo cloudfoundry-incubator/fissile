@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// JobConfigFileExtension is the file extension for json configurations
 	JobConfigFileExtension = ".json"
 
 	jobConfigPrefix = ""
