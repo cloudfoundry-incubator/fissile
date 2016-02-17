@@ -583,15 +583,29 @@ func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) e
 func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	if len(hashDiffs.DeletedKeys) > 0 {
 		f.ui.Println(color.RedString("Dropped keys:"))
-		f.ui.Printf("  %s\n", strings.Join(hashDiffs.DeletedKeys, "\n  "))
+		sort.Strings(hashDiffs.DeletedKeys)
+		for _, v := range hashDiffs.DeletedKeys {
+			f.ui.Printf("  %s\n", v)
+		}
 	}
 	if len(hashDiffs.AddedKeys) > 0 {
 		f.ui.Println(color.GreenString("Added keys:"))
-		f.ui.Printf("  %s\n", strings.Join(hashDiffs.AddedKeys, "\n  "))
+		sort.Strings(hashDiffs.AddedKeys)
+		for _, v := range hashDiffs.AddedKeys {
+			f.ui.Printf("  %s\n", v)
+		}
 	}
 	if len(hashDiffs.ChangedValues) > 0 {
 		f.ui.Println(color.BlueString("Changed values:"))
-		for k, v := range hashDiffs.ChangedValues {
+		sortedKeys := make([]string, len(hashDiffs.ChangedValues))
+		i := 0
+		for k := range hashDiffs.ChangedValues {
+			sortedKeys[i] = k
+			i++
+		}
+		sort.Strings(sortedKeys)
+		for _, k := range sortedKeys {
+			v, _ := hashDiffs.ChangedValues[k]
 			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
 		}
 	}
