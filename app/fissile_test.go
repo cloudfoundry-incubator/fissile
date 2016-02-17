@@ -143,8 +143,8 @@ func TestDiffConfigurations(t *testing.T) {
 	if assert.Equal(2, len(hashDiffs.ChangedValues)) {
 		v, ok := hashDiffs.ChangedValues["/hcf/spec/cf/nats/nats/debug"]
 		if assert.True(ok) {
-			assert.Equal("FALSE", v[0])
-			assert.Equal("TRUE", v[1])
+			assert.Equal("false", v[0])
+			assert.Equal("true", v[1])
 		}
 	}
 	v, ok := hashDiffs.ChangedValues["/hcf/spec/cf/nats/kingcole"]

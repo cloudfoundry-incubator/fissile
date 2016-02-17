@@ -1,7 +1,6 @@
 package configstore
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -221,40 +220,11 @@ func (c *Builder) DiffConfigurations(releasePath1, releasePath2 string) (*HashDi
 				if err != nil {
 					return nil, err
 				}
-				hashes[idx][key], err = stringify(property.Default)
-				if err != nil {
-					return nil, err
-				}
+				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
 			}
 		}
 	}
 	return c.compareHashes(hashes[0], hashes[1]), nil
-}
-
-func stringify(v interface{}) (string, error) {
-	switch v1 := v.(type) {
-	case int, uint:
-		return fmt.Sprintf("%d", v1), nil
-	case nil:
-		return "", nil
-	case bool:
-		if v1 {
-			return "TRUE", nil
-		}
-		return "FALSE", nil
-	case string:
-		return v1, nil
-	default:
-		bSlice, err := json.Marshal(v)
-		if err == nil {
-			return string(bSlice), err
-		}
-		res := fmt.Sprintf("%v", v)
-		if res != "" {
-			return res, nil
-		}
-		return string(bSlice), err
-	}
 }
 
 func (c *Builder) compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
