@@ -18,10 +18,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		"dev compile",
 		"dev create-images",
 		"dev list-roles",
-		"dev config-gen",
-		"configuration generate",
-		"images list-roles",
-		"images create-roles":
+		"dev config-gen":
 		{
 			paths, err = absolutePathsForFlags(c, "work-dir", "light-opinions", "dark-opinions", "roles-manifest", "cache-dir")
 			if err != nil {

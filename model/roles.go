@@ -143,7 +143,10 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 		r.Configuration.Templates = map[string]string{}
 	}
 
-	roleConfigs := r.rolesManifest.Configuration.Templates
+	roleConfigs := map[string]string{}
+	for k, v := range r.rolesManifest.Configuration.Templates {
+		roleConfigs[k] = v
+	}
 
 	for k, v := range r.Configuration.Templates {
 		roleConfigs[k] = v

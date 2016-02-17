@@ -54,14 +54,6 @@ func main() {
 
 	baseImageFlag := baseImageFlagFor("Base image.")
 
-	// 2x release - single/multiple, usage differences
-
-	releaseOptionalFlag := cli.StringFlag{
-		Name:   "release, r",
-		Usage:  "Path to a BOSH release.",
-		Value:  ".",
-		EnvVar: "FISSILE_RELEASE",
-	}
 	releasesFlag := cli.StringSliceFlag{
 		Name:   "release, r",
 		Usage:  "Path to dev BOSH release(s).",
@@ -114,21 +106,12 @@ func main() {
 		EnvVar: "FISSILE_DARK_OPINIONS",
 	}
 
-	// 2x workers
-
 	workersFlag := cli.IntFlag{
 		Name:   "workers, w",
 		Value:  2,
 		Usage:  "Number of compiler workers to use.",
 		EnvVar: "FISSILE_COMPILATION_WORKER_COUNT",
 	}
-	workersBFlag := cli.IntFlag{
-		Name:   "workers, w",
-		Value:  1,
-		Usage:  "Number of workers to use.",
-		EnvVar: "FISSILE_WORKER_COUNT",
-	}
-
 	noBuildFlag := cli.BoolFlag{
 		Name:   "no-build, n",
 		Usage:  "If specified, the Dockerfile and assets will be created, but the image won't be built.",
@@ -143,11 +126,6 @@ func main() {
 		Name:   "with-sizes, s",
 		Usage:  "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
 		EnvVar: "FISSILE_WITH_SIZES",
-	}
-	versionFlag := cli.StringFlag{
-		Name:   "version, v",
-		Usage:  "Used as a version label for the created images",
-		EnvVar: "FISSILE_VERSION",
 	}
 	providerFlag := cli.StringFlag{
 		Name:   "provider, o",
@@ -190,20 +168,6 @@ func main() {
 					Usage:  "Show information about a base docker image",
 					Action: fissile.CommandRouter,
 				},
-				{
-					Name:    "start",
-					Aliases: []string{"st"},
-					Flags: []cli.Flag{
-						repositoryFlag,
-						releaseOptionalFlag,
-						workdirFlag,
-						workersFlag,
-						debugFlag,
-					},
-					Usage:       "Compile packages",
-					Description: "Compiles packages from the release using parallel workers",
-					Action:      fissile.CommandRouter,
-				},
 			},
 		},
 		{
@@ -225,21 +189,6 @@ func main() {
 						repositoryFlag,
 					},
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "create-roles",
-					Aliases: []string{"cr"},
-					Flags: []cli.Flag{
-						workdirFlag,
-						noBuildFlag,
-						repositoryFlag,
-						releasesFlag,
-						rolesManifestFlag,
-						versionFlag,
-						workersBFlag,
-					},
-					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest.",
 					Action: fissile.CommandRouter,
 				},
 			},
