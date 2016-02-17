@@ -605,7 +605,7 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 		}
 		sort.Strings(sortedKeys)
 		for _, k := range sortedKeys {
-			v, _ := hashDiffs.ChangedValues[k]
+			v := hashDiffs.ChangedValues[k]
 			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
 		}
 	}
