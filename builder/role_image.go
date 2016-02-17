@@ -196,16 +196,6 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 		}
 	}
 
-	// Create env2conf templates file in /opt/hcf/env2conf.yml
-	configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
-	if err != nil {
-		return "", err
-	}
-	configTemplatesFilePath := filepath.Join(rootDir, "opt/hcf/env2conf.yml")
-	if err := ioutil.WriteFile(configTemplatesFilePath, configTemplatesBytes, 0644); err != nil {
-		return "", err
-	}
-
 	// Copy role startup scripts
 	startupDir := filepath.Join(rootDir, "opt/hcf/startup")
 	if err := os.MkdirAll(startupDir, 0755); err != nil {
@@ -230,6 +220,16 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 	}
 	runScriptPath := filepath.Join(rootDir, "opt/hcf/run.sh")
 	if err := ioutil.WriteFile(runScriptPath, runScriptContents, 0744); err != nil {
+		return "", err
+	}
+
+	// Create env2conf templates file in /opt/hcf/env2conf.yml
+	configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
+	if err != nil {
+		return "", err
+	}
+	configTemplatesFilePath := filepath.Join(rootDir, "opt/hcf/env2conf.yml")
+	if err := ioutil.WriteFile(configTemplatesFilePath, configTemplatesBytes, 0644); err != nil {
 		return "", err
 	}
 
