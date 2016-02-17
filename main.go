@@ -285,6 +285,15 @@ func main() {
 					Usage:  "Generates a configuration base that can be loaded into something like consul",
 					Action: fissile.CommandRouter,
 				},
+				{
+					Name: "diff",
+					Flags: []cli.Flag{
+						releasesFlag,
+						prefixFlag,
+					},
+					Usage:  "Shows the diffs between configs of two releases",
+					Action: fissile.CommandRouter,
+				},
 			},
 		},
 		{
@@ -444,6 +453,17 @@ func main() {
 						providerFlag,
 					},
 					Usage:  "Generates a configuration base that can be loaded into something like consul.",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "config-diff",
+					Aliases: []string{"cd"},
+					Flags: []cli.Flag{
+						releasesFlag,
+						cacheDirFlag,
+						prefixFlag,
+					},
+					Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
 					Action: fissile.CommandRouter,
 				},
 			},

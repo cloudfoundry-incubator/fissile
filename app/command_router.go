@@ -35,6 +35,27 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 				return
 			}
 		}
+	case "configuration diff":
+		{
+			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+		}
+	case "dev config-diff":
+		{
+			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+			paths, err = absolutePathsForFlags(c, "cache-dir")
+			if err != nil {
+				f.cmdErr = err
+				return
+			}
+		}
 	default:
 		{
 			paths, err = absolutePathsForFlags(c, "release", "work-dir", "configgin", "light-opinions", "dark-opinions", "roles-manifest", "cache-dir")
@@ -95,6 +116,11 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["config-dir"],
 			c.String("prefix"),
 			c.String("provider"),
+		)
+	case "configuration diff":
+		err = f.DiffConfigurationBases(
+			releasePaths,
+			c.String("prefix"),
 		)
 	case "images create-base":
 		err = f.GenerateBaseDockerImage(
@@ -213,6 +239,15 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("prefix"),
 			c.String("provider"),
 		)
+	case "dev config-diff":
+		if err = validateDevReleaseArgs(c); err != nil {
+			break
+		}
+		err = f.DiffDevConfigurationBases(
+			releasePaths,
+			paths["cache-dir"],
+			c.String("prefix"),
+		)
 	}
 
 	f.cmdErr = err
@@ -224,6 +259,9 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 func extendPathsFromWorkDirectory(paths map[string]string) {
 
 	workDir := paths["work-dir"]
+	if workDir == "" {
+		return
+	}
 
 	defaults := []struct {
 		key   string
@@ -258,17 +296,18 @@ func validateDevReleaseArgs(c *cli.Context) error {
 	releasePathsCount := len(c.StringSlice("release"))
 	releaseNamesCount := len(c.StringSlice("release-name"))
 	releaseVersionsCount := len(c.StringSlice("release-version"))
+	argList := fmt.Sprintf("validateDevReleaseArgs: paths:%s (%d), names:%s (%d), versions:%s (%d)\n", c.StringSlice("release"), releasePathsCount, c.StringSlice("release-name"), releaseNamesCount, c.StringSlice("release-version"), releaseVersionsCount)
 
 	if releasePathsCount == 0 {
-		return fmt.Errorf("Please specify at least one release path")
+		return fmt.Errorf("Please specify at least one release path. Args: %s", argList)
 	}
 
 	if releaseNamesCount != 0 && releaseNamesCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release names, you need to do it for all of them")
+		return fmt.Errorf("If you specify custom release names, you need to do it for all of them. Args: %s", argList)
 	}
 
 	if releaseVersionsCount != 0 && releaseVersionsCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them")
+		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them. Args: %s", argList)
 	}
 
 	return nil

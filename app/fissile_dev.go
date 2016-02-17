@@ -273,3 +273,26 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 
 	return releases, nil
 }
+
+// DiffDevConfigurationBases generates a diff comparing the specs for two different BOSH releases
+func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) error {
+	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, cacheDir, prefix)
+	if err != nil {
+		return err
+	}
+	f.reportHashDiffs(hashDiffs)
+	return nil
+}
+
+// GetDiffDevConfigurationBases calcs the difference in configs and returns a hash
+func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) (*HashDiffs, error) {
+	if len(releasePaths) != 2 {
+		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
+	}
+	defaultValues := []string{}
+	releases, err := loadDevReleases(releasePaths, defaultValues, defaultValues, cacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
+	}
+	return getDiffsFromReleases(releases, prefix)
+}

@@ -92,13 +92,14 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 	return nil
 }
 
-func (c *Builder) boshKeyToConsulPath(key, store string) (string, error) {
+// BoshKeyToConsulPath maps dotted names to slash-delimited names
+func BoshKeyToConsulPath(key, store, prefix string) (string, error) {
 	keyGrams, err := getKeyGrams(key)
 	if err != nil {
 		return "", err
 	}
 
-	keyGrams = append([]string{"", c.prefix, store}, keyGrams...)
+	keyGrams = append([]string{"", prefix, store}, keyGrams...)
 	return strings.Join(keyGrams, "/"), nil
 }
 

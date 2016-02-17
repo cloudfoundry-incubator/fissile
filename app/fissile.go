@@ -560,3 +560,116 @@ func (f *Fissile) ListRoleImages(repository string, releasePaths []string, roles
 
 	return nil
 }
+
+type keyHash map[string]string
+
+// HashDiffs summarizes the diffs between the two configs
+type HashDiffs struct {
+	AddedKeys     []string
+	DeletedKeys   []string
+	ChangedValues map[string][2]string
+}
+
+// DiffConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
+func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) error {
+	hashDiffs, err := f.GetDiffConfigurationBases(releasePaths, prefix)
+	if err != nil {
+		return err
+	}
+	f.reportHashDiffs(hashDiffs)
+	return nil
+}
+
+func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
+	if len(hashDiffs.DeletedKeys) > 0 {
+		f.ui.Println(color.RedString("Dropped keys:"))
+		sort.Strings(hashDiffs.DeletedKeys)
+		for _, v := range hashDiffs.DeletedKeys {
+			f.ui.Printf("  %s\n", v)
+		}
+	}
+	if len(hashDiffs.AddedKeys) > 0 {
+		f.ui.Println(color.GreenString("Added keys:"))
+		sort.Strings(hashDiffs.AddedKeys)
+		for _, v := range hashDiffs.AddedKeys {
+			f.ui.Printf("  %s\n", v)
+		}
+	}
+	if len(hashDiffs.ChangedValues) > 0 {
+		f.ui.Println(color.BlueString("Changed values:"))
+		sortedKeys := make([]string, len(hashDiffs.ChangedValues))
+		i := 0
+		for k := range hashDiffs.ChangedValues {
+			sortedKeys[i] = k
+			i++
+		}
+		sort.Strings(sortedKeys)
+		for _, k := range sortedKeys {
+			v := hashDiffs.ChangedValues[k]
+			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
+		}
+	}
+}
+
+// GetDiffConfigurationBases calcs the difference in configs and returns a hash
+func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, prefix string) (*HashDiffs, error) {
+	var err error
+	if len(releasePaths) != 2 {
+		return nil, fmt.Errorf("configuration diff: expected two release paths, got %d", len(releasePaths))
+	}
+	releases := make([]*model.Release, 2)
+	for idx, releasePath := range releasePaths {
+		releases[idx], err = model.NewRelease(releasePath)
+		if err != nil {
+			return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath, err.Error())
+		}
+	}
+	return getDiffsFromReleases(releases, prefix)
+}
+
+func getDiffsFromReleases(releases []*model.Release, prefix string) (*HashDiffs, error) {
+	hashes := [2]keyHash{keyHash{}, keyHash{}}
+	for idx, release := range releases {
+		configs := release.GetUniqueConfigs()
+		for _, config := range configs {
+			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore, prefix)
+			if err != nil {
+				return nil, fmt.Errorf("Error getting config %s for release %s: %s", config.Name, release.Name, err.Error())
+			}
+			hashes[idx][key] = config.Description
+		}
+		// Get the spec configs
+		for _, job := range release.Jobs {
+			for _, property := range job.Properties {
+				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore, prefix)
+				if err != nil {
+					return nil, err
+				}
+				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
+			}
+		}
+	}
+	return compareHashes(hashes[0], hashes[1]), nil
+}
+
+func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
+	changed := map[string][2]string{}
+	deleted := []string{}
+	added := []string{}
+
+	for k, v := range v1Hash {
+		v2, ok := v2Hash[k]
+		if !ok {
+			deleted = append(deleted, k)
+		} else if v != v2 {
+			changed[k] = [2]string{v, v2}
+		}
+	}
+	for k := range v2Hash {
+		_, ok := v1Hash[k]
+		if !ok {
+			added = append(added, k)
+		}
+	}
+	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
+}
