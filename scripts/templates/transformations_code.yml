@@ -1,7 +1,0 @@
-transformations:
-  # an erb code end block: <% end %>
-  - match: '^\s*end\s*$'
-    output: '{{ end }}'
-  # an erb code else block: <% else %>
-  - match: '^\s*else\s*$'
-    output: '{{ else }}'
