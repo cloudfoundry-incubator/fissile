@@ -279,18 +279,17 @@ func main() {
 						darkOpinionsFlag,
 						providerFlag,
 					},
-					{
-						Name:    "config-diff",
-						Aliases: []string{"cd"},
-						Flags: []cli.Flag{
-							releasesFlag,
-							cacheDirFlag,
-							prefixFlag,
-						},
-						Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
-						Action: fissile.CommandRouter,
-					},
 					Usage:  "Generates a configuration base.",
+					Action: fissile.CommandRouter,
+				},
+				{
+					Name:    "config-diff",
+					Aliases: []string{"cd"},
+					Flags: []cli.Flag{
+						releasesFlag,
+						cacheDirFlag,
+					},
+					Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
 					Action: fissile.CommandRouter,
 				},
 			},

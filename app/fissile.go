@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
+	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
+	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 
 	"github.com/fatih/color"
@@ -160,16 +163,6 @@ type HashDiffs struct {
 	ChangedValues map[string][2]string
 }
 
-// DiffConfigurationBases generates a diff comparing the opinions and supplied stubs for two different BOSH releases
-func (f *Fissile) DiffConfigurationBases(releasePaths []string, prefix string) error {
-	hashDiffs, err := f.GetDiffConfigurationBases(releasePaths, prefix)
-	if err != nil {
-		return err
-	}
-	f.reportHashDiffs(hashDiffs)
-	return nil
-}
-
 func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	if len(hashDiffs.DeletedKeys) > 0 {
 		f.ui.Println(color.RedString("Dropped keys:"))
@@ -201,28 +194,12 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	}
 }
 
-// GetDiffConfigurationBases calcs the difference in configs and returns a hash
-func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, prefix string) (*HashDiffs, error) {
-	var err error
-	if len(releasePaths) != 2 {
-		return nil, fmt.Errorf("configuration diff: expected two release paths, got %d", len(releasePaths))
-	}
-	releases := make([]*model.Release, 2)
-	for idx, releasePath := range releasePaths {
-		releases[idx], err = model.NewRelease(releasePath)
-		if err != nil {
-			return nil, fmt.Errorf("Error loading release information for path %s: %s", releasePath, err.Error())
-		}
-	}
-	return getDiffsFromReleases(releases, prefix)
-}
-
-func getDiffsFromReleases(releases []*model.Release, prefix string) (*HashDiffs, error) {
+func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 	hashes := [2]keyHash{keyHash{}, keyHash{}}
 	for idx, release := range releases {
 		configs := release.GetUniqueConfigs()
 		for _, config := range configs {
-			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore, prefix)
+			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore)
 			if err != nil {
 				return nil, fmt.Errorf("Error getting config %s for release %s: %s", config.Name, release.Name, err.Error())
 			}
@@ -231,7 +208,7 @@ func getDiffsFromReleases(releases []*model.Release, prefix string) (*HashDiffs,
 		// Get the spec configs
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore, prefix)
+				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore)
 				if err != nil {
 					return nil, err
 				}

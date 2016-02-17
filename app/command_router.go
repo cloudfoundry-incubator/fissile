@@ -169,7 +169,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.DiffDevConfigurationBases(
 			releasePaths,
 			paths["cache-dir"],
-			c.String("prefix"),
 		)
 	}
 

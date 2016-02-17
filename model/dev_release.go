@@ -66,10 +66,6 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 		return nil, err
 	}
 
-	if err := release.loadPackageLicenses(); err != nil {
-		return nil, err
-	}
-
 	return release, nil
 }
 

@@ -156,16 +156,6 @@ func (r *Release) loadPackages() (err error) {
 	return nil
 }
 
-func (r *Release) loadPackageLicenses() error {
-	for _, pkg := range r.Packages {
-		if err := pkg.loadLicenseFiles(); err != nil {
-			return fmt.Errorf("package [%s] licenses could not be read: %v", pkg.Name, err)
-		}
-	}
-
-	return nil
-}
-
 func (r *Release) loadDependenciesForPackages() error {
 	for _, pkg := range r.Packages {
 		if err := pkg.loadPackageDependencies(); err != nil {

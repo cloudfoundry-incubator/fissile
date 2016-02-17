@@ -46,11 +46,9 @@ func TestInvalidBaseConfigProvider(t *testing.T) {
 func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreBuilder("", "", "", "")
-
 	boshKey := "this.is.a.bosh.key"
 
-	consulPath, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
+	consulPath, err := BoshKeyToConsulPath(boshKey, DescriptionsStore)
 
 	assert.NoError(err)
 
@@ -61,11 +59,9 @@ func TestBOSHKeyToConsulPathConversion(t *testing.T) {
 func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 	assert := assert.New(t)
 
-	confStore := NewConfigStoreBuilder("", "", "", "")
-
 	boshKey := ""
 
-	_, err := confStore.boshKeyToConsulPath(boshKey, DescriptionsStore)
+	_, err := BoshKeyToConsulPath(boshKey, DescriptionsStore)
 
 	assert.Error(err)
 	assert.Contains(err.Error(), "BOSH config key cannot be empty")

@@ -71,22 +71,6 @@ func TestPackageSHA1NotOk(t *testing.T) {
 	assert.NotNil(release.Packages[0].ValidateSHA1())
 }
 
-func TestPackageLoadLicenseFiles(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.Nil(err)
-
-	torReleasePath := filepath.Join(workDir, "../test-assets/extracted-license")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
-
-	assert.Equal("bar", release.Packages[0].Name)
-	assert.Equal(1, len(release.Packages[0].LicenseFiles))
-	assert.Equal([]byte("license file\n"), release.Packages[0].LicenseFiles["./bar/LICENSE"])
-}
-
 func TestPackageExtractOk(t *testing.T) {
 	assert := assert.New(t)
 
