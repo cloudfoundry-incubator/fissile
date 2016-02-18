@@ -1,0 +1,45 @@
+---
+packages:
+- name: libevent
+  version: !binary |-
+    ZTNmYjhhYjk3NmFjYTliOWVhMmE2YjI4Yjc2NTA2ZjAxMzBiYTI5Ng==
+  fingerprint: !binary |-
+    ZTNmYjhhYjk3NmFjYTliOWVhMmE2YjI4Yjc2NTA2ZjAxMzBiYTI5Ng==
+  sha1: !binary |-
+    MDMyOTkwN2VlMTYzMDQ3YjJkNDYxZGYzZThiNDY3NmRkZTc5MTY1MA==
+  dependencies: []
+- name: tor
+  version: !binary |-
+    NTk1MjNiMWNjNDA0MmRmZjEyMTdhYjViNzlmZjg4NWNkZDJkZTAzMg==
+  fingerprint: !binary |-
+    NTk1MjNiMWNjNDA0MmRmZjEyMTdhYjViNzlmZjg4NWNkZDJkZTAzMg==
+  sha1: !binary |-
+    YTA5YjU1NWE5ZGU3ZTg2NjcxYjVlYjBkNmMzZTBlYzMzMjg0NzE3MQ==
+  dependencies:
+  - libevent
+jobs:
+- name: new_hostname
+  version: !binary |-
+    M2JmNmE3NjdmMDVjY2I5YWFiMjA2NmE5YzMzNDFjNmJkMjAwY2M5ZA==
+  fingerprint: !binary |-
+    M2JmNmE3NjdmMDVjY2I5YWFiMjA2NmE5YzMzNDFjNmJkMjAwY2M5ZA==
+  sha1: !binary |-
+    NjE1Nzk4ODk0M2U0OGZlZmVjNzYwNTkwM2YwZTQ5ZmQ1MzhiZTA5Zg==
+- name: tor
+  version: !binary |-
+    OGE5ZDA1YzdiMzVkOGI5MDY1NWVkZTc1MjM5YTdkODEyYzc4YWU3NQ==
+  fingerprint: !binary |-
+    OGE5ZDA1YzdiMzVkOGI5MDY1NWVkZTc1MjM5YTdkODEyYzc4YWU3NQ==
+  sha1: !binary |-
+    MDNjMzlkNDAyMTJjNDllZmVmZjRhMDc4ZTJlYjIzMmRjYWEzZjM3Yw==
+license:
+  version: !binary |-
+    OGRhNmViM2RmMWRjZTY0Yjc4NjEwZTdjYmFmNDI0NWQ2NmU4OGYxYw==
+  fingerprint: !binary |-
+    OGRhNmViM2RmMWRjZTY0Yjc4NjEwZTdjYmFmNDI0NWQ2NmU4OGYxYw==
+  sha1: !binary |-
+    NmIyODM0N2FkZjFlYmM3MzEzNmM5OWZjOWI0N2ZmODliMGE0MDhmNg==
+commit_hash: 91436b22
+uncommitted_changes: false
+name: tor
+version: 0.3.3

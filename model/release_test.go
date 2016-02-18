@@ -16,8 +16,9 @@ func TestReleaseValidationOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	_, err = NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	_, err = NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 
 	assert.Nil(err)
 }
@@ -30,8 +31,9 @@ func TestReleaseValidationNonExistingPath(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	releaseDir := filepath.Join(tempDir, uuid.New())
+	releaseDirBoshCache := filepath.Join(releaseDir, "bosh-cache")
 
-	_, err = NewRelease(releaseDir)
+	_, err = NewDevRelease(releaseDir, "", "", releaseDirBoshCache)
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "does not exist")
@@ -46,7 +48,7 @@ func TestReleaseValidationReleasePathIsAFile(t *testing.T) {
 
 	assert.Nil(err)
 
-	_, err = NewRelease(tempFile.Name())
+	_, err = NewDevRelease(tempFile.Name(), "", "", "")
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "It should be a directory")
@@ -64,7 +66,9 @@ func TestReleaseValidationStructure(t *testing.T) {
 	os.MkdirAll(releaseDir, 0755)
 
 	release := Release{
-		Path: releaseDir,
+		Path:    releaseDir,
+		Name:    "test",
+		Version: "0",
 	}
 
 	err = release.validatePathStructure()
@@ -78,12 +82,24 @@ func TestReleaseValidationStructure(t *testing.T) {
 	err = release.validatePathStructure()
 	assert.NotNil(err)
 
+	// Create an empty manifest file
+	os.MkdirAll(filepath.Join(releaseDir, "dev_releases", "test"), 0755)
+	err = ioutil.WriteFile(
+		filepath.Join(releaseDir, "dev_releases", "test", "test-0.yml"),
+		[]byte{},
+		0644,
+	)
+	assert.Nil(err)
+	err = release.validatePathStructure()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "(packages directory) does not exist.")
+
 	// Create an empty packages dir
 	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0755)
 	assert.Nil(err)
 	err = release.validatePathStructure()
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "jobs directory")
+	assert.Contains(err.Error(), "(jobs directory) does not exist.")
 
 	// Create an empty jobs dir
 	err = os.MkdirAll(filepath.Join(releaseDir, jobsDir), 0755)
@@ -98,14 +114,15 @@ func TestReleaseMetadataOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	assert.Equal("ntp", release.Name)
-	assert.Equal("bbece039", release.CommitHash)
+	assert.Equal("28645bc3", release.CommitHash)
 	assert.Equal(false, release.UncommittedChanges)
-	assert.Equal("2", release.Version)
+	assert.Equal("2+dev.2", release.Version)
 }
 
 func TestReleasePackagesOk(t *testing.T) {
@@ -114,8 +131,9 @@ func TestReleasePackagesOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Packages))
@@ -127,8 +145,9 @@ func TestReleaseJobsOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Jobs))
@@ -140,8 +159,9 @@ func TestLookupPackageOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	pkg, err := release.LookupPackage("ntp-4.2.8p2")
@@ -156,8 +176,9 @@ func TestLookupPackageNotOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	_, err = release.LookupPackage("foo")
@@ -170,8 +191,9 @@ func TestLookupJobOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	job, err := release.LookupJob("ntpd")
@@ -186,8 +208,9 @@ func TestLookupJobNotOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	_, err = release.LookupJob("foo")
@@ -200,8 +223,9 @@ func TestPackageDependencies(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := NewRelease(releasePath)
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.Nil(err)
 
 	pkg, err := release.LookupPackage("tor")
@@ -219,34 +243,14 @@ func TestReleaseLicenseOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
+	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	release := Release{Path: releasePath}
 
 	err = release.loadLicense()
 
 	assert.Nil(err)
-	assert.Equal(40, len(release.License.ActualSHA1))
 	assert.NotEmpty(release.License.Files)
-	assert.NotNil(release.License.Files["./LICENSE"])
-}
-
-func TestReleaseLicenseNotOk(t *testing.T) {
-	t.Parallel()
-
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.Nil(err)
-
-	releasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	release := Release{Path: releasePath}
-
-	err = release.loadLicense()
-
-	if assert.NotNil(err) {
-		assert.Contains(err.Error(), "unexpected EOF")
-	}
-	assert.Empty(release.License.Files)
+	assert.NotNil(release.License.Files["LICENSE"])
 }
 
 func TestReleaseNoLicense(t *testing.T) {
@@ -258,7 +262,8 @@ func TestReleaseNoLicense(t *testing.T) {
 	assert.Nil(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/no-license")
-	release, err := NewRelease(releasePath)
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 
 	assert.Nil(err, "Release without license should be valid")
 	assert.Empty(release.License.Files)
@@ -273,12 +278,12 @@ func TestReleaseExtractedLicense(t *testing.T) {
 	assert.Nil(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/extracted-license")
-	release, err := NewRelease(releasePath)
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 
 	assert.Nil(err, "Release with extracted license should be valid")
-	assert.Equal(2, len(release.License.Files))
+	assert.Equal(1, len(release.License.Files))
 	assert.Equal([]byte("LICENSE file contents"), release.License.Files["LICENSE"])
-	assert.Equal([]byte("NOTICE file contents"), release.License.Files["NOTICE"])
 }
 
 func TestReleaseMissingLicense(t *testing.T) {
@@ -290,7 +295,8 @@ func TestReleaseMissingLicense(t *testing.T) {
 	assert.Nil(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/missing-license")
-	_, err = NewRelease(releasePath)
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	_, err = NewDevRelease(releasePath, "", "", releasePathBoshCache)
 
 	assert.NotNil(err, "Release with missing license should be invalid")
 }
@@ -301,12 +307,13 @@ func TestGetDeploymentConfig(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := NewRelease(releasePath)
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.Nil(err)
 
 	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
-	assert.Equal(9, len(configs))
+	assert.Equal(4, len(configs))
 }

@@ -25,10 +25,11 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	outDir := filepath.Join(tmpDir, "store")
 
-	builder := NewConfigStoreBuilder("foo", JSONProvider, opinionsFile, opinionsFileDark, outDir)
+	builder := NewConfigStoreBuilder(JSONProvider, opinionsFile, opinionsFileDark, outDir)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
-	release, err := model.NewRelease(releasePath)
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
@@ -38,7 +39,8 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 	err = builder.WriteBaseConfig(rolesManifest)
 	assert.NoError(err)
 
-	jsonPath := filepath.Join(outDir, "foo", "myrole", "new_hostname.json")
+	jsonPath := filepath.Join(outDir, "myrole", "new_hostname.json")
+
 	buf, err := ioutil.ReadFile(jsonPath)
 	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
 		return
@@ -59,35 +61,16 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 
 	var expected map[string]interface{}
 	err = json.Unmarshal([]byte(`{
-		"test": {
-			"property": {
-				"name": {
-					"array": [
-						"one",
-						"two",
-						"three"
-					],
-					"key": "value",
-					"number": 123
-				}
-			}
-		},
-		"has": {
-			"opinion": "this is an opinion"
-		},
-		"cc": {
-			"app_events": {
-				"cutoff_age_in_days": 31
-			},
-			"droplets": {}
-		}
+		   "tor": {
+            "client_keys": null,
+            "hashed_control_password": null,
+            "hostname": null,
+            "private_key": null
+        }
 	}`), &expected)
 	assert.NoError(err, "Failed to unmarshal expected data")
-	// We don't care about the "tor" branch of the parameters; that comes from upstream
-	// All the things we want to test are the custom stuff we added.
-	delete(result["properties"].(map[string]interface{}), "tor")
-	assert.Equal(expected, result["properties"], "Unexpected properties")
 
+	assert.Equal(expected, result["properties"], "Unexpected properties")
 }
 
 func TestInitializeConfigJSON(t *testing.T) {

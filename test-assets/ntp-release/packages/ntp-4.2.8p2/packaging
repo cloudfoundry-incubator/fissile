@@ -1,0 +1,9 @@
+# abort script on any command that exits with a non zero value
+set +e
+
+tar xf ntp-4.2.8p2/ntp-4.2.8p2.tar.gz
+cd ntp-4.2.8p2
+./configure \
+  --prefix=${BOSH_INSTALL_TARGET}
+make
+make install

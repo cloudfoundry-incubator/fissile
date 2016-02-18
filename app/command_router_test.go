@@ -15,7 +15,9 @@ func TestExtendPathsFromWorkDirectory(t *testing.T) {
 
 	set := flag.NewFlagSet("test", 0)
 	set.String("work-dir", "state directory", "directory path")
-	set.Set("work-dir", "/var/fissile")
+	workDir, err := filepath.Abs("/var/fissile")
+	assert.Nil(err)
+	set.Set("work-dir", workDir)
 
 	c := cli.NewContext(nil, set, nil)
 
@@ -24,15 +26,15 @@ func TestExtendPathsFromWorkDirectory(t *testing.T) {
 
 	extendPathsFromWorkDirectory(paths)
 
-	assert.Equal(paths["work-dir"], "/var/fissile")
-	assert.Equal(paths["compilation-dir"], "/var/fissile/compilation")
-	assert.Equal(paths["config-dir"], "/var/fissile/config")
-	assert.Equal(paths["base-docker-file"], "/var/fissile/base_dockerfile")
-	assert.Equal(paths["docker-dir"], "/var/fissile/dockerfiles")
-	assert.Equal(paths["configgin"], "/var/fissile/configgin.tar.gz")
-	assert.Equal(paths["light-opinions"], "/var/fissile/opinions.yml")
-	assert.Equal(paths["dark-opinions"], "/var/fissile/dark-opinions.yml")
-	assert.Equal(paths["roles-manifest"], "/var/fissile/role-manifest.yml")
+	assert.Equal(paths["work-dir"], workDir)
+	assert.Equal(paths["compilation-dir"], filepath.Join(workDir, "compilation"))
+	assert.Equal(paths["config-dir"], filepath.Join(workDir, "config"))
+	assert.Equal(paths["base-docker-file"], filepath.Join(workDir, "base_dockerfile"))
+	assert.Equal(paths["docker-dir"], filepath.Join(workDir, "dockerfiles"))
+	assert.Equal(paths["configgin"], filepath.Join(workDir, "configgin.tar.gz"))
+	assert.Equal(paths["light-opinions"], filepath.Join(workDir, "opinions.yml"))
+	assert.Equal(paths["dark-opinions"], filepath.Join(workDir, "dark-opinions.yml"))
+	assert.Equal(paths["roles-manifest"], filepath.Join(workDir, "role-manifest.yml"))
 }
 
 func TestFindAbsolutePaths(t *testing.T) {

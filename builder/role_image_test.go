@@ -30,20 +30,21 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewRelease(releasePath)
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", releaseVersion, "6.28.30", ui)
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, releaseVersion, "6.28.30", ui)
 
 	dockerfileContents, err := roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
 	assert.Nil(err)
@@ -57,11 +58,10 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 		"Expected role label",
 	)
 
-	release.Dev = true
 	dockerfileContents, err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
 	assert.Nil(err)
 	dockerfileString = string(dockerfileContents)
-	assert.NotContains(dockerfileString, "MAINTAINER", "dev mode should not generate a maintainer layer")
+	assert.Contains(dockerfileString, "MAINTAINER", "dev mode should generate a maintainer layer")
 }
 
 func TestGenerateRoleImageRunScript(t *testing.T) {
@@ -76,20 +76,21 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewRelease(releasePath)
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.Nil(err)
@@ -97,7 +98,6 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/startup/myrole.sh")
 	assert.Contains(string(runScriptContents), "monit -vI")
-	assert.Contains(string(runScriptContents), "\"templates\":[{\"name\":\"new_hostname\"},{\"name\":\"tor\"}]")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
 	assert.Nil(err)
@@ -118,22 +118,28 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathConfigSpec := filepath.Join(releasePath, "config_spec")
+
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewRelease(releasePath)
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "http://127.0.0.1:8500", "hcf", "3.14.15", "6.28.30", ui)
+	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
 
-	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(rolesManifest.Roles[0])
+	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(
+		rolesManifest.Roles[0],
+		releasePathConfigSpec,
+	)
 	assert.Nil(err)
 	defer os.RemoveAll(dockerfileDir)
 
@@ -147,9 +153,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		{path: ".", isDir: true, desc: "role dir"},
 		{path: "Dockerfile", isDir: false, desc: "Dockerfile"},
 		{path: "root", isDir: true, desc: "image root"},
-		{path: "root/opt/hcf/share/doc/tor/LICENSE.md", isDir: false, desc: "release license file"},
-		{path: "root/opt/hcf/share/doc/tor/tor/tor/src/LICENSE.txt", isDir: false, desc: "tor role license file"},
-		{path: "root/opt/hcf/share/doc/tor/libevent/libevent/LICENSE", isDir: false, desc: "libevent role license file"},
+		{path: "root/opt/hcf/share/doc/tor/LICENSE", isDir: false, desc: "release license file"},
 		{path: "root/opt/hcf/run.sh", isDir: false, desc: "run script"},
 		{path: "root/opt/hcf/startup/", isDir: true, desc: "role startup scripts dir"},
 		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
@@ -202,13 +206,16 @@ func TestBuildRoleImages(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease-0.3.5")
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathConfigSpec := filepath.Join(releasePath, "config_spec")
+
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.Nil(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewRelease(releasePath)
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.Nil(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
@@ -219,8 +226,6 @@ func TestBuildRoleImages(t *testing.T) {
 		"test-repository",
 		compiledPackagesDir,
 		targetPath,
-		"http://127.0.0.1:8500",
-		"hcf",
 		"3.14.15",
 		"6.28.30",
 		ui,
@@ -244,6 +249,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		releasePathConfigSpec,
 		"3.14.15",
 		false,
 		2,
@@ -257,6 +263,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		releasePathConfigSpec,
 		"3.14.15",
 		false,
 		0,
@@ -281,6 +288,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		releasePathConfigSpec,
 		"3.14.15",
 		false,
 		1,

@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,7 +95,7 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 }
 
 // GenerateRoleDevImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, defaultConsulAddress, defaultConfigStorePrefix string) error {
+func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 	if err != nil {
 		return err
@@ -114,13 +115,37 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 		repository,
 		compiledPackagesPath,
 		targetPath,
-		defaultConsulAddress,
-		defaultConfigStorePrefix,
 		"",
 		f.Version,
 		f.ui,
 	)
 
+	// Generate configuration
+	configTargetPath, err := ioutil.TempDir("", "role-spec-config")
+	if err != nil {
+		return fmt.Errorf("Error creating temporary directory %s: %s", configTargetPath, err.Error())
+	}
+
+	defer func() {
+		os.RemoveAll(configTargetPath)
+	}()
+
+	f.ui.Println("Generating configuration JSON specs ...")
+
+	configStore := configstore.NewConfigStoreBuilder(
+		configstore.JSONProvider,
+		lightManifestPath,
+		darkManifestPath,
+		configTargetPath,
+	)
+
+	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
+		return fmt.Errorf("Error writing base config: %s", err.Error())
+	}
+
+	f.ui.Println(color.GreenString("Done."))
+
+	// Go through each role and create its image
 	for _, role := range rolesManifest.Roles {
 		roleImageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
 
@@ -137,7 +162,7 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 		}
 
 		f.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
-		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role)
+		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role, configTargetPath)
 		if err != nil {
 			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
 		}
@@ -226,7 +251,7 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 }
 
 //GenerateDevConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
-func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, prefix, provider string) error {
+func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, provider string) error {
 
 	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
 	if err != nil {
@@ -238,7 +263,7 @@ func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, relea
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	configStore := configstore.NewConfigStoreBuilder(prefix, provider, lightManifestPath, darkManifestPath, targetPath)
+	configStore := configstore.NewConfigStoreBuilder(provider, lightManifestPath, darkManifestPath, targetPath)
 
 	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
 		return fmt.Errorf("Error writing base config: %s", err.Error())
@@ -275,8 +300,8 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 }
 
 // DiffDevConfigurationBases generates a diff comparing the specs for two different BOSH releases
-func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) error {
-	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, cacheDir, prefix)
+func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir string) error {
+	hashDiffs, err := f.GetDiffDevConfigurationBases(releasePaths, cacheDir)
 	if err != nil {
 		return err
 	}
@@ -285,7 +310,7 @@ func (f *Fissile) DiffDevConfigurationBases(releasePaths []string, cacheDir, pre
 }
 
 // GetDiffDevConfigurationBases calcs the difference in configs and returns a hash
-func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir, prefix string) (*HashDiffs, error) {
+func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir string) (*HashDiffs, error) {
 	if len(releasePaths) != 2 {
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
@@ -294,5 +319,5 @@ func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir, 
 	if err != nil {
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
-	return getDiffsFromReleases(releases, prefix)
+	return getDiffsFromReleases(releases)
 }

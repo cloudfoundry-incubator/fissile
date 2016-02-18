@@ -54,14 +54,6 @@ func main() {
 
 	baseImageFlag := baseImageFlagFor("Base image.")
 
-	// 2x release - single/multiple, usage differences
-
-	releaseOptionalFlag := cli.StringFlag{
-		Name:   "release, r",
-		Usage:  "Path to a BOSH release.",
-		Value:  ".",
-		EnvVar: "FISSILE_RELEASE",
-	}
 	releasesFlag := cli.StringSliceFlag{
 		Name:   "release, r",
 		Usage:  "Path to dev BOSH release(s).",
@@ -103,24 +95,6 @@ func main() {
 		EnvVar: "FISSILE_WORK_DIR",
 	}
 
-	prefixFlag := cli.StringFlag{
-		Name:   "prefix, p",
-		Usage:  "Prefix to be used for all configuration keys.",
-		Value:  "hcf",
-		EnvVar: "FISSILE_CONFIG_PREFIX",
-	}
-	defaultConsulAddressFlag := cli.StringFlag{
-		Name:   "default-consul-address",
-		Usage:  "Default consul address that the container image will try to connect to when run, if not specified",
-		Value:  "http://127.0.0.1:8500",
-		EnvVar: "FISSILE_DEFAULT_CONSUL_ADDRESS",
-	}
-	defaultConfigStorePrefixFlag := cli.StringFlag{
-		Name:   "default-config-store-prefix",
-		Usage:  "Default configuration store prefix that is used by the container, if not specified",
-		Value:  "hcf",
-		EnvVar: "FISSILE_DEFAULT_CONFIG_STORE_PREFIX",
-	}
 	lightOpinionsFlag := cli.StringFlag{
 		Name:   "light-opinions, l",
 		Usage:  "Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
@@ -132,21 +106,12 @@ func main() {
 		EnvVar: "FISSILE_DARK_OPINIONS",
 	}
 
-	// 2x workers
-
 	workersFlag := cli.IntFlag{
 		Name:   "workers, w",
 		Value:  2,
 		Usage:  "Number of compiler workers to use.",
 		EnvVar: "FISSILE_COMPILATION_WORKER_COUNT",
 	}
-	workersBFlag := cli.IntFlag{
-		Name:   "workers, w",
-		Value:  1,
-		Usage:  "Number of workers to use.",
-		EnvVar: "FISSILE_WORKER_COUNT",
-	}
-
 	noBuildFlag := cli.BoolFlag{
 		Name:   "no-build, n",
 		Usage:  "If specified, the Dockerfile and assets will be created, but the image won't be built.",
@@ -161,11 +126,6 @@ func main() {
 		Name:   "with-sizes, s",
 		Usage:  "If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
 		EnvVar: "FISSILE_WITH_SIZES",
-	}
-	versionFlag := cli.StringFlag{
-		Name:   "version, v",
-		Usage:  "Used as a version label for the created images",
-		EnvVar: "FISSILE_VERSION",
 	}
 	providerFlag := cli.StringFlag{
 		Name:   "provider, o",
@@ -182,39 +142,6 @@ func main() {
 	}
 
 	cliApp.Commands = []cli.Command{
-		{
-			Name:    "release",
-			Aliases: []string{"rel"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "jobs-report",
-					Aliases: []string{"jr"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all jobs in a BOSH release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "packages-report",
-					Aliases: []string{"pr"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all packages in a BOSH release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "verify",
-					Aliases: []string{"v"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "Verify that the release is intact.",
-					Action: fissile.CommandRouter,
-				},
-			},
-		},
 		{
 			Name:    "compilation",
 			Aliases: []string{"comp"},
@@ -241,74 +168,6 @@ func main() {
 					Usage:  "Show information about a base docker image",
 					Action: fissile.CommandRouter,
 				},
-				{
-					Name:    "start",
-					Aliases: []string{"st"},
-					Flags: []cli.Flag{
-						repositoryFlag,
-						releaseOptionalFlag,
-						workdirFlag,
-						workersFlag,
-						debugFlag,
-					},
-					Usage:       "Compile packages",
-					Description: "Compiles packages from the release using parallel workers",
-					Action:      fissile.CommandRouter,
-				},
-			},
-		},
-		{
-			Name:    "configuration",
-			Aliases: []string{"conf"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "report",
-					Aliases: []string{"rep"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "List all configurations for all jobs in a release",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "generate",
-					Aliases: []string{"gen"},
-					Flags: []cli.Flag{
-						releasesFlag,
-						lightOpinionsFlag,
-						darkOpinionsFlag,
-						rolesManifestFlag,
-						workdirFlag,
-						prefixFlag,
-						providerFlag,
-					},
-					Usage:  "Generates a configuration base that can be loaded into something like consul",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name: "diff",
-					Flags: []cli.Flag{
-						releasesFlag,
-						prefixFlag,
-					},
-					Usage:  "Shows the diffs between configs of two releases",
-					Action: fissile.CommandRouter,
-				},
-			},
-		},
-		{
-			Name:    "templates",
-			Aliases: []string{"tmpl"},
-			Subcommands: []cli.Command{
-				{
-					Name:    "report",
-					Aliases: []string{"rep"},
-					Flags: []cli.Flag{
-						releaseOptionalFlag,
-					},
-					Usage:  "Print all templates for all jobs in a release",
-					Action: fissile.CommandRouter,
-				},
 			},
 		},
 		{
@@ -330,37 +189,6 @@ func main() {
 						repositoryFlag,
 					},
 					Usage:  "Creates a Dockerfile and a docker image as a base for role images.",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "create-roles",
-					Aliases: []string{"cr"},
-					Flags: []cli.Flag{
-						workdirFlag,
-						noBuildFlag,
-						repositoryFlag,
-						releasesFlag,
-						rolesManifestFlag,
-						defaultConsulAddressFlag,
-						defaultConfigStorePrefixFlag,
-						versionFlag,
-						workersBFlag,
-					},
-					Usage:  "Creates a Dockerfile and a docker image for each role in a manifest.",
-					Action: fissile.CommandRouter,
-				},
-				{
-					Name:    "list-roles",
-					Aliases: []string{"lr"},
-					Flags: []cli.Flag{
-						repositoryFlag,
-						releasesFlag,
-						rolesManifestFlag,
-						versionFlag,
-						dockerOnlyFlag,
-						withSizesFlag,
-					},
-					Usage:  "Lists role images.",
 					Action: fissile.CommandRouter,
 				},
 			},
@@ -409,8 +237,8 @@ func main() {
 						cacheDirFlag,
 						repositoryFlag,
 						rolesManifestFlag,
-						defaultConsulAddressFlag,
-						defaultConfigStorePrefixFlag,
+						lightOpinionsFlag,
+						darkOpinionsFlag,
 						noBuildFlag,
 						cli.BoolFlag{
 							Name:   "force, f",
@@ -449,10 +277,9 @@ func main() {
 						workdirFlag,
 						lightOpinionsFlag,
 						darkOpinionsFlag,
-						prefixFlag,
 						providerFlag,
 					},
-					Usage:  "Generates a configuration base that can be loaded into something like consul.",
+					Usage:  "Generates a configuration base.",
 					Action: fissile.CommandRouter,
 				},
 				{
@@ -461,7 +288,6 @@ func main() {
 					Flags: []cli.Flag{
 						releasesFlag,
 						cacheDirFlag,
-						prefixFlag,
 					},
 					Usage:  "Outputs a report giving the difference between two versions of a dev-release.",
 					Action: fissile.CommandRouter,

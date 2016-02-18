@@ -1,12 +1,9 @@
 package model
 
 import (
-	"crypto/sha1"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 
@@ -25,61 +22,20 @@ type Release struct {
 	CommitHash         string
 	Version            string
 	Path               string
-	Dev                bool
 	DevBOSHCacheDir    string
 
 	manifest map[interface{}]interface{}
 }
 
 const (
-	jobsDir        = "jobs"
-	packagesDir    = "packages"
-	licenseArchive = "license.tgz"
-	manifestFile   = "release.MF"
+	jobsDir      = "jobs"
+	packagesDir  = "packages"
+	manifestFile = "release.MF"
 )
 
 // yamlBinaryRegexp is the regexp used to look for the "!binary" YAML tag; see
 // loadMetadata() where it is used.
 var yamlBinaryRegexp = regexp.MustCompile(`([^!])!binary \|-\n`)
-
-// NewRelease will create an instance of a BOSH release
-func NewRelease(path string) (*Release, error) {
-	release := &Release{
-		Path:    path,
-		License: ReleaseLicense{},
-		Dev:     false,
-	}
-
-	if err := release.validatePathStructure(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadMetadata(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadLicense(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadPackages(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadPackageLicenses(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadDependenciesForPackages(); err != nil {
-		return nil, err
-	}
-
-	if err := release.loadJobs(); err != nil {
-		return nil, err
-	}
-
-	return release, nil
-}
 
 // GetUniqueConfigs returns all unique configs available in a release
 func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
@@ -200,16 +156,6 @@ func (r *Release) loadPackages() (err error) {
 	return nil
 }
 
-func (r *Release) loadPackageLicenses() error {
-	for _, pkg := range r.Packages {
-		if err := pkg.loadLicenseFiles(); err != nil {
-			return fmt.Errorf("package [%s] licenses could not be read: %v", pkg.Name, err)
-		}
-	}
-
-	return nil
-}
-
 func (r *Release) loadDependenciesForPackages() error {
 	for _, pkg := range r.Packages {
 		if err := pkg.loadPackageDependencies(); err != nil {
@@ -223,75 +169,29 @@ func (r *Release) loadDependenciesForPackages() error {
 func (r *Release) loadLicense() error {
 	r.License.Files = make(map[string][]byte)
 
-	if licenseInfo, ok := r.manifest["license"].(map[interface{}]interface{}); ok {
-		if licenseHash, ok := licenseInfo["sha1"].(string); ok {
-			r.License.SHA1 = licenseHash
-		}
-	}
-
-	targz, err := os.Open(r.licenseArchivePath())
+	licenseFile, err := os.Open(r.licensePath())
 	if os.IsNotExist(err) {
-		if r.License.SHA1 == "" {
-			// There were never licenses to load.
-			return nil
-		}
-
-		// If we get here, we've encountered a bosh-created release archive.
-		// It has a checksum for licenses.tgz, but the actual tgz is missing
-		// (instead, bosh placed all the files _inside_ the license archive in
-		// the top level of the release archive).  We can't do anything with the
-		// checksum, but we can still put the license files into the release.
-		// It is unclear why (some of) the releases downloaded from bosh.io do
-		// contain license.tgz.
-
-		parent, err := os.Open(r.Path)
-		if err != nil {
-			return err
-		}
-		defer parent.Close()
-		names, err := parent.Readdirnames(0)
-		if err != nil {
-			return err
-		}
-		for _, name := range names {
-			namePrefix := name[:len(name)-len(path.Ext(name))]
-			if namePrefix == "LICENSE" || namePrefix == "NOTICE" {
-				buf, err := ioutil.ReadFile(filepath.Join(r.Path, name))
-				if err != nil {
-					return err
-				}
-				r.License.Files[name] = buf
-			}
-		}
-
-		if len(r.License.Files) == 0 {
-			// We had an expected license checksum, but missing license.tgz and
-			// no extra license files that were just lying around either.
-			return fmt.Errorf("License file is missing")
-		}
-
+		// There were never licenses to load.
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	defer targz.Close()
+	defer licenseFile.Close()
 
-	hash := sha1.New()
-
-	r.License.Files, err = util.LoadLicenseFiles(
-		r.licenseArchivePath(),
-		io.TeeReader(targz, hash),
-		util.DefaultLicensePrefixFilters...,
-	)
-
+	licenseContents, err := ioutil.ReadFile(r.licensePath())
 	if err != nil {
 		return err
 	}
 
-	r.License.ActualSHA1 = fmt.Sprintf("%02x", hash.Sum(nil))
+	licenseFilePath, err := filepath.Rel(r.Path, r.licensePath())
+	if err != nil {
+		return err
+	}
 
-	return err
+	r.License.Files[licenseFilePath] = licenseContents
+
+	return nil
 }
 
 func (r *Release) validatePathStructure() error {
@@ -314,8 +214,8 @@ func (r *Release) validatePathStructure() error {
 	return nil
 }
 
-func (r *Release) licenseArchivePath() string {
-	return filepath.Join(r.Path, licenseArchive)
+func (r *Release) licensePath() string {
+	return filepath.Join(r.Path, "LICENSE")
 }
 
 func (r *Release) packagesDirPath() string {
@@ -327,9 +227,5 @@ func (r *Release) jobsDirPath() string {
 }
 
 func (r *Release) manifestFilePath() string {
-	if r.Dev {
-		return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
-	}
-
-	return filepath.Join(r.Path, manifestFile)
+	return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
 }

@@ -3,81 +3,54 @@ set -e
 
 if [[ "$1" == "--help" ]]; then
 cat <<EOL
-Usage: run.sh [<consul_address>] [<config_store_prefix>] [<role_instance_index>] [<dns_record_name>]
+Usage: run.sh
 EOL
 exit 0
 fi
 
-consul_address=$1
-if [[ -z $consul_address ]]; then
-  consul_address="{{ index . "default_consul_address" }}"
-fi
+export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
+export DNS_RECORD_NAME=$(/bin/hostname)
 
-config_store_prefix=$2
-if [[ -z $config_store_prefix ]]; then
-  config_store_prefix="{{ index . "default_config_store_prefix" }}"
-fi
-
-role_instance_index=$3
-if [[ -z $role_instance_index ]]; then
-  role_instance_index=0
-fi
-
-dns_record_name=$4
-if [[ -z $dns_record_name ]]; then
-  dns_record_name="localhost"
-fi
-
-ip_address=$(/bin/hostname -i | awk '{print $1}')
-
-# Usage: run_configin <role-description> <role> <release> <job> <input>  <output>
-#                     json               name   name      name  template destination
+# Usage: run_configin <job> <input>  <output>
+#                     name  template destination
 function run_configgin()
 {
-    role_desc="$1"
-    role_name="$2"
-    release_name="$3"
-    job_name="$4"
-    input="$5"
-    output="$6"
-    /opt/hcf/configgin/configgin \
-	--data    "${role_desc}" \
-	--output  "${output}" \
-	--consul  "${consul_address}" \
-	--prefix  "${config_store_prefix}" \
-	--role    "${role_name}" \
-	--release "${release_name}" \
-	--job     "${job_name}" \
-	"${input}"
+	job_name="$1"
+	template_file="$2"
+	output_file="$3"
+	/opt/hcf/configgin/configgin \
+	--input-erb ${template_file} \
+	--output ${output_file} \
+	--base /var/vcap/jobs-src/${job_name}/config_spec.json \
+	--env2conf /opt/hcf/env2conf.yml
 }
 
 # Process templates
 {{ with $role := index . "role" }}
-the_role_desc='{"job": { "name": "{{ $role.Name }}", "templates":[{{ range $iJob, $innerJob := $role.Jobs}}{{if $iJob}},{{end}}{"name":"{{$innerJob.Name}}"}{{ end }}] }, "index": '"${role_instance_index}"', "parameters": {}, "networks": { "default":{ "ip":"'"${ip_address}"'", "dns_record_name":"'"${dns_record_name}"'"}}}'
 # =====================================================
 {{ range $i, $job := .Jobs}}
 # ============================================================================
 #         Templates for job {{ $job.Name }}
 # ============================================================================
 {{ range $j, $template := $job.Templates }}
-run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+run_configgin "{{$job.Name}}" \
     "/var/vcap/jobs-src/{{$job.Name}}/templates/{{ $template.SourcePath }}" \
     "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
 # =====================================================
 {{ end }}
-{{ if not $role.IsTask }}
+{{ if not (eq $role.Type "bosh-task") }}
 # ============================================================================
 #         Monit templates for job {{ $job.Name }}
 # ============================================================================
-run_configgin "$the_role_desc" "{{$role.Name}}" "{{$job.Release.Name}}" "{{$job.Name}}" \
+run_configgin "{{$job.Name}}" \
     "/var/vcap/jobs-src/{{$job.Name}}/monit" \
     "/var/vcap/monit/{{$job.Name}}.monitrc"
 # =====================================================
 {{ end }}
 {{ end }}
-{{ if not .IsTask }}
+{{ if not (eq .Type "bosh-task") }}
 # Process monitrc.erb template
-run_configgin "$the_role_desc" "{{$role.Name}}" "{{with $l := index $role.JobNameList 0}}{{$l.ReleaseName}}{{end}}" "hcf-monit-master" \
+run_configgin "{{with $l := index $role.JobNameList 0}}{{$l.Name}}{{end}}" \
     "/opt/hcf/monitrc.erb" \
     "/etc/monitrc"
 chmod 0600 /etc/monitrc
@@ -92,11 +65,6 @@ service rsyslog start
 cron
 
 # Run custom role scripts
-export CONSUL_ADDRESS=$consul_address
-export CONFIG_STORE_PREFIX=$config_store_prefix
-export ROLE_INSTANCE_INDEX=$role_instance_index
-export IP_ADDRESS=$ip_address
-export DNS_RECORD_NAME=$dns_record_name
 {{ with $role := index . "role" }}
 {{ range $i, $script := .Scripts}}
 bash /opt/hcf/startup/{{ $script }}
@@ -105,7 +73,7 @@ bash /opt/hcf/startup/{{ $script }}
 
 # Run
 {{ with $role := index . "role" }}
-{{ if .IsTask }}
+{{ if eq .Type "bosh-task" }}
 {{ range $i, $job := .Jobs}}
 /var/vcap/jobs/{{ $job.Name }}/bin/run
 {{ end }}

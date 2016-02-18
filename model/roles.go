@@ -13,20 +13,26 @@ import (
 
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
-	Roles []*Role `yaml:"roles"`
+	Roles         []*Role        `yaml:"roles"`
+	Configuration *configuration `yaml:"configuration"`
 
 	manifestFilePath string
 }
 
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
-	Name        string     `yaml:"name"`
-	Jobs        Jobs       `yaml:"_,omitempty"`
-	Scripts     []string   `yaml:"scripts"`
-	IsTask      bool       `yaml:"is_task,omitempty"`
-	JobNameList []*roleJob `yaml:"jobs"`
+	Name          string         `yaml:"name"`
+	Jobs          Jobs           `yaml:"_,omitempty"`
+	Scripts       []string       `yaml:"scripts"`
+	Type          string         `yaml:"type,omitempty"`
+	JobNameList   []*roleJob     `yaml:"jobs"`
+	Configuration *configuration `yaml:"configuration"`
 
 	rolesManifest *RoleManifest
+}
+
+type configuration struct {
+	Templates map[string]string `yaml:"templates"`
 }
 
 type roleJob struct {
@@ -59,6 +65,13 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, err
 	}
 
+	if rolesManifest.Configuration == nil {
+		rolesManifest.Configuration = &configuration{}
+	}
+	if rolesManifest.Configuration.Templates == nil {
+		rolesManifest.Configuration.Templates = map[string]string{}
+	}
+
 	for _, role := range rolesManifest.Roles {
 		role.rolesManifest = &rolesManifest
 		role.Jobs = make(Jobs, len(role.JobNameList))
@@ -78,6 +91,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 			role.Jobs[idx] = job
 		}
+
+		role.calculateRoleConfigurationTemplates()
 	}
 
 	return &rolesManifest, nil
@@ -118,4 +133,24 @@ func (r *Role) GetRoleDevVersion() string {
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func (r *Role) calculateRoleConfigurationTemplates() {
+	if r.Configuration == nil {
+		r.Configuration = &configuration{}
+	}
+	if r.Configuration.Templates == nil {
+		r.Configuration.Templates = map[string]string{}
+	}
+
+	roleConfigs := map[string]string{}
+	for k, v := range r.rolesManifest.Configuration.Templates {
+		roleConfigs[k] = v
+	}
+
+	for k, v := range r.Configuration.Templates {
+		roleConfigs[k] = v
+	}
+
+	r.Configuration.Templates = roleConfigs
 }

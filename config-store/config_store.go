@@ -28,7 +28,6 @@ const (
 
 // Builder creates a base configuration to be fed into Consul or something similar
 type Builder struct {
-	prefix            string
 	provider          string
 	lightOpinionsPath string
 	darkOpinionsPath  string
@@ -36,9 +35,8 @@ type Builder struct {
 }
 
 // NewConfigStoreBuilder creates a new configstore.Builder
-func NewConfigStoreBuilder(prefix, provider, lightOpinionsPath, darkOpinionsPath, targetLocation string) *Builder {
+func NewConfigStoreBuilder(provider, lightOpinionsPath, darkOpinionsPath, targetLocation string) *Builder {
 	configStoreManager := &Builder{
-		prefix:            prefix,
 		provider:          provider,
 		lightOpinionsPath: lightOpinionsPath,
 		darkOpinionsPath:  darkOpinionsPath,
@@ -93,13 +91,13 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 }
 
 // BoshKeyToConsulPath maps dotted names to slash-delimited names
-func BoshKeyToConsulPath(key, store, prefix string) (string, error) {
+func BoshKeyToConsulPath(key, store string) (string, error) {
 	keyGrams, err := getKeyGrams(key)
 	if err != nil {
 		return "", err
 	}
 
-	keyGrams = append([]string{"", prefix, store}, keyGrams...)
+	keyGrams = append([]string{"", store}, keyGrams...)
 	return strings.Join(keyGrams, "/"), nil
 }
 

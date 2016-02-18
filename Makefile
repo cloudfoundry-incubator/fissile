@@ -5,7 +5,7 @@ COMMIT:=$(shell git describe --tags --long | sed -r 's/[0-9.]+-([0-9]+)-(g[a-f0-
 ARCH:=$(shell go env GOOS).$(shell go env GOARCH)
 APP_VERSION=$(COMMIT).$(BRANCH)
 
-PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /templates/d)
+PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /fissile[/]scripts/d)
 
 print_status = @printf "\033[32;01m==> $(1)\033[0m\n"
 
@@ -23,7 +23,7 @@ clean:
 format:
 	$(call print_status, Checking format)
 	export GOPATH=$(shell godep path):$(GOPATH) && \
-		test 0 -eq `goimports -d -e . | tee /dev/fd/2 | wc -l`
+		test 0 -eq `echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 sh -c 'goimports -d -e {p}/*.go' | tee /dev/fd/2 | wc -l`
 
 lint:
 	$(call print_status, Linting)
@@ -36,8 +36,7 @@ vet:
 bindata:
 	$(call print_status, Generating .go resource files)
 	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh && \
-	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh ./scripts/dockerfiles/rsyslog_conf.tgz && \
-	go-bindata -pkg=templates -o=./scripts/templates/transformations.go ./scripts/templates/*.yml
+	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh ./scripts/dockerfiles/rsyslog_conf.tgz
 
 build: bindata
 	$(call print_status, Building)

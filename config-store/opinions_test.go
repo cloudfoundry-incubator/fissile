@@ -36,7 +36,7 @@ func TestGetOpinionForKey(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
-	masked, value := confOpinions.GetOpinionForKey([]string{"cc", "app_events", "cutoff_age_in_days"})
+	masked, value := confOpinions.GetOpinionForKey([]string{"tor", "int_opinion"})
 	assert.False(masked)
 	assert.Equal(31, value)
 }
@@ -55,7 +55,7 @@ func TestGetOpinionWithDarkKey(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
-	masked, value := confOpinions.GetOpinionForKey([]string{"cc", "droplets", "droplet_directory_key"})
+	masked, value := confOpinions.GetOpinionForKey([]string{"tor", "masked_opinion"})
 	assert.True(masked)
 	assert.Nil(value)
 }

@@ -45,7 +45,7 @@ func valueToJSONable(value interface{}) interface{} {
 		return result
 	}
 	if valueSlice, ok := value.([]interface{}); ok {
-		var result []interface{}
+		result := []interface{}{}
 		for _, elem := range valueSlice {
 			result = append(result, valueToJSONable(elem))
 		}

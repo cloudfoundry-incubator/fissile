@@ -12,9 +12,11 @@ import (
 )
 
 const (
-	jobConfigFileExtension = ".json"
-	jobConfigPrefix        = ""
-	jobConfigIndent        = "    "
+	// JobConfigFileExtension is the file extension for json configurations
+	JobConfigFileExtension = ".json"
+
+	jobConfigPrefix = ""
+	jobConfigIndent = "    "
 )
 
 type jsonConfigWriterProvider struct {
@@ -41,7 +43,7 @@ func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]interfa
 
 func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest, builder *Builder) error {
 
-	outputPath := filepath.Join(builder.targetLocation, builder.prefix)
+	outputPath := builder.targetLocation
 
 	if err := os.RemoveAll(outputPath); err != nil && err != os.ErrNotExist {
 		return err
@@ -75,7 +77,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 			config["properties"] = properties
 
 			// Write out the configuration
-			jobPath := filepath.Join(outputPath, role.Name, job.Name+jobConfigFileExtension)
+			jobPath := filepath.Join(outputPath, role.Name, job.Name+JobConfigFileExtension)
 			jobJSON, err := json.MarshalIndent(config, jobConfigPrefix, jobConfigIndent)
 			if err != nil {
 				return err
@@ -89,7 +91,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 	return nil
 }
 
-// getPropertiesForJob returns the parameters for the give job, using its specs and opinions
+// getPropertiesForJob returns the parameters for the given job, using its specs and opinions
 func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinions *opinions) (map[string]interface{}, error) {
 	props, err := deepCopy(allProps)
 	if err != nil {

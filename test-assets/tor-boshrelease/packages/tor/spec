@@ -1,0 +1,5 @@
+---
+name: tor
+dependencies: [libevent]
+files:
+- tor/tor-*.tar.gz

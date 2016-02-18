@@ -1,0 +1,5 @@
+check process ntpd
+  with pidfile /var/vcap/sys/run/ntpd/ntpd.pid
+  start program "/var/vcap/jobs/ntpd/bin/ctl start"
+  stop program "/var/vcap/jobs/ntpd/bin/ctl stop"
+  group vcap

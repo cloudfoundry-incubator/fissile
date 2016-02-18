@@ -18,10 +18,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		"dev compile",
 		"dev create-images",
 		"dev list-roles",
-		"dev config-gen",
-		"configuration generate",
-		"images list-roles",
-		"images create-roles":
+		"dev config-gen":
 		{
 			paths, err = absolutePathsForFlags(c, "work-dir", "light-opinions", "dark-opinions", "roles-manifest", "cache-dir")
 			if err != nil {
@@ -29,14 +26,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 				return
 			}
 
-			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
-			if err != nil {
-				f.cmdErr = err
-				return
-			}
-		}
-	case "configuration diff":
-		{
 			releasePaths, err = absolutePathsForArray(c.StringSlice("release"))
 			if err != nil {
 				f.cmdErr = err
@@ -68,18 +57,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 
 	extendPathsFromWorkDirectory(paths)
 	switch c.Command.FullName() {
-	case "release jobs-report":
-		err = f.ListJobs(
-			paths["release"],
-		)
-	case "release packages-report":
-		err = f.ListPackages(
-			paths["release"],
-		)
-	case "release verify":
-		err = f.VerifyRelease(
-			paths["release"],
-		)
 	case "compilation build-base":
 		err = f.CreateBaseCompilationImage(
 			c.String("base-image"),
@@ -91,37 +68,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("base-image"),
 			c.String("repository"),
 		)
-	case "compilation start":
-		err = f.Compile(
-			paths["release"],
-			c.String("repository"),
-			paths["compilation-dir"],
-			c.Int("workers"),
-			c.Bool("debug"),
-		)
-	case "configuration report":
-		err = f.ListFullConfiguration(
-			paths["release"],
-		)
-	case "templates report":
-		err = f.PrintTemplateReport(
-			paths["release"],
-		)
-	case "configuration generate":
-		err = f.GenerateConfigurationBase(
-			releasePaths,
-			paths["light-opinions"],
-			paths["dark-opinions"],
-			paths["roles-manifest"],
-			paths["config-dir"],
-			c.String("prefix"),
-			c.String("provider"),
-		)
-	case "configuration diff":
-		err = f.DiffConfigurationBases(
-			releasePaths,
-			c.String("prefix"),
-		)
 	case "images create-base":
 		err = f.GenerateBaseDockerImage(
 			paths["base-docker-file"],
@@ -129,28 +75,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("base-image"),
 			c.Bool("no-build"),
 			c.String("repository"),
-		)
-	case "images create-roles":
-		err = f.GenerateRoleImages(
-			paths["docker-dir"],
-			c.String("repository"),
-			c.Bool("no-build"),
-			releasePaths,
-			paths["roles-manifest"],
-			paths["compilation-dir"],
-			c.String("default-consul-address"),
-			c.String("default-config-store-prefix"),
-			c.String("version"),
-			c.Int("workers"),
-		)
-	case "images list-roles":
-		err = f.ListRoleImages(
-			c.String("repository"),
-			releasePaths,
-			paths["roles-manifest"],
-			c.String("version"),
-			c.Bool("docker-only"),
-			c.Bool("with-sizes"),
 		)
 	case "dev jobs-report":
 		if err = validateDevReleaseArgs(c); err != nil {
@@ -204,8 +128,8 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["cache-dir"],
 			paths["roles-manifest"],
 			paths["compilation-dir"],
-			c.String("default-consul-address"),
-			c.String("default-config-store-prefix"),
+			paths["light-opinions"],
+			paths["dark-opinions"],
 		)
 	case "dev list-roles":
 		if err = validateDevReleaseArgs(c); err != nil {
@@ -236,7 +160,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			paths["light-opinions"],
 			paths["dark-opinions"],
 			paths["config-dir"],
-			c.String("prefix"),
 			c.String("provider"),
 		)
 	case "dev config-diff":
@@ -246,7 +169,6 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.DiffDevConfigurationBases(
 			releasePaths,
 			paths["cache-dir"],
-			c.String("prefix"),
 		)
 	}
 

@@ -14,8 +14,9 @@ func TestJobTemplatesContentOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.Nil(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release-2")
-	release, err := NewRelease(ntpReleasePath)
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Jobs))

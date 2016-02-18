@@ -1,0 +1,96 @@
+meta:
+  environment: tor-warden
+
+  stemcell:
+    name: bosh-warden-boshlite-ubuntu
+    version: latest
+
+update:
+  canaries: 1
+  max_in_flight: 50
+  canary_watch_time: 1000-30000
+  update_watch_time: 1000-30000
+
+jobs:
+  - name: tor
+    networks:
+      - name: tor1
+
+compilation:
+  cloud_properties:
+    name: random
+
+resource_pools:
+  - name: small_z1
+    cloud_properties:
+      name: random
+
+networks:
+- name: tor1
+  # Assumes up to 5 VMs, including 1 static and 4 dynamic.
+  # Plus 5 (double the size) unused IPs, due to BOSH bug/quirk.
+  subnets:
+  - cloud_properties:
+      name: random
+    range: 10.244.27.0/30
+    reserved:
+    - 10.244.27.1
+    static:
+    - 10.244.27.2
+
+  - cloud_properties:
+      name: random
+    range: 10.244.27.4/30
+    reserved:
+    - 10.244.27.5
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.8/30
+    reserved:
+    - 10.244.27.9
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.12/30
+    reserved:
+    - 10.244.27.13
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.16/30
+    reserved:
+    - 10.244.27.17
+    static: []
+
+  # Bonus double-sized network required due to BOSH oddity
+  - cloud_properties:
+      name: random
+    range: 10.244.27.20/30
+    reserved:
+    - 10.244.27.21
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.24/30
+    reserved:
+    - 10.244.27.25
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.28/30
+    reserved:
+    - 10.244.27.29
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.32/30
+    reserved:
+    - 10.244.27.33
+    static: []
+  - cloud_properties:
+      name: random
+    range: 10.244.27.36/30
+    reserved:
+    - 10.244.27.37
+    static: []

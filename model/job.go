@@ -231,9 +231,5 @@ func (slice Jobs) Swap(i, j int) {
 }
 
 func (j *Job) jobArchivePath() string {
-	if j.Release.Dev {
-		return filepath.Join(j.Release.DevBOSHCacheDir, j.SHA1)
-	}
-
-	return fmt.Sprintf("%s.tgz", filepath.Join(j.Release.jobsDirPath(), j.Name))
+	return filepath.Join(j.Release.DevBOSHCacheDir, j.SHA1)
 }
