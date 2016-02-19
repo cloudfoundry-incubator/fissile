@@ -25,6 +25,13 @@ function run_configgin()
 	--env2conf /opt/hcf/env2conf.yml
 }
 
+# Run custom role scripts
+{{ with $role := index . "role" }}
+{{ range $i, $script := .Scripts}}
+bash /opt/hcf/startup/{{ $script }}
+{{ end }}
+{{ end }}
+
 # Process templates
 {{ with $role := index . "role" }}
 # =====================================================
@@ -63,13 +70,6 @@ mkdir -p /var/vcap/sys/run
 # Start rsyslog and cron
 service rsyslog start
 cron
-
-# Run custom role scripts
-{{ with $role := index . "role" }}
-{{ range $i, $script := .Scripts}}
-bash /opt/hcf/startup/{{ $script }}
-{{ end }}
-{{ end }}
 
 # Run
 {{ with $role := index . "role" }}
