@@ -11,6 +11,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	boshTaskType = "bosh-task"
+	boshType     = "bosh"
+)
+
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
 	Roles         []*Role        `yaml:"roles"`
@@ -63,6 +68,16 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	rolesManifest.manifestFilePath = manifestFilePath
 	if err := yaml.Unmarshal(manifestContents, &rolesManifest); err != nil {
 		return nil, err
+	}
+
+	// Remove all roles that are not of the "bosh" or "bosh-task" type
+	// Default type is considered to be "bosh"
+	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
+		role := rolesManifest.Roles[i]
+
+		if role.Type != "" && role.Type != boshTaskType && role.Type != boshType {
+			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
+		}
 	}
 
 	if rolesManifest.Configuration == nil {

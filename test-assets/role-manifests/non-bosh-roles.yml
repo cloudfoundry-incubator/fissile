@@ -1,0 +1,17 @@
+---
+roles:
+- name: myrole
+  scripts: ["myrole.sh"]
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
+- name: foorole
+  type: bosh-task
+  jobs:
+  - name: tor
+    release_name: tor
+- name: dockerrole
+  type: docker
+  fookey: somevalue
