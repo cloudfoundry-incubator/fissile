@@ -151,3 +151,23 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "release foo has not been loaded and is referenced by job ntpd in role foorole")
 }
+
+func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.Nil(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/non-bosh-roles.yml")
+	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.Nil(err)
+	assert.NotNil(rolesManifest)
+
+	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
+	assert.Equal(2, len(rolesManifest.Roles))
+}
