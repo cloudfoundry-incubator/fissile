@@ -71,6 +71,13 @@ mkdir -p /var/vcap/sys/run
 service rsyslog start
 cron
 
+# Run custom post config role scripts
+{{ with $role := index . "role" }}
+{{ range $i, $script := .PostConfigScripts}}
+bash /opt/hcf/startup/{{ $script }}
+{{ end }}
+{{ end }}
+
 # Run
 {{ with $role := index . "role" }}
 {{ if eq .Type "bosh-task" }}

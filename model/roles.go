@@ -26,12 +26,13 @@ type RoleManifest struct {
 
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
-	Name          string         `yaml:"name"`
-	Jobs          Jobs           `yaml:"_,omitempty"`
-	Scripts       []string       `yaml:"scripts"`
-	Type          string         `yaml:"type,omitempty"`
-	JobNameList   []*roleJob     `yaml:"jobs"`
-	Configuration *configuration `yaml:"configuration"`
+	Name              string         `yaml:"name"`
+	Jobs              Jobs           `yaml:"_,omitempty"`
+	Scripts           []string       `yaml:"scripts"`
+	PostConfigScripts []string       `yaml:"post_config_scripts"`
+	Type              string         `yaml:"type,omitempty"`
+	JobNameList       []*roleJob     `yaml:"jobs"`
+	Configuration     *configuration `yaml:"configuration"`
 
 	rolesManifest *RoleManifest
 }
@@ -122,6 +123,22 @@ func (r *Role) GetScriptPaths() map[string]string {
 	}
 
 	for _, script := range r.Scripts {
+		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
+	}
+
+	return result
+
+}
+
+// GetPostConfigScriptPaths returns the paths to the post configgin startup scripts for a role
+func (r *Role) GetPostConfigScriptPaths() map[string]string {
+	result := map[string]string{}
+
+	if r.PostConfigScripts == nil {
+		return result
+	}
+
+	for _, script := range r.PostConfigScripts {
 		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
 	}
 
