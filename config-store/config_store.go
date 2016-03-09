@@ -19,9 +19,6 @@ const (
 	// DescriptionsStore is the prefix for the description keys
 	DescriptionsStore = "descriptions"
 
-	// DirTreeProvider is the name of the default config writer that creates a filesystem tree
-	DirTreeProvider = "dirtree"
-
 	// JSONProvider is the name of the JSON output provider; outputs one file per job
 	JSONProvider = "json"
 )
@@ -62,11 +59,6 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 	}
 
 	switch {
-	case c.provider == DirTreeProvider:
-		writer, err = newDirTreeConfigWriterProvider(opinions, allProps)
-		if err != nil {
-			return err
-		}
 	case c.provider == JSONProvider:
 		writer, err = newJSONConfigWriterProvider(opinions, allProps)
 		if err != nil {

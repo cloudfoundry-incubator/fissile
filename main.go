@@ -130,7 +130,7 @@ func main() {
 	providerFlag := cli.StringFlag{
 		Name:   "provider, o",
 		Usage:  "Provider to use when generating the configuration base.",
-		Value:  configstore.DirTreeProvider,
+		Value:  configstore.JSONProvider,
 		EnvVar: "FISSILE_PROVIDER",
 	}
 
