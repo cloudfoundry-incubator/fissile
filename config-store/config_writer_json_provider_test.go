@@ -5,10 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hpcloud/fissile/model"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestJSONConfigWriterProvider(t *testing.T) {
@@ -107,11 +109,11 @@ func TestDeleteConfig(t *testing.T) {
 	err = insertConfig(config, "hello.foo.quux", 222)
 	assert.NoError(err)
 
-	err = deleteConfig(config, "hello.world")
+	err = deleteConfig(config, []string{"hello", "world"}, nil)
 	assert.NoError(err)
-	err = deleteConfig(config, "hello.foo.bar")
+	err = deleteConfig(config, []string{"hello", "foo", "bar"}, nil)
 	assert.NoError(err)
-	err = deleteConfig(config, "hello.does.not.exist")
+	err = deleteConfig(config, []string{"hello", "does", "not", "exist"}, nil)
 	assert.IsType(&errConfigNotExist{}, err)
 
 	hello, ok := config["hello"].(map[string]interface{})
@@ -124,4 +126,46 @@ func TestDeleteConfig(t *testing.T) {
 	assert.False(ok)
 	_, ok = foo["quux"]
 	assert.True(ok)
+}
+
+func TestConfigMapDifference(t *testing.T) {
+	assert := assert.New(t)
+
+	var leftMap map[string]interface{}
+	err := json.Unmarshal([]byte(`{
+	    "toplevel": "value",
+	    "key": {
+	        "secondary": "value2",
+	        "empty": {
+	            "removed": "value3"
+	        },
+	        "extra": 4
+	    },
+	    "also_removed": "yes"
+	}`), &leftMap)
+	assert.NoError(err)
+
+	var rightMap map[interface{}]interface{}
+	err = yaml.Unmarshal([]byte(strings.Replace(`
+	key:
+	    empty:
+	        removed: true
+	    extra: yes
+	also_removed: please
+	`, "\t", "    ", -1)), &rightMap)
+	assert.NoError(err)
+
+	configMapDifference(leftMap, rightMap)
+
+	var expected map[string]interface{}
+	err = json.Unmarshal([]byte(`{
+	    "toplevel": "value",
+	    "key": {
+	        "secondary": "value2",
+	        "empty": {}
+	    }
+	}`), &expected)
+	assert.NoError(err)
+
+	assert.Equal(expected, leftMap)
 }

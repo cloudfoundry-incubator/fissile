@@ -111,27 +111,21 @@ func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinio
 		if err != nil {
 			return nil, err
 		}
-		masked, value := opinions.GetOpinionForKey(keyPieces)
-		if masked {
-			if err = deleteConfig(props, uniqueConfig.Name); err != nil {
-				if _, ok := err.(*errConfigNotExist); ok {
-					// Some keys, like uaa.client.*, only have the top level :|
-					topLevelKey := strings.SplitN(uniqueConfig.Name, ".", 2)[0]
-					if _, ok = props[topLevelKey]; !ok {
-						// If the top level key is missing too, it's a hard error
-						return nil, err
-					}
-				} else {
-					return nil, err
-				}
+
+		// Add light opinions
+		value := opinions.GetOpinionForKey(opinions.Light, keyPieces)
+		if value != nil {
+			if err := insertConfig(props, uniqueConfig.Name, value); err != nil {
+				return nil, err
 			}
-			continue
 		}
-		if value == nil {
-			continue
-		}
-		if err := insertConfig(props, uniqueConfig.Name, value); err != nil {
-			return nil, err
+
+		// Subtract dark opinions
+		value = opinions.GetOpinionForKey(opinions.Dark, keyPieces)
+		if value != nil {
+			if err = deleteConfig(props, keyPieces, value); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return props, nil
@@ -157,19 +151,30 @@ func initializeConfigJSON() (map[string]interface{}, error) {
 }
 
 // deleteConfig removes a configuration value from the configuration map
-func deleteConfig(config map[string]interface{}, name string) error {
-	keyPieces, err := getKeyGrams(name)
-	if err != nil {
-		return err
-	}
-
+func deleteConfig(config map[string]interface{}, keyPieces []string, value interface{}) error {
 	for _, key := range keyPieces[:len(keyPieces)-1] {
 		child, ok := config[key].(map[string]interface{})
 		if !ok {
-			return newErrorConfigNotExist(name)
+			return newErrorConfigNotExist(strings.Join(keyPieces, "."))
 		}
 		config = child
 	}
-	delete(config, keyPieces[len(keyPieces)-1])
+	lastKey := keyPieces[len(keyPieces)-1]
+	if valueMap, ok := value.(map[interface{}]interface{}); ok {
+		configMapDifference(config[lastKey].(map[string]interface{}), valueMap)
+	} else {
+		delete(config, lastKey)
+	}
 	return nil
+}
+
+// configMapDifference removes entries in the second map from the first map
+func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}) {
+	for key, value := range difference {
+		if mapValue, ok := value.(map[interface{}]interface{}); ok {
+			configMapDifference(config[key.(string)].(map[string]interface{}), mapValue)
+		} else {
+			delete(config, key.(string))
+		}
+	}
 }
