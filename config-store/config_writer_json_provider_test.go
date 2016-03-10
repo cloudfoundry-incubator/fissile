@@ -151,11 +151,13 @@ func TestConfigMapDifference(t *testing.T) {
 	    empty:
 	        removed: true
 	    extra: yes
+	    not_in_config: yay
 	also_removed: please
 	`, "\t", "    ", -1)), &rightMap)
 	assert.NoError(err)
 
-	configMapDifference(leftMap, rightMap)
+	err = configMapDifference(leftMap, rightMap)
+	assert.NoError(err)
 
 	var expected map[string]interface{}
 	err = json.Unmarshal([]byte(`{

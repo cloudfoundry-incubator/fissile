@@ -169,12 +169,20 @@ func deleteConfig(config map[string]interface{}, keyPieces []string, value inter
 }
 
 // configMapDifference removes entries in the second map from the first map
-func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}) {
+func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}) error {
 	for key, value := range difference {
 		if mapValue, ok := value.(map[interface{}]interface{}); ok {
-			configMapDifference(config[key.(string)].(map[string]interface{}), mapValue)
+			configValue := config[key.(string)]
+			if configValueMap, ok := configValue.(map[string]interface{}); ok {
+				if err := configMapDifference(configValueMap, mapValue); err != nil {
+					return err
+				}
+			} else if configValue != nil {
+				return fmt.Errorf("Invalid config key %s", key.(string))
+			}
 		} else {
 			delete(config, key.(string))
 		}
 	}
+	return nil
 }
