@@ -24,16 +24,6 @@ type jsonConfigWriterProvider struct {
 	allProps map[string]interface{}
 }
 
-type errConfigNotExist struct {
-	error
-}
-
-func newErrorConfigNotExist(key string) error {
-	return &errConfigNotExist{
-		fmt.Errorf("The configuration key %s does not exist", key),
-	}
-}
-
 func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]interface{}) (*jsonConfigWriterProvider, error) {
 	return &jsonConfigWriterProvider{
 		opinions: opinions,
@@ -111,27 +101,19 @@ func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinio
 		if err != nil {
 			return nil, err
 		}
-		masked, value := opinions.GetOpinionForKey(keyPieces)
-		if masked {
-			if err = deleteConfig(props, uniqueConfig.Name); err != nil {
-				if _, ok := err.(*errConfigNotExist); ok {
-					// Some keys, like uaa.client.*, only have the top level :|
-					topLevelKey := strings.SplitN(uniqueConfig.Name, ".", 2)[0]
-					if _, ok = props[topLevelKey]; !ok {
-						// If the top level key is missing too, it's a hard error
-						return nil, err
-					}
-				} else {
-					return nil, err
-				}
+
+		// Add light opinions
+		value := opinions.GetOpinionForKey(opinions.Light, keyPieces)
+		if value != nil {
+			if err := insertConfig(props, uniqueConfig.Name, value); err != nil {
+				return nil, err
 			}
-			continue
 		}
-		if value == nil {
-			continue
-		}
-		if err := insertConfig(props, uniqueConfig.Name, value); err != nil {
-			return nil, err
+
+		// Subtract dark opinions
+		value = opinions.GetOpinionForKey(opinions.Dark, keyPieces)
+		if value != nil {
+			deleteConfig(props, keyPieces, value)
 		}
 	}
 	return props, nil
@@ -157,19 +139,40 @@ func initializeConfigJSON() (map[string]interface{}, error) {
 }
 
 // deleteConfig removes a configuration value from the configuration map
-func deleteConfig(config map[string]interface{}, name string) error {
-	keyPieces, err := getKeyGrams(name)
-	if err != nil {
-		return err
-	}
-
+func deleteConfig(config map[string]interface{}, keyPieces []string, value interface{}) {
 	for _, key := range keyPieces[:len(keyPieces)-1] {
 		child, ok := config[key].(map[string]interface{})
 		if !ok {
-			return newErrorConfigNotExist(name)
+			// If we can't find an ancestor key, we can't possibly find the target one.
+			// That counts as having been deleted.
+			return
 		}
 		config = child
 	}
-	delete(config, keyPieces[len(keyPieces)-1])
+	lastKey := keyPieces[len(keyPieces)-1]
+	if valueMap, ok := value.(map[interface{}]interface{}); ok {
+		configMapDifference(config[lastKey].(map[string]interface{}), valueMap, keyPieces)
+	} else {
+		delete(config, lastKey)
+	}
+}
+
+// configMapDifference removes entries in the second map from the first map
+func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}, stack []string) error {
+	for keyVal, value := range difference {
+		key := keyVal.(string)
+		if mapValue, ok := value.(map[interface{}]interface{}); ok {
+			configValue := config[key]
+			if configValueMap, ok := configValue.(map[string]interface{}); ok {
+				if err := configMapDifference(configValueMap, mapValue, append(stack, key)); err != nil {
+					return err
+				}
+			} else if configValue != nil {
+				return fmt.Errorf("Attempting to descend into dark opinions key %s which is not a hash in the base configuration", strings.Join(append(stack, key), "."))
+			}
+		} else {
+			delete(config, key)
+		}
+	}
 	return nil
 }

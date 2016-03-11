@@ -126,10 +126,10 @@ The following diagram shows the ordering of things. The highlighted items are co
  - `--dark-opinions <DARK_OPINIONS_YAML_PATH>`. Normally, the path should point to an edited version of the `cf-stub` BOSH YAML deployment manifest as documented [here](https://docs.cloudfoundry.org/deploying/openstack/cf-stub.html) **(not optional)**.
  - `--target <TARGET_DIRECTORY>` path to a directory where the command will write the configuration **(not optional)**
  - `--prefix <CONFIGURATION_KEYS_PREFIX>` a prefix to be used for all the BOSH keys; defaults to `hcf`
- - `--provider <GENERATION_PROVIDER>` the provider to use when generating the configuration; defaults to `dirtree` (this is the only provider currently available)
+ - `--provider <GENERATION_PROVIDER>` the provider to use when generating the configuration; defaults to `json` (this is the only provider currently available)
 
- > This command generates an output that is used to populate `consul` or other configuration stores with BOSH configuration keys. 
- > The `dirtree` provider creates a directory structure where the directories themselves represent keys (e.g. `nats.host` is represented by a directory `<CONFiGURATION_KEYS_PREFIX>/nats/host`) and the value is stored in a file named `value.yml`. The contents of the `value.yml` file contain a value that is serialized to `yaml`.
+ > This command generates an output that is used to populate `consul` or other configuration stores with BOSH configuration keys.
+ > The `json` provider creates a BOSH-style JSON file for each job which can be fed to `configgin`.
  > ```bash
  > fissile configuration generate \
  >     --release ~/fissile-releases/cf-release-v217 \
@@ -137,7 +137,7 @@ The following diagram shows the ordering of things. The highlighted items are co
  >     --dark-opinions ~/config-opinions/cf-v217/dark-opinions.yml \
  >     --target ~/fissile-config \
  >     --prefix hcf \
- >     --provider dirtree
+ >     --provider json
  > ```
 
 #### `templates`

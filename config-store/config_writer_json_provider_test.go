@@ -5,10 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hpcloud/fissile/model"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestJSONConfigWriterProvider(t *testing.T) {
@@ -107,12 +109,9 @@ func TestDeleteConfig(t *testing.T) {
 	err = insertConfig(config, "hello.foo.quux", 222)
 	assert.NoError(err)
 
-	err = deleteConfig(config, "hello.world")
-	assert.NoError(err)
-	err = deleteConfig(config, "hello.foo.bar")
-	assert.NoError(err)
-	err = deleteConfig(config, "hello.does.not.exist")
-	assert.IsType(&errConfigNotExist{}, err)
+	deleteConfig(config, []string{"hello", "world"}, nil)
+	deleteConfig(config, []string{"hello", "foo", "bar"}, nil)
+	deleteConfig(config, []string{"hello", "does", "not", "exist"}, nil)
 
 	hello, ok := config["hello"].(map[string]interface{})
 	assert.True(ok)
@@ -124,4 +123,69 @@ func TestDeleteConfig(t *testing.T) {
 	assert.False(ok)
 	_, ok = foo["quux"]
 	assert.True(ok)
+}
+
+func TestConfigMapDifference(t *testing.T) {
+	assert := assert.New(t)
+
+	var leftMap map[string]interface{}
+	err := json.Unmarshal([]byte(`{
+	    "toplevel": "value",
+	    "key": {
+	        "secondary": "value2",
+	        "empty": {
+	            "removed": "value3"
+	        },
+	        "extra": 4
+	    },
+	    "also_removed": "yes"
+	}`), &leftMap)
+	assert.NoError(err)
+
+	var rightMap map[interface{}]interface{}
+	err = yaml.Unmarshal([]byte(strings.Replace(`
+	key:
+	    empty:
+	        removed: true
+	    extra: yes
+	    not_in_config: yay
+	also_removed: please
+	`, "\t", "    ", -1)), &rightMap)
+	assert.NoError(err)
+
+	err = configMapDifference(leftMap, rightMap, []string{})
+	assert.NoError(err)
+
+	var expected map[string]interface{}
+	err = json.Unmarshal([]byte(`{
+	    "toplevel": "value",
+	    "key": {
+	        "secondary": "value2",
+	        "empty": {}
+	    }
+	}`), &expected)
+	assert.NoError(err)
+
+	assert.Equal(expected, leftMap)
+}
+
+func TestConfigMapDifferenceError(t *testing.T) {
+	assert := assert.New(t)
+
+	config := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": 1234,
+		},
+	}
+
+	difference := map[interface{}]interface{}{
+		"a": map[interface{}]interface{}{
+			"b": map[interface{}]interface{}{
+				"c": 1234,
+			},
+		},
+	}
+
+	err := configMapDifference(config, difference, []string{"q"})
+	assert.EqualError(err, "Attempting to descend into dark opinions key q.a.b which is not a hash in the base configuration")
 }
