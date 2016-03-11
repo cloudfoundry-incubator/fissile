@@ -35,11 +35,11 @@ func TestFindImageOK(t *testing.T) {
 	assert := assert.New(t)
 
 	dockerManager, err := NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	image, err := dockerManager.FindImage(dockerImageName)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.NotEmpty(image.ID)
@@ -49,12 +49,12 @@ func TestShowImageNotOK(t *testing.T) {
 	assert := assert.New(t)
 
 	dockerManager, err := NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	name := uuid.New()
 	_, err = dockerManager.FindImage(name)
 
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Equal(ErrImageNotFound, err)
 }
 
@@ -63,7 +63,7 @@ func TestRunInContainer(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	buf := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf, nil)
@@ -79,15 +79,15 @@ func TestRunInContainer(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEqual(0, buf.Len())
+	assert.NotEmpty(buf)
 	assert.Equal("compiler.fissile\n", buf.String())
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestRunInContainerStderr(t *testing.T) {
@@ -95,7 +95,7 @@ func TestRunInContainerStderr(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	buf2 := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf2, nil)
@@ -113,15 +113,15 @@ func TestRunInContainerStderr(t *testing.T) {
 		stderrWriter,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(2, exitCode)
-	assert.NotEqual(0, buf.Len())
+	assert.NotEmpty(buf)
 	assert.Contains(buf.String(), "invalid option")
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestRunInContainerWithInFiles(t *testing.T) {
@@ -129,7 +129,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	buf := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf, nil)
@@ -145,14 +145,14 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEqual(0, buf.Len())
+	assert.NotEmpty(buf)
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -173,13 +173,13 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.NotEqual(0, exitCode)
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestRunInContainerWithOutFiles(t *testing.T) {
@@ -187,7 +187,7 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	buf := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf, nil)
@@ -203,14 +203,14 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEqual(0, buf.Len())
+	assert.NotEmpty(buf)
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestRunInContainerWithWritableOutFiles(t *testing.T) {
@@ -218,7 +218,7 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -231,13 +231,13 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestCreateImageOk(t *testing.T) {
@@ -245,7 +245,7 @@ func TestCreateImageOk(t *testing.T) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -258,7 +258,7 @@ func TestCreateImageOk(t *testing.T) {
 		nil,
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
@@ -274,16 +274,16 @@ func TestCreateImageOk(t *testing.T) {
 		[]string{"ping", "127.0.0.1", "-c", "1"},
 	)
 
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.NotEmpty(image.ID)
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = dockerManager.RemoveImage(fmt.Sprintf("%s:%s", testRepo, testTag))
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestVerifySuccessfulDebugContainerStays(t *testing.T) {
@@ -300,7 +300,7 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 
 	dockerManager, err := NewImageManager()
 
-	assert.Nil(err)
+	assert.NoError(err)
 	testName := getTestName()
 
 	// Run /bin/true to succeed, /bin/false to fail
@@ -315,12 +315,12 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 		nil,
 	)
 	if cmdShouldSucceed {
-		if !assert.Nil(err) {
+		if !assert.NoError(err) {
 			return
 		}
 		assert.Equal(0, exitCode)
 	} else {
-		if !assert.NotNil(err) {
+		if !assert.Error(err) {
 			return
 		}
 		assert.Equal(-1, exitCode)
@@ -329,18 +329,18 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	// Run ps to get the values
 	cmd := exec.Command("docker", "ps", "--format", "{{.Names}}::{{.ID}}::{{.Command}}", "--no-trunc")
 	output, err := cmd.CombinedOutput()
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	outputLines := strings.Split(string(output), "\n")
 	wantedOutputLine := ""
 	for _, s := range outputLines {
 		if strings.Index(s, container.ID) >= 0 {
-			assert.Equal("", wantedOutputLine, fmt.Sprintf("Found multiple hits for a running container: %s", container.ID))
+			assert.Empty(wantedOutputLine, fmt.Sprintf("Found multiple hits for a running container: %s", container.ID))
 			wantedOutputLine = s
 		}
 	}
-	assert.NotEqual("", wantedOutputLine, fmt.Sprintf("Didn't find a hit for running container: %s", container.ID))
+	assert.NotEmpty(wantedOutputLine, fmt.Sprintf("Didn't find a hit for running container: %s", container.ID))
 	if wantedOutputLine != "" {
 		parts := strings.Split(wantedOutputLine, "::")
 		assert.Equal(3, len(parts), fmt.Sprintf("Splitting up '%s' => %d parts", wantedOutputLine, len(parts)))
@@ -349,16 +349,16 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	}
 
 	err = dockerManager.RemoveContainer(container.ID)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	// Make sure the container is gone now
 	// Run ps to get the values
 	cmd = exec.Command("docker", "ps", "--format", "{{.ID}}:", "--no-trunc")
 	output, err = cmd.CombinedOutput()
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
-	assert.Equal(-1, strings.Index(string(output), container.ID))
+	assert.Equal(-1, strings.Index(string(output), container.ID), "Found container %+v in %+v", container.ID, string(output))
 }
 
 func getTestName() string {
