@@ -65,8 +65,8 @@ func TestRunInContainer(t *testing.T) {
 
 	assert.NoError(err)
 
-	buf := new(bytes.Buffer)
-	stdoutWriter := NewFormattingWriter(buf, nil)
+	stdoutWriter := &bytes.Buffer{}
+	stderrWriter := &bytes.Buffer{}
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -76,15 +76,15 @@ func TestRunInContainer(t *testing.T) {
 		"",
 		false,
 		stdoutWriter,
-		nil,
+		stderrWriter,
 	)
 
 	if !assert.NoError(err) {
 		return
 	}
 	assert.Equal(0, exitCode)
-	assert.NotEmpty(buf)
-	assert.Equal("compiler.fissile\n", buf.String())
+	assert.Equal("compiler.fissile\n", stdoutWriter.String())
+	assert.Empty(strings.TrimSpace(stderrWriter.String()))
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.NoError(err)
