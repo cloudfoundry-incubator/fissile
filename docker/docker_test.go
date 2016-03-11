@@ -71,7 +71,7 @@ func TestRunInContainer(t *testing.T) {
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
 		dockerImageName,
-		[]string{"ping", "127.0.0.1", "-c", "1"},
+		[]string{"hostname"},
 		"",
 		"",
 		false,
@@ -84,7 +84,7 @@ func TestRunInContainer(t *testing.T) {
 	}
 	assert.Equal(0, exitCode)
 	assert.NotEqual(0, buf.Len())
-	assert.Contains(buf.String(), "received")
+	assert.Equal("compiler.fissile\n", buf.String())
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.Nil(err)
