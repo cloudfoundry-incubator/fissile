@@ -133,6 +133,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf, nil)
+	stderrWriter := new(bytes.Buffer)
 
 	exitCode, container, err := dockerManager.RunInContainer(
 		getTestName(),
@@ -142,7 +143,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 		"",
 		false,
 		stdoutWriter,
-		nil,
+		stderrWriter,
 	)
 
 	if !assert.NoError(err) {
@@ -150,6 +151,7 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 	}
 	assert.Equal(0, exitCode)
 	assert.NotEmpty(buf)
+	assert.Empty(strings.TrimSpace(stderrWriter.String()))
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.NoError(err)
