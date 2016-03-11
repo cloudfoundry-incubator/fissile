@@ -153,7 +153,7 @@ func TestConfigMapDifference(t *testing.T) {
 	`, "\t", "    ", -1)), &rightMap)
 	assert.NoError(err)
 
-	err = configMapDifference(leftMap, rightMap)
+	err = configMapDifference(leftMap, rightMap, []string{})
 	assert.NoError(err)
 
 	var expected map[string]interface{}
@@ -167,4 +167,25 @@ func TestConfigMapDifference(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(expected, leftMap)
+}
+
+func TestConfigMapDifferenceError(t *testing.T) {
+	assert := assert.New(t)
+
+	config := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": 1234,
+		},
+	}
+
+	difference := map[interface{}]interface{}{
+		"a": map[interface{}]interface{}{
+			"b": map[interface{}]interface{}{
+				"c": 1234,
+			},
+		},
+	}
+
+	err := configMapDifference(config, difference, []string{"q"})
+	assert.EqualError(err, "Attempting to descend into dark opinions key q.a.b which is not a hash in the base configuration")
 }

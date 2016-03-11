@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hpcloud/fissile/model"
 )
@@ -150,26 +151,27 @@ func deleteConfig(config map[string]interface{}, keyPieces []string, value inter
 	}
 	lastKey := keyPieces[len(keyPieces)-1]
 	if valueMap, ok := value.(map[interface{}]interface{}); ok {
-		configMapDifference(config[lastKey].(map[string]interface{}), valueMap)
+		configMapDifference(config[lastKey].(map[string]interface{}), valueMap, keyPieces)
 	} else {
 		delete(config, lastKey)
 	}
 }
 
 // configMapDifference removes entries in the second map from the first map
-func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}) error {
-	for key, value := range difference {
+func configMapDifference(config map[string]interface{}, difference map[interface{}]interface{}, stack []string) error {
+	for keyVal, value := range difference {
+		key := keyVal.(string)
 		if mapValue, ok := value.(map[interface{}]interface{}); ok {
-			configValue := config[key.(string)]
+			configValue := config[key]
 			if configValueMap, ok := configValue.(map[string]interface{}); ok {
-				if err := configMapDifference(configValueMap, mapValue); err != nil {
+				if err := configMapDifference(configValueMap, mapValue, append(stack, key)); err != nil {
 					return err
 				}
 			} else if configValue != nil {
-				return fmt.Errorf("Invalid config key %s", key.(string))
+				return fmt.Errorf("Attempting to descend into dark opinions key %s which is not a hash in the base configuration", strings.Join(append(stack, key), "."))
 			}
 		} else {
-			delete(config, key.(string))
+			delete(config, key)
 		}
 	}
 	return nil
