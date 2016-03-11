@@ -109,12 +109,9 @@ func TestDeleteConfig(t *testing.T) {
 	err = insertConfig(config, "hello.foo.quux", 222)
 	assert.NoError(err)
 
-	err = deleteConfig(config, []string{"hello", "world"}, nil)
-	assert.NoError(err)
-	err = deleteConfig(config, []string{"hello", "foo", "bar"}, nil)
-	assert.NoError(err)
-	err = deleteConfig(config, []string{"hello", "does", "not", "exist"}, nil)
-	assert.IsType(&errConfigNotExist{}, err)
+	deleteConfig(config, []string{"hello", "world"}, nil)
+	deleteConfig(config, []string{"hello", "foo", "bar"}, nil)
+	deleteConfig(config, []string{"hello", "does", "not", "exist"}, nil)
 
 	hello, ok := config["hello"].(map[string]interface{})
 	assert.True(ok)

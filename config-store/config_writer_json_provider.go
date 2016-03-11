@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/hpcloud/fissile/model"
 )
@@ -22,16 +21,6 @@ const (
 type jsonConfigWriterProvider struct {
 	opinions *opinions
 	allProps map[string]interface{}
-}
-
-type errConfigNotExist struct {
-	error
-}
-
-func newErrorConfigNotExist(key string) error {
-	return &errConfigNotExist{
-		fmt.Errorf("The configuration key %s does not exist", key),
-	}
 }
 
 func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]interface{}) (*jsonConfigWriterProvider, error) {
@@ -123,9 +112,7 @@ func getPropertiesForJob(job *model.Job, allProps map[string]interface{}, opinio
 		// Subtract dark opinions
 		value = opinions.GetOpinionForKey(opinions.Dark, keyPieces)
 		if value != nil {
-			if err = deleteConfig(props, keyPieces, value); err != nil {
-				return nil, err
-			}
+			deleteConfig(props, keyPieces, value)
 		}
 	}
 	return props, nil
@@ -151,11 +138,13 @@ func initializeConfigJSON() (map[string]interface{}, error) {
 }
 
 // deleteConfig removes a configuration value from the configuration map
-func deleteConfig(config map[string]interface{}, keyPieces []string, value interface{}) error {
+func deleteConfig(config map[string]interface{}, keyPieces []string, value interface{}) {
 	for _, key := range keyPieces[:len(keyPieces)-1] {
 		child, ok := config[key].(map[string]interface{})
 		if !ok {
-			return newErrorConfigNotExist(strings.Join(keyPieces, "."))
+			// If we can't find an ancestor key, we can't possibly find the target one.
+			// That counts as having been deleted.
+			return
 		}
 		config = child
 	}
@@ -165,7 +154,6 @@ func deleteConfig(config map[string]interface{}, keyPieces []string, value inter
 	} else {
 		delete(config, lastKey)
 	}
-	return nil
 }
 
 // configMapDifference removes entries in the second map from the first map
