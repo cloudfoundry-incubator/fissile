@@ -1,9 +1,10 @@
-include version.mk
+#!/usr/bin/env make
 
-BRANCH:=$(shell git rev-parse --abbrev-ref HEAD)
-COMMIT:=$(shell git describe --tags --long | sed -r 's/[0-9.]+-([0-9]+)-(g[a-f0-9]+)/$(VERSION)+\1.\2/')
+VERSION:=$(shell cat VERSION)
+VERSION_OFFSET:=$(shell git describe --tags --long | sed -r 's/[0-9.]+-([0-9]+)-(g[a-f0-9]+)/\1.\2/')
+BRANCH:=$(shell (git describe --all --exact-match HEAD 2>/dev/null || echo HEAD) | sed 's@.*/@@')
 ARCH:=$(shell go env GOOS).$(shell go env GOARCH)
-APP_VERSION=$(COMMIT).$(BRANCH)
+APP_VERSION=$(VERSION)+$(VERSION_OFFSET).$(BRANCH)
 
 PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /fissile[/]scripts/d)
 
