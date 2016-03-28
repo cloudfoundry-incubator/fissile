@@ -18,9 +18,7 @@ clean:
 	${GIT_ROOT}/make/clean
 
 format:
-	$(call print_status, Checking format)
-	export GOPATH=$(shell godep path):$(GOPATH) && \
-		test 0 -eq `echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 sh -c 'goimports -d -e {p}/*.go' | tee /dev/fd/2 | wc -l`
+	${GIT_ROOT}/make/format
 
 lint:
 	$(call print_status, Linting)
