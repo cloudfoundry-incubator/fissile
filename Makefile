@@ -52,9 +52,7 @@ tools:
 
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
-	$(call print_status, Testing)
-	export GOPATH=$(shell godep path):$(GOPATH) &&\
-		go test -cover ./...
+	${GIT_ROOT}/make/test
 
 reap:
 	${GIT_ROOT}/make/reap
