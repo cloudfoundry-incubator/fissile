@@ -27,8 +27,7 @@ lint:
 	test 0 -eq `echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p} | tee /dev/fd/2 | wc -l`
 
 vet:
-	$(call print_status, Vetting)
-	go vet ./...
+	${GIT_ROOT}/make/vet
 
 bindata:
 	$(call print_status, Generating .go resource files)
