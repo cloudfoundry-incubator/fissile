@@ -64,5 +64,4 @@ test:
 		go test -cover ./...
 
 reap:
-	# Remove exited test containers
-	docker ps -a --filter=status=exited | awk '/fissile-test-/ {print $$1}' | xargs --no-run-if-empty docker rm
+	${GIT_ROOT}/make/reap
