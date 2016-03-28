@@ -9,6 +9,7 @@ APP_VERSION=$(VERSION)+$(VERSION_OFFSET).$(BRANCH)
 PKGSDIRS=$(shell go list -f '{{.Dir}}' ./... | sed /fissile[/]scripts/d)
 
 print_status = @printf "\033[32;01m==> $(1)\033[0m\n"
+GIT_ROOT:=$(shell git rev-parse --show-toplevel)
 
 .PHONY: all clean format lint vet bindata build test docker-deps reap
 all: clean format lint vet bindata build test docker-deps
