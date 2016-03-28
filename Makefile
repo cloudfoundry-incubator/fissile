@@ -32,9 +32,8 @@ bindata:
 build:
 	${GIT_ROOT}/make/build
 
-dist: build
-	$(call print_status, Disting)
-	tar czf fissile-$(APP_VERSION)-$(ARCH).tgz fissile
+dist:
+	${GIT_ROOT}/make/package
 
 docker-deps:
 	${GIT_ROOT}/make/docker-deps

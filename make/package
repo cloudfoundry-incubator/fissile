@@ -1,0 +1,13 @@
+#!/bin/sh
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+. ${GIT_ROOT}/make/build
+. ${GIT_ROOT}/make/include/versioning
+
+set -o errexit -o nounset
+
+GOOS=${GOOS:-$(go env GOOS)}
+GOARCH=${GOARCH:-$(go env GOARCH)}
+
+tar czf ${APP_VERSION}-${GOOS}.${GOARCH}.tgz fissile
