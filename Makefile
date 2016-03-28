@@ -15,12 +15,7 @@ GIT_ROOT:=$(shell git rev-parse --show-toplevel)
 all: clean format lint vet bindata build test docker-deps
 
 clean:
-	$(call print_status, Cleaning)
-	rm -rf build/
-	rm -f ./fissile
-	rm -f ./scripts/compilation/compilation.go
-	rm -f ./scripts/dockerfiles/dockerfiles.go
-	rm -f ./scripts/templates/transformations.go
+	${GIT_ROOT}/make/clean
 
 format:
 	$(call print_status, Checking format)
