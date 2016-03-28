@@ -21,8 +21,7 @@ format:
 	${GIT_ROOT}/make/format
 
 lint:
-	$(call print_status, Linting)
-	test 0 -eq `echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p} | tee /dev/fd/2 | wc -l`
+	${GIT_ROOT}/make/lint
 
 vet:
 	${GIT_ROOT}/make/vet
