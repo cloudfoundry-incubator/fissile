@@ -49,13 +49,7 @@ docker-deps:
 	${GIT_ROOT}/make/docker-deps
 
 tools:
-	$(call print_status, Installing Tools)
-	go get -u golang.org/x/tools/cmd/vet
-	go get -u golang.org/x/tools/cmd/goimports
-	go get -u github.com/golang/lint/golint
-	go get -u github.com/AlekSi/gocov-xml
-	go get -u github.com/jteeuwen/go-bindata/...
-	go get -u github.com/tools/godep
+	${GIT_ROOT}/make/tools
 
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
