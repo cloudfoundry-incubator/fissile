@@ -46,8 +46,7 @@ dist: build
 	tar czf fissile-$(APP_VERSION)-$(ARCH).tgz fissile
 
 docker-deps:
-	$(call print_status, Installing Docker Image Dependencies)
-	docker pull ubuntu:14.04
+	${GIT_ROOT}/make/docker-deps
 
 tools:
 	$(call print_status, Installing Tools)
