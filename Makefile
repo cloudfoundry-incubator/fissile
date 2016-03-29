@@ -29,11 +29,8 @@ vet:
 bindata:
 	${GIT_ROOT}/make/bindata
 
-build: bindata
-	$(call print_status, Building)
-	export GOPATH=$(shell godep path):$(GOPATH) && \
-		go build -ldflags="-X main.version=$(APP_VERSION)"
-
+build:
+	${GIT_ROOT}/make/build
 
 dist: build
 	$(call print_status, Disting)
