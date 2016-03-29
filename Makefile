@@ -27,9 +27,7 @@ vet:
 	${GIT_ROOT}/make/vet
 
 bindata:
-	$(call print_status, Generating .go resource files)
-	go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh && \
-	go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go ./scripts/dockerfiles/Dockerfile-* ./scripts/dockerfiles/monitrc.erb ./scripts/dockerfiles/*.sh ./scripts/dockerfiles/rsyslog_conf.tgz
+	${GIT_ROOT}/make/bindata
 
 build: bindata
 	$(call print_status, Building)
