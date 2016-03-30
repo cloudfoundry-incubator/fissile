@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -o errexit
+
+ISSUES=$(mktemp)
+
+trap "rm -f ${ISSUES}" HUP INT TERM
+
+go list -f '{{ .Dir }}' ./... | sed '/fissile[/]scripts/d' | while read DIR; do
+    golint ${DIR} | tee -a ${ISSUES}
+done
+
+ISSUE_COUNT=$(cat ${ISSUES} | wc -l)
+
+rm -f ${ISSUES}
+
+test ${ISSUE_COUNT} -eq 0
