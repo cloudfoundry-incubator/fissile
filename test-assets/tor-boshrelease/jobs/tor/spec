@@ -17,6 +17,7 @@ properties:
   # see https://www.torproject.org/docs/tor-manual.html for more information
   tor.hostname:
     description: The <base32-encoded-fingerprint>.onion domain name for this hidden service. If the hidden service is restricted to authorized clients only, this also contains authorization data for all clients.
+    default: localhost
   tor.private_key:
     description: The private key for this hidden service.
   tor.client_keys:

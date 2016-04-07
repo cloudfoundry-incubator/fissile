@@ -53,7 +53,7 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 		return err
 	}
 
-	allProps, err := getAllPropertiesForRoleManifest(roleManifest)
+	allProps, namesWithoutDefaults, err := getAllPropertiesForRoleManifest(roleManifest)
 	if err != nil {
 		return err
 	}
@@ -68,10 +68,10 @@ func (c *Builder) WriteBaseConfig(roleManifest *model.RoleManifest) error {
 		return fmt.Errorf("Invalid config writer provider %s", c.provider)
 	}
 
-	if err := checkKeysInProperties(opinions.Light, allProps, "light", os.Stderr); err != nil {
+	if err := checkKeysInProperties(opinions.Light, allProps, namesWithoutDefaults, "light", os.Stderr); err != nil {
 		return err
 	}
-	if err := checkKeysInProperties(opinions.Dark, allProps, "dark", os.Stderr); err != nil {
+	if err := checkKeysInProperties(opinions.Dark, allProps, namesWithoutDefaults, "dark", os.Stderr); err != nil {
 		return err
 	}
 
@@ -94,27 +94,33 @@ func BoshKeyToConsulPath(key, store string) (string, error) {
 }
 
 // getAllPropertiesForRoleManifest returns all of the properties available from a role manifest's specs
-func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[string]interface{}, error) {
+func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[string]interface{}, map[string]bool, error) {
 	props := make(map[string]interface{})
+	names := make(map[string]bool)
 
 	for _, role := range roleManifest.Roles {
 		for _, job := range role.Jobs {
 			for _, property := range job.Properties {
 				if err := insertConfig(props, property.Name, property.Default); err != nil {
-					return nil, err
+					return nil, nil, err
+				}
+				if property.Default == nil {
+					// Allow children of things with no defaults; they are empty hashes / lists.
+					names[property.Name] = true
 				}
 			}
 		}
 	}
 
-	return props, nil
+	return props, names, nil
 }
 
 // checkKeysInProperties ensures that all opinons override values in props.
 // The type of opinion (light or dark) is given in opinionName for messages.
-// Only the top level key being missing can generate errors; if any child is missing (e.g. uaa.clients),
-// they are emitted as warnings on warningWriter.
-func checkKeysInProperties(opinions, props map[string]interface{}, opinionName string, warningWriter io.Writer) error {
+// If any key exists in props with no default value, it is skipped as children are expected.
+// Only the top level key being missing can generate errors; if any child is missing, they are emitted as
+// warnings on warningWriter.
+func checkKeysInProperties(opinions, props map[string]interface{}, namesWithoutDefaults map[string]bool, opinionName string, warningWriter io.Writer) error {
 	var results []string
 	var warnings []string
 
@@ -125,10 +131,17 @@ func checkKeysInProperties(opinions, props map[string]interface{}, opinionName s
 		for key, value := range opinions {
 			keyStr := key.(string)
 			newKeyGramPrefix := append(keyGramPrefix, keyStr)
+
+			// If a key has no defaults, ignore it and all descendents - it's a hash or list to be filled in.
+			keyName := strings.Join(newKeyGramPrefix, ".")
+			if namesWithoutDefaults[keyName] {
+				continue
+			}
+
 			if opinionValue, ok := value.(map[interface{}]interface{}); ok {
 				if paramValue, ok := props[keyStr].(map[string]interface{}); !ok {
 					if len(newKeyGramPrefix) > 1 {
-						warnings = append(warnings, strings.Join(newKeyGramPrefix, "."))
+						warnings = append(warnings, keyName)
 					} else {
 						results = append(results, newKeyGramPrefix[0])
 					}
@@ -138,7 +151,7 @@ func checkKeysInProperties(opinions, props map[string]interface{}, opinionName s
 			} else {
 				if _, ok := props[keyStr]; !ok {
 					if len(newKeyGramPrefix) > 1 {
-						warnings = append(warnings, strings.Join(newKeyGramPrefix, "."))
+						warnings = append(warnings, keyName)
 					} else {
 						results = append(results, newKeyGramPrefix[0])
 					}

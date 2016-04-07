@@ -66,7 +66,7 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 		   "tor": {
             "client_keys": null,
             "hashed_control_password": null,
-            "hostname": null,
+            "hostname": "localhost",
             "private_key": null
         }
 	}`), &expected)
