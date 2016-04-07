@@ -81,33 +81,46 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			break
 		}
 
-		err = f.ListDevJobs(
+		err = f.loadDevReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 		)
+		if err != nil {
+			break
+		}
+		err = f.ListDevJobs()
 	case "dev packages-report":
 		if err = validateDevReleaseArgs(c); err != nil {
 			break
 		}
 
-		err = f.ListDevPackages(
+		err = f.loadDevReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
 		)
+		if err != nil {
+			break
+		}
+		err = f.ListDevPackages()
 	case "dev compile":
 		if err = validateDevReleaseArgs(c); err != nil {
 			break
 		}
 
-		err = f.CompileDev(
+		err = f.loadDevReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
+		)
+		if err != nil {
+			break
+		}
+		err = f.CompileDev(
 			c.String("repository"),
 			paths["compilation-dir"],
 			c.Int("workers"),
@@ -117,15 +130,20 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			break
 		}
 
+		err = f.loadDevReleases(
+			releasePaths,
+			c.StringSlice("release-name"),
+			c.StringSlice("release-version"),
+			paths["cache-dir"],
+		)
+		if err != nil {
+			break
+		}
 		err = f.GenerateRoleDevImages(
 			paths["docker-dir"],
 			c.String("repository"),
 			c.Bool("no-build"),
 			c.Bool("force"),
-			releasePaths,
-			c.StringSlice("release-name"),
-			c.StringSlice("release-version"),
-			paths["cache-dir"],
 			paths["roles-manifest"],
 			paths["compilation-dir"],
 			paths["light-opinions"],
@@ -136,12 +154,17 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			break
 		}
 
-		err = f.ListDevRoleImages(
-			c.String("repository"),
+		err = f.loadDevReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
+		)
+		if err != nil {
+			break
+		}
+		err = f.ListDevRoleImages(
+			c.String("repository"),
 			paths["roles-manifest"],
 			c.Bool("docker-only"),
 			c.Bool("with-sizes"),
@@ -151,11 +174,16 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			break
 		}
 
-		err = f.GenerateDevConfigurationBase(
+		err = f.loadDevReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
 			paths["cache-dir"],
+		)
+		if err != nil {
+			break
+		}
+		err = f.GenerateDevConfigurationBase(
 			paths["roles-manifest"],
 			paths["light-opinions"],
 			paths["dark-opinions"],

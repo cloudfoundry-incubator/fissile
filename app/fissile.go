@@ -20,9 +20,10 @@ import (
 
 // Fissile represents a fissile application
 type Fissile struct {
-	Version string
-	ui      *termui.UI
-	cmdErr  error
+	Version  string
+	ui       *termui.UI
+	cmdErr   error
+	releases []*model.Release // Only applies for some commands
 }
 
 // NewFissileApplication creates a new app.Fissile

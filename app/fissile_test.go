@@ -26,12 +26,14 @@ func TestListPackages(t *testing.T) {
 	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 
 	f := NewFissileApplication(".", ui)
-
-	err = f.ListDevPackages([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	err = f.loadDevReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
 	assert.Error(err, "Expected ListPackages to not find the release")
 
-	err = f.ListDevPackages([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
-	assert.Nil(err, "Expected ListPackages to find the release")
+	err = f.loadDevReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if assert.NoError(err) {
+		err = f.ListDevPackages()
+		assert.Nil(err, "Expected ListPackages to find the release")
+	}
 }
 
 func TestListJobs(t *testing.T) {
@@ -48,11 +50,14 @@ func TestListJobs(t *testing.T) {
 
 	f := NewFissileApplication(".", ui)
 
-	err = f.ListDevJobs([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	err = f.loadDevReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
 	assert.Error(err, "Expected ListJobs to not find the release")
 
-	err = f.ListDevJobs([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
-	assert.Nil(err, "Expected ListJobs to find the release")
+	err = f.loadDevReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if assert.NoError(err) {
+		err = f.ListDevJobs()
+		assert.Nil(err, "Expected ListJobs to find the release")
+	}
 }
 
 func TestDevDiffConfigurations(t *testing.T) {
