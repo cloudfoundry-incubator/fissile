@@ -415,7 +415,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	c.ui.Println(color.GreenString(
 		"Image %s with ID %s created successfully.",
 		color.YellowString(c.BaseImageName()),
-		color.YellowString(container.ID)))
+		color.YellowString(image.ID)))
 
 	return image, nil
 }
