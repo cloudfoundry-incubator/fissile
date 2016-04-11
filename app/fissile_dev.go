@@ -19,14 +19,12 @@ import (
 )
 
 // ListDevPackages will list all BOSH packages within a list of dev releases
-func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
-
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
+func (f *Fissile) ListDevPackages() error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
 	}
 
-	for _, release := range releases {
+	for _, release := range f.releases {
 		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, pkg := range release.Packages {
@@ -43,14 +41,12 @@ func (f *Fissile) ListDevPackages(releasePaths, releaseNames, releaseVersions []
 }
 
 // ListDevJobs will list all jobs within a list of dev releases
-func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
-
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
+func (f *Fissile) ListDevJobs() error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
 	}
 
-	for _, release := range releases {
+	for _, release := range f.releases {
 		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, job := range release.Jobs {
@@ -67,18 +63,17 @@ func (f *Fissile) ListDevJobs(releasePaths, releaseNames, releaseVersions []stri
 }
 
 // CompileDev will compile a list of dev BOSH releases
-func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []string, cacheDir, repository, targetPath string, workerCount int) error {
+func (f *Fissile) CompileDev(repository, targetPath string, workerCount int) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
-	}
-
-	for _, release := range releases {
+	for _, release := range f.releases {
 		f.ui.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.ui)
@@ -95,13 +90,12 @@ func (f *Fissile) CompileDev(releasePaths, releaseNames, releaseVersions []strin
 }
 
 // GenerateRoleDevImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
+func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, force bool, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
 	}
 
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -196,17 +190,17 @@ func (f *Fissile) GenerateRoleDevImages(targetPath, repository string, noBuild, 
 }
 
 // ListDevRoleImages lists all dev role images
-func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListDevRoleImages(repository string, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
 
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
 	}
 
 	var dockerManager *docker.ImageManager
+	var err error
 
 	if existingOnDocker {
 		dockerManager, err = docker.NewImageManager()
@@ -215,7 +209,7 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 		}
 	}
 
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -251,14 +245,12 @@ func (f *Fissile) ListDevRoleImages(repository string, releasePaths, releaseName
 }
 
 //GenerateDevConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
-func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, releaseVersions []string, cacheDir, rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, provider string) error {
-
-	releases, err := loadDevReleases(releasePaths, releaseNames, releaseVersions, cacheDir)
-	if err != nil {
-		return err
+func (f *Fissile) GenerateDevConfigurationBase(rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, provider string) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
 	}
 
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, releases)
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -274,7 +266,7 @@ func (f *Fissile) GenerateDevConfigurationBase(releasePaths, releaseNames, relea
 	return nil
 }
 
-func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) ([]*model.Release, error) {
+func (f *Fissile) loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
 	releases := make([]*model.Release, len(releasePaths))
 
 	for idx, releasePath := range releasePaths {
@@ -290,13 +282,14 @@ func loadDevReleases(releasePaths, releaseNames, releaseVersions []string, cache
 
 		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
 		if err != nil {
-			return nil, fmt.Errorf("Error loading release information: %s", err.Error())
+			return fmt.Errorf("Error loading release information: %s", err.Error())
 		}
 
 		releases[idx] = release
 	}
 
-	return releases, nil
+	f.releases = releases
+	return nil
 }
 
 // DiffDevConfigurationBases generates a diff comparing the specs for two different BOSH releases
@@ -315,9 +308,9 @@ func (f *Fissile) GetDiffDevConfigurationBases(releasePaths []string, cacheDir s
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
 	defaultValues := []string{}
-	releases, err := loadDevReleases(releasePaths, defaultValues, defaultValues, cacheDir)
+	err := f.loadDevReleases(releasePaths, defaultValues, defaultValues, cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
-	return getDiffsFromReleases(releases)
+	return getDiffsFromReleases(f.releases)
 }
