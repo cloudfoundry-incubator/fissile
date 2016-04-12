@@ -3,6 +3,7 @@ package configstore
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -102,7 +103,7 @@ func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	allProps, err := getAllPropertiesForRoleManifest(rolesManifest)
+	allProps, namesWithoutDefaults, err := getAllPropertiesForRoleManifest(rolesManifest)
 	assert.NoError(err)
 
 	keys := getKeys(allProps)
@@ -113,43 +114,145 @@ func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 		"tor.hostname",
 		"tor.private_key",
 	}, keys)
+
+	var noDefaultKeys []string
+	for key := range namesWithoutDefaults {
+		noDefaultKeys = append(noDefaultKeys, key)
+	}
+	sort.Strings(noDefaultKeys)
+	assert.Equal([]string{
+		"tor.client_keys",
+		"tor.hashed_control_password",
+		"tor.private_key",
+	}, noDefaultKeys)
 }
 
 func TestCheckKeysInProperties(t *testing.T) {
+	testSamples := []struct {
+		name                 string   // A name for this test sample
+		opinions             string   // The opinions to load
+		properties           string   // The properties to load
+		namesWithoutDefaults []string // Names without default values
+		expectedErrors       []string // Substrings that should be in errors
+		containsWarnings     []string // Warnings expected (each on its own line)
+		notContainsWarnings  []string // Warnings not expected (each on its own line)
+	}{
+		{
+			name: "expected warnings",
+			opinions: `
+				properties:
+					parent:
+						extra-key: 3
+						nested-extra-key:
+							child-key: 1
+						no-defaults:
+							new-child: 2
+			`,
+			properties: `{
+				"parent": {
+					"missing-key": 4,
+					"no-defaults": {}
+				}
+			}`,
+			namesWithoutDefaults: []string{
+				"parent.no-defaults",
+			},
+			containsWarnings: []string{
+				"parent.extra-key",
+				"parent.nested-extra-key",
+			},
+			notContainsWarnings: []string{
+				"parent.missing-key",
+				"parent.nested-extra-key.child-key",
+				"parent.empty.new-child",
+			},
+		},
+		{
+			name: "extra toplevel opinions",
+			opinions: `
+				properties:
+					parent:
+						child: 1
+			`,
+			properties: `{
+				"parent-is-missing": {}
+			}`,
+			expectedErrors: []string{
+				"extra top level keys",
+				"parent",
+			},
+		},
+		{
+			name: "missing toplevel properties ok",
+			opinions: `
+				properties: {}
+			`,
+			properties: `{
+				"extra-top-level-property": {
+					"key": 1
+				}
+			}`,
+		},
+	}
+
 	assert := assert.New(t)
 
-	var opinions, props map[string]interface{}
+	for _, testSample := range testSamples {
+		var opinions, props map[string]interface{}
+		var err error
 
-	err := yaml.Unmarshal([]byte(strings.Replace(`
-		properties:
-			parent:
-				extra-key: 3
-				nested-extra-key:
-					child-key: 1
-	`, "\t", "  ", -1)), &opinions)
-	assert.NoError(err)
+		err = yaml.Unmarshal([]byte(strings.Replace(testSample.opinions, "\t", "  ", -1)), &opinions)
+		opinionsOk := assert.NoError(err, "error parsing opinions for test `%s'", testSample.name)
 
-	err = json.Unmarshal([]byte(`{
-		"parent": {
-			"missing-key": 4
+		err = json.Unmarshal([]byte(testSample.properties), &props)
+		propertiesOk := assert.NoError(err, "error parsing properties for test `%s'", testSample.name)
+		if !opinionsOk || !propertiesOk {
+			// No need to continue the rest of the test if the samples are bad
+			continue
 		}
-	}`), &props)
-	assert.NoError(err)
 
-	warningBuf := bytes.Buffer{}
-	err = checkKeysInProperties(opinions, props, "testing", &warningBuf)
-	assert.NoError(err)
-	assert.Contains(warningBuf.String(), "testing opinions")
-	assert.Contains(warningBuf.String(), "parent.extra-key")
-	assert.Contains(warningBuf.String(), "parent.nested-extra-key")
-	assert.NotContains(warningBuf.String(), "parent.missing-key")
-	assert.NotContains(warningBuf.String(), "parent.nested-extra-key.child-key")
+		namesWithoutDefaults := make(map[string]bool, len(testSample.namesWithoutDefaults))
+		for _, name := range testSample.namesWithoutDefaults {
+			namesWithoutDefaults[name] = true
+		}
 
-	warningBuf = bytes.Buffer{}
-	opinions = map[string]interface{}{
-		"properties": make(map[interface{}]interface{}),
+		warningBuf := bytes.Buffer{}
+		err = checkKeysInProperties(opinions, props, namesWithoutDefaults, testSample.name, &warningBuf)
+
+		if len(testSample.expectedErrors) > 0 {
+			// We expect errors back from the function
+			if assert.Error(err, "did not receive expected error while running test `%s'", testSample.name) {
+				for _, expectedError := range testSample.expectedErrors {
+					assert.Contains(err.Error(), expectedError, "missing expected error while running test `%s'", testSample.name)
+				}
+			}
+			assert.Empty(warningBuf.String(), "got warnings when errors were expected while running test `%s'", testSample.name)
+			continue
+		}
+
+		assert.NoError(err, "got unexpected error while running test `%s'", testSample.name)
+
+		if len(testSample.containsWarnings) == 0 {
+			assert.Empty(warningBuf.String(), "test `%s' should have no warnings", testSample.name)
+			continue
+		}
+
+		lines := strings.Split(warningBuf.String(), "\n")
+		var warnings []string
+		for _, line := range lines[1:] {
+			warnings = append(warnings, strings.TrimSpace(line))
+		}
+		assert.Contains(
+			lines[0],
+			fmt.Sprintf("%s opinions", testSample.name),
+			"did not find opinion name while running test `%s'",
+			testSample.name,
+		)
+		for _, warning := range testSample.containsWarnings {
+			assert.Contains(warnings, warning, "did not find expected warning in test `%s'", testSample.name)
+		}
+		for _, warning := range testSample.notContainsWarnings {
+			assert.NotContains(warnings, warning, "found unexpected warning in test `%s'", testSample.name)
+		}
 	}
-	err = checkKeysInProperties(opinions, props, "testing-two", &warningBuf)
-	assert.NoError(err)
-	assert.Empty(warningBuf.String())
 }
