@@ -123,6 +123,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		err = f.CompileDev(
 			c.String("repository"),
 			paths["compilation-dir"],
+			paths["roles-manifest"],
 			c.Int("workers"),
 		)
 	case "dev create-images":

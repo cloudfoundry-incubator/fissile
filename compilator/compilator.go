@@ -109,9 +109,13 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, release *model.Release) error {
+func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
 	c.initPackageMaps(release)
-	packages, err := c.removeCompiledPackages(release.Packages)
+	packages := release.Packages;
+	if (roleManifest != nil) { // Conditional for easier testing
+		packages = c.removePackagesNotInManifest(packages, roleManifest)
+	}
+	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
 	}
@@ -676,4 +680,45 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	}
 
 	return culledPackages, nil
+}
+
+func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) ([]*model.Package) {
+	var culledPackages []*model.Package
+	Package:
+	for _, pkg := range packages {
+		// Check if that package isn't already added (via another package's dependencies)
+		for _, addedPkg := range culledPackages {
+			if pkg == addedPkg {
+				continue Package
+			}
+		}
+		for _, role := range rolesManifest.Roles {
+			for _, job := range role.Jobs {
+				if pkg.Name == job.Name {
+					// This package is in the roles manifest, now check its dependencies
+					culledPackages = append(culledPackages, pkg)
+					culledPackages = addAllDependencies(culledPackages, pkg)
+					continue Package
+				}
+			}
+
+		}
+	}
+	return culledPackages
+}
+
+func addAllDependencies(packages []*model.Package, pkg *model.Package) ([]*model.Package) {
+	Package:
+	for _, dep := range pkg.Dependencies {
+		// Check if that package isn't already added
+		for _, addedPkg := range packages {
+			if (dep == addedPkg) {
+				continue Package
+			}
+		}
+		// This dependency is new, add it, then add all of its dependencies
+		packages = append(packages, dep)
+		packages = addAllDependencies(packages, dep)
+	}
+	return packages
 }

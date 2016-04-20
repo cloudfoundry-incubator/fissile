@@ -51,7 +51,7 @@ func TestCompilationEmpty(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		err := c.Compile(1, genTestCase())
+		err := c.Compile(1, genTestCase(), nil)
 		close(waitCh)
 		assert.Nil(err)
 	}()
@@ -80,7 +80,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
@@ -117,7 +117,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
@@ -254,7 +254,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	err = c.Compile(1, release)
+	err = c.Compile(1, release, nil)
 	assert.NotNil(err)
 }
 
