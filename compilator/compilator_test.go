@@ -126,6 +126,51 @@ func TestCompilationSkipCompiled(t *testing.T) {
 	<-waitCh
 }
 
+func TestCompilationRoleManifest(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+	}()
+
+	compileChan := make(chan string)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.Nil(err)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
+	assert.Nil(err)
+	// This release has 3 packages:
+	// `tor` is in the role manifest, and will be included
+	// `libevent` is a dependency of `tor`, and will be included
+	// `boguspackage` is neither, and will not be included
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	assert.Nil(err)
+	assert.NotNil(roleManifest)
+
+	waitCh := make(chan struct{})
+	go func() {
+		c.Compile(1, release, roleManifest)
+		close(waitCh)
+	}()
+
+	assert.Equal(<-compileChan, "libevent")
+	assert.Equal(<-compileChan, "tor")
+	<-waitCh
+}
+
 func getContainerIDs(testRepository string) (string, error) {
 	val, err := exec.Command("docker", "ps", "-a", "--format={{.ID}}/{{.Image}}").CombinedOutput()
 	if err != nil {

@@ -11,6 +11,11 @@ packages:
   sha1: ca24b96d8df448d89c840130b317f859028ff800
   dependencies:
   - libevent
+- name: boguspackage
+  version: b9973278a447dfb5e8e67661deaa5fe7001ad742
+  fingerprint: b9973278a447dfb5e8e67661deaa5fe7001ad742
+  sha1: ca24b96d8df448d89c840130b317f859028ff800
+  dependencies: []
 jobs:
 - name: new_hostname
   version: 9d07691a94918bf9e588798000aafd27ab5bc363
