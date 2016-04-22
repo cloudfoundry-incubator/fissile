@@ -111,8 +111,8 @@ type compileResult struct {
 //   drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
 	c.initPackageMaps(release)
-	packages := release.Packages;
-	if (roleManifest != nil) { // Conditional for easier testing
+	packages := release.Packages
+	if roleManifest != nil { // Conditional for easier testing
 		packages = c.removePackagesNotInManifest(packages, roleManifest)
 	}
 	packages, err := c.removeCompiledPackages(packages)
@@ -682,7 +682,7 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	return culledPackages, nil
 }
 
-func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) ([]*model.Package) {
+func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) []*model.Package {
 	var culledPackages []*model.Package
 	var jobList []*model.Job
 
@@ -695,7 +695,7 @@ func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, role
 
 	for _, pkg := range packages {
 		// Check if that package isn't already added (via another package's dependencies)
-		if (packageIsElementOf(pkg, culledPackages)) {
+		if packageIsElementOf(pkg, culledPackages) {
 			continue
 		}
 		for _, job := range jobList {
@@ -710,10 +710,10 @@ func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, role
 	return culledPackages
 }
 
-func addAllDependencies(packages []*model.Package, pkg *model.Package) ([]*model.Package) {
+func addAllDependencies(packages []*model.Package, pkg *model.Package) []*model.Package {
 	for _, dep := range pkg.Dependencies {
 		// Check if that package isn't already added
-		if (packageIsElementOf(dep, packages)) {
+		if packageIsElementOf(dep, packages) {
 			continue
 		}
 		// This dependency is new, add it, then add all of its dependencies
@@ -723,9 +723,9 @@ func addAllDependencies(packages []*model.Package, pkg *model.Package) ([]*model
 	return packages
 }
 
-func packageIsElementOf(argPackage *model.Package, packageSlice []*model.Package) (bool) {
+func packageIsElementOf(argPackage *model.Package, packageSlice []*model.Package) bool {
 	for _, pkg := range packageSlice {
-		if (pkg == argPackage) {
+		if pkg == argPackage {
 			return true
 		}
 	}
