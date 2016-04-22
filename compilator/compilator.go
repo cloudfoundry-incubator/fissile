@@ -684,41 +684,50 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 
 func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) ([]*model.Package) {
 	var culledPackages []*model.Package
-	Package:
+	var jobList []*model.Job
+
+	// First, list all of the role manifest's jobs, to simplify the next step
+	for _, role := range rolesManifest.Roles {
+		for _, job := range role.Jobs {
+			jobList = append(jobList, job)
+		}
+	}
+
 	for _, pkg := range packages {
 		// Check if that package isn't already added (via another package's dependencies)
-		for _, addedPkg := range culledPackages {
-			if pkg == addedPkg {
-				continue Package
-			}
+		if (packageIsElementOf(pkg, culledPackages)) {
+			continue
 		}
-		for _, role := range rolesManifest.Roles {
-			for _, job := range role.Jobs {
-				if pkg.Name == job.Name {
-					// This package is in the roles manifest, now check its dependencies
-					culledPackages = append(culledPackages, pkg)
-					culledPackages = addAllDependencies(culledPackages, pkg)
-					continue Package
-				}
+		for _, job := range jobList {
+			if pkg.Name == job.Name {
+				// This package is in the roles manifest, now check its dependencies
+				culledPackages = append(culledPackages, pkg)
+				culledPackages = addAllDependencies(culledPackages, pkg)
+				break
 			}
-
 		}
 	}
 	return culledPackages
 }
 
 func addAllDependencies(packages []*model.Package, pkg *model.Package) ([]*model.Package) {
-	Package:
 	for _, dep := range pkg.Dependencies {
 		// Check if that package isn't already added
-		for _, addedPkg := range packages {
-			if (dep == addedPkg) {
-				continue Package
-			}
+		if (packageIsElementOf(dep, packages)) {
+			continue
 		}
 		// This dependency is new, add it, then add all of its dependencies
 		packages = append(packages, dep)
 		packages = addAllDependencies(packages, dep)
 	}
 	return packages
+}
+
+func packageIsElementOf(argPackage *model.Package, packageSlice []*model.Package) (bool) {
+	for _, pkg := range packageSlice {
+		if (pkg == argPackage) {
+			return true
+		}
+	}
+	return false
 }
