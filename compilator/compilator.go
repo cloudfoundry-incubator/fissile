@@ -684,12 +684,12 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 
 func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) []*model.Package {
 	var culledPackages []*model.Package
-	var jobList []*model.Job
+	var manifestPackageList []*model.Package
 
-	// First, list all of the role manifest's jobs, to simplify the next step
+	// First, list all of the role manifest's jobs' packages, to simplify the next step
 	for _, role := range rolesManifest.Roles {
 		for _, job := range role.Jobs {
-			jobList = append(jobList, job)
+			manifestPackageList = append(manifestPackageList, job.Packages...)
 		}
 	}
 
@@ -698,9 +698,9 @@ func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, role
 		if packageIsElementOf(pkg, culledPackages) {
 			continue
 		}
-		for _, job := range jobList {
-			if pkg.Name == job.Name {
-				// This package is in the roles manifest, now check its dependencies
+		for _, manifestPkg := range manifestPackageList {
+			if pkg.Name == manifestPkg.Name {
+				// This package is in the role manifest, add it and its dependencies
 				culledPackages = append(culledPackages, pkg)
 				culledPackages = addAllDependencies(culledPackages, pkg)
 				break
@@ -725,7 +725,7 @@ func addAllDependencies(packages []*model.Package, pkg *model.Package) []*model.
 
 func packageIsElementOf(argPackage *model.Package, packageSlice []*model.Package) bool {
 	for _, pkg := range packageSlice {
-		if pkg == argPackage {
+		if pkg.Name == argPackage.Name {
 			return true
 		}
 	}
