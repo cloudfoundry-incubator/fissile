@@ -63,7 +63,7 @@ func (f *Fissile) ListDevJobs() error {
 }
 
 // CompileDev will compile a list of dev BOSH releases
-func (f *Fissile) CompileDev(repository, targetPath string, roleManifestPath string, workerCount int) error {
+func (f *Fissile) CompileDev(repository, targetPath, roleManifestPath string, workerCount int) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
