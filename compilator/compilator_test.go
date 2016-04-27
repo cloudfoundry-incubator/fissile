@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
@@ -141,34 +142,48 @@ func TestCompilationRoleManifest(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 	// This release has 3 packages:
 	// `tor` is in the role manifest, and will be included
-	// `libevent` is a dependency of `tor`, and will be included
+	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
 	// `boguspackage` is neither, and will not be included
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
+	timeoutCh := make(chan bool)
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release, roleManifest)
+		time.Sleep(5 * time.Second)
+		close(timeoutCh)
+	}()
+	go func() {
+		err := c.Compile(1, release, roleManifest)
+		assert.NoError(err)
+	}()
+	go func() {
+		// `libevent` is a dependency of `tor` and will be compiled first
+		assert.Equal(<-compileChan, "libevent")
+		assert.Equal(<-compileChan, "tor")
 		close(waitCh)
 	}()
 
-	assert.Equal(<-compileChan, "libevent")
-	assert.Equal(<-compileChan, "tor")
-	<-waitCh
+	select {
+	case <-waitCh:
+		return
+	case <-timeoutCh:
+		assert.Fail("Test timeout")
+	}
 }
 
 func getContainerIDs(testRepository string) (string, error) {
