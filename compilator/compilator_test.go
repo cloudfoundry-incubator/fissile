@@ -161,17 +161,13 @@ func TestCompilationRoleManifest(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
-	timeoutCh := make(chan bool)
 	waitCh := make(chan struct{})
+	errCh := make(chan error)
 	go func() {
-		time.Sleep(5 * time.Second)
-		close(timeoutCh)
+		errCh <- c.Compile(1, release, roleManifest)
 	}()
 	go func() {
-		err := c.Compile(1, release, roleManifest)
-		assert.NoError(err)
-	}()
-	go func() {
+		assert.NoError(<-errCh)
 		// `libevent` is a dependency of `tor` and will be compiled first
 		assert.Equal(<-compileChan, "libevent")
 		assert.Equal(<-compileChan, "tor")
@@ -181,7 +177,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	select {
 	case <-waitCh:
 		return
-	case <-timeoutCh:
+	case <-time.After(5 * time.Second):
 		assert.Fail("Test timeout")
 	}
 }
