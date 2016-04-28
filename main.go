@@ -221,6 +221,7 @@ func main() {
 						cacheDirFlag,
 						workdirFlag,
 						repositoryFlag,
+						rolesManifestFlag,
 						workersFlag,
 					},
 					Usage:  "Compiles packages from dev releases using parallel workers",

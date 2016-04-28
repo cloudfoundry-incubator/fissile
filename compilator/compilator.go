@@ -2,6 +2,7 @@ package compilator
 
 import (
 	"bytes"
+	"container/list"
 	"errors"
 	"fmt"
 	"io"
@@ -109,9 +110,17 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, release *model.Release) error {
+func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
 	c.initPackageMaps(release)
-	packages, err := c.removeCompiledPackages(release.Packages)
+	var packages []*model.Package
+
+	if roleManifest != nil { // Conditional for easier testing
+		packages = c.gatherPackagesFromManifest(release, roleManifest)
+	} else {
+		packages = release.Packages
+	}
+
+	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
 	}
@@ -676,4 +685,39 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	}
 
 	return culledPackages, nil
+}
+
+// gatherPackagesFromManifest gathers the list of packages of the release, from the role manifest, as well as all needed dependencies
+// This happens to be a subset of release.Packages, which helps avoid compiling unneeded packages
+func (c *Compilator) gatherPackagesFromManifest(release *model.Release, rolesManifest *model.RoleManifest) []*model.Package {
+	var resultPackages []*model.Package
+	listedPackages := make(map[string]bool)
+	pendingPackages := list.New()
+
+	// Find the initial list of packages to examine (all packages of the release in the manifest)
+	for _, role := range rolesManifest.Roles {
+		for _, job := range role.Jobs {
+			for _, pkg := range job.Packages {
+				if pkg.Release.Name == release.Name {
+					pendingPackages.PushBack(pkg)
+				}
+			}
+		}
+	}
+
+	// For each package, add it to the result list, and check its dependencies
+	for elem := pendingPackages.Front(); elem != nil; elem = elem.Next() {
+		pkg := elem.Value.(*model.Package)
+		if listedPackages[pkg.Name] {
+			// Package is already added (via another package's dependencies)
+			continue
+		}
+		resultPackages = append(resultPackages, pkg)
+		listedPackages[pkg.Name] = true
+		for _, dep := range pkg.Dependencies {
+			pendingPackages.PushBack(dep)
+		}
+	}
+
+	return resultPackages
 }

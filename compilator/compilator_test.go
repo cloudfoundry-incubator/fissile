@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
@@ -51,7 +52,7 @@ func TestCompilationEmpty(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		err := c.Compile(1, genTestCase())
+		err := c.Compile(1, genTestCase(), nil)
 		close(waitCh)
 		assert.Nil(err)
 	}()
@@ -80,7 +81,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
@@ -117,13 +118,68 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release)
+		c.Compile(1, release, nil)
 		close(waitCh)
 	}()
 
 	assert.Equal(<-compileChan, "go-1.4")
 	assert.Equal(<-compileChan, "consul")
 	<-waitCh
+}
+
+func TestCompilationRoleManifest(t *testing.T) {
+	saveCompilePackage := compilePackageHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+	}()
+
+	compileChan := make(chan string, 2)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		compileChan <- pkg.Name
+		return nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.NoError(err)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
+	assert.NoError(err)
+	// This release has 3 packages:
+	// `tor` is in the role manifest, and will be included
+	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
+	// `boguspackage` is neither, and will not be included
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	assert.NoError(err)
+	assert.NotNil(roleManifest)
+
+	waitCh := make(chan struct{})
+	errCh := make(chan error)
+	go func() {
+		errCh <- c.Compile(1, release, roleManifest)
+	}()
+	go func() {
+		// `libevent` is a dependency of `tor` and will be compiled first
+		assert.NoError(<-errCh)
+		assert.Equal(<-compileChan, "libevent")
+		assert.Equal(<-compileChan, "tor")
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+		return
+	case <-time.After(5 * time.Second):
+		assert.Fail("Test timeout")
+	}
 }
 
 func getContainerIDs(testRepository string) (string, error) {
@@ -254,7 +310,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	err = c.Compile(1, release)
+	err = c.Compile(1, release, nil)
 	assert.NotNil(err)
 }
 
