@@ -115,7 +115,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release, roleManife
 	var packages []*model.Package
 
 	if roleManifest != nil { // Conditional for easier testing
-		packages = c.removePackagesNotInManifest(release, roleManifest)
+		packages = c.gatherPackagesFromManifest(release, roleManifest)
 	} else {
 		packages = release.Packages
 	}
@@ -687,9 +687,10 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	return culledPackages, nil
 }
 
-// removePackagesNotInManifest prunes the list of packages to those required for the given role manifest
-func (c *Compilator) removePackagesNotInManifest(release *model.Release, rolesManifest *model.RoleManifest) []*model.Package {
-	var culledPackages []*model.Package
+// gatherPackagesFromManifest gathers the list of packages of the release, from the role manifest, as well as all needed dependencies
+// This happens to be a subset of release.Packages, which helps avoid compiling unneeded packages
+func (c *Compilator) gatherPackagesFromManifest(release *model.Release, rolesManifest *model.RoleManifest) []*model.Package {
+	var resultPackages []*model.Package
 	listedPackages := make(map[string]bool)
 	pendingPackages := list.New()
 
@@ -711,12 +712,12 @@ func (c *Compilator) removePackagesNotInManifest(release *model.Release, rolesMa
 			// Package is already added (via another package's dependencies)
 			continue
 		}
-		culledPackages = append(culledPackages, pkg)
+		resultPackages = append(resultPackages, pkg)
 		listedPackages[pkg.Name] = true
 		for _, dep := range pkg.Dependencies {
 			pendingPackages.PushBack(dep)
 		}
 	}
 
-	return culledPackages
+	return resultPackages
 }
