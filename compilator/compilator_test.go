@@ -133,7 +133,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 		compilePackageHarness = saveCompilePackage
 	}()
 
-	compileChan := make(chan string)
+	compileChan := make(chan string, 2)
 	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
 		compileChan <- pkg.Name
 		return nil
@@ -167,8 +167,8 @@ func TestCompilationRoleManifest(t *testing.T) {
 		errCh <- c.Compile(1, release, roleManifest)
 	}()
 	go func() {
-		assert.NoError(<-errCh)
 		// `libevent` is a dependency of `tor` and will be compiled first
+		assert.NoError(<-errCh)
 		assert.Equal(<-compileChan, "libevent")
 		assert.Equal(<-compileChan, "tor")
 		close(waitCh)
