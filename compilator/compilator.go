@@ -2,6 +2,7 @@ package compilator
 
 import (
 	"bytes"
+	"container/list"
 	"errors"
 	"fmt"
 	"io"
@@ -111,10 +112,14 @@ type compileResult struct {
 //   drained.
 func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
 	c.initPackageMaps(release)
-	packages := release.Packages
+	var packages []*model.Package
+
 	if roleManifest != nil { // Conditional for easier testing
-		packages = c.removePackagesNotInManifest(packages, roleManifest)
+		packages = c.removePackagesNotInManifest(release, roleManifest)
+	} else {
+		packages = release.Packages
 	}
+
 	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
@@ -682,52 +687,36 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 	return culledPackages, nil
 }
 
-func (c *Compilator) removePackagesNotInManifest(packages []*model.Package, rolesManifest *model.RoleManifest) []*model.Package {
+// removePackagesNotInManifest prunes the list of packages to those required for the given role manifest
+func (c *Compilator) removePackagesNotInManifest(release *model.Release, rolesManifest *model.RoleManifest) []*model.Package {
 	var culledPackages []*model.Package
-	var manifestPackageList []*model.Package
+	listedPackages := make(map[string]bool)
+	pendingPackages := list.New()
 
-	// First, list all of the role manifest's jobs' packages, to simplify the next step
+	// Find the initial list of packages to examine (all packages of the release in the manifest)
 	for _, role := range rolesManifest.Roles {
 		for _, job := range role.Jobs {
-			manifestPackageList = append(manifestPackageList, job.Packages...)
-		}
-	}
-
-	for _, pkg := range packages {
-		// Check if that package isn't already added (via another package's dependencies)
-		if packageIsElementOf(pkg, culledPackages) {
-			continue
-		}
-		for _, manifestPkg := range manifestPackageList {
-			if pkg.Name == manifestPkg.Name {
-				// This package is in the role manifest, add it and its dependencies
-				culledPackages = append(culledPackages, pkg)
-				culledPackages = addAllDependencies(culledPackages, pkg)
-				break
+			for _, pkg := range job.Packages {
+				if pkg.Release.Name == release.Name {
+					pendingPackages.PushBack(pkg)
+				}
 			}
 		}
 	}
-	return culledPackages
-}
 
-func addAllDependencies(packages []*model.Package, pkg *model.Package) []*model.Package {
-	for _, dep := range pkg.Dependencies {
-		// Check if that package isn't already added
-		if packageIsElementOf(dep, packages) {
+	// For each package, add it to the result list, and check its dependencies
+	for elem := pendingPackages.Front(); elem != nil; elem = elem.Next() {
+		pkg := elem.Value.(*model.Package)
+		if listedPackages[pkg.Name] {
+			// Package is already added (via another package's dependencies)
 			continue
 		}
-		// This dependency is new, add it, then add all of its dependencies
-		packages = append(packages, dep)
-		packages = addAllDependencies(packages, dep)
-	}
-	return packages
-}
-
-func packageIsElementOf(argPackage *model.Package, packageSlice []*model.Package) bool {
-	for _, pkg := range packageSlice {
-		if pkg.Name == argPackage.Name {
-			return true
+		culledPackages = append(culledPackages, pkg)
+		listedPackages[pkg.Name] = true
+		for _, dep := range pkg.Dependencies {
+			pendingPackages.PushBack(dep)
 		}
 	}
-	return false
+
+	return culledPackages
 }
