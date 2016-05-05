@@ -8,6 +8,12 @@ EOL
 exit 0
 fi
 
+# When the container gets restarted, processes may end up with different pids
+find /run -name "*.pid" -delete
+if [ -d /var/vcap/sys/run ]; then
+    find /var/vcap/sys/run -name "*.pid" -delete
+fi
+
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
 
