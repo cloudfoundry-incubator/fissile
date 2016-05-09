@@ -77,11 +77,11 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 			c.String("repository"),
 		)
 	case "dev jobs-report":
-		if err = validateDevReleaseArgs(c); err != nil {
+		if err = validateReleaseArgs(c); err != nil {
 			break
 		}
 
-		err = f.loadDevReleases(
+		err = f.LoadReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
@@ -90,13 +90,13 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		if err != nil {
 			break
 		}
-		err = f.ListDevJobs()
+		err = f.ListJobs()
 	case "dev packages-report":
-		if err = validateDevReleaseArgs(c); err != nil {
+		if err = validateReleaseArgs(c); err != nil {
 			break
 		}
 
-		err = f.loadDevReleases(
+		err = f.LoadReleases(
 			releasePaths,
 			c.StringSlice("release-name"),
 			c.StringSlice("release-version"),
@@ -105,7 +105,7 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 		if err != nil {
 			break
 		}
-		err = f.ListDevPackages()
+		err = f.ListPackages()
 	case "dev compile":
 		if err = validateDevReleaseArgs(c); err != nil {
 			break
@@ -202,102 +202,4 @@ func (f *Fissile) CommandRouter(c *cli.Context) {
 	}
 
 	f.cmdErr = err
-}
-
-// extendPathsFromWorkDirectory takes the paths map pulled from the commands
-// options and extends it with a number of entries derived from the
-// --work-dir.
-func extendPathsFromWorkDirectory(paths map[string]string) {
-
-	workDir := paths["work-dir"]
-	if workDir == "" {
-		return
-	}
-
-	defaults := []struct {
-		key   string
-		check bool
-		path  string
-	}{
-		// Paths which are unconditionally created from the --work-dir
-		{"compilation-dir", false, "compilation"},
-		{"config-dir", false, "config"},
-		{"base-docker-file", false, "base_dockerfile"},
-		{"docker-dir", false, "dockerfiles"},
-
-		// Paths which have a --work-dir derived default. I.e. are not set
-		// if they exist already
-		{"configgin", true, "configgin.tar.gz"},
-		{"light-opinions", true, "opinions.yml"},
-		{"dark-opinions", true, "dark-opinions.yml"},
-		{"roles-manifest", true, "role-manifest.yml"},
-	}
-
-	for _, v := range defaults {
-		if v.check {
-			if _, ok := paths[v.key]; ok {
-				continue
-			}
-		}
-		paths[v.key] = filepath.Join(workDir, v.path)
-	}
-}
-
-func validateDevReleaseArgs(c *cli.Context) error {
-	releasePathsCount := len(c.StringSlice("release"))
-	releaseNamesCount := len(c.StringSlice("release-name"))
-	releaseVersionsCount := len(c.StringSlice("release-version"))
-	argList := fmt.Sprintf("validateDevReleaseArgs: paths:%s (%d), names:%s (%d), versions:%s (%d)\n", c.StringSlice("release"), releasePathsCount, c.StringSlice("release-name"), releaseNamesCount, c.StringSlice("release-version"), releaseVersionsCount)
-
-	if releasePathsCount == 0 {
-		return fmt.Errorf("Please specify at least one release path. Args: %s", argList)
-	}
-
-	if releaseNamesCount != 0 && releaseNamesCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release names, you need to do it for all of them. Args: %s", argList)
-	}
-
-	if releaseVersionsCount != 0 && releaseVersionsCount != releasePathsCount {
-		return fmt.Errorf("If you specify custom release versions, you need to do it for all of them. Args: %s", argList)
-	}
-
-	return nil
-}
-
-func absolutePathsForArray(paths []string) ([]string, error) {
-	absolutePaths := make([]string, len(paths))
-	for idx, path := range paths {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, fmt.Errorf("Error getting absolute path for path %s: %v", path, err)
-		}
-
-		absolutePaths[idx] = absPath
-	}
-
-	return absolutePaths, nil
-}
-
-func absolutePathsForFlags(c *cli.Context, flagNames ...string) (map[string]string, error) {
-	absolutePaths := map[string]string{}
-	for _, flagName := range flagNames {
-		if c.String(flagName) == "" {
-			continue
-		}
-		path, err := filepath.Abs(c.String(flagName))
-		if err != nil {
-			return nil, fmt.Errorf("Error getting absolute path for option %s, path %s: %v", flagName, c.String(flagName), err)
-		}
-
-		absolutePaths[flagName] = path
-	}
-
-	return absolutePaths, nil
-}
-
-// CommandAfterHandler is used to expose any errors from running the commands to
-// the rest of the system, to work around the fact that cli.Command.Action does
-// not return any error codes.
-func (f *Fissile) CommandAfterHandler(c *cli.Context) error {
-	return f.cmdErr
 }
