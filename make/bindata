@@ -18,17 +18,15 @@ go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \
 # We have to use just the directory, i.e. "./scripts/compilation" to
 # get the correct asset names in the output. This forces us to ensure
 # that the .go files in that directory are not bundled into the
-# assets, especially not the generated file itself.
+# assets, especially not the generated file itself. Given the small
+# size of scripts.go, we leave it in.
 
-rm ./scripts/compilation/compilation.go
-mv ./scripts/compilation/scripts.go $$
+rm -f ./scripts/compilation/compilation.go
 
 go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
     -prefix ./test-assets \
     ./scripts/compilation \
     ./test-assets/scripts/compilation/*.sh
-
-mv $$ ./scripts/compilation/scripts.go
 
 exit
 
