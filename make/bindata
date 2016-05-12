@@ -2,10 +2,37 @@
 
 set -o errexit
 
-go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go ./scripts/compilation/*.sh
-
 go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \
            ./scripts/dockerfiles/Dockerfile-* \
            ./scripts/dockerfiles/monitrc.erb \
            ./scripts/dockerfiles/*.sh \
            ./scripts/dockerfiles/rsyslog_conf.tgz
+
+# Note. We are working around an issue with go-bindata here.
+# See
+#	 https://github.com/jteeuwen/go-bindata/issues/110
+#
+# Further see the code after 'exit' for the original commands to use
+# (again) after go-bindata is fixed.
+#
+# We have to use just the directory, i.e. "./scripts/compilation" to
+# get the correct asset names in the output. This forces us to ensure
+# that the .go files in that directory are not bundled into the
+# assets, especially not the generated file itself. Given the small
+# size of scripts.go, we leave it in.
+
+rm -f ./scripts/compilation/compilation.go
+
+go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
+    -prefix ./test-assets \
+    ./scripts/compilation \
+    ./test-assets/scripts/compilation/*.sh
+
+exit
+
+# This is the code to use when go-bindata's issue #110 gets fixed.
+
+go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
+    -prefix ./test-assets \
+    ./scripts/compilation/*.sh \
+    ./test-assets/scripts/compilation/*.sh
