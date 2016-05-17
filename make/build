@@ -6,7 +6,6 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
 set +o errexit
 
-. ${GIT_ROOT}/make/bindata
 . ${GIT_ROOT}/make/include/versioning
 
 set -o errexit
@@ -15,4 +14,5 @@ export GOPATH=$(godep path):${GOPATH}
 
 set -o nounset
 
+${GIT_ROOT}/make/bindata
 go build -ldflags="-X main.version=${APP_VERSION}"
