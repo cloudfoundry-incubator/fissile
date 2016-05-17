@@ -299,6 +299,11 @@ func main() {
 
 	cliApp.After = fissile.CommandAfterHandler
 
+	if cliApp.Version == "" {
+		ui.Println(color.RedString("Fissile was built incorrectly and its version string is missing"))
+		sigint.DefaultHandler.Exit(1)
+	}
+
 	if err := cliApp.Run(os.Args); err != nil {
 		ui.Println(color.RedString("%v", err))
 		sigint.DefaultHandler.Exit(1)
