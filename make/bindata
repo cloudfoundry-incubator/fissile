@@ -27,12 +27,3 @@ go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
     -prefix ./test-assets \
     ./scripts/compilation \
     ./test-assets/scripts/compilation/*.sh
-
-exit
-
-# This is the code to use when go-bindata's issue #110 gets fixed.
-
-go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
-    -prefix ./test-assets \
-    ./scripts/compilation/*.sh \
-    ./test-assets/scripts/compilation/*.sh
