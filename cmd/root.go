@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -132,7 +133,7 @@ func init() {
 	RootCmd.PersistentFlags().StringP(
 		"cache-dir",
 		"c",
-		"/home/vagrant/.bosh/cache",
+		filepath.Join(os.Getenv("HOME"), ".bosh", "cache"),
 		"Local BOSH cache directory.",
 	)
 
@@ -302,7 +303,7 @@ func splitNonEmpty(value string, separator string) []string {
 
 	var r []string
 	for _, str := range s {
-		if len(str) == 0 {
+		if len(str) != 0 {
 			r = append(r, str)
 		}
 	}
