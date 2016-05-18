@@ -3,9 +3,12 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"github.com/spf13/viper"
 )
 
-var flagDocsMarkdownOutputDir string
+var (
+	flagDocsMarkdownOutputDir string
+)
 
 // docsMarkdownCmd represents the markdown command
 var docsMarkdownCmd = &cobra.Command{
@@ -14,6 +17,8 @@ var docsMarkdownCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
+
+		flagDocsMarkdownOutputDir = viper.GetString("output-dir")
 
 		if flagDocsMarkdownOutputDir, err = absolutePath(
 			flagDocsMarkdownOutputDir,
@@ -28,11 +33,12 @@ var docsMarkdownCmd = &cobra.Command{
 func init() {
 	docsCmd.AddCommand(docsMarkdownCmd)
 
-	docsMarkdownCmd.PersistentFlags().StringVarP(
-		&flagDocsMarkdownOutputDir,
+	docsMarkdownCmd.PersistentFlags().StringP(
 		"output-dir",
 		"O",
 		"./docs",
 		"Specifies a location where markdown documentation will be generated.",
 	)
+
+	viper.BindPFlags(docsMarkdownCmd.PersistentFlags())
 }

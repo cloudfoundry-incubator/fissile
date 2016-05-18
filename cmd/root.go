@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -11,65 +11,65 @@ import (
 	"github.com/hpcloud/fissile/app"
 )
 
-var cfgFile string
-var fissile *app.Fissile
+var (
+	cfgFile string
+	fissile *app.Fissile
 
-var flagRoleManifest string
-var flagRelease []string
-var flagReleaseName []string
-var flagReleaseVersion []string
-var flagCacheDir string
-var flagWorkDir string
-var flagRepository string
-var flagWorkers int
-var flagConfiggin string
-var flagLightOpinions string
-var flagDarkOpinions string
+	flagRoleManifest   string
+	flagRelease        []string
+	flagReleaseName    []string
+	flagReleaseVersion []string
+	flagCacheDir       string
+	flagWorkDir        string
+	flagRepository     string
+	flagWorkers        int
+	flagConfiggin      string
+	flagLightOpinions  string
+	flagDarkOpinions   string
 
-// workPath* variables contain paths derived from flagWorkDir
-var workPathCompilationDir string
-var workPathConfigDir string
-var workPathBaseDockerfile string
-var workPathDockerDir string
+	// workPath* variables contain paths derived from flagWorkDir
+	workPathCompilationDir string
+	workPathConfigDir      string
+	workPathBaseDockerfile string
+	workPathDockerDir      string
+)
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "fissile",
-	Short: "A brief description of your application",
-	Long:  ``,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
+	Use:           "fissile",
+	Short:         "A brief description of your application",
+	Long:          ``,
+	SilenceErrors: true,
+	SilenceUsage:  true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
+
+		flagRoleManifest = viper.GetString("role-manifest")
+		flagRelease = splitNonEmpty(viper.GetString("release"), ",")
+		flagReleaseName = splitNonEmpty(viper.GetString("release-name"), ",")
+		flagReleaseVersion = splitNonEmpty(viper.GetString("release-version"), ",")
+		flagCacheDir = viper.GetString("cache-dir")
+		flagWorkDir = viper.GetString("work-dir")
+		flagRepository = viper.GetString("repository")
+		flagWorkers = viper.GetInt("workers")
+		flagConfiggin = viper.GetString("configgin")
+		flagLightOpinions = viper.GetString("light-opinions")
+		flagDarkOpinions = viper.GetString("dark-opinions")
 
 		extendPathsFromWorkDirectory()
 
-		if flagRoleManifest, err = absolutePath(flagRoleManifest); err != nil {
-			return err
-		}
-		if flagCacheDir, err = absolutePath(flagCacheDir); err != nil {
-			return err
-		}
-		if flagWorkDir, err = absolutePath(flagWorkDir); err != nil {
-			return err
-		}
-		if flagConfiggin, err = absolutePath(flagConfiggin); err != nil {
-			return err
-		}
-		if flagLightOpinions, err = absolutePath(flagLightOpinions); err != nil {
-			return err
-		}
-		if flagDarkOpinions, err = absolutePath(flagDarkOpinions); err != nil {
-			return err
-		}
-		if workPathCompilationDir, err = absolutePath(workPathCompilationDir); err != nil {
-			return err
-		}
-		if workPathConfigDir, err = absolutePath(workPathConfigDir); err != nil {
-			return err
-		}
-		if workPathBaseDockerfile, err = absolutePath(workPathBaseDockerfile); err != nil {
-			return err
-		}
-		if workPathDockerDir, err = absolutePath(workPathDockerDir); err != nil {
+		if err = absolutePaths(
+			&flagRoleManifest,
+			&flagCacheDir,
+			&flagWorkDir,
+			&flagConfiggin,
+			&flagLightOpinions,
+			&flagDarkOpinions,
+			&workPathCompilationDir,
+			&workPathConfigDir,
+			&workPathBaseDockerfile,
+			&workPathDockerDir,
+		); err != nil {
 			return err
 		}
 
@@ -83,13 +83,10 @@ var RootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(f *app.Fissile) {
+func Execute(f *app.Fissile) error {
 	fissile = f
 
-	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
+	return RootCmd.Execute()
 }
 
 func init() {
@@ -101,93 +98,87 @@ func init() {
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.fissile.yaml)")
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagRoleManifest,
+	RootCmd.PersistentFlags().StringP(
 		"role-manifest",
 		"m",
 		"",
 		"Path to a yaml file that details which jobs are used for each role.",
 	)
 
-	RootCmd.PersistentFlags().StringSliceVarP(
-		&flagRelease,
+	// We can't use slices here because of https://github.com/spf13/viper/issues/112
+	RootCmd.PersistentFlags().StringP(
 		"release",
 		"r",
-		[]string{},
+		"",
 		"Path to dev BOSH release(s).",
 	)
 
-	RootCmd.PersistentFlags().StringSliceVarP(
-		&flagReleaseName,
+	// We can't use slices here because of https://github.com/spf13/viper/issues/112
+	RootCmd.PersistentFlags().StringP(
 		"release-name",
 		"n",
-		[]string{},
+		"",
 		"Name of a dev BOSH release; if empty, default configured dev release name will be used",
 	)
 
-	RootCmd.PersistentFlags().StringSliceVarP(
-		&flagReleaseVersion,
+	// We can't use slices here because of https://github.com/spf13/viper/issues/112
+	RootCmd.PersistentFlags().StringP(
 		"release-version",
 		"v",
-		[]string{},
+		"",
 		"Version of a dev BOSH release; if empty, the latest dev release will be used",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagCacheDir,
+	RootCmd.PersistentFlags().StringP(
 		"cache-dir",
 		"c",
 		"/home/vagrant/.bosh/cache",
 		"Local BOSH cache directory.",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagCacheDir,
+	RootCmd.PersistentFlags().StringP(
 		"work-dir",
 		"w",
 		"/var/fissile",
 		"Path to the location of the work directory.",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagRepository,
+	RootCmd.PersistentFlags().StringP(
 		"repository",
 		"p",
 		"fissile",
 		"Repository name prefix used to create image names.",
 	)
 
-	RootCmd.PersistentFlags().IntVarP(
-		&flagWorkers,
+	RootCmd.PersistentFlags().IntP(
 		"workers",
 		"W",
 		2,
 		"Number of workers to use.",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagConfiggin,
+	RootCmd.PersistentFlags().StringP(
 		"configgin",
 		"f",
 		"",
 		"Path to the tarball containing configgin.",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagLightOpinions,
+	RootCmd.PersistentFlags().StringP(
 		"light-opinions",
 		"l",
 		"",
 		"Path to a BOSH deployment manifest file that contains properties to be used as defaults.",
 	)
 
-	RootCmd.PersistentFlags().StringVarP(
-		&flagDarkOpinions,
+	RootCmd.PersistentFlags().StringP(
 		"dark-opinions",
 		"d",
 		"",
 		"Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
 	)
+
+	viper.BindPFlags(RootCmd.PersistentFlags())
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -196,6 +187,9 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	}
 
+	viper.SetEnvPrefix("FISSILE")
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.SetConfigName(".fissile") // name of config file (without extension)
 	viper.AddConfigPath("$HOME")    // adding home directory as first search path
 	viper.AutomaticEnv()            // read in environment variables that match
@@ -281,6 +275,18 @@ func absolutePathsForArray(paths []string) ([]string, error) {
 	return absolutePaths, nil
 }
 
+func absolutePaths(paths ...*string) error {
+	for _, path := range paths {
+		if absPath, err := absolutePath(*path); err == nil {
+			*path = absPath
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func absolutePath(path string) (string, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -288,4 +294,16 @@ func absolutePath(path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+func splitNonEmpty(value string, separator string) []string {
+	s := strings.Split(value, separator)
+
+	var r []string
+	for _, str := range s {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
 }

@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var flagShowLayerFrom string
+var (
+	flagShowLayerFrom string
+)
 
 // showLayerCmd represents the layer command
 var showLayerCmd = &cobra.Command{
@@ -12,6 +15,8 @@ var showLayerCmd = &cobra.Command{
 	Short: "Displays information about Docker layers used in the build process.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		flagBuildLayerFrom = viper.GetString("from")
+
 		return fissile.ShowBaseImage(
 			flagShowLayerFrom,
 			flagRepository,
@@ -22,12 +27,13 @@ var showLayerCmd = &cobra.Command{
 func init() {
 	showCmd.AddCommand(showLayerCmd)
 
-	showLayerCmd.PersistentFlags().StringVarP(
-		&flagBuildLayerFrom,
+	showLayerCmd.PersistentFlags().StringP(
 		"from",
 		"F",
 		"ubuntu:14.04",
 		"Docker image used as a base for the layers",
 	)
+
+	viper.BindPFlags(showLayerCmd.PersistentFlags())
 
 }

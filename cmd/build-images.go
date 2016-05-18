@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var flagBuildImagesNoBuild bool
-var flagBuildImagesForce bool
+var (
+	flagBuildImagesNoBuild bool
+	flagBuildImagesForce   bool
+)
 
 // buildImagesCmd represents the images command
 var buildImagesCmd = &cobra.Command{
@@ -13,6 +16,9 @@ var buildImagesCmd = &cobra.Command{
 	Short: "Builds Docker images from your BOSH releases.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		flagBuildImagesNoBuild = viper.GetBool("no-build")
+		flagBuildImagesForce = viper.GetBool("force")
 
 		if err := fissile.LoadReleases(
 			flagRelease,
@@ -39,20 +45,19 @@ var buildImagesCmd = &cobra.Command{
 func init() {
 	buildCmd.AddCommand(buildImagesCmd)
 
-	buildImagesCmd.PersistentFlags().BoolVarP(
-		&flagBuildImagesNoBuild,
+	buildImagesCmd.PersistentFlags().BoolP(
 		"no-build",
 		"N",
 		false,
 		"If specified, the Dockerfile and assets will be created, but the image won't be built.",
 	)
 
-	buildImagesCmd.PersistentFlags().BoolVarP(
-		&flagBuildImagesForce,
+	buildImagesCmd.PersistentFlags().BoolP(
 		"force",
 		"F",
 		false,
 		"If specified, image creation will proceed even when images already exist.",
 	)
 
+	viper.BindPFlags(buildImagesCmd.PersistentFlags())
 }
