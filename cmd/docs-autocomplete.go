@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,15 +17,11 @@ var docsAutocompleteCmd = &cobra.Command{
 
 		flagDocsAutocompleteOutputFile = viper.GetString("output-file")
 
-		fmt.Println(flagDocsAutocompleteOutputFile)
-
 		if flagDocsAutocompleteOutputFile, err = absolutePath(
 			flagDocsAutocompleteOutputFile,
 		); err != nil {
 			return err
 		}
-
-		fmt.Println(flagDocsAutocompleteOutputFile)
 
 		return RootCmd.GenBashCompletionFile(flagDocsAutocompleteOutputFile)
 	},

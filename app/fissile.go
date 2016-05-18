@@ -157,7 +157,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 	return nil
 }
 
-// ListDevPackages will list all BOSH packages within a list of dev releases
+// ListPackages will list all BOSH packages within a list of dev releases
 func (f *Fissile) ListPackages() error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -179,7 +179,7 @@ func (f *Fissile) ListPackages() error {
 	return nil
 }
 
-// ListDevJobs will list all jobs within a list of dev releases
+// ListJobs will list all jobs within a list of dev releases
 func (f *Fissile) ListJobs() error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")

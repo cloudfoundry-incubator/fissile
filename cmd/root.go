@@ -277,11 +277,12 @@ func absolutePathsForArray(paths []string) ([]string, error) {
 
 func absolutePaths(paths ...*string) error {
 	for _, path := range paths {
-		if absPath, err := absolutePath(*path); err == nil {
-			*path = absPath
-		} else {
+		absPath, err := absolutePath(*path)
+		if err != nil {
 			return err
 		}
+
+		*path = absPath
 	}
 
 	return nil
@@ -301,7 +302,7 @@ func splitNonEmpty(value string, separator string) []string {
 
 	var r []string
 	for _, str := range s {
-		if str != "" {
+		if len(str) == 0 {
 			r = append(r, str)
 		}
 	}
