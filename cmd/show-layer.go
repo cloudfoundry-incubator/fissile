@@ -15,7 +15,7 @@ var showLayerCmd = &cobra.Command{
 	Short: "Displays information about Docker layers used in the build process.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		flagBuildLayerFrom = viper.GetString("from")
+		flagShowLayerFrom = viper.GetString("from")
 
 		return fissile.ShowBaseImage(
 			flagShowLayerFrom,

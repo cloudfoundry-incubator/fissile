@@ -36,7 +36,7 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
-// ShowBaseImage will show details about the base BOSH image
+// ShowBaseImage will show details about the base BOSH images
 func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
@@ -53,7 +53,7 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	f.ui.Printf("Image: %s\n", color.GreenString(baseImage))
+	f.ui.Printf("Base: %s\n", color.GreenString(baseImage))
 	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
 	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
@@ -62,7 +62,13 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	f.ui.Printf("Image: %s\n", color.GreenString(comp.BaseImageName()))
+	f.ui.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
+	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
+
+	baseImageName := builder.GetBaseImageName(repository, f.Version)
+	image, err = dockerManager.FindImage(baseImageName)
+	f.ui.Printf("\nStemcell Layer: %s\n", color.GreenString(baseImageName))
 	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
 	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
