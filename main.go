@@ -12,7 +12,7 @@ import (
 	"github.com/hpcloud/termui/sigint"
 )
 
-var version = "0+dev"
+var version = ""
 
 func main() {
 
@@ -39,7 +39,7 @@ func main() {
 
 	f := app.NewFissileApplication(version, ui)
 
-	if err := cmd.Execute(f); err != nil {
+	if err := cmd.Execute(f, version); err != nil {
 		ui.Println(color.RedString("%v", err))
 		sigint.DefaultHandler.Exit(1)
 	}

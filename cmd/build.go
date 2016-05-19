@@ -8,7 +8,6 @@ import (
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Has subcommands to build all images and necessary artifacts.",
-	Long:  ``,
 }
 
 func init() {

@@ -10,8 +10,10 @@ var flagDocsAutocompleteOutputFile string
 // docsAutocompleteCmd represents the autocomplete command
 var docsAutocompleteCmd = &cobra.Command{
 	Use:   "autocomplete",
-	Short: "Generates bash auto-complete scripts.",
-	Long:  ``,
+	Short: "Generates a bash auto-complete script.",
+	Long: `
+You can source the script to provide tab completion in bash.
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 

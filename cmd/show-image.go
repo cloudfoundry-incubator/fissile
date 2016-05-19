@@ -13,8 +13,13 @@ var (
 // showImageCmd represents the image command
 var showImageCmd = &cobra.Command{
 	Use:   "image",
-	Short: "Displays information about Docker images.",
-	Long:  ``,
+	Short: "Displays information about role images.",
+	Long: `
+This command lists all the final docker image names for all the roles defined in 
+your role manifest.
+
+This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissile show image)`" + `).
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		flagShowImageDockerOnly = viper.GetBool("docker-only")

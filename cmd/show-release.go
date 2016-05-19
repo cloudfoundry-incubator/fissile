@@ -8,7 +8,10 @@ import (
 var showReleaseCmd = &cobra.Command{
 	Use:   "release",
 	Short: "Displays information about BOSH releases.",
-	Long:  ``,
+	Long: `
+Displays a report of all jobs and packages in all referenced releases.
+The report contains the name, version, description and counts of jobs and packages.
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show job information
 

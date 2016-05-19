@@ -12,8 +12,18 @@ var (
 // buildLayerCompilationCmd represents the compilation command
 var buildLayerCompilationCmd = &cobra.Command{
 	Use:   "compilation",
-	Short: "Builds a Docker image layer to be used when compiling packages.",
-	Long:  ``,
+	Short: "Builds a docker image layer to be used when compiling packages.",
+	Long: `
+This command creates a container with the name ` + "`<repository>-cbase-<FISSILE_VERSION>`" + ` 
+and runs a compilation prerequisites script within. 
+
+Once the prerequisites script completes successfully, an image named 
+` + "`<repository>-cbase:<FISSILE_VERSION>`" + ` is created and the created container is 
+removed.
+
+If the prerequisites script fails, the container is not removed. 
+If the compilation base image already exists, this command does not do anything.
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		flagBuildLayerCompilationDebug = viper.GetBool("debug")

@@ -12,8 +12,7 @@ var (
 // showLayerCmd represents the layer command
 var showLayerCmd = &cobra.Command{
 	Use:   "layer",
-	Short: "Displays information about Docker layers used in the build process.",
-	Long:  ``,
+	Short: "Displays information about all the docker layers used by fissile.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flagShowLayerFrom = viper.GetString("from")
 

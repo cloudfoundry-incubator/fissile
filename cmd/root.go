@@ -15,6 +15,7 @@ import (
 var (
 	cfgFile string
 	fissile *app.Fissile
+	version string
 
 	flagRoleManifest   string
 	flagRelease        []string
@@ -37,9 +38,14 @@ var (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:           "fissile",
-	Short:         "A brief description of your application",
-	Long:          ``,
+	Use:   "fissile",
+	Short: "The BOSH disintegrator",
+	Long: `
+Fissile converts existing BOSH dev releases into docker images.
+
+It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH 
+agent.
+`,
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -84,8 +90,9 @@ var RootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(f *app.Fissile) error {
+func Execute(f *app.Fissile, v string) error {
 	fissile = f
+	version = v
 
 	return RootCmd.Execute()
 }
@@ -266,11 +273,12 @@ func validateReleaseArgs() error {
 func absolutePathsForArray(paths []string) ([]string, error) {
 	absolutePaths := make([]string, len(paths))
 	for idx, path := range paths {
-		if absPath, err := absolutePath(path); err == nil {
-			absolutePaths[idx] = absPath
-		} else {
+		absPath, err := absolutePath(path)
+		if err != nil {
 			return nil, err
 		}
+
+		absolutePaths[idx] = absPath
 	}
 
 	return absolutePaths, nil

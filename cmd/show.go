@@ -8,7 +8,6 @@ import (
 var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Has subcommands that display information about build artifacts.",
-	Long:  ``,
 }
 
 func init() {

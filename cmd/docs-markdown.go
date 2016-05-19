@@ -14,7 +14,6 @@ var (
 var docsMarkdownCmd = &cobra.Command{
 	Use:   "markdown",
 	Short: "Generates markdown documentation for fissile.",
-	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 

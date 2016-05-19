@@ -23,7 +23,7 @@ import (
 // Fissile represents a fissile application
 type Fissile struct {
 	Version  string
-	ui       *termui.UI
+	UI       *termui.UI
 	cmdErr   error
 	releases []*model.Release // Only applies for some commands
 }
@@ -32,7 +32,7 @@ type Fissile struct {
 func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	return &Fissile{
 		Version: version,
-		ui:      ui,
+		UI:      ui,
 	}
 }
 
@@ -48,29 +48,29 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false, f.ui)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	f.ui.Printf("Base: %s\n", color.GreenString(baseImage))
-	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
+	f.UI.Printf("Base: %s\n", color.GreenString(baseImage))
+	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
 	image, err = dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
 		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
-	f.ui.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
-	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
+	f.UI.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
+	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
 	baseImageName := builder.GetBaseImageName(repository, f.Version)
 	image, err = dockerManager.FindImage(baseImageName)
-	f.ui.Printf("\nStemcell Layer: %s\n", color.GreenString(baseImageName))
-	f.ui.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.ui.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
+	f.UI.Printf("\nStemcell Layer: %s\n", color.GreenString(baseImageName))
+	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
+	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
 
 	return nil
 }
@@ -87,9 +87,9 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 		return fmt.Errorf("Error looking up base image %s: %s", baseImageName, err)
 	}
 
-	f.ui.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
+	f.UI.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.ui)
+	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -112,11 +112,11 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	image, err := dockerManager.FindImage(baseImageName)
 	if err == docker.ErrImageNotFound {
-		f.ui.Println("Image doesn't exist, it will be created ...")
+		f.UI.Println("Image doesn't exist, it will be created ...")
 	} else if err != nil {
 		return fmt.Errorf("Error looking up image: %s", err.Error())
 	} else {
-		f.ui.Println(color.GreenString(
+		f.UI.Println(color.GreenString(
 			"Base role image %s with ID %s already exists. Doing nothing.",
 			color.YellowString(baseImageName),
 			color.YellowString(image.ID),
@@ -130,16 +130,16 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
-	f.ui.Println("Creating Dockerfile ...")
+	f.UI.Println("Creating Dockerfile ...")
 
 	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
 		return fmt.Errorf("Error creating Dockerfile and/or assets: %s", err.Error())
 	}
 
-	f.ui.Println("Dockerfile created.")
+	f.UI.Println("Dockerfile created.")
 
 	if !noBuild {
-		f.ui.Println("Building docker image ...")
+		f.UI.Println("Building docker image ...")
 
 		baseImageName := builder.GetBaseImageName(repository, f.Version)
 		log := new(bytes.Buffer)
@@ -150,15 +150,15 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 		err = dockerManager.BuildImage(targetPath, baseImageName, stdoutWriter)
 		if err != nil {
-			log.WriteTo(f.ui)
+			log.WriteTo(f.UI)
 			return fmt.Errorf("Error building base image: %s", err.Error())
 		}
 
 	} else {
-		f.ui.Println("Skipping image build because of flag.")
+		f.UI.Println("Skipping image build because of flag.")
 	}
 
-	f.ui.Println(color.GreenString("Done."))
+	f.UI.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -170,13 +170,13 @@ func (f *Fissile) ListPackages() error {
 	}
 
 	for _, release := range f.releases {
-		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, pkg := range release.Packages {
-			f.ui.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+			f.UI.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
 		}
 
-		f.ui.Printf(
+		f.UI.Printf(
 			"There are %s packages present.\n\n",
 			color.GreenString("%d", len(release.Packages)),
 		)
@@ -192,13 +192,13 @@ func (f *Fissile) ListJobs() error {
 	}
 
 	for _, release := range f.releases {
-		f.ui.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, job := range release.Jobs {
-			f.ui.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
 		}
 
-		f.ui.Printf(
+		f.UI.Printf(
 			"There are %s jobs present.\n\n",
 			color.GreenString("%d", len(release.Jobs)),
 		)
@@ -224,9 +224,9 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 	}
 
 	for _, release := range f.releases {
-		f.ui.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.UI.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
-		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.ui)
+		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
@@ -261,7 +261,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		targetPath,
 		"",
 		f.Version,
-		f.ui,
+		f.UI,
 	)
 
 	// Generate configuration
@@ -274,7 +274,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		os.RemoveAll(configTargetPath)
 	}()
 
-	f.ui.Println("Generating configuration JSON specs ...")
+	f.UI.Println("Generating configuration JSON specs ...")
 
 	configStore := configstore.NewConfigStoreBuilder(
 		configstore.JSONProvider,
@@ -287,7 +287,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	f.ui.Println(color.GreenString("Done."))
+	f.UI.Println(color.GreenString("Done."))
 
 	// Go through each role and create its image
 	for _, role := range rolesManifest.Roles {
@@ -295,7 +295,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 
 		_, err = dockerManager.FindImage(roleImageName)
 		if err == nil && !force {
-			f.ui.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
+			f.UI.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
 			continue
 		}
 
@@ -305,7 +305,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 			return fmt.Errorf("Error removing Dockerfile directory and/or assets for role %s: %s", role.Name, err.Error())
 		}
 
-		f.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
+		f.UI.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
 		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role, configTargetPath)
 		if err != nil {
 			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
@@ -316,7 +316,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
 			}
 
-			f.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+			f.UI.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 			log := new(bytes.Buffer)
 			stdoutWriter := docker.NewFormattingWriter(
 				log,
@@ -325,16 +325,16 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 
 			err = dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
 			if err != nil {
-				log.WriteTo(f.ui)
+				log.WriteTo(f.UI)
 				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 
 		} else {
-			f.ui.Println("Skipping image build because of flag.")
+			f.UI.Println("Skipping image build because of flag.")
 		}
 	}
 
-	f.ui.Println(color.GreenString("Done."))
+	f.UI.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -368,7 +368,7 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 		imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
 
 		if !existingOnDocker {
-			f.ui.Println(imageName)
+			f.UI.Println(imageName)
 			continue
 		}
 
@@ -381,13 +381,13 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 		}
 
 		if withVirtualSize {
-			f.ui.Printf(
+			f.UI.Printf(
 				"%s (%sMB)\n",
 				color.GreenString(imageName),
 				color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)),
 			)
 		} else {
-			f.ui.Println(imageName)
+			f.UI.Println(imageName)
 		}
 	}
 
@@ -411,7 +411,7 @@ func (f *Fissile) GenerateConfigurationBase(rolesManifestPath, lightManifestPath
 		return fmt.Errorf("Error writing base config: %s", err.Error())
 	}
 
-	f.ui.Println(color.GreenString("Done."))
+	f.UI.Println(color.GreenString("Done."))
 
 	return nil
 }
@@ -477,21 +477,21 @@ type HashDiffs struct {
 
 func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	if len(hashDiffs.DeletedKeys) > 0 {
-		f.ui.Println(color.RedString("Dropped keys:"))
+		f.UI.Println(color.RedString("Dropped keys:"))
 		sort.Strings(hashDiffs.DeletedKeys)
 		for _, v := range hashDiffs.DeletedKeys {
-			f.ui.Printf("  %s\n", v)
+			f.UI.Printf("  %s\n", v)
 		}
 	}
 	if len(hashDiffs.AddedKeys) > 0 {
-		f.ui.Println(color.GreenString("Added keys:"))
+		f.UI.Println(color.GreenString("Added keys:"))
 		sort.Strings(hashDiffs.AddedKeys)
 		for _, v := range hashDiffs.AddedKeys {
-			f.ui.Printf("  %s\n", v)
+			f.UI.Printf("  %s\n", v)
 		}
 	}
 	if len(hashDiffs.ChangedValues) > 0 {
-		f.ui.Println(color.BlueString("Changed values:"))
+		f.UI.Println(color.BlueString("Changed values:"))
 		sortedKeys := make([]string, len(hashDiffs.ChangedValues))
 		i := 0
 		for k := range hashDiffs.ChangedValues {
@@ -501,7 +501,7 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 		sort.Strings(sortedKeys)
 		for _, k := range sortedKeys {
 			v := hashDiffs.ChangedValues[k]
-			f.ui.Printf("  %s: %s => %s\n", k, v[0], v[1])
+			f.UI.Printf("  %s: %s => %s\n", k, v[0], v[1])
 		}
 	}
 }
