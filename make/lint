@@ -6,7 +6,7 @@ ISSUES=$(mktemp)
 
 trap "rm -f ${ISSUES}" HUP INT TERM
 
-go list -f '{{ .Dir }}' ./... | sed '/fissile[/]scripts/d' | while read DIR; do
+go list -f '{{ .Dir }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d' | while read DIR; do
     golint ${DIR} | tee -a ${ISSUES}
 done
 

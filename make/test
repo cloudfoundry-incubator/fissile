@@ -2,6 +2,4 @@
 
 set -o errexit
 
-export GOPATH=$(godep path):${GOPATH}
-
-go test -cover ./...
+go test -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')

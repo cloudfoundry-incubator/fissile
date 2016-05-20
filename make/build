@@ -10,8 +10,6 @@ set +o errexit
 
 set -o errexit
 
-export GOPATH=$(godep path):${GOPATH}
-
 set -o nounset
 
 ${GIT_ROOT}/make/bindata
