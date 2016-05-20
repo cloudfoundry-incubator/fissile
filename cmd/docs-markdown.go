@@ -17,7 +17,7 @@ var docsMarkdownCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		flagDocsMarkdownOutputDir = viper.GetString("output-dir")
+		flagDocsMarkdownOutputDir = viper.GetString("md-output-dir")
 
 		if flagDocsMarkdownOutputDir, err = absolutePath(
 			flagDocsMarkdownOutputDir,
@@ -33,7 +33,7 @@ func init() {
 	docsCmd.AddCommand(docsMarkdownCmd)
 
 	docsMarkdownCmd.PersistentFlags().StringP(
-		"output-dir",
+		"md-output-dir",
 		"O",
 		"./docs",
 		"Specifies a location where markdown documentation will be generated.",

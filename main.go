@@ -33,8 +33,7 @@ func main() {
 	}
 
 	if version == "" {
-		ui.Println(color.RedString("Fissile was built incorrectly and its version string is missing"))
-		sigint.DefaultHandler.Exit(1)
+		ui.Println(color.YellowString("Fissile was built incorrectly and its version string is missing."))
 	}
 
 	f := app.NewFissileApplication(version, ui)
