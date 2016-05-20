@@ -12,7 +12,7 @@ import (
 	"github.com/hpcloud/termui/sigint"
 )
 
-var version = ""
+var version = "0"
 
 func main() {
 
@@ -32,8 +32,12 @@ func main() {
 		)
 	}
 
-	if version == "" {
-		ui.Println(color.YellowString("Fissile was built incorrectly and its version string is missing."))
+	switch {
+	case version == "":
+		ui.Println(color.RedString("Fissile was built incorrectly and its version string is empty."))
+		sigint.DefaultHandler.Exit(1)
+	case version == "0":
+		ui.Println(color.RedString("Fissile was built incorrectly and it doesn't have a proper version string."))
 	}
 
 	f := app.NewFissileApplication(version, ui)
