@@ -93,7 +93,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 	assert.Contains(string(runScriptContents), "/opt/hcf/startup/myrole.sh")
@@ -104,7 +104,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.Contains(string(runScriptContents), "monit -vI")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotContains(string(runScriptContents), "monit -vI")
 	assert.NotContains(string(runScriptContents), "/etc/monitrc")
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
