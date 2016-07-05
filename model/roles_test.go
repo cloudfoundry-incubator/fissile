@@ -28,8 +28,10 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	assert.Equal(2, len(rolesManifest.Roles))
 
 	myrole := rolesManifest.Roles[0]
-	assert.Equal(1, len(myrole.Scripts))
-	assert.Equal("myrole.sh", myrole.Scripts[0])
+	assert.Equal([]string{
+		"myrole.sh",
+		"/script/with/absolute/path.sh",
+	}, myrole.Scripts)
 
 	foorole := rolesManifest.Roles[1]
 	torjob := foorole.Jobs[0]

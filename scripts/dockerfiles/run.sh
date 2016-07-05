@@ -33,9 +33,9 @@ function run_configgin()
 
 # Run custom role scripts
 {{ with $role := index . "role" }}
-{{ range $i, $script := .Scripts}}
-bash /opt/hcf/startup/{{ $script }}
-{{ end }}
+    {{ range $i, $script := .Scripts}}
+        bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+    {{ end }}
 {{ end }}
 
 # Process templates
@@ -79,9 +79,9 @@ cron
 
 # Run custom post config role scripts
 {{ with $role := index . "role" }}
-{{ range $i, $script := .PostConfigScripts}}
-bash /opt/hcf/startup/{{ $script }}
-{{ end }}
+    {{ range $i, $script := .PostConfigScripts}}
+        bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+    {{ end }}
 {{ end }}
 
 # Run

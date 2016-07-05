@@ -123,6 +123,10 @@ func (r *Role) GetScriptPaths() map[string]string {
 	}
 
 	for _, script := range r.Scripts {
+		if filepath.IsAbs(script) {
+			// Absolute paths _inside_ the container; there is nothing to copy
+			continue
+		}
 		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
 	}
 
