@@ -101,6 +101,9 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.NotContains(string(runScriptContents), "/opt/hcf/startup/script/with/absolute/path.sh")
 	assert.NotContains(string(runScriptContents), "/opt/hcf/startup//script/with/absolute/path.sh")
 	assert.Contains(string(runScriptContents), "/opt/hcf/startup/post_config_script.sh")
+	assert.Contains(string(runScriptContents), "/var/vcap/jobs/myrole/pre-start")
+	assert.NotContains(string(runScriptContents), "/opt/hcf/startup/var/vcap/jobs/myrole/pre-start")
+	assert.NotContains(string(runScriptContents), "/opt/hcf//startup/var/vcap/jobs/myrole/pre-start")
 	assert.Contains(string(runScriptContents), "monit -vI")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
