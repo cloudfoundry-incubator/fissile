@@ -32,78 +32,74 @@ function run_configgin()
 }
 
 # Run custom role scripts
-{{ with $role := index . "role" }}
-{{ range $i, $script := .Scripts}}
-bash /opt/hcf/startup/{{ $script }}
-{{ end }}
+{{ range $script := .role.Scripts}}
+    bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
 
 # Process templates
-{{ with $role := index . "role" }}
-# =====================================================
-{{ range $i, $job := .Jobs}}
-# ============================================================================
-#         Templates for job {{ $job.Name }}
-# ============================================================================
-{{ range $j, $template := $job.Templates }}
-run_configgin "{{$job.Name}}" \
-    "/var/vcap/jobs-src/{{$job.Name}}/templates/{{ $template.SourcePath }}" \
-    "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
-# =====================================================
-{{ end }}
-{{ if not (eq $role.Type "bosh-task") }}
-# ============================================================================
-#         Monit templates for job {{ $job.Name }}
-# ============================================================================
-run_configgin "{{$job.Name}}" \
-    "/var/vcap/jobs-src/{{$job.Name}}/monit" \
-    "/var/vcap/monit/{{$job.Name}}.monitrc"
-# =====================================================
-{{ end }}
-{{ end }}
-{{ if not (eq .Type "bosh-task") }}
-# Process monitrc.erb template
-run_configgin "{{with $l := index $role.JobNameList 0}}{{$l.Name}}{{end}}" \
-    "/opt/hcf/monitrc.erb" \
-    "/etc/monitrc"
-chmod 0600 /etc/monitrc
-{{ end }}
+{{ with $role := .role }}
+    # =====================================================
+    {{ range $job := $role.Jobs}}
+    # ============================================================================
+    #         Templates for job {{ $job.Name }}
+    # ============================================================================
+        {{ range $template := $job.Templates }}
+            run_configgin "{{$job.Name}}" \
+                "/var/vcap/jobs-src/{{$job.Name}}/templates/{{$template.SourcePath}}" \
+                "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
+            # =====================================================
+        {{ end }}
+        {{ if not (eq $role.Type "bosh-task") }}
+            # ============================================================================
+            #         Monit templates for job {{ $job.Name }}
+            # ============================================================================
+            run_configgin "{{$job.Name}}" \
+                "/var/vcap/jobs-src/{{$job.Name}}/monit" \
+                "/var/vcap/monit/{{$job.Name}}.monitrc"
+            # =====================================================
+        {{ end }}
+    {{ end }}
+    {{ if not (eq $role.Type "bosh-task") }}
+        # Process monitrc.erb template
+        run_configgin "{{(index $role.JobNameList 0).Name}}" \
+            "/opt/hcf/monitrc.erb" \
+            "/etc/monitrc"
+        chmod 0600 /etc/monitrc
+    {{ end }}
 {{ end }}
 
 # Create run dir
 mkdir -p /var/vcap/sys/run
+chown root:vcap /var/vcap/sys/run
+chmod 775 /var/vcap/sys/run
 
 # Start rsyslog and cron
 service rsyslog start
 cron
 
 # Run custom post config role scripts
-{{ with $role := index . "role" }}
-{{ range $i, $script := .PostConfigScripts}}
-bash /opt/hcf/startup/{{ $script }}
-{{ end }}
+{{ range $script := .role.PostConfigScripts}}
+    bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
 
 # Run
-{{ with $role := index . "role" }}
-{{ if eq .Type "bosh-task" }}
-{{ range $i, $job := .Jobs}}
-/var/vcap/jobs/{{ $job.Name }}/bin/run
-{{ end }}
+{{ if eq .role.Type "bosh-task" }}
+    {{ range $job := .role.Jobs}}
+        /var/vcap/jobs/{{ $job.Name }}/bin/run
+    {{ end }}
 {{ else }}
 
-monit -vI &
-pid=$!
-echo "pid = $pid"
+    monit -vI &
+    pid=$!
+    echo "pid = $pid"
 
-killer() {
-  echo "killing $pid"
-  kill $pid
-}
+    killer() {
+      echo "killing $pid"
+      kill $pid
+    }
 
-trap killer INT TERM
+    trap killer INT TERM
 
-( while $(sleep 1); do true; done )
+    ( while $(sleep 1); do true; done )
 
-{{ end }}
 {{ end }}

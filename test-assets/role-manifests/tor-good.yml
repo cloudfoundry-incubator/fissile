@@ -1,7 +1,7 @@
 ---
 roles:
 - name: myrole
-  scripts: ["myrole.sh"]
+  scripts: ["myrole.sh", "/script/with/absolute/path.sh"]
   post_config_scripts: ["post_config_script.sh"] 
   jobs:
   - name: new_hostname

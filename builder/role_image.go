@@ -243,6 +243,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	}
 
 	runScriptTemplate := template.New("role-runscript")
+	runScriptTemplate.Funcs(template.FuncMap{"is_abs": filepath.IsAbs})
 	context := map[string]interface{}{
 		"role": role,
 	}
