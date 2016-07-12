@@ -25,6 +25,27 @@ RUN useradd -m --comment 'hcf user' vcap && \
     (useradd --system --user-group --no-create-home syslog || true) && \
     usermod -G vcap syslog
 
+
+#HACK for rsyslogd
+#the deb package for rsyslogd version 8.19.0-0adisconatrusty1 is dependent on the latest version of 
+#libfastjson(0.99.3-0adiscon1trusty1) which is not compatible with rsyslogd
+#deb repo location: http://ppa.launchpad.net/adiscon/v8-stable/ubuntu/dists/trusty/main/binary-amd64/Packages.gz
+#to fix this we're tring to detect if rsyslogd can start, and if not we're downloading an older version
+#of libfastjson that is compatible with rsyslogd 8.19.0-0adisconatrusty1
+RUN rsyslogd; \
+    [ $? = 127 ] && \
+      { \
+        wget http://ppa.launchpad.net/adiscon/v8-stable/ubuntu/pool/main/libf/libfastjson/libfastjson_0.99.2-0adiscon1trusty1_amd64.deb -O /tmp/libfastjson_0.99.2.deb; \
+         dpkg -i /tmp/libfastjson_0.99.2.deb; \
+         ln -s ../init.d/rsyslog /etc/rc1.d/K20rsyslog; \
+         ln -s ../init.d/rsyslog /etc/rc2.d/S20rsyslog; \
+         ln -s ../init.d/rsyslog /etc/rc3.d/S20rsyslog; \
+         ln -s ../init.d/rsyslog /etc/rc4.d/S20rsyslog; \
+         ln -s ../init.d/rsyslog /etc/rc5.d/S20rsyslog; \
+         ln -s ../init.d/rsyslog /etc/rc6.d/K20rsyslog; \
+         update-rc.d rsyslog enable; \
+      }
+
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
 # Install configgin
