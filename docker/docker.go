@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/fatih/color"
@@ -121,6 +124,17 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 		OutputStream: stdoutWriter,
 	}
 
+	for _, envVar := range []string{"http_proxy", "https_proxy", "no_proxy"} {
+		for _, name := range []string{strings.ToLower(envVar), strings.ToUpper(envVar)} {
+			if val, ok := os.LookupEnv(name); ok {
+				bio.BuildArgs = append(bio.BuildArgs, dockerclient.BuildArg{
+					Name:  name,
+					Value: val,
+				})
+			}
+		}
+	}
+
 	if stdoutWriter != nil {
 		defer func() {
 			stdoutWriter.Close()
@@ -196,6 +210,31 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 		// actualCmd not used
 	}
 
+	env := []string{
+		fmt.Sprintf("HOST_USERID=%d", currentUID),
+		fmt.Sprintf("HOST_USERGID=%d", currentGID),
+	}
+	for _, name := range []string{"http_proxy", "https_proxy"} {
+		var proxyURL *url.URL
+		var err error
+		if val, ok := os.LookupEnv(name); ok {
+			env = append(env, fmt.Sprintf("%s=%s", name, val))
+			if proxyURL, err = url.Parse(val); err != nil {
+				proxyURL = nil
+			}
+		}
+		name = strings.ToUpper(name)
+		if val, ok := os.LookupEnv(name); ok {
+			env = append(env, fmt.Sprintf("%s=%s", name, val))
+			if proxyURL == nil {
+				// Follow curl, lower case env vars have precedence
+				if proxyURL, err = url.Parse(val); err != nil {
+					proxyURL = nil
+				}
+			}
+		}
+	}
+
 	cco := dockerclient.CreateContainerOptions{
 		Config: &dockerclient.Config{
 			Tty:          false,
@@ -207,10 +246,7 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			Cmd:          containerCmd,
 			WorkingDir:   "/",
 			Image:        imageName,
-			Env: []string{
-				fmt.Sprintf("HOST_USERID=%d", currentUID),
-				fmt.Sprintf("HOST_USERGID=%d", currentGID),
-			},
+			Env:          env,
 		},
 		HostConfig: &dockerclient.HostConfig{
 			Privileged:     false,
