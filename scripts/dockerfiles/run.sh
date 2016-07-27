@@ -78,8 +78,16 @@ service rsyslog start
 cron
 
 # Run custom post config role scripts
+# First run all the scripts called pre-start
+for fname in $(find /var/vcap/jobs/*/bin -name pre-start) ; do
+    bash $fname
+done
+# And run any custom scripts other than pre-start
+
 {{ range $script := .role.PostConfigScripts}}
+{{ if not (is_pre_start $script) }}
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+{{ end }}
 {{ end }}
 
 # Run
