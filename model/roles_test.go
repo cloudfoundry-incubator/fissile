@@ -57,8 +57,10 @@ func TestGetScriptPaths(t *testing.T) {
 	assert.NotNil(rolesManifest)
 
 	fullScripts := rolesManifest.Roles[0].GetScriptPaths()
-	assert.Equal(1, len(fullScripts))
-	assert.Equal(filepath.Join(workDir, "../test-assets/role-manifests/myrole.sh"), fullScripts["myrole.sh"])
+	assert.Equal(3, len(fullScripts))
+	for _, leafName := range []string{"environ.sh", "myrole.sh", "post_config_script.sh"} {
+		assert.Equal(filepath.Join(workDir, "../test-assets/role-manifests", leafName), fullScripts[leafName])
+	}
 }
 
 func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {

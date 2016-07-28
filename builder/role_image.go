@@ -191,17 +191,6 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 			return "", err
 		}
 	}
-	for script, sourceScriptPath := range role.GetPostConfigScriptPaths() {
-		destScriptPath := filepath.Join(startupDir, script)
-		destDir := filepath.Dir(destScriptPath)
-		if err := os.MkdirAll(destDir, 0755); err != nil {
-			return "", err
-
-		}
-		if err := shutil.CopyFile(sourceScriptPath, destScriptPath, true); err != nil {
-			return "", err
-		}
-	}
 
 	// Generate run script
 	runScriptContents, err := r.generateRunScript(role)
