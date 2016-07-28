@@ -28,6 +28,7 @@ type RoleManifest struct {
 type Role struct {
 	Name              string         `yaml:"name"`
 	Jobs              Jobs           `yaml:"_,omitempty"`
+	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
 	Type              string         `yaml:"type,omitempty"`

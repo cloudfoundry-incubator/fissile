@@ -31,6 +31,10 @@ function run_configgin()
 	--env2conf /opt/hcf/env2conf.yml
 }
 
+# Run custom environment scripts (that are sourced)
+{{ range $script := .role.EnvironScripts }}
+    source {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+{{ end }}
 # Run custom role scripts
 {{ range $script := .role.Scripts}}
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
