@@ -115,40 +115,18 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	return &rolesManifest, nil
 }
 
-// GetScriptPaths returns the paths to the startup scripts for a role
+// GetScriptPaths returns the paths to the startup / post configgin scripts for a role
 func (r *Role) GetScriptPaths() map[string]string {
 	result := map[string]string{}
 
-	if r.Scripts == nil {
-		return result
-	}
-
-	for _, script := range r.Scripts {
-		if filepath.IsAbs(script) {
-			// Absolute paths _inside_ the container; there is nothing to copy
-			continue
+	for _, scriptList := range [][]string{r.EnvironScripts, r.Scripts, r.PostConfigScripts} {
+		for _, script := range scriptList {
+			if filepath.IsAbs(script) {
+				// Absolute paths _inside_ the container; there is nothing to copy
+				continue
+			}
+			result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
 		}
-		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
-	}
-
-	return result
-
-}
-
-// GetPostConfigScriptPaths returns the paths to the post configgin startup scripts for a role
-func (r *Role) GetPostConfigScriptPaths() map[string]string {
-	result := map[string]string{}
-
-	if r.PostConfigScripts == nil {
-		return result
-	}
-
-	for _, script := range r.PostConfigScripts {
-		if filepath.IsAbs(script) {
-			// Absolute paths _inside_ the container; there is nothing to copy
-			continue
-		}
-		result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
 	}
 
 	return result
