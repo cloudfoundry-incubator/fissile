@@ -86,10 +86,10 @@ cron
 {{ end }}
 {{ end }}
 
-# Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others
+# Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.
 # None of the other pre-start scripts appear to have any dependencies on one another.
-# Use Perl to sort consul_agent/bin/pre-start before others
-# Perl's sort is stable for equiv values, not that it matters for `find' output
+# Use Perl to sort consul_agent/bin/pre-start before others.
+# (Perl's sort is stable, not that it matters for `find' output.)
 function sorted-pre-start-paths()
 {
     find /var/vcap/jobs/*/bin -name pre-start |
