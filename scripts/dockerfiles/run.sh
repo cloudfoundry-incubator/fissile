@@ -88,17 +88,19 @@ cron
 
 # Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.
 # None of the other pre-start scripts appear to have any dependencies on one another.
-# Use Perl to sort consul_agent/bin/pre-start before others.
-# (Perl's sort is stable, not that it matters for `find' output.)
 function sorted-pre-start-paths()
 {
-    find /var/vcap/jobs/*/bin -name pre-start |
-    perl -e 'my ($path, @files, $ptn);
-             while ($path = <>) { chomp $path; push(@files, $path); }
-             $ptn=qr{/consul_agent/bin/pre-start$};
-             print join("\n", sort { 
-                                     $a =~ $ptn ? -1 :
-                                     $b =~ $ptn ?  1 : 0 } @files) . "\n";'
+    declare -a fnames
+    idx=0
+    if [ -x /var/vcap/jobs/consul_agent/bin/pre-start ] ; then
+	fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
+	idx=$((idx + 1))
+    fi
+    for fname in $(find /var/vcap/jobs/*/bin -name pre-start | grep -v '/consul_agent/bin/pre-start$') ; do
+	fnames[$idx]=$fname
+	idx=$((idx + 1))
+    done
+    echo ${fnames[*]}
 }
 
 for fname in $(sorted-pre-start-paths) ; do
