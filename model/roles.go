@@ -91,9 +91,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 	for _, role := range rolesManifest.Roles {
 		role.rolesManifest = &rolesManifest
-		role.Jobs = make(Jobs, len(role.JobNameList))
+		role.Jobs = make(Jobs, 0, len(role.JobNameList))
 
-		for idx, roleJob := range role.JobNameList {
+		for _, roleJob := range role.JobNameList {
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
 			if !ok {
@@ -106,7 +106,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 				return nil, err
 			}
 
-			role.Jobs[idx] = job
+			role.Jobs = append(role.Jobs, job)
 		}
 
 		role.calculateRoleConfigurationTemplates()
@@ -138,7 +138,8 @@ func (r *Role) GetRoleDevVersion() string {
 	roleSignature := ""
 	var packages Packages
 
-	sort.Sort(r.Jobs)
+	// Jobs are *not* sorted because they are an array and the order may be
+	// significant, in particular for bosh-task roles.
 	for _, job := range r.Jobs {
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, job.SHA1)
 		packages = append(packages, job.Packages...)
