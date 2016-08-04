@@ -82,9 +82,35 @@ service rsyslog start
 cron
 
 # Run custom post config role scripts
+# Run any custom scripts other than pre-start
 {{ range $script := .role.PostConfigScripts}}
+{{ if not (is_pre_start $script) }}
+    echo bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
+{{ end }}
+
+# Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.
+# None of the other pre-start scripts appear to have any dependencies on one another.
+function sorted-pre-start-paths()
+{
+    declare -a fnames
+    idx=0
+    if [ -x /var/vcap/jobs/consul_agent/bin/pre-start ] ; then
+	fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
+	idx=$((idx + 1))
+    fi
+    for fname in $(find /var/vcap/jobs/*/bin -name pre-start | grep -v '/consul_agent/bin/pre-start$') ; do
+	fnames[$idx]=$fname
+	idx=$((idx + 1))
+    done
+    echo ${fnames[*]}
+}
+
+for fname in $(sorted-pre-start-paths) ; do
+    echo bash $fname
+    bash $fname
+done
 
 # Run
 {{ if eq .role.Type "bosh-task" }}

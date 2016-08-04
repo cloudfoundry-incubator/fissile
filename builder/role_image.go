@@ -225,6 +225,10 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 	return roleDir, nil
 }
 
+func isPreStart(s string) bool {
+	return strings.HasSuffix(s, "/bin/pre-start")
+}
+
 func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	asset, err := dockerfiles.Asset("scripts/dockerfiles/run.sh")
 	if err != nil {
@@ -232,7 +236,10 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	}
 
 	runScriptTemplate := template.New("role-runscript")
-	runScriptTemplate.Funcs(template.FuncMap{"is_abs": filepath.IsAbs})
+	runScriptTemplate.Funcs(template.FuncMap{
+		"is_abs":       filepath.IsAbs,
+		"is_pre_start": isPreStart,
+	})
 	context := map[string]interface{}{
 		"role": role,
 	}
