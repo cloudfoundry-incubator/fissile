@@ -60,6 +60,33 @@ func TestListJobs(t *testing.T) {
 	}
 }
 
+func TestListProperties(t *testing.T) {
+	ui := termui.New(os.Stdin, ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
+	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
+	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
+
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	assert.Error(err, "Expected ListProperties to not find the release")
+
+	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if assert.NoError(err) {
+		err = f.ListProperties(false)
+		assert.Nil(err, "Expected ListProperties to find the release")
+
+		err = f.ListProperties(true)
+		assert.Nil(err, "Expected ListProperties to find the release")
+	}
+}
+
 func TestDevDiffConfigurations(t *testing.T) {
 	assert := assert.New(t)
 	workDir, err := os.Getwd()
