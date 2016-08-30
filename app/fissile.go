@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Fissile represents a fissile application
@@ -205,6 +208,76 @@ func (f *Fissile) ListJobs() error {
 	}
 
 	return nil
+}
+
+// ListProperties will list all properties in all jobs within a list of dev releases
+func (f *Fissile) ListProperties(outputFormat string) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	switch outputFormat {
+	case "human":
+		f.listPropertiesForHuman()
+	case "json":
+		buf, err := json.Marshal(f.collectProperties())
+		if err != nil {
+			return err
+		}
+
+		f.UI.Printf("%s", buf)
+	case "yaml":
+		buf, err := yaml.Marshal(f.collectProperties())
+		if err != nil {
+			return err
+		}
+
+		f.UI.Printf("%s", buf)
+	default:
+		return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", outputFormat)
+	}
+
+	return nil
+}
+
+func (f *Fissile) listPropertiesForHuman() {
+	// Human readable output.
+	for _, release := range f.releases {
+		f.UI.Println(color.GreenString("Dev release %s (%s)",
+			color.YellowString(release.Name), color.MagentaString(release.Version)))
+
+		for _, job := range release.Jobs {
+			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name),
+				color.WhiteString(job.Version), job.Description)
+
+			for _, property := range job.Properties {
+				f.UI.Printf("\t%s: %s\n", color.YellowString(property.Name),
+					job.Description)
+			}
+		}
+	}
+}
+
+func (f *Fissile) collectProperties() map[string]map[string][]string {
+	// Generate a double map (release -> job -> list(property))
+	// which is easy to convert and dump to JSON or YAML.
+
+	result := make(map[string]map[string][]string)
+
+	for _, release := range f.releases {
+		result[release.Name] = make(map[string][]string)
+
+		for _, job := range release.Jobs {
+			result[release.Name][job.Name] = make([]string, len(job.Properties))
+			for i, property := range job.Properties {
+				result[release.Name][job.Name][i] = property.Name
+			}
+
+			sort.Strings(result[release.Name][job.Name])
+		}
+	}
+
+	return result
 }
 
 // Compile will compile a list of dev BOSH releases
