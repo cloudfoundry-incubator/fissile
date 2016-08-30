@@ -192,7 +192,7 @@ func init() {
 		"output",
 		"o",
 		"human",
-		"Choose output format, one of human, json, or yaml (currently only 'show properties')",
+		"Choose output format, one of human, json, or yaml (currently only for 'show properties')",
 	)
 
 	viper.BindPFlags(RootCmd.PersistentFlags())

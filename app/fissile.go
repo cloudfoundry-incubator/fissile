@@ -258,13 +258,11 @@ func (f *Fissile) listPropertiesForHuman() {
 	}
 }
 
-type props map[string]map[string][]string
-
-func (f *Fissile) collectProperties() props {
+func (f *Fissile) collectProperties() map[string]map[string][]string {
 	// Generate a double map (release -> job -> list(property))
 	// which is easy to convert and dump to JSON or YAML.
 
-	result := make(props)
+	result := make(map[string]map[string][]string)
 
 	for _, release := range f.releases {
 		result[release.Name] = make(map[string][]string)
