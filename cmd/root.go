@@ -28,7 +28,7 @@ var (
 	flagConfiggin      string
 	flagLightOpinions  string
 	flagDarkOpinions   string
-	flagJSON           bool
+	flagOutputFormat   string
 
 	// workPath* variables contain paths derived from flagWorkDir
 	workPathCompilationDir string
@@ -63,7 +63,7 @@ agent.
 		flagConfiggin = viper.GetString("configgin")
 		flagLightOpinions = viper.GetString("light-opinions")
 		flagDarkOpinions = viper.GetString("dark-opinions")
-		flagJSON = viper.GetBool("json")
+		flagOutputFormat = viper.GetString("output")
 
 		extendPathsFromWorkDirectory()
 
@@ -188,11 +188,11 @@ func init() {
 		"Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.",
 	)
 
-	RootCmd.PersistentFlags().BoolP(
-		"json",
-		"j",
-		false,
-		"Activate json output (currently only 'show properties')",
+	RootCmd.PersistentFlags().StringP(
+		"output",
+		"o",
+		"human",
+		"Choose output format, one of human, json, or yaml (currently only 'show properties')",
 	)
 
 	viper.BindPFlags(RootCmd.PersistentFlags())

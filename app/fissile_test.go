@@ -79,10 +79,13 @@ func TestListProperties(t *testing.T) {
 
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
 	if assert.NoError(err) {
-		err = f.ListProperties(false)
+		err = f.ListProperties("human")
 		assert.Nil(err, "Expected ListProperties to find the release")
 
-		err = f.ListProperties(true)
+		err = f.ListProperties("json")
+		assert.Nil(err, "Expected ListProperties to find the release")
+
+		err = f.ListProperties("yaml")
 		assert.Nil(err, "Expected ListProperties to find the release")
 	}
 }

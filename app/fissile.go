@@ -19,6 +19,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Fissile represents a fissile application
@@ -209,38 +211,36 @@ func (f *Fissile) ListJobs() error {
 }
 
 // ListProperties will list all properties in all jobs within a list of dev releases
-func (f *Fissile) ListProperties(dumpJSON bool) error {
+func (f *Fissile) ListProperties(outputFormat string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	if dumpJSON {
-		// Generate a double map (release -> job -> list(property))
-		// which is easy to convert and dump to JSON.
-		result := make(map[string]map[string][]string)
-
-		for _, release := range f.releases {
-			result[release.Name] = make(map[string][]string)
-
-			for _, job := range release.Jobs {
-				result[release.Name][job.Name] = make([]string, len(job.Properties))
-				for i, property := range job.Properties {
-					result[release.Name][job.Name][i] = property.Name
-				}
-
-				sort.Strings(result[release.Name][job.Name])
-			}
-		}
-
-		buf, err := json.Marshal(result)
+	switch outputFormat {
+	case "human":
+		f.listPropertiesForHuman()
+	case "json":
+		buf, err := json.Marshal(f.collectProperties())
 		if err != nil {
 			return err
 		}
 
 		f.UI.Printf("%s", buf)
-		return nil
+	case "yaml":
+		buf, err := yaml.Marshal(f.collectProperties())
+		if err != nil {
+			return err
+		}
+
+		f.UI.Printf("%s", buf)
+	default:
+		return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", outputFormat)
 	}
 
+	return nil
+}
+
+func (f *Fissile) listPropertiesForHuman() {
 	// Human readable output.
 	for _, release := range f.releases {
 		f.UI.Println(color.GreenString("Dev release %s (%s)",
@@ -256,8 +256,30 @@ func (f *Fissile) ListProperties(dumpJSON bool) error {
 			}
 		}
 	}
+}
 
-	return nil
+type props map[string]map[string][]string
+
+func (f *Fissile) collectProperties() props {
+	// Generate a double map (release -> job -> list(property))
+	// which is easy to convert and dump to JSON or YAML.
+
+	result := make(props)
+
+	for _, release := range f.releases {
+		result[release.Name] = make(map[string][]string)
+
+		for _, job := range release.Jobs {
+			result[release.Name][job.Name] = make([]string, len(job.Properties))
+			for i, property := range job.Properties {
+				result[release.Name][job.Name][i] = property.Name
+			}
+
+			sort.Strings(result[release.Name][job.Name])
+		}
+	}
+
+	return result
 }
 
 // Compile will compile a list of dev BOSH releases

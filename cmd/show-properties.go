@@ -24,7 +24,7 @@ The report lists the properties per job per release.
 			return err
 		}
 
-		return fissile.ListProperties(flagJSON)
+		return fissile.ListProperties(flagOutputFormat)
 	},
 }
 
