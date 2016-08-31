@@ -20,12 +20,17 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
+	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 )
 
 const (
 	// ContainerPackagesDir represents the default location of installed BOSH packages
 	ContainerPackagesDir = "/var/vcap/packages"
+	// ContainerSourceDir is the directory in which the source code will reside when we
+	// compile them.  We will add a volume mount there in the container to work around
+	// issues with AUFS not emulating a normal filesystem correctly.
+	ContainerSourceDir = "/var/vcap/source"
 )
 
 // mocked out in tests
@@ -470,17 +475,22 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 			return color.GreenString("compilation-%s > %s", color.MagentaString("%s", pkg.Name), color.RedString("%s", line))
 		},
 	)
+	sourceMountName := fmt.Sprintf("source_mount-%s", uuid.New())
 	mounts := map[string]string{
 		c.getTargetPackageSourcesDir(pkg): docker.ContainerInPath,
 		c.getPackageCompiledTempDir(pkg):  docker.ContainerOutPath,
-		"source_mount":                    "/var/vcap/source/",
+		// Add the volume mount to work around AUFS issues.  We will clean
+		// the volume up (as long as we're not trying to keep the container
+		// around for debugging).  We don't give it an actual directory to mount
+		// from, so it will be in some docker-maintained storage.
+		sourceMountName: ContainerSourceDir,
 	}
 	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     c.BaseImageName(),
 		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		Mounts:        mounts,
-		Volumes:       map[string]map[string]string{"source_mount": nil},
+		Volumes:       map[string]map[string]string{sourceMountName: nil},
 		KeepContainer: c.keepContainer,
 		StdoutWriter:  stdoutWriter,
 		StderrWriter:  stderrWriter,
