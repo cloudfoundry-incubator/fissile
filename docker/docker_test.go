@@ -215,6 +215,36 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 	assert.NoError(err)
 }
 
+func TestRunInContainerTmpMount(t *testing.T) {
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+
+	buf := new(bytes.Buffer)
+	stdoutWriter := NewFormattingWriter(buf, nil)
+
+	exitCode, container, err := dockerManager.RunInContainer(
+		getTestName(),
+		dockerImageName,
+		[]string{"cat", "/proc/self/mounts"},
+		"",
+		"",
+		false,
+		stdoutWriter,
+		nil,
+	)
+
+	if !assert.NoError(err) {
+		return
+	}
+	assert.Equal(0, exitCode)
+	assert.Contains(buf.String(), "tmpfs /tmp tmpfs rw", "Failed to find tmpfs mount on /tmp")
+
+	err = dockerManager.RemoveContainer(container.ID)
+	assert.NoError(err)
+
+}
+
 func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 	assert := assert.New(t)
 
