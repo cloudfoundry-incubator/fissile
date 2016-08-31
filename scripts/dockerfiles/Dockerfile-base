@@ -31,7 +31,7 @@ ADD monitrc.erb /opt/hcf/monitrc.erb
 ADD configgin /opt/hcf/configgin/
 
 # Add rsyslog configuration
-ADD rsyslog_conf.tgz /
+ADD rsyslog_conf /
 
 # Fix monit's logrotate config (created in the `apt-get install monit` above) to our new log file location
 RUN sed -i 's/log/vcap\/monit/' /etc/logrotate.d/monit
