@@ -36,5 +36,8 @@ ADD rsyslog_conf.tgz /
 # Fix monit's logrotate config (created in the `apt-get install monit` above) to our new log file location
 RUN sed -i 's/log/vcap\/monit/' /etc/logrotate.d/monit
 
+# Allow monit to reload during logrotate
+RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d
+
 # Make logrotate run hourly, not daily
 RUN mv /etc/cron.daily/logrotate /etc/cron.hourly/logrotate
