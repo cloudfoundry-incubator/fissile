@@ -20,12 +20,17 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
+	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 )
 
 const (
 	// ContainerPackagesDir represents the default location of installed BOSH packages
 	ContainerPackagesDir = "/var/vcap/packages"
+	// ContainerSourceDir is the directory in which the source code will reside when we
+	// compile them.  We will add a volume mount there in the container to work around
+	// issues with AUFS not emulating a normal filesystem correctly.
+	ContainerSourceDir = "/var/vcap/source"
 )
 
 // mocked out in tests
@@ -372,16 +377,15 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 			return color.GreenString("compilation-container > %s", color.RedString("%s", line))
 		},
 	)
-	exitCode, container, err := c.DockerManager.RunInContainer(
-		containerName,
-		baseImageName,
-		[]string{"bash", "-c", containerScriptPath},
-		tempScriptDir,
-		"",
-		false, // There is never a need to keep this container on failure
-		stdoutWriter,
-		stderrWriter,
-	)
+	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+		ContainerName: containerName,
+		ImageName:     baseImageName,
+		Cmd:           []string{"bash", "-c", containerScriptPath},
+		Mounts:        map[string]string{tempScriptDir: docker.ContainerInPath},
+		KeepContainer: false, // There is never a need to keep this container on failure
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 	if container != nil {
 		defer func() {
 			removeErr := c.DockerManager.RemoveContainer(container.ID)
@@ -471,16 +475,26 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 			return color.GreenString("compilation-%s > %s", color.MagentaString("%s", pkg.Name), color.RedString("%s", line))
 		},
 	)
-	exitCode, container, err := c.DockerManager.RunInContainer(
-		containerName,
-		c.BaseImageName(),
-		[]string{"bash", containerScriptPath, pkg.Name, pkg.Version},
-		c.getTargetPackageSourcesDir(pkg),
-		c.getPackageCompiledTempDir(pkg),
-		c.keepContainer,
-		stdoutWriter,
-		stderrWriter,
-	)
+	sourceMountName := fmt.Sprintf("source_mount-%s", uuid.New())
+	mounts := map[string]string{
+		c.getTargetPackageSourcesDir(pkg): docker.ContainerInPath,
+		c.getPackageCompiledTempDir(pkg):  docker.ContainerOutPath,
+		// Add the volume mount to work around AUFS issues.  We will clean
+		// the volume up (as long as we're not trying to keep the container
+		// around for debugging).  We don't give it an actual directory to mount
+		// from, so it will be in some docker-maintained storage.
+		sourceMountName: ContainerSourceDir,
+	}
+	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+		ContainerName: containerName,
+		ImageName:     c.BaseImageName(),
+		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
+		Mounts:        mounts,
+		Volumes:       map[string]map[string]string{sourceMountName: nil},
+		KeepContainer: c.keepContainer,
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
 		defer func() {
@@ -491,6 +505,14 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 					err = removeErr
 				} else {
 					err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
+				}
+			}
+
+			if removeErr := c.DockerManager.RemoveVolumes(container); removeErr != nil {
+				if err == nil {
+					err = removeErr
+				} else {
+					err = fmt.Errorf("%s: Error removing volumes for package %s: %s", err, pkg.Name, removeErr)
 				}
 			}
 		}()

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
 
+	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -182,23 +182,27 @@ func TestCompilationRoleManifest(t *testing.T) {
 	}
 }
 
-func getContainerIDs(testRepository string) (string, error) {
-	val, err := exec.Command("docker", "ps", "-a", "--format={{.ID}}/{{.Image}}").CombinedOutput()
+// getContainerIDs returns all (running or not) containers with the given image
+func getContainerIDs(imageName string) ([]string, error) {
+	var results []string
+
+	client, err := dockerclient.NewClientFromEnv()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	idsOfInterest := []string{}
-	slashIdx := 12 // length of an ID
-	postSlashIdx := slashIdx + 1
-	strVal := string(val)
-	for len(strVal) > 0 {
-		eolIdx := strings.Index(strVal, "\n")
-		if strings.Index(strVal[postSlashIdx:eolIdx], testRepository) == 0 {
-			idsOfInterest = append(idsOfInterest, strVal[0:slashIdx])
+
+	containers, err := client.ListContainers(dockerclient.ListContainersOptions{
+		All: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, container := range containers {
+		if container.Image == imageName {
+			results = append(results, container.ID)
 		}
-		strVal = strVal[eolIdx+1:]
 	}
-	return strings.Join(idsOfInterest, "\n"), nil
+	return results, nil
 }
 
 func TestContainerKeptAfterCompilationWithErrors(t *testing.T) {
@@ -206,84 +210,106 @@ func TestContainerKeptAfterCompilationWithErrors(t *testing.T) {
 	doTestContainerKeptAfterCompilationWithErrors(t, false)
 }
 
-func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepInContainer bool) {
+func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer bool) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 
 	releasePath := filepath.Join(workDir, "../test-assets/corrupt-releases/corrupt-package")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
-	assert.Nil(err)
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepContainer, ui)
+	assert.NoError(err)
 
 	imageName := comp.BaseImageName()
 
 	_, err = comp.CreateCompilationBase(dockerImageName)
 	defer func() {
 		err = dockerManager.RemoveImage(imageName)
-		assert.Nil(err)
+		assert.NoError(err)
 	}()
-	assert.Nil(err)
-	beforeCompileContainers, err := getContainerIDs("fissile-test-compilator")
-	assert.Nil(err)
+	assert.NoError(err)
+	beforeCompileContainers, err := getContainerIDs(imageName)
+	assert.NoError(err)
 
 	comp.BaseType = compilation.FailBase
 	err = comp.compilePackage(release.Packages[0])
 	// We expect the package to fail this time.
-	assert.NotNil(err)
-	afterCompileContainers, err := getContainerIDs("fissile-test-compilator")
-	assert.Nil(err)
+	assert.Error(err)
+	afterCompileContainers, err := getContainerIDs(imageName)
+	assert.NoError(err)
 
 	// If keepInContainer is on,
 	// We expect one more container, so we'll need to explicitly
 	// remove it so the deferred func can call dockerManager.RemoveImage
 
-	// Because all container IDs are the same length and separated
-	// by newlines in the string, we can use a simple strings.Contains
-	// do find instances of one container in the other.
-	beforeIDs := strings.Split(beforeCompileContainers, "\n")
-	droppedIDs := []string{}
-	for _, id := range beforeIDs {
-		if !strings.Contains(afterCompileContainers, id) {
-			droppedIDs = append(droppedIDs, id)
-		}
-	}
-	assert.Equal(len(droppedIDs), 0, fmt.Sprintf("%d IDs were dropped during the failed compile", len(droppedIDs)))
+	droppedIDs := findStringSetDifference(beforeCompileContainers, afterCompileContainers)
+	assert.Empty(droppedIDs, fmt.Sprintf("%d IDs were dropped during the failed compile", len(droppedIDs)))
 
-	afterIDs := strings.Split(afterCompileContainers, "\n")
-	addedIDs := []string{}
-	for _, id := range afterIDs {
-		if !strings.Contains(beforeCompileContainers, id) {
-			addedIDs = append(addedIDs, id)
-		}
-	}
-	if keepInContainer {
+	addedIDs := findStringSetDifference(afterCompileContainers, beforeCompileContainers)
+	if keepContainer {
 		assert.Equal(1, len(addedIDs))
 	} else {
-		assert.Equal(0, len(addedIDs))
+		assert.Empty(addedIDs)
 	}
-	if keepInContainer && len(addedIDs) == 1 {
-		// Do this so the deferred function that will remove
-		// the container's image will succeed.
-		// Sometimes the sleep command needs an explicit stop before
-		// removing the container.
-		err = exec.Command("docker", "stop", addedIDs[0]).Run()
-		assert.Nil(err)
-		err = dockerManager.RemoveContainer(addedIDs[0])
-		assert.Nil(err)
+
+	client, err := dockerclient.NewClientFromEnv()
+	assert.NoError(err)
+
+	if keepContainer {
+		for _, containerID := range addedIDs {
+			container, err := client.InspectContainer(containerID)
+			if !assert.NoError(err) {
+				continue
+			}
+			err = client.StopContainer(container.ID, 5)
+			assert.NoError(err)
+			err = dockerManager.RemoveContainer(container.ID)
+			assert.NoError(err)
+			err = dockerManager.RemoveVolumes(container)
+			assert.NoError(err)
+		}
 	}
+
+	// Clean up any unexpected volumes (there should not be any)
+	volumes, err := client.ListVolumes(dockerclient.ListVolumesOptions{
+		Filters: map[string][]string{"name": []string{testRepository}},
+	})
+	if assert.NoError(err) && !assert.Empty(volumes) {
+		for _, volume := range volumes {
+			err = client.RemoveVolume(volume.Name)
+			assert.NoError(err)
+		}
+	}
+}
+
+// findStringSetDifference returns all strings in the |from| set not in |subset|
+func findStringSetDifference(from, subset []string) []string {
+	var results []string
+	for _, left := range from {
+		found := false
+		for _, right := range subset {
+			if left == right {
+				found = true
+				break
+			}
+		}
+		if !found {
+			results = append(results, left)
+		}
+	}
+	return results
 }
 
 // TestCompilationMultipleErrors checks that we correctly deal with multiple compilations failing
@@ -480,14 +506,14 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 		assert.Nil(err)
 	}()
 	assert.Nil(err)
-	beforeCompileContainers, err := getContainerIDs("fissile-test-compilator")
+	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.Nil(err)
 
 	err = comp.compilePackage(release.Packages[0])
 	assert.Nil(err)
-	afterCompileContainers, err := getContainerIDs("fissile-test-compilator")
+	afterCompileContainers, err := getContainerIDs(imageName)
 	assert.Nil(err)
-	assert.Equal(string(beforeCompileContainers), string(afterCompileContainers))
+	assert.Equal(beforeCompileContainers, afterCompileContainers)
 }
 
 func TestCreateDepBuckets(t *testing.T) {
