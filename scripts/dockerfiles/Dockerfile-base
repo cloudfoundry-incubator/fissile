@@ -33,5 +33,14 @@ ADD configgin /opt/hcf/configgin/
 # Add rsyslog configuration
 ADD rsyslog_conf.tgz /
 
+# Fix monit's logrotate config (created in the `apt-get install monit` above) to our new log file location
+RUN sed -i 's/log/vcap\/monit/' /etc/logrotate.d/monit
+
+# Monit needs to reload after rotating logs, however, the default policy-rc.d in Ubuntu's docker image forbids it
+# This default is in place due to errors when services try to restart during `docker build`
+# See https://github.com/docker/docker/blob/243d4dcc7e9ea3eb665301d5e3756afa4adb04f7/contrib/mkimage/debootstrap#L43-L45
+# It should not pose a problem at this point to re-allow service restarts
+RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d
+
 # Make logrotate run hourly, not daily
 RUN mv /etc/cron.daily/logrotate /etc/cron.hourly/logrotate
