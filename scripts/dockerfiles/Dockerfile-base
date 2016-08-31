@@ -31,7 +31,7 @@ ADD monitrc.erb /opt/hcf/monitrc.erb
 ADD configgin /opt/hcf/configgin/
 
 # Add rsyslog configuration
-ADD rsyslog_conf.tgz /
+ADD rsyslog_conf /
 
 # Make logrotate run hourly, not daily
 RUN mv /etc/cron.daily/logrotate /etc/cron.hourly/logrotate
