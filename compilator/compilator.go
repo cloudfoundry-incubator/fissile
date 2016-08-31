@@ -473,12 +473,14 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	mounts := map[string]string{
 		c.getTargetPackageSourcesDir(pkg): docker.ContainerInPath,
 		c.getPackageCompiledTempDir(pkg):  docker.ContainerOutPath,
+		"source_mount":                    "/var/vcap/source/",
 	}
 	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     c.BaseImageName(),
 		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		Mounts:        mounts,
+		Volumes:       map[string]map[string]string{"source_mount": nil},
 		KeepContainer: c.keepContainer,
 		StdoutWriter:  stdoutWriter,
 		StderrWriter:  stderrWriter,
@@ -493,6 +495,14 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 					err = removeErr
 				} else {
 					err = fmt.Errorf("Error compiling package: %s. Error removing package: %s", err.Error(), removeErr.Error())
+				}
+			}
+
+			if removeErr := c.DockerManager.RemoveVolumes(container); removeErr != nil {
+				if err == nil {
+					err = removeErr
+				} else {
+					err = fmt.Errorf("%s: Error removing volumes for package %s: %s", err, pkg.Name, removeErr)
 				}
 			}
 		}()

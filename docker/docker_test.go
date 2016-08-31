@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -221,6 +222,49 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 
 	err = dockerManager.RemoveContainer(container.ID)
 	assert.NoError(err)
+}
+
+func TestRunInContainerVolumeRemoved(t *testing.T) {
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+	assert.NoError(err)
+
+	volumeName := uuid.New()
+	stdoutWriter := &bytes.Buffer{}
+
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"cat", "/proc/self/mounts"},
+		Mounts:        map[string]string{volumeName: ContainerOutPath},
+		Volumes:       map[string]map[string]string{volumeName: nil},
+		StdoutWriter:  stdoutWriter,
+	})
+
+	if !assert.NoError(err) {
+		return
+	}
+	assert.Equal(0, exitCode)
+
+	err = dockerManager.RemoveContainer(container.ID)
+	assert.NoError(err)
+
+	err = dockerManager.RemoveVolumes(container)
+	assert.NoError(err)
+
+	assert.Contains(stdoutWriter.String(), ContainerOutPath)
+
+	volumes, err := dockerManager.client.ListVolumes(dockerclient.ListVolumesOptions{})
+	if assert.NoError(err) {
+		for _, volume := range volumes {
+			if !assert.NotContains(volume.Name, volumeName) {
+				// If the test fails, we should attempt to clean up anyway
+				err = dockerManager.client.RemoveVolume(volume.Name)
+				assert.NoError(err)
+			}
+		}
+	}
 }
 
 func TestCreateImageOk(t *testing.T) {

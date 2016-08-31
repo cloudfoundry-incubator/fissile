@@ -190,13 +190,16 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 	return d.client.CommitContainer(cco)
 }
 
+// RunInContainerOpts encapsulates the options to RunInContainer()
 type RunInContainerOpts struct {
 	ContainerName string
 	ImageName     string
 	Cmd           []string
 	// Mount points, src -> dest
 	// dest may be special values ContainerInPath, ContainerOutPath
-	Mounts        map[string]string
+	Mounts map[string]string
+	// Create local volumes.  Volumes are destroyed unless KeepContainer is true
+	Volumes       map[string]map[string]string
 	KeepContainer bool
 	StdoutWriter  io.Writer
 	StderrWriter  io.Writer
@@ -268,7 +271,22 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		Name: opts.ContainerName,
 	}
 
+	for name, dirverOpts := range opts.Volumes {
+		name = fmt.Sprintf("volume_%s_%s", opts.ContainerName, name)
+		_, err := d.client.CreateVolume(dockerclient.CreateVolumeOptions{
+			Name:       name,
+			DriverOpts: dirverOpts,
+		})
+		if err != nil {
+			return -1, nil, err
+		}
+	}
+
 	for src, dest := range opts.Mounts {
+		if _, ok := opts.Volumes[src]; ok {
+			// Attempt to mount a volume; use the generated name
+			src = fmt.Sprintf("volume_%s_%s", opts.ContainerName, src)
+		}
 		mountString := fmt.Sprintf("%s:%s", src, dest)
 		if dest == ContainerInPath {
 			mountString += ":ro"
@@ -343,6 +361,25 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	}
 	closeFiles()
 	return exitCode, container, err
+}
+
+// RemoveVolumes removes any temporary volumes assoicated with a container
+func (d *ImageManager) RemoveVolumes(container *dockerclient.Container) error {
+	volumes, err := d.client.ListVolumes(dockerclient.ListVolumesOptions{})
+	if err != nil {
+		return err
+	}
+	prefix := fmt.Sprintf("volume_%s", strings.TrimLeft(container.Name, "/"))
+
+	// Sadly, both container.Volumes and container.VolumesRW are empty?
+	for _, volume := range volumes {
+		if strings.HasPrefix(volume.Name, prefix) {
+			if err := d.client.RemoveVolume(volume.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // ColoredBuildStringFunc returns a formatting function for colorizing strings.
