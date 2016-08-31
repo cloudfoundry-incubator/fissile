@@ -252,9 +252,14 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			Privileged:     false,
 			Binds:          []string{},
 			ReadonlyRootfs: false,
+			Tmpfs:          make(map[string]string),
 		},
 		Name: containerName,
 	}
+
+	// Add a tmpfs mount at /tmp to fix issues with compilation of `tar`
+	// (aufs appears to give a different inode between dirent and stat)
+	cco.HostConfig.Tmpfs["/tmp"] = "size=100M,exec"
 
 	if inPath != "" {
 		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:%s:ro", inPath, ContainerInPath))
