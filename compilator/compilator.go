@@ -372,16 +372,15 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 			return color.GreenString("compilation-container > %s", color.RedString("%s", line))
 		},
 	)
-	exitCode, container, err := c.DockerManager.RunInContainer(
-		containerName,
-		baseImageName,
-		[]string{"bash", "-c", containerScriptPath},
-		tempScriptDir,
-		"",
-		false, // There is never a need to keep this container on failure
-		stdoutWriter,
-		stderrWriter,
-	)
+	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+		ContainerName: containerName,
+		ImageName:     baseImageName,
+		Cmd:           []string{"bash", "-c", containerScriptPath},
+		Mounts:        map[string]string{tempScriptDir: docker.ContainerInPath},
+		KeepContainer: false, // There is never a need to keep this container on failure
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 	if container != nil {
 		defer func() {
 			removeErr := c.DockerManager.RemoveContainer(container.ID)
@@ -471,16 +470,19 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 			return color.GreenString("compilation-%s > %s", color.MagentaString("%s", pkg.Name), color.RedString("%s", line))
 		},
 	)
-	exitCode, container, err := c.DockerManager.RunInContainer(
-		containerName,
-		c.BaseImageName(),
-		[]string{"bash", containerScriptPath, pkg.Name, pkg.Version},
-		c.getTargetPackageSourcesDir(pkg),
-		c.getPackageCompiledTempDir(pkg),
-		c.keepContainer,
-		stdoutWriter,
-		stderrWriter,
-	)
+	mounts := map[string]string{
+		c.getTargetPackageSourcesDir(pkg): docker.ContainerInPath,
+		c.getPackageCompiledTempDir(pkg):  docker.ContainerOutPath,
+	}
+	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+		ContainerName: containerName,
+		ImageName:     c.BaseImageName(),
+		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
+		Mounts:        mounts,
+		KeepContainer: c.keepContainer,
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
 		defer func() {

@@ -190,23 +190,35 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 	return d.client.CommitContainer(cco)
 }
 
+type RunInContainerOpts struct {
+	ContainerName string
+	ImageName     string
+	Cmd           []string
+	// Mount points, src -> dest
+	// dest may be special values ContainerInPath, ContainerOutPath
+	Mounts        map[string]string
+	KeepContainer bool
+	StdoutWriter  io.Writer
+	StderrWriter  io.Writer
+}
+
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(containerName string, imageName string, cmd []string, inPath, outPath string, keepContainer bool, stdoutWriter io.Writer, stderrWriter io.Writer) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, container *dockerclient.Container, err error) {
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
 	currentUID := syscall.Geteuid()
 	currentGID := syscall.Getegid()
 	var actualCmd, containerCmd []string
-	if keepContainer {
+	if opts.KeepContainer {
 		// Sleep effectively forever so if something goes wrong we can
 		// docker exec -it bash into the container, investigate, and
 		// manually kill the container. Most of the time the compile step
 		// will succeed and the container will be killed and removed.
 		containerCmd = []string{"sleep", "365d"}
-		actualCmd = cmd
+		actualCmd = opts.Cmd
 	} else {
-		containerCmd = cmd
+		containerCmd = opts.Cmd
 		// actualCmd not used
 	}
 
@@ -245,7 +257,7 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			Domainname:   "fissile",
 			Cmd:          containerCmd,
 			WorkingDir:   "/",
-			Image:        imageName,
+			Image:        opts.ImageName,
 			Env:          env,
 		},
 		HostConfig: &dockerclient.HostConfig{
@@ -253,15 +265,15 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 			Binds:          []string{},
 			ReadonlyRootfs: false,
 		},
-		Name: containerName,
+		Name: opts.ContainerName,
 	}
 
-	if inPath != "" {
-		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:%s:ro", inPath, ContainerInPath))
-	}
-
-	if outPath != "" {
-		cco.HostConfig.Binds = append(cco.HostConfig.Binds, fmt.Sprintf("%s:%s", outPath, ContainerOutPath))
+	for src, dest := range opts.Mounts {
+		mountString := fmt.Sprintf("%s:%s", src, dest)
+		if dest == ContainerInPath {
+			mountString += ":ro"
+		}
+		cco.HostConfig.Binds = append(cco.HostConfig.Binds, mountString)
 	}
 
 	container, err = d.client.CreateContainer(cco)
@@ -275,12 +287,12 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 		Container: container.ID,
 
 		InputStream:  nil,
-		OutputStream: stdoutWriter,
-		ErrorStream:  stderrWriter,
+		OutputStream: opts.StdoutWriter,
+		ErrorStream:  opts.StderrWriter,
 
 		Stdin:       false,
-		Stdout:      stdoutWriter != nil,
-		Stderr:      stderrWriter != nil,
+		Stdout:      opts.StdoutWriter != nil,
+		Stderr:      opts.StderrWriter != nil,
 		Stream:      true,
 		RawTerminal: false,
 		Success:     attached,
@@ -296,15 +308,15 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 	}
 
 	closeFiles := func() {
-		if stdoutCloser, ok := stdoutWriter.(io.Closer); ok {
+		if stdoutCloser, ok := opts.StdoutWriter.(io.Closer); ok {
 			stdoutCloser.Close()
 		}
-		if stderrCloser, ok := stderrWriter.(io.Closer); ok {
+		if stderrCloser, ok := opts.StderrWriter.(io.Closer); ok {
 			stderrCloser.Close()
 		}
 	}
 
-	if !keepContainer {
+	if !opts.KeepContainer {
 		exitCode, err = d.client.WaitContainer(container.ID)
 		attachCloseWaiter.Wait()
 		closeFiles()
@@ -320,8 +332,8 @@ func (d *ImageManager) RunInContainer(containerName string, imageName string, cm
 
 	// Couldn't get this to work with dockerclient.Exec, so do it this way
 	execCmd := exec.Command("docker", cmdArgs...)
-	execCmd.Stdout = stdoutWriter
-	execCmd.Stderr = stderrWriter
+	execCmd.Stdout = opts.StdoutWriter
+	execCmd.Stderr = opts.StderrWriter
 	err = execCmd.Run()
 	// No need to wait on execCmd or on attachCloseWaiter
 	if err == nil {

@@ -68,16 +68,13 @@ func TestRunInContainer(t *testing.T) {
 	stdoutWriter := &bytes.Buffer{}
 	stderrWriter := &bytes.Buffer{}
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"hostname"},
-		"",
-		"",
-		false,
-		stdoutWriter,
-		stderrWriter,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"hostname"},
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -102,16 +99,13 @@ func TestRunInContainerStderr(t *testing.T) {
 	buf := new(bytes.Buffer)
 	stderrWriter := NewFormattingWriter(buf, nil)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"ping", "-foo"},
-		"",
-		"",
-		false,
-		stdoutWriter,
-		stderrWriter,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"ping", "-foo"},
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -135,16 +129,14 @@ func TestRunInContainerWithInFiles(t *testing.T) {
 	stdoutWriter := NewFormattingWriter(buf, nil)
 	stderrWriter := new(bytes.Buffer)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"ls", ContainerInPath},
-		"/",
-		"",
-		false,
-		stdoutWriter,
-		stderrWriter,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"ls", ContainerInPath},
+		Mounts:        map[string]string{"/": ContainerInPath},
+		StdoutWriter:  stdoutWriter,
+		StderrWriter:  stderrWriter,
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -164,16 +156,12 @@ func TestRunInContainerWithReadOnlyInFiles(t *testing.T) {
 
 	assert.NoError(err)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"touch", filepath.Join(ContainerInPath, "fissile-test.txt")},
-		"/",
-		"",
-		false,
-		nil,
-		nil,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"touch", filepath.Join(ContainerInPath, "fissile-test.txt")},
+		Mounts:        map[string]string{"/": ContainerInPath},
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -194,16 +182,13 @@ func TestRunInContainerWithOutFiles(t *testing.T) {
 	buf := new(bytes.Buffer)
 	stdoutWriter := NewFormattingWriter(buf, nil)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"ls", ContainerOutPath},
-		"",
-		"/tmp",
-		false,
-		stdoutWriter,
-		nil,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"ls", ContainerOutPath},
+		Mounts:        map[string]string{"/tmp": ContainerOutPath},
+		StdoutWriter:  stdoutWriter,
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -222,16 +207,12 @@ func TestRunInContainerWithWritableOutFiles(t *testing.T) {
 
 	assert.NoError(err)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"touch", filepath.Join(ContainerOutPath, "fissile-test.txt")},
-		"",
-		"/tmp",
-		false,
-		nil,
-		nil,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"touch", filepath.Join(ContainerOutPath, "fissile-test.txt")},
+		Mounts:        map[string]string{"/tmp": ContainerOutPath},
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -249,16 +230,11 @@ func TestCreateImageOk(t *testing.T) {
 
 	assert.NoError(err)
 
-	exitCode, container, err := dockerManager.RunInContainer(
-		getTestName(),
-		dockerImageName,
-		[]string{"ping", "127.0.0.1", "-c", "1"},
-		"",
-		"",
-		false,
-		nil,
-		nil,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: getTestName(),
+		ImageName:     dockerImageName,
+		Cmd:           []string{"ping", "127.0.0.1", "-c", "1"},
+	})
 
 	if !assert.NoError(err) {
 		return
@@ -306,16 +282,12 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	testName := getTestName()
 
 	// Run /bin/true to succeed, /bin/false to fail
-	exitCode, container, err := dockerManager.RunInContainer(
-		testName,
-		dockerImageName,
-		[]string{fmt.Sprintf("/bin/%t", cmdShouldSucceed)},
-		"",
-		"",
-		true,
-		nil,
-		nil,
-	)
+	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
+		ContainerName: testName,
+		ImageName:     dockerImageName,
+		Cmd:           []string{fmt.Sprintf("/bin/%t", cmdShouldSucceed)},
+		KeepContainer: true,
+	})
 	if cmdShouldSucceed {
 		if !assert.NoError(err) {
 			return
