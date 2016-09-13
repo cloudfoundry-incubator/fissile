@@ -45,21 +45,14 @@ func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath s
 		return err
 	}
 
-	monitrcPath := filepath.Join(targetDir, "monitrc.erb")
-	monitrcContents, err := dockerfiles.Asset("scripts/dockerfiles/monitrc.erb")
-	if err != nil {
+	if err := dockerfiles.RestoreAsset(targetDir, "monitrc.erb"); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(monitrcPath, monitrcContents, 0600); err != nil {
+	if err := os.Chmod(filepath.Join(targetDir, "monitrc.erb"), 0600); err != nil {
 		return err
 	}
 
-	rsyslogConfigPath := filepath.Join(targetDir, "rsyslog_conf.tgz")
-	rsyslogConfigContents, err := dockerfiles.Asset("scripts/dockerfiles/rsyslog_conf.tgz")
-	if err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(rsyslogConfigPath, rsyslogConfigContents, 0600); err != nil {
+	if err := dockerfiles.RestoreAssets(targetDir, "rsyslog_conf"); err != nil {
 		return err
 	}
 
@@ -82,7 +75,7 @@ func (b *BaseImageBuilder) unpackConfiggin(targetDir, configginTarballPath strin
 }
 
 func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
-	asset, err := dockerfiles.Asset("scripts/dockerfiles/Dockerfile-base")
+	asset, err := dockerfiles.Asset("Dockerfile-base")
 	if err != nil {
 		return nil, err
 	}
