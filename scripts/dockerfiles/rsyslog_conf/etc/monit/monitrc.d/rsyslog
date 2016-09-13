@@ -18,5 +18,5 @@ check file rsyslog_file with path /var/log/messages
    group rsyslogd
    if timestamp > 65 minutes then alert
    if failed permission 640  then unmonitor
-   if failed uid syslog      then unmonitor
-   if failed gid syslog      then unmonitor
+   if failed uid "syslog"    then unmonitor
+   if failed gid "syslog"    then unmonitor
