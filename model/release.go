@@ -63,8 +63,8 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 
 func (r *Release) loadMetadata() (err error) {
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("Error trying to load release metadata from YAML manifest: %s", r)
+		if p := recover(); p != nil {
+			err = fmt.Errorf("Error trying to load release metadata from YAML manifest %s: %s", r.manifestFilePath(), p)
 		}
 	}()
 

@@ -77,9 +77,13 @@ mkdir -p /var/vcap/sys/run
 chown root:vcap /var/vcap/sys/run
 chmod 775 /var/vcap/sys/run
 
-# Start rsyslog and cron
-service rsyslog start
-cron
+{{ if eq .role.Type "bosh-task" }}
+    # Start rsyslog and cron
+    service rsyslog start
+    cron
+{{ else }}
+    # rsyslog and cron are started via monit
+{{ end }}
 
 # Run custom post config role scripts
 # Run any custom scripts other than pre-start
@@ -118,18 +122,6 @@ done
         /var/vcap/jobs/{{ $job.Name }}/bin/run
     {{ end }}
 {{ else }}
-
-    monit -vI &
-    pid=$!
-    echo "pid = $pid"
-
-    killer() {
-      echo "killing $pid"
-      kill $pid
-    }
-
-    trap killer INT TERM
-
-    ( while $(sleep 1); do true; done )
-
+    # Replace bash with monit to handle both SIGTERM and SIGINT
+    exec monit -vI
 {{ end }}

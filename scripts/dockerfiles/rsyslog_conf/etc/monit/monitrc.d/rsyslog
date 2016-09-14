@@ -1,0 +1,22 @@
+# We use a non-standard pid file, as something else attempts to restart rsyslog
+# and breaks everything.
+check process rsyslogd
+   with pidfile /var/run/rsyslogd.monit.pid
+   group system
+   group rsyslogd
+   start "/bin/sh -c '/lib/init/apparmor-profile-load usr.sbin.rsyslogd && exec /usr/sbin/rsyslogd -i /var/run/rsyslogd.monit.pid -n'"
+   stop  "/bin/sh -c 'echo killing rsyslog >&2 ; kill -TERM $(cat /var/run/rsyslogd.monit.pid)'"
+   if 5 restarts with 5 cycles then timeout
+   depend on rsyslogd_bin
+   depend on rsyslog_file
+
+check file rsyslogd_bin with path /usr/sbin/rsyslogd
+   group rsyslogd
+   include /etc/monit/templates/rootbin
+
+check file rsyslog_file with path /var/log/messages
+   group rsyslogd
+   if timestamp > 65 minutes then alert
+   if failed permission 640  then unmonitor
+   if failed uid "syslog"    then unmonitor
+   if failed gid "syslog"    then unmonitor

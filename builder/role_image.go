@@ -230,7 +230,7 @@ func isPreStart(s string) bool {
 }
 
 func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
-	asset, err := dockerfiles.Asset("scripts/dockerfiles/run.sh")
+	asset, err := dockerfiles.Asset("run.sh")
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) {
 	baseImage := GetBaseImageName(r.repository, r.fissileVersion)
 
-	asset, err := dockerfiles.Asset("scripts/dockerfiles/Dockerfile-role")
+	asset, err := dockerfiles.Asset("Dockerfile-role")
 	if err != nil {
 		return nil, err
 	}
