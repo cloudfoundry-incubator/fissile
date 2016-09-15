@@ -108,11 +108,11 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.Contains(string(runScriptContents), "bash /var/vcap/jobs/myrole/pre-start")
 	assert.NotContains(string(runScriptContents), "/opt/hcf/startup/var/vcap/jobs/myrole/pre-start")
 	assert.NotContains(string(runScriptContents), "/opt/hcf//startup/var/vcap/jobs/myrole/pre-start")
-	assert.Contains(string(runScriptContents), "exec monit -vI")
+	assert.Contains(string(runScriptContents), "exec dumb-init -- monit -vI")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
 	assert.NoError(err)
-	assert.NotContains(string(runScriptContents), "exec monit -vI")
+	assert.NotContains(string(runScriptContents), "monit -vI")
 	assert.NotContains(string(runScriptContents), "/etc/monitrc")
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
 }
