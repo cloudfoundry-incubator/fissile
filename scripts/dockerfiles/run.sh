@@ -123,5 +123,5 @@ done
     {{ end }}
 {{ else }}
     # Replace bash with monit to handle both SIGTERM and SIGINT
-    exec monit -vI
+    exec dumb-init -- monit -vI
 {{ end }}
