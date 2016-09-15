@@ -220,6 +220,10 @@ func (f *Fissile) ListProperties(outputFormat string) error {
 	case "human":
 		f.listPropertiesForHuman()
 	case "json":
+		// Note: The encoding/json is unable to handle type
+		// -- map[interface {}]interface {}
+		// Such types can occur when the default value has sub-structure.
+
 		buf, err := json.Marshal(f.collectProperties())
 		if err != nil {
 			return err
@@ -251,29 +255,27 @@ func (f *Fissile) listPropertiesForHuman() {
 				color.WhiteString(job.Version), job.Description)
 
 			for _, property := range job.Properties {
-				f.UI.Printf("\t%s: %s\n", color.YellowString(property.Name),
-					job.Description)
+				f.UI.Printf("\t%s: %v\n", color.YellowString(property.Name),
+					property.Default)
 			}
 		}
 	}
 }
 
-func (f *Fissile) collectProperties() map[string]map[string][]string {
-	// Generate a double map (release -> job -> list(property))
+func (f *Fissile) collectProperties() map[string]map[string]map[string]interface{} {
+	// Generate a triple map (release -> job -> property -> default value)
 	// which is easy to convert and dump to JSON or YAML.
 
-	result := make(map[string]map[string][]string)
+	result := make(map[string]map[string]map[string]interface{})
 
 	for _, release := range f.releases {
-		result[release.Name] = make(map[string][]string)
+		result[release.Name] = make(map[string]map[string]interface{})
 
 		for _, job := range release.Jobs {
-			result[release.Name][job.Name] = make([]string, len(job.Properties))
-			for i, property := range job.Properties {
-				result[release.Name][job.Name][i] = property.Name
+			result[release.Name][job.Name] = make(map[string]interface{})
+			for _, property := range job.Properties {
+				result[release.Name][job.Name][property.Name] = property.Default
 			}
-
-			sort.Strings(result[release.Name][job.Name])
 		}
 	}
 

@@ -10,7 +10,7 @@ var showPropertiesCmd = &cobra.Command{
 	Short: "Displays information about BOSH properties, per jobs.",
 	Long: `
 Displays a report of all properties of all the jobs in the referenced releases.
-The report lists the properties per job per release.
+The report lists the properties per job per release, with their default value.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show property information
