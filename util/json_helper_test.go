@@ -24,22 +24,27 @@ func TestJSONHelperValidInput(t *testing.T) {
 			json: `1`,
 		},
 		jsonHelpInputTestData{
-			name: "Simple hash",
+			name: "Simple map",
 			yaml: `a: 1`,
 			json: `{"a": 1}`,
 		},
 		jsonHelpInputTestData{
-			name: "Nested hash",
+			name: "Nested map",
 			yaml: `a: { b: c }`,
 			json: `{"a": {"b": "c"}}`,
 		},
 		jsonHelpInputTestData{
-			name:   "Hash with non-string keys",
+			name: "Map in slice",
+			yaml: `[ { a: b } ]`,
+			json: `[ {"a": "b" } ]`,
+		},
+		jsonHelpInputTestData{
+			name:   "Map with non-string keys",
 			yaml:   `1: 2`,
 			errMsg: `Failed to convert keys in path : Invalid key 1`,
 		},
 		jsonHelpInputTestData{
-			name:   "Nested hash with non-string keys",
+			name:   "Nested map with non-string keys",
 			yaml:   `a: { b: { 1: 2 } }`,
 			errMsg: `Failed to convert keys in path a.b: Invalid key 1`,
 		},
