@@ -33,9 +33,6 @@ func jsonMarshalHelper(input interface{}) (interface{}, *jsonMarshalError) {
 	value := reflect.ValueOf(input)
 	switch value.Kind() {
 	case reflect.Map:
-		if value.Kind() != reflect.Map {
-			return input, nil
-		}
 		result := make(map[string]interface{})
 		for _, keyValue := range value.MapKeys() {
 			keyInterface := keyValue.Interface()
