@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
+	"github.com/hpcloud/fissile/util"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
@@ -224,7 +224,7 @@ func (f *Fissile) ListProperties(outputFormat string) error {
 		// -- map[interface {}]interface {}
 		// Such types can occur when the default value has sub-structure.
 
-		buf, err := json.Marshal(f.collectProperties())
+		buf, err := util.JSONMarshal(f.collectProperties())
 		if err != nil {
 			return err
 		}

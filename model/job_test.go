@@ -27,9 +27,9 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Equal("ntpd", release.Jobs[0].Name)
 	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Version)
 	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Fingerprint)
-	assert.Equal("5cc12bd07e4545535b6dc45b4b77d4dd53a7eff6", release.Jobs[0].SHA1)
+	assert.Equal("cf1722e891564d1f667c2218d6685679fe149591", release.Jobs[0].SHA1)
 
-	jobPath := filepath.Join(ntpReleasePathCacheDir, "5cc12bd07e4545535b6dc45b4b77d4dd53a7eff6")
+	jobPath := filepath.Join(ntpReleasePathCacheDir, "cf1722e891564d1f667c2218d6685679fe149591")
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
 	err = util.ValidatePath(jobPath, false, "")
@@ -147,7 +147,7 @@ func TestJobPropertiesOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(1, len(release.Jobs[0].Properties))
+	assert.Equal(2, len(release.Jobs[0].Properties))
 
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
@@ -166,7 +166,7 @@ func TestGetJobPropertyOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(1, len(release.Jobs[0].Properties))
+	assert.Equal(2, len(release.Jobs[0].Properties))
 
 	property, err := release.Jobs[0].getProperty("ntp_conf")
 
@@ -187,7 +187,7 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(1, len(release.Jobs[0].Properties))
+	assert.Equal(2, len(release.Jobs[0].Properties))
 
 	_, err = release.Jobs[0].getProperty("foo")
 
