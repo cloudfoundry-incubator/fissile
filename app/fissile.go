@@ -220,10 +220,6 @@ func (f *Fissile) ListProperties(outputFormat string) error {
 	case "human":
 		f.listPropertiesForHuman()
 	case "json":
-		// Note: The encoding/json is unable to handle type
-		// -- map[interface {}]interface {}
-		// Such types can occur when the default value has sub-structure.
-
 		buf, err := util.JSONMarshal(f.collectProperties())
 		if err != nil {
 			return err
@@ -275,6 +271,74 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 			result[release.Name][job.Name] = make(map[string]interface{})
 			for _, property := range job.Properties {
 				result[release.Name][job.Name][property.Name] = property.Default
+			}
+		}
+	}
+
+	return result
+}
+
+// ListPropertyDescriptions will list all properties in all jobs within a list of dev releases
+func (f *Fissile) ListPropertyDescriptions(outputFormat string) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	switch outputFormat {
+	case "human":
+		f.listDescriptionsForHuman()
+	case "json":
+		buf, err := util.JSONMarshal(f.collectDescriptions())
+		if err != nil {
+			return err
+		}
+
+		f.UI.Printf("%s", buf)
+	case "yaml":
+		buf, err := yaml.Marshal(f.collectDescriptions())
+		if err != nil {
+			return err
+		}
+
+		f.UI.Printf("%s", buf)
+	default:
+		return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", outputFormat)
+	}
+
+	return nil
+}
+
+func (f *Fissile) listDescriptionsForHuman() {
+	// Human readable output.
+	for _, release := range f.releases {
+		f.UI.Println(color.GreenString("Dev release %s (%s)",
+			color.YellowString(release.Name), color.MagentaString(release.Version)))
+
+		for _, job := range release.Jobs {
+			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name),
+				color.WhiteString(job.Version), job.Description)
+
+			for _, property := range job.Properties {
+				f.UI.Printf("\t%s: %v\n", color.YellowString(property.Name),
+					property.Description)
+			}
+		}
+	}
+}
+
+func (f *Fissile) collectDescriptions() map[string]map[string]map[string]interface{} {
+	// Generate a triple map (release -> job -> property -> default value)
+	// which is easy to convert and dump to JSON or YAML.
+
+	result := make(map[string]map[string]map[string]interface{})
+
+	for _, release := range f.releases {
+		result[release.Name] = make(map[string]map[string]interface{})
+
+		for _, job := range release.Jobs {
+			result[release.Name][job.Name] = make(map[string]interface{})
+			for _, property := range job.Properties {
+				result[release.Name][job.Name][property.Name] = property.Description
 			}
 		}
 	}
