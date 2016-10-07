@@ -397,16 +397,6 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, conf
 	return err
 }
 
-// GetRoleImageName generates a docker image name to be used as a role image
-func GetRoleImageName(repository string, role *model.Role, version string) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s-%s",
-		repository,
-		role.Name,
-		role.Jobs[0].Release.Version,
-		version,
-	))
-}
-
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
 func GetRoleDevImageName(repository string, role *model.Role, version string) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s",
