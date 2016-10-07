@@ -51,6 +51,7 @@ the image.
 			flagRepository,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
+			flagWorkers,
 			flagRoleManifest,
 			workPathCompilationDir,
 			flagLightOpinions,

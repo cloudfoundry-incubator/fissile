@@ -161,6 +161,12 @@ func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) 
 	return image, nil
 }
 
+// HasImage determines if the given image already exists in Docker
+func (d *ImageManager) HasImage(imageName string) bool {
+	_, err := d.FindImage(imageName)
+	return (err == nil)
+}
+
 // RemoveContainer will remove a container from Docker
 func (d *ImageManager) RemoveContainer(containerID string) error {
 	return d.client.RemoveContainer(dockerclient.RemoveContainerOptions{

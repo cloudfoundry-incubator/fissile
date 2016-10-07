@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -315,7 +314,7 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, force bool, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -323,11 +322,6 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
 	roleBuilder := builder.NewRoleImageBuilder(
@@ -364,52 +358,9 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 
 	f.UI.Println(color.GreenString("Done."))
 
-	// Go through each role and create its image
-	for _, role := range rolesManifest.Roles {
-		roleImageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
-
-		_, err = dockerManager.FindImage(roleImageName)
-		if err == nil && !force {
-			f.UI.Printf("Dev image %s for role %s already exists. Skipping ...\n", roleImageName, color.YellowString(role.Name))
-			continue
-		}
-
-		// Remove existing Dockerfile directory
-		roleDir := filepath.Join(targetPath, role.Name)
-		if err := os.RemoveAll(roleDir); err != nil {
-			return fmt.Errorf("Error removing Dockerfile directory and/or assets for role %s: %s", role.Name, err.Error())
-		}
-
-		f.UI.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(role.Name))
-		dockerfileDir, err := roleBuilder.CreateDockerfileDir(role, configTargetPath)
-		if err != nil {
-			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", role.Name, err.Error())
-		}
-
-		if !noBuild {
-			if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
-				dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
-			}
-
-			f.UI.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
-			log := new(bytes.Buffer)
-			stdoutWriter := docker.NewFormattingWriter(
-				log,
-				docker.ColoredBuildStringFunc(roleImageName),
-			)
-
-			err = dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
-			if err != nil {
-				log.WriteTo(f.UI)
-				return fmt.Errorf("Error building image: %s", err.Error())
-			}
-
-		} else {
-			f.UI.Println("Skipping image build because of flag.")
-		}
+	if err := roleBuilder.BuildRoleImages(rolesManifest.Roles, repository, configTargetPath, noBuild, workerCount); err != nil {
+		return err
 	}
-
-	f.UI.Println(color.GreenString("Done."))
 
 	return nil
 }
