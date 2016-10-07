@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/pivotal-golang/archiver/extractor"
 	"gopkg.in/yaml.v2"
@@ -190,13 +191,22 @@ func (j *Job) loadJobSpec() (err error) {
 	}
 
 	if j.jobSpec["properties"] != nil {
-		for propertyName, propertyDefinition := range j.jobSpec["properties"].(map[interface{}]interface{}) {
+		// We want to load the properties in sorted order, so that we are
+		// consistent and avoid flaky tests
+		properties := j.jobSpec["properties"].(map[interface{}]interface{})
+		var propertyNames []string
+		for propertyName := range properties {
+			propertyNames = append(propertyNames, propertyName.(string))
+		}
+		sort.Strings(propertyNames)
+		for _, propertyName := range propertyNames {
 
 			property := &JobProperty{
-				Name: propertyName.(string),
+				Name: propertyName,
 				Job:  j,
 			}
 
+			propertyDefinition := properties[propertyName]
 			if propertyDefinition != nil {
 				propertyDefinitionMap := propertyDefinition.(map[interface{}]interface{})
 
