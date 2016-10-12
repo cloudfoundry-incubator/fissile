@@ -47,7 +47,8 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
-	packageDone   map[string]chan struct{}
+	// packageDone is a map of release name -> package name -> channel to close when done
+	packageDone   map[string]map[string]chan struct{}
 	keepContainer bool
 	ui            *termui.UI
 }
@@ -80,7 +81,7 @@ func NewCompilator(
 		keepContainer:    keepContainer,
 		ui:               ui,
 
-		packageDone: make(map[string]chan struct{}),
+		packageDone: make(map[string]map[string]chan struct{}),
 	}
 
 	return compilator, nil
@@ -89,8 +90,8 @@ func NewCompilator(
 var errWorkerAbort = errors.New("worker aborted")
 
 type compileResult struct {
-	Pkg *model.Package
-	Err error
+	pkg *model.Package
+	err error
 }
 
 // Compile concurrency works like this:
@@ -115,14 +116,16 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
-	c.initPackageMaps(release)
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
+	c.initPackageMaps(releases)
 	var packages []*model.Package
 
-	if roleManifest != nil { // Conditional for easier testing
-		packages = c.gatherPackagesFromManifest(release, roleManifest)
-	} else {
-		packages = release.Packages
+	for _, release := range releases {
+		if roleManifest != nil { // Conditional for easier testing
+			packages = append(packages, c.gatherPackagesFromManifest(release, roleManifest)...)
+		} else {
+			packages = append(packages, release.Packages...)
+		}
 	}
 
 	packages, err := c.removeCompiledPackages(packages)
@@ -158,21 +161,24 @@ func (c *Compilator) Compile(workerCount int, release *model.Release, roleManife
 
 	killed := false
 	for result := range doneCh {
-		if result.Err == nil {
-			close(c.packageDone[result.Pkg.Name])
-			c.ui.Printf("%s   > success: %s\n",
-				color.YellowString("result"), color.GreenString(result.Pkg.Name))
+		if result.err == nil {
+			close(c.packageDone[result.pkg.Release.Name][result.pkg.Name])
+			c.ui.Printf("%s   > success: %s/%s\n",
+				color.YellowString("result"),
+				color.GreenString(result.pkg.Release.Name),
+				color.GreenString(result.pkg.Name))
 			continue
 		}
 
 		c.ui.Printf(
-			"%s   > failure: %s - %s\n",
+			"%s   > failure: %s/%s - %s\n",
 			color.YellowString("result"),
-			color.RedString(result.Pkg.Name),
-			color.RedString(result.Err.Error()),
+			color.RedString(result.pkg.Release.Name),
+			color.RedString(result.pkg.Name),
+			color.RedString(result.err.Error()),
 		)
 
-		err = result.Err
+		err = result.err
 		if !killed {
 			close(killCh)
 			killed = true
@@ -191,26 +197,36 @@ func (j compileJob) Run() {
 		for !done {
 			select {
 			case <-j.killCh:
-				c.ui.Printf("killed:  %s\n", color.MagentaString(j.pkg.Name))
-				j.doneCh <- compileResult{Pkg: j.pkg, Err: errWorkerAbort}
+				c.ui.Printf("killed:  %s/%s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name))
+				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
 				return
 			case <-time.After(5 * time.Second):
-				c.ui.Printf("waiting: %s - %s\n",
-					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
-			case <-c.packageDone[dep.Name]:
-				c.ui.Printf("depdone: %s - %s\n",
-					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
+				c.ui.Printf("waiting: %s/%s - %s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name),
+					color.MagentaString(dep.Name))
+			case <-c.packageDone[dep.Release.Name][dep.Name]:
+				c.ui.Printf("depdone: %s/%s - %s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name),
+					color.MagentaString(dep.Name))
 				done = true
 			}
 		}
 	}
 
-	c.ui.Printf("compile: %s\n", color.MagentaString(j.pkg.Name))
+	c.ui.Printf("compile: %s/%s\n",
+		color.MagentaString(j.pkg.Release.Name),
+		color.MagentaString(j.pkg.Name))
 
 	workerErr := compilePackageHarness(c, j.pkg)
-	c.ui.Printf("done:    %s\n", color.MagentaString(j.pkg.Name))
+	c.ui.Printf("done:    %s/%s\n",
+		color.MagentaString(j.pkg.Release.Name),
+		color.MagentaString(j.pkg.Name))
 
-	j.doneCh <- compileResult{Pkg: j.pkg, Err: workerErr}
+	j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
 }
 
 func createDepBuckets(packages []*model.Package) []*model.Package {
@@ -682,9 +698,12 @@ func (c *Compilator) BaseImageName() string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
 }
 
-func (c *Compilator) initPackageMaps(release *model.Release) {
-	for _, pkg := range release.Packages {
-		c.packageDone[pkg.Name] = make(chan struct{})
+func (c *Compilator) initPackageMaps(releases []*model.Release) {
+	for _, release := range releases {
+		c.packageDone[release.Name] = make(map[string]chan struct{})
+		for _, pkg := range release.Packages {
+			c.packageDone[release.Name][pkg.Name] = make(chan struct{})
+		}
 	}
 }
 
@@ -700,7 +719,7 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 		}
 
 		if compiled {
-			close(c.packageDone[p.Name])
+			close(c.packageDone[p.Release.Name][p.Name])
 		} else {
 			culledPackages = append(culledPackages, p)
 		}

@@ -298,17 +298,18 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	f.UI.Println(color.GreenString("Compiling packages for dev releases:"))
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Compiling packages for dev release %s (%s) ...", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
+	}
 
-		comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
-		if err != nil {
-			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
-		}
+	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
+	if err != nil {
+		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+	}
 
-		if err := comp.Compile(workerCount, release, roleManifest); err != nil {
-			return fmt.Errorf("Error compiling packages: %s", err.Error())
-		}
+	if err := comp.Compile(workerCount, f.releases, roleManifest); err != nil {
+		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
 	return nil
