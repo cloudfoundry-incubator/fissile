@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -75,7 +76,7 @@ func TestCompilationBasic(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
@@ -85,10 +86,19 @@ func TestCompilationBasic(t *testing.T) {
 		close(waitCh)
 	}()
 
-	assert.Equal(<-compileChan, "ruby-2.5")
-	assert.Equal(<-compileChan, "go-1.4")
-	assert.Equal(<-compileChan, "consul")
-	<-waitCh
+	for _, expectedName := range []string{"ruby-2.5", "go-1.4", "consul"} {
+		select {
+		case pkgName := <-compileChan:
+			assert.Equal(pkgName, expectedName)
+		case <-time.After(1 * time.Second):
+			assert.Fail("Timed out waiting for compile result", expectedName)
+		}
+	}
+	select {
+	case <-waitCh:
+	case <-time.After(1 * time.Second):
+		assert.Fail("Timed out waiting for overall completion")
+	}
 }
 
 func TestCompilationSkipCompiled(t *testing.T) {
@@ -164,7 +174,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	waitCh := make(chan struct{})
 	errCh := make(chan error)
 	go func() {
-		errCh <- c.Compile(1, release, roleManifest)
+		errCh <- c.Compile(1, []*model.Release{release}, roleManifest)
 	}()
 	go func() {
 		// `libevent` is a dependency of `tor` and will be compiled first
@@ -344,60 +354,142 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	compilator.initPackageMaps(release)
+	compilator.initPackageMaps(release.Packages)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, release.Packages[0].Fingerprint, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.True(status)
+}
+
+// TestCompilationParallel checks that we compile multiple releases in parallel
+func TestCompilationParallel(t *testing.T) {
+	// We make two releases, with one package each, and block until both
+	// packages have _started_ compiling.  This proves that we're doing compiles
+	// of packages across releases in parallel.  Note that neither package
+	// depends on the other, as far as the rest of the system is concerned; if
+	// they did, we wouldn't get the desired parallel compilation behaviour.
+
+	releases := []*model.Release{
+		&model.Release{Name: "release-one"},
+		&model.Release{Name: "release-two"},
+	}
+	releases[0].Packages = []*model.Package{
+		&model.Package{
+			Name:        "package-one",
+			Fingerprint: "package-one",
+			Release:     releases[0],
+		},
+	}
+	releases[1].Packages = []*model.Package{
+		&model.Package{
+			Name:        "package-two",
+			Fingerprint: "package-two",
+			Release:     releases[1],
+		},
+	}
+
+	saveCompilePackage := compilePackageHarness
+	saveIsPackageCompiled := isPackageCompiledHarness
+	defer func() {
+		compilePackageHarness = saveCompilePackage
+		isPackageCompiledHarness = saveIsPackageCompiled
+	}()
+
+	mutex := sync.Mutex{}
+	cond := sync.NewCond(&mutex)
+	compiledPackages := make(map[string]bool)
+	compilePackageHarness = func(c *Compilator, pkg *model.Package) error {
+		mutex.Lock()
+		defer mutex.Unlock()
+		compiledPackages[pkg.Name] = true
+		other := map[string]string{
+			"package-one": "package-two",
+			"package-two": "package-one",
+		}[pkg.Name]
+		if compiledPackages[other] {
+			// The other package has started compiling and is waiting for us
+			cond.Signal()
+		} else {
+			// The other package hasn't started yet, wait for it to start
+			cond.Wait()
+		}
+		// At this point, _both_ packages have started
+		return nil
+	}
+
+	isPackageCompiledHarness = func(c *Compilator, pkg *model.Package) (bool, error) {
+		return false, nil
+	}
+
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.NoError(err)
+
+	testDoneCh := make(chan struct{})
+	go func() {
+		err = c.Compile(2, releases, nil)
+		assert.NoError(err)
+		close(testDoneCh)
+	}()
+	select {
+	case <-testDoneCh:
+	// nothing
+	case <-time.After(5 * time.Second):
+		assert.Fail("Timed out running test")
+		// Try to unwedge things.  Not that it matters, we're bailing out of
+		// the test - but it's nice to let the goroutine die.
+		cond.Broadcast()
+	}
 }
 
 func TestGetPackageStatusNone(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	compilator.initPackageMaps(release)
+	compilator.initPackageMaps(release.Packages)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.False(status)
 }
 
@@ -580,21 +672,24 @@ func TestRemoveCompiledPackages(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
+	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	c.initPackageMaps(release)
-	packages, err := c.removeCompiledPackages(release.Packages)
-	assert.Nil(err)
+	c.initPackageMaps(releases[0].Packages)
+	packages, err := c.removeCompiledPackages(releases[0].Packages)
+	assert.NoError(err)
 
 	assert.Equal(2, len(packages))
 	assert.Equal(packages[0].Name, "consul")
 	assert.Equal(packages[1].Name, "go-1.4")
 }
 
-func genTestCase(args ...string) *model.Release {
+func genTestCase(args ...string) []*model.Release {
 	var packages []*model.Package
+	release := model.Release{
+		Name: "test-release",
+	}
 
 	for _, pkgDef := range args {
 		splits := strings.Split(pkgDef, ">")
@@ -605,12 +700,18 @@ func genTestCase(args ...string) *model.Release {
 			pkgDeps := strings.Split(splits[1], ",")
 
 			for _, dep := range pkgDeps {
-				deps = append(deps, &model.Package{Name: dep})
+				deps = append(deps, &model.Package{Release: &release, Name: dep, Fingerprint: dep})
 			}
 		}
 
-		packages = append(packages, &model.Package{Name: pkgName, Dependencies: deps})
+		packages = append(packages, &model.Package{
+			Release:      &release,
+			Name:         pkgName,
+			Fingerprint:  pkgName,
+			Dependencies: deps,
+		})
 	}
+	release.Packages = packages
 
-	return &model.Release{Packages: packages}
+	return []*model.Release{&release}
 }

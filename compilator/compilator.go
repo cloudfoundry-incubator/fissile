@@ -47,6 +47,7 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
+	// packageDone is a map of package fingerprint -> channel to close when done
 	packageDone   map[string]chan struct{}
 	keepContainer bool
 	ui            *termui.UI
@@ -89,8 +90,8 @@ func NewCompilator(
 var errWorkerAbort = errors.New("worker aborted")
 
 type compileResult struct {
-	Pkg *model.Package
-	Err error
+	pkg *model.Package
+	err error
 }
 
 // Compile concurrency works like this:
@@ -103,27 +104,33 @@ type compileResult struct {
 // - Workers wait for their dependencies by waiting on a map of
 //   broadcasting channels that are closed by the synchronizer when
 //   something is done compiling successfully
-//   ==> c.packageDone [<name>]
+//   ==> c.packageDone [<fingerprint>]
 //
 // In the event of an error:
 // - workers will try to bail out of waiting on <-todo or
-//   <-c.packageDone[name] early if it finds the killCh has been
+//   <-c.packageDone[fingerprint] early if it finds the killCh has been
 //   activated. There is a "race" here to see if the synchronizer will
 //   drain <-todoCh or if they will select on <-killCh before
-//   <-todoCh. In the worst case, an extra package will be compiled by
-//   each active worker.
+//   <-todoCh. In the worst case, extra packages will be compiled by
+//   each active worker. See (**), (xx)
+//
+//   Note that jobs without dependencies ignore the kill signal. See (xx).
+//
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, release *model.Release, roleManifest *model.RoleManifest) error {
-	c.initPackageMaps(release)
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
 	var packages []*model.Package
 
-	if roleManifest != nil { // Conditional for easier testing
-		packages = c.gatherPackagesFromManifest(release, roleManifest)
-	} else {
-		packages = release.Packages
+	for _, release := range releases {
+		if roleManifest != nil { // Conditional for easier testing
+			packages = append(packages, c.gatherPackagesFromManifest(release, roleManifest)...)
+		} else {
+			packages = append(packages, release.Packages...)
+		}
 	}
+
+	c.initPackageMaps(packages)
 
 	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
@@ -142,6 +149,7 @@ func (c *Compilator) Compile(workerCount int, release *model.Release, roleManife
 	worker := workerLib.NewWorker()
 	buckets := createDepBuckets(packages)
 
+	// Load the queuing system with the jobs to run
 	for _, pkg := range buckets {
 		worker.Add(compileJob{
 			pkg:        pkg,
@@ -151,28 +159,42 @@ func (c *Compilator) Compile(workerCount int, release *model.Release, roleManife
 		})
 	}
 
+	// Start the queue and workers
 	go func() {
 		worker.RunUntilDone()
 		close(doneCh)
 	}()
 
+	// (**) All jobs push their results into the single doneCh.
+	// The code below is a synchronizer which pulls the results
+	// from the channel as fast as it can and reports them to the
+	// user. In case of an error it signals this back to all jobs
+	// by closing killCh. This will cause the remaining jobs to
+	// abort when the queing system invokes them.  Note however,
+	// that the synchronizer is in a race with the dependency
+	// checker in func (j compileJob) Run() (see below), some jobs
+	// may still run to regular completion.
+
 	killed := false
 	for result := range doneCh {
-		if result.Err == nil {
-			close(c.packageDone[result.Pkg.Name])
-			c.ui.Printf("%s   > success: %s\n",
-				color.YellowString("result"), color.GreenString(result.Pkg.Name))
+		if result.err == nil {
+			close(c.packageDone[result.pkg.Fingerprint])
+			c.ui.Printf("%s   > success: %s/%s\n",
+				color.YellowString("result"),
+				color.GreenString(result.pkg.Release.Name),
+				color.GreenString(result.pkg.Name))
 			continue
 		}
 
 		c.ui.Printf(
-			"%s   > failure: %s - %s\n",
+			"%s   > failure: %s/%s - %s\n",
 			color.YellowString("result"),
-			color.RedString(result.Pkg.Name),
-			color.RedString(result.Err.Error()),
+			color.RedString(result.pkg.Release.Name),
+			color.RedString(result.pkg.Name),
+			color.RedString(result.err.Error()),
 		)
 
-		err = result.Err
+		err = result.err
 		if !killed {
 			close(killCh)
 			killed = true
@@ -186,31 +208,44 @@ func (j compileJob) Run() {
 	c := j.compilator
 
 	// Wait for our deps
+	// (xx) Wait for our deps. Note how without deps the killCh is
+	// not checked and ignored. It is also in a race with (**)
+	// draining doneCh and actually signaling the kill.
 	for _, dep := range j.pkg.Dependencies {
 		done := false
 		for !done {
 			select {
 			case <-j.killCh:
-				c.ui.Printf("killed:  %s\n", color.MagentaString(j.pkg.Name))
-				j.doneCh <- compileResult{Pkg: j.pkg, Err: errWorkerAbort}
+				c.ui.Printf("killed:  %s/%s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name))
+				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
 				return
 			case <-time.After(5 * time.Second):
-				c.ui.Printf("waiting: %s - %s\n",
-					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
-			case <-c.packageDone[dep.Name]:
-				c.ui.Printf("depdone: %s - %s\n",
-					color.MagentaString(j.pkg.Name), color.MagentaString(dep.Name))
+				c.ui.Printf("waiting: %s/%s - %s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name),
+					color.MagentaString(dep.Name))
+			case <-c.packageDone[dep.Fingerprint]:
+				c.ui.Printf("depdone: %s/%s - %s\n",
+					color.MagentaString(j.pkg.Release.Name),
+					color.MagentaString(j.pkg.Name),
+					color.MagentaString(dep.Name))
 				done = true
 			}
 		}
 	}
 
-	c.ui.Printf("compile: %s\n", color.MagentaString(j.pkg.Name))
+	c.ui.Printf("compile: %s/%s\n",
+		color.MagentaString(j.pkg.Release.Name),
+		color.MagentaString(j.pkg.Name))
 
 	workerErr := compilePackageHarness(c, j.pkg)
-	c.ui.Printf("done:    %s\n", color.MagentaString(j.pkg.Name))
+	c.ui.Printf("done:    %s/%s\n",
+		color.MagentaString(j.pkg.Release.Name),
+		color.MagentaString(j.pkg.Name))
 
-	j.doneCh <- compileResult{Pkg: j.pkg, Err: workerErr}
+	j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
 }
 
 func createDepBuckets(packages []*model.Package) []*model.Package {
@@ -497,6 +532,11 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	})
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
+		// Attention. While the assignments to 'err' in the
+		// deferal below take effect after the 'return'
+		// statements coming later they are visible to the
+		// caller, i.e.  override the 'return'ed value,
+		// because 'err' is a __named__ return parameter.
 		defer func() {
 			// Remove container - DockerManager.RemoveContainer does a force-rm
 
@@ -664,7 +704,13 @@ func (c *Compilator) baseCompilationContainerName() string {
 }
 
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
+	// The "-gkp" closer marker ensures that no package name is a
+	// prefix of any other package. This ensures that the
+	// "strings.HasPrefix" in "func (d *ImageManager)
+	// RemoveVolumes" will not misidentify another package's
+	// volumes as its own. Example which made trouble without
+	// this: "nginx" vs. ngix_webdav".
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s-gkp", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
 }
 
 // BaseCompilationImageTag will return the compilation image tag
@@ -682,9 +728,9 @@ func (c *Compilator) BaseImageName() string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
 }
 
-func (c *Compilator) initPackageMaps(release *model.Release) {
-	for _, pkg := range release.Packages {
-		c.packageDone[pkg.Name] = make(chan struct{})
+func (c *Compilator) initPackageMaps(packages []*model.Package) {
+	for _, pkg := range packages {
+		c.packageDone[pkg.Fingerprint] = make(chan struct{})
 	}
 }
 
@@ -700,7 +746,7 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 		}
 
 		if compiled {
-			close(c.packageDone[p.Name])
+			close(c.packageDone[p.Fingerprint])
 		} else {
 			culledPackages = append(culledPackages, p)
 		}
