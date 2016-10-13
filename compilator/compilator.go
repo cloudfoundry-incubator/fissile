@@ -111,8 +111,11 @@ type compileResult struct {
 //   <-c.packageDone[fingerprint] early if it finds the killCh has been
 //   activated. There is a "race" here to see if the synchronizer will
 //   drain <-todoCh or if they will select on <-killCh before
-//   <-todoCh. In the worst case, an extra package will be compiled by
-//   each active worker.
+//   <-todoCh. In the worst case, extra packages will be compiled by
+//   each active worker. See (**), (xx)
+//
+//   Note that jobs without dependencies ignore the kill signal. See (xx).
+//
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
@@ -146,6 +149,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	worker := workerLib.NewWorker()
 	buckets := createDepBuckets(packages)
 
+	// Load the queuing system with the jobs to run
 	for _, pkg := range buckets {
 		worker.Add(compileJob{
 			pkg:        pkg,
@@ -155,10 +159,21 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 		})
 	}
 
+	// Start the queue and workers
 	go func() {
 		worker.RunUntilDone()
 		close(doneCh)
 	}()
+
+	// (**) All jobs push their results into the single doneCh.
+	// The code below is a synchronizer which pulls the results
+	// from the channel as fast as it can and reports them to the
+	// user. In case of an error it signals this back to all jobs
+	// by closing killCh. This will cause the remaining jobs to
+	// abort when the queing system invokes them.  Note however,
+	// that the synchronizer is in a race with the dependency
+	// checker in func (j compileJob) Run() (see below), some jobs
+	// may still run to regular completion.
 
 	killed := false
 	for result := range doneCh {
@@ -193,6 +208,9 @@ func (j compileJob) Run() {
 	c := j.compilator
 
 	// Wait for our deps
+	// (xx) Wait for our deps. Note how without deps the killCh is
+	// not checked and ignored. It is also in a race with (**)
+	// draining doneCh and actually signaling the kill.
 	for _, dep := range j.pkg.Dependencies {
 		done := false
 		for !done {
@@ -514,6 +532,11 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	})
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
+		// Attention. While the assignments to 'err' in the
+		// deferal below take effect after the 'return'
+		// statements coming later they are visible to the
+		// caller, i.e.  override the 'return'ed value,
+		// because 'err' is a __named__ return parameter.
 		defer func() {
 			// Remove container - DockerManager.RemoveContainer does a force-rm
 
