@@ -192,8 +192,8 @@ func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutPr
 	return m.callback(name)
 }
 
-func (m *mockDockerImageBuilder) HasImage(imageName string) bool {
-	return m.hasImage
+func (m *mockDockerImageBuilder) HasImage(imageName string) (bool, error) {
+	return m.hasImage, nil
 }
 
 func TestBuildRoleImages(t *testing.T) {

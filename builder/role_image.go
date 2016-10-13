@@ -35,7 +35,7 @@ var (
 
 // dockerImageBuilder is the interface to shim around docker.RoleImageBuilder for the unit test
 type dockerImageBuilder interface {
-	HasImage(imageName string) bool
+	HasImage(imageName string) (bool, error)
 	BuildImage(dockerfileDirPath, name string, stdoutProcessor io.WriteCloser) error
 }
 
@@ -310,10 +310,15 @@ func (j roleBuildJob) Run() {
 	}
 
 	roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
-	if j.dockerManager.HasImage(roleImageName) && !j.force {
-		j.ui.Println("Skipping image build because it exists")
-		j.resultsCh <- nil
-		return
+	if !j.force {
+		if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
+			j.resultsCh <- err
+			return
+		} else if hasImage {
+			j.ui.Println("Skipping image build because it exists")
+			j.resultsCh <- nil
+			return
+		}
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
