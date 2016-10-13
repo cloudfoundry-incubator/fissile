@@ -704,7 +704,13 @@ func (c *Compilator) baseCompilationContainerName() string {
 }
 
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
+	// The "-gkp" closer marker ensures that no package name is a
+	// prefix of any other package. This ensures that the
+	// "strings.HasPrefix" in "func (d *ImageManager)
+	// RemoveVolumes" will not misidentify another package's
+	// volumes as its own. Example which made trouble without
+	// this: "nginx" vs. ngix_webdav".
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s-gkp", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
 }
 
 // BaseCompilationImageTag will return the compilation image tag

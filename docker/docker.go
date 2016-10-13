@@ -375,6 +375,7 @@ func (d *ImageManager) RemoveVolumes(container *dockerclient.Container) error {
 	for _, volume := range volumes {
 		if strings.HasPrefix(volume.Name, prefix) {
 			if err := d.client.RemoveVolume(volume.Name); err != nil {
+				err = fmt.Errorf("Volume %s: %s", volume.Name, err.Error())
 				return err
 			}
 		}
