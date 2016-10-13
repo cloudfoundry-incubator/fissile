@@ -76,7 +76,7 @@ func TestCompilationBasic(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
@@ -86,10 +86,19 @@ func TestCompilationBasic(t *testing.T) {
 		close(waitCh)
 	}()
 
-	assert.Equal(<-compileChan, "ruby-2.5")
-	assert.Equal(<-compileChan, "go-1.4")
-	assert.Equal(<-compileChan, "consul")
-	<-waitCh
+	for _, expectedName := range []string{"ruby-2.5", "go-1.4", "consul"} {
+		select {
+		case pkgName := <-compileChan:
+			assert.Equal(pkgName, expectedName)
+		case <-time.After(1 * time.Second):
+			assert.Fail("Timed out waiting for compile result", expectedName)
+		}
+	}
+	select {
+	case <-waitCh:
+	case <-time.After(1 * time.Second):
+		assert.Fail("Timed out waiting for overall completion")
+	}
 }
 
 func TestCompilationSkipCompiled(t *testing.T) {
@@ -345,33 +354,33 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	compilator.initPackageMaps([]*model.Release{release})
+	compilator.initPackageMaps(release.Packages)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, release.Packages[0].Fingerprint, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = ioutil.WriteFile(filepath.Join(compiledPackagePath, "foo"), []byte{}, 0700)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.True(status)
 }
 
@@ -389,14 +398,16 @@ func TestCompilationParallel(t *testing.T) {
 	}
 	releases[0].Packages = []*model.Package{
 		&model.Package{
-			Name:    "package-one",
-			Release: releases[0],
+			Name:        "package-one",
+			Fingerprint: "package-one",
+			Release:     releases[0],
 		},
 	}
 	releases[1].Packages = []*model.Package{
 		&model.Package{
-			Name:    "package-two",
-			Release: releases[1],
+			Name:        "package-two",
+			Fingerprint: "package-two",
+			Release:     releases[1],
 		},
 	}
 
@@ -459,26 +470,26 @@ func TestGetPackageStatusNone(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	compilator.initPackageMaps([]*model.Release{release})
+	compilator.initPackageMaps(release.Packages)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.False(status)
 }
 
@@ -661,13 +672,13 @@ func TestRemoveCompiledPackages(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	c.initPackageMaps(releases)
+	c.initPackageMaps(releases[0].Packages)
 	packages, err := c.removeCompiledPackages(releases[0].Packages)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(2, len(packages))
 	assert.Equal(packages[0].Name, "consul")
@@ -689,11 +700,16 @@ func genTestCase(args ...string) []*model.Release {
 			pkgDeps := strings.Split(splits[1], ",")
 
 			for _, dep := range pkgDeps {
-				deps = append(deps, &model.Package{Release: &release, Name: dep})
+				deps = append(deps, &model.Package{Release: &release, Name: dep, Fingerprint: dep})
 			}
 		}
 
-		packages = append(packages, &model.Package{Release: &release, Name: pkgName, Dependencies: deps})
+		packages = append(packages, &model.Package{
+			Release:      &release,
+			Name:         pkgName,
+			Fingerprint:  pkgName,
+			Dependencies: deps,
+		})
 	}
 	release.Packages = packages
 

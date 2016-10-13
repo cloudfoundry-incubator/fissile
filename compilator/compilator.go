@@ -47,8 +47,8 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
-	// packageDone is a map of release name -> package name -> channel to close when done
-	packageDone   map[string]map[string]chan struct{}
+	// packageDone is a map of package fingerprint -> channel to close when done
+	packageDone   map[string]chan struct{}
 	keepContainer bool
 	ui            *termui.UI
 }
@@ -81,7 +81,7 @@ func NewCompilator(
 		keepContainer:    keepContainer,
 		ui:               ui,
 
-		packageDone: make(map[string]map[string]chan struct{}),
+		packageDone: make(map[string]chan struct{}),
 	}
 
 	return compilator, nil
@@ -104,11 +104,11 @@ type compileResult struct {
 // - Workers wait for their dependencies by waiting on a map of
 //   broadcasting channels that are closed by the synchronizer when
 //   something is done compiling successfully
-//   ==> c.packageDone [<name>]
+//   ==> c.packageDone [<fingerprint>]
 //
 // In the event of an error:
 // - workers will try to bail out of waiting on <-todo or
-//   <-c.packageDone[name] early if it finds the killCh has been
+//   <-c.packageDone[fingerprint] early if it finds the killCh has been
 //   activated. There is a "race" here to see if the synchronizer will
 //   drain <-todoCh or if they will select on <-killCh before
 //   <-todoCh. In the worst case, an extra package will be compiled by
@@ -117,7 +117,6 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	c.initPackageMaps(releases)
 	var packages []*model.Package
 
 	for _, release := range releases {
@@ -127,6 +126,8 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 			packages = append(packages, release.Packages...)
 		}
 	}
+
+	c.initPackageMaps(packages)
 
 	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
@@ -162,7 +163,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	killed := false
 	for result := range doneCh {
 		if result.err == nil {
-			close(c.packageDone[result.pkg.Release.Name][result.pkg.Name])
+			close(c.packageDone[result.pkg.Fingerprint])
 			c.ui.Printf("%s   > success: %s/%s\n",
 				color.YellowString("result"),
 				color.GreenString(result.pkg.Release.Name),
@@ -207,7 +208,7 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name),
 					color.MagentaString(dep.Name))
-			case <-c.packageDone[dep.Release.Name][dep.Name]:
+			case <-c.packageDone[dep.Fingerprint]:
 				c.ui.Printf("depdone: %s/%s - %s\n",
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name),
@@ -698,12 +699,9 @@ func (c *Compilator) BaseImageName() string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
 }
 
-func (c *Compilator) initPackageMaps(releases []*model.Release) {
-	for _, release := range releases {
-		c.packageDone[release.Name] = make(map[string]chan struct{})
-		for _, pkg := range release.Packages {
-			c.packageDone[release.Name][pkg.Name] = make(chan struct{})
-		}
+func (c *Compilator) initPackageMaps(packages []*model.Package) {
+	for _, pkg := range packages {
+		c.packageDone[pkg.Fingerprint] = make(chan struct{})
 	}
 }
 
@@ -719,7 +717,7 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 		}
 
 		if compiled {
-			close(c.packageDone[p.Release.Name][p.Name])
+			close(c.packageDone[p.Fingerprint])
 		} else {
 			culledPackages = append(culledPackages, p)
 		}
