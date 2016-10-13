@@ -185,10 +185,15 @@ type buildImageCallback func(name string) error
 
 type mockDockerImageBuilder struct {
 	callback buildImageCallback
+	hasImage bool
 }
 
 func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutProcessor io.WriteCloser) error {
 	return m.callback(name)
+}
+
+func (m *mockDockerImageBuilder) HasImage(imageName string) (bool, error) {
+	return m.hasImage, nil
 }
 
 func TestBuildRoleImages(t *testing.T) {
@@ -215,7 +220,7 @@ func TestBuildRoleImages(t *testing.T) {
 	)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
@@ -223,15 +228,15 @@ func TestBuildRoleImages(t *testing.T) {
 
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleImageBuilder := NewRoleImageBuilder(
 		"test-repository",
@@ -261,25 +266,23 @@ func TestBuildRoleImages(t *testing.T) {
 		rolesManifest.Roles,
 		"test-repository",
 		releasePathConfigSpec,
-		"3.14.15",
 		false,
 		2,
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = os.RemoveAll(targetPath)
-	assert.Nil(err, "Failed to remove target")
+	assert.NoError(err, "Failed to remove target")
 
 	// Should not allow invalid worker counts
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
 		releasePathConfigSpec,
-		"3.14.15",
 		false,
 		0,
 	)
-	assert.NotNil(err, "Invalid worker count should result in an error")
+	assert.Error(err, "Invalid worker count should result in an error")
 	assert.Contains(err.Error(), "count", "Building the image should have failed due to invalid worker count")
 
 	// Check that failing the first job will not run the second job
@@ -300,10 +303,26 @@ func TestBuildRoleImages(t *testing.T) {
 		rolesManifest.Roles,
 		"test-repository",
 		releasePathConfigSpec,
-		"3.14.15",
 		false,
 		1,
 	)
 	assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
 	assert.False(hasRunSecondJob, "Second job should not have run")
+
+	// Check that we do not attempt to rebuild images
+	mockBuilder.hasImage = true
+	var buildersRan []string
+	mockBuilder.callback = func(name string) error {
+		buildersRan = append(buildersRan, name)
+		return nil
+	}
+	err = roleImageBuilder.BuildRoleImages(
+		rolesManifest.Roles,
+		"test-repository",
+		releasePathConfigSpec,
+		false,
+		len(rolesManifest.Roles),
+	)
+	assert.NoError(err)
+	assert.Empty(buildersRan, "should not have ran any builders")
 }

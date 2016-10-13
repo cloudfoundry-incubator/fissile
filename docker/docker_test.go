@@ -46,7 +46,7 @@ func TestFindImageOK(t *testing.T) {
 	assert.NotEmpty(image.ID)
 }
 
-func TestShowImageNotOK(t *testing.T) {
+func TestFindImageNotOK(t *testing.T) {
 	assert := assert.New(t)
 
 	dockerManager, err := NewImageManager()
@@ -57,6 +57,25 @@ func TestShowImageNotOK(t *testing.T) {
 
 	assert.Error(err)
 	assert.Equal(ErrImageNotFound, err)
+}
+
+func TestHasImageOK(t *testing.T) {
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+	assert.NoError(err)
+
+	assert.True(dockerManager.HasImage(dockerImageName))
+}
+
+func TestHasImageNotOK(t *testing.T) {
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+	assert.NoError(err)
+
+	name := uuid.New()
+	assert.False(dockerManager.HasImage(name))
 }
 
 func TestRunInContainer(t *testing.T) {

@@ -35,6 +35,7 @@ var (
 
 // dockerImageBuilder is the interface to shim around docker.RoleImageBuilder for the unit test
 type dockerImageBuilder interface {
+	HasImage(imageName string) (bool, error)
 	BuildImage(dockerfileDirPath, name string, stdoutProcessor io.WriteCloser) error
 }
 
@@ -291,12 +292,12 @@ type roleBuildJob struct {
 	role          *model.Role
 	builder       *RoleImageBuilder
 	ui            *termui.UI
+	force         bool
 	noBuild       bool
 	dockerManager dockerImageBuilder
 	resultsCh     chan<- error
 	abort         <-chan struct{}
 	repository    string
-	version       string
 	configSpecDir string
 }
 
@@ -306,6 +307,18 @@ func (j roleBuildJob) Run() {
 		j.resultsCh <- nil
 		return
 	default:
+	}
+
+	roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
+	if !j.force {
+		if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
+			j.resultsCh <- err
+			return
+		} else if hasImage {
+			j.ui.Println("Skipping image build because it exists")
+			j.resultsCh <- nil
+			return
+		}
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
@@ -327,8 +340,6 @@ func (j roleBuildJob) Run() {
 
 	j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
 
-	roleImageName := GetRoleImageName(j.repository, j.role, j.version)
-
 	log := new(bytes.Buffer)
 	stdoutWriter := docker.NewFormattingWriter(
 		log,
@@ -345,7 +356,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, configSpecDir, version string, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, configSpecDir string, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -370,7 +381,6 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, conf
 			resultsCh:     resultsCh,
 			abort:         abort,
 			repository:    repository,
-			version:       version,
 			configSpecDir: configSpecDir,
 		})
 	}
@@ -390,16 +400,6 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, conf
 	}
 
 	return err
-}
-
-// GetRoleImageName generates a docker image name to be used as a role image
-func GetRoleImageName(repository string, role *model.Role, version string) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s:%s-%s",
-		repository,
-		role.Name,
-		role.Jobs[0].Release.Version,
-		version,
-	))
 }
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
