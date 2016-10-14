@@ -47,10 +47,21 @@ type Compilator struct {
 	BaseType         string
 	FissileVersion   string
 
-	// packageDone is a map of package fingerprint -> channel to close when done
-	packageDone   map[string]chan struct{}
-	keepContainer bool
-	ui            *termui.UI
+	// signalDependencies is a map of
+	//    (package fingerprint) -> (channel to close when done)
+	// The closing is the signal to dependent packages that
+	// this prerequisite is ready for their use.
+	//
+	// Note, we make sure (see %%) to have only one package per
+	// fingerprint.  The fingerprint is based on the package
+	// sources. Two formally different packages (in different
+	// releases) with the same fingerprint are equivalent and
+	// compiling only one is good enough in terms of package
+	// dependencies and resulting files.
+
+	signalDependencies map[string]chan struct{}
+	keepContainer      bool
+	ui                 *termui.UI
 }
 
 type compileJob struct {
@@ -81,7 +92,7 @@ func NewCompilator(
 		keepContainer:    keepContainer,
 		ui:               ui,
 
-		packageDone: make(map[string]chan struct{}),
+		signalDependencies: make(map[string]chan struct{}),
 	}
 
 	return compilator, nil
@@ -104,11 +115,11 @@ type compileResult struct {
 // - Workers wait for their dependencies by waiting on a map of
 //   broadcasting channels that are closed by the synchronizer when
 //   something is done compiling successfully
-//   ==> c.packageDone [<fingerprint>]
+//   ==> c.signalDependencies [<fingerprint>]
 //
 // In the event of an error:
 // - workers will try to bail out of waiting on <-todo or
-//   <-c.packageDone[fingerprint] early if it finds the killCh has been
+//   <-c.signalDependencies[<fingerprint>] early if it finds the killCh has been
 //   activated. There is a "race" here to see if the synchronizer will
 //   drain <-todoCh or if they will select on <-killCh before
 //   <-todoCh. In the worst case, extra packages will be compiled by
@@ -120,19 +131,8 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	var packages []*model.Package
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
 
-	for _, release := range releases {
-		if roleManifest != nil { // Conditional for easier testing
-			packages = append(packages, c.gatherPackagesFromManifest(release, roleManifest)...)
-		} else {
-			packages = append(packages, release.Packages...)
-		}
-	}
-
-	c.initPackageMaps(packages)
-
-	packages, err := c.removeCompiledPackages(packages)
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
 	}
@@ -141,6 +141,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 		return nil
 	}
 
+	// Setup the queuing system ...
 	doneCh := make(chan compileResult)
 	killCh := make(chan struct{})
 
@@ -149,7 +150,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	worker := workerLib.NewWorker()
 	buckets := createDepBuckets(packages)
 
-	// Load the queuing system with the jobs to run
+	// ... load it with the jobs to run ...
 	for _, pkg := range buckets {
 		worker.Add(compileJob{
 			pkg:        pkg,
@@ -159,7 +160,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 		})
 	}
 
-	// Start the queue and workers
+	// ... and start everything
 	go func() {
 		worker.RunUntilDone()
 		close(doneCh)
@@ -178,7 +179,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	killed := false
 	for result := range doneCh {
 		if result.err == nil {
-			close(c.packageDone[result.pkg.Fingerprint])
+			close(c.signalDependencies[result.pkg.Fingerprint])
 			c.ui.Printf("%s   > success: %s/%s\n",
 				color.YellowString("result"),
 				color.GreenString(result.pkg.Release.Name),
@@ -204,10 +205,36 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	return err
 }
 
+func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *model.RoleManifest) []*model.Package {
+	var packages []*model.Package
+
+	for _, release := range releases {
+		var releasePackages []*model.Package
+
+		// Get the packages of the release ...
+		if roleManifest != nil { // Conditional for easier testing
+			releasePackages = c.gatherPackagesFromManifest(release, roleManifest)
+		} else {
+			releasePackages = release.Packages
+		}
+
+		// .. and collect for compilation. (%%) Here we ensure
+		// via the source fingerprints that only the first of
+		// several equivalent packages is taken.
+		for _, pkg := range releasePackages {
+			if _, known := c.signalDependencies[pkg.Fingerprint]; !known {
+				c.signalDependencies[pkg.Fingerprint] = make(chan struct{})
+				packages = append(packages, pkg)
+			}
+		}
+	}
+
+	return packages
+}
+
 func (j compileJob) Run() {
 	c := j.compilator
 
-	// Wait for our deps
 	// (xx) Wait for our deps. Note how without deps the killCh is
 	// not checked and ignored. It is also in a race with (**)
 	// draining doneCh and actually signaling the kill.
@@ -226,7 +253,7 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name),
 					color.MagentaString(dep.Name))
-			case <-c.packageDone[dep.Fingerprint]:
+			case <-c.signalDependencies[dep.Fingerprint]:
 				c.ui.Printf("depdone: %s/%s - %s\n",
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name),
@@ -259,16 +286,16 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 	// only after all of its dependencies.
 
 	// helper data structures:
-	// 1. map: package -> #(unqueued deps)
-	// 2. map: package -> list of using packages (inverted dependencies)
+	// 1. map: package fingerprint -> #(unqueued deps)
+	// 2. map: package fingerprint -> list of using packages (inverted dependencies)
 	//
 	// The counters in the 1st map are initialized with the number
 	// of actual dependencies, and then counted down as
 	// these dependencies are queued up.
 	//
 	// When the counter for a package P reaches 0 then P can be
-	// queued, and in turn bump the counters of all packages using
-	// it.
+	// queued, and in turn bumps the counters of all packages
+	// using it.
 	//
 	// The counters additionally serve as flags for when a package
 	// is queued/processed, saving us a separate boolean
@@ -284,7 +311,7 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 	// on a Compilator structure.
 
 	for _, pkg := range packages {
-		depCount[pkg.Name] = 0
+		depCount[pkg.Fingerprint] = 0
 	}
 
 	// Finalize the depCount and initialize the map of reverse
@@ -302,15 +329,15 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 			// <=> (dep in depCount[])
 			// <=> (dep not compiled, use dep)
 
-			if _, known := depCount[dep.Name]; !known {
+			if _, known := depCount[dep.Fingerprint]; !known {
 				// The package is compiled and thus
 				// not a true dependency. Skip it.
 				continue
 			}
 
 			// Record the true dependency
-			depCount[pkg.Name]++
-			revDeps[dep.Name] = append(revDeps[dep.Name], pkg)
+			depCount[pkg.Fingerprint]++
+			revDeps[dep.Fingerprint] = append(revDeps[dep.Fingerprint], pkg)
 		}
 	}
 
@@ -328,7 +355,7 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 
 			// The package either still has dependencies waiting (depCount > 0),
 			// or is enqueued and processed ((**) depCount == -1 < 0)
-			if depCount[pkg.Name] != 0 {
+			if depCount[pkg.Fingerprint] != 0 {
 				continue
 			}
 
@@ -337,13 +364,13 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 			// - notify the outer loop to keep running, and
 			// - force the following iterations to ignore
 			//   the package (See (**)).
-			depCount[pkg.Name]--
+			depCount[pkg.Fingerprint]--
 			keepRunning = true
 
 			// notify the users of the queued that another
 			// of their dependencies is handled
-			for _, usr := range revDeps[pkg.Name] {
-				depCount[usr.Name]--
+			for _, usr := range revDeps[pkg.Fingerprint] {
+				depCount[usr.Fingerprint]--
 			}
 
 			// rubies are special, see notes at top of function
@@ -480,7 +507,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 
 	// Generate a compilation script
 	targetScriptName := "compile.sh"
-	hostScriptPath := filepath.Join(c.getTargetPackageSourcesDir(pkg), targetScriptName)
+	hostScriptPath := filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), targetScriptName)
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	if err := compilation.SaveScript(c.BaseType, compilation.CompilationScript, hostScriptPath); err != nil {
 		return err
@@ -512,8 +539,8 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	)
 	sourceMountName := fmt.Sprintf("source_mount-%s", uuid.New())
 	mounts := map[string]string{
-		c.getTargetPackageSourcesDir(pkg): docker.ContainerInPath,
-		c.getPackageCompiledTempDir(pkg):  docker.ContainerOutPath,
+		pkg.GetTargetPackageSourcesDir(c.HostWorkDir): docker.ContainerInPath,
+		pkg.GetPackageCompiledTempDir(c.HostWorkDir):  docker.ContainerOutPath,
 		// Add the volume mount to work around AUFS issues.  We will clean
 		// the volume up (as long as we're not trying to keep the container
 		// around for debugging).  We don't give it an actual directory to mount
@@ -568,12 +595,14 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, exitCode)
 	}
 
-	return os.Rename(c.getPackageCompiledTempDir(pkg), c.getPackageCompiledDir(pkg))
+	return os.Rename(
+		pkg.GetPackageCompiledTempDir(c.HostWorkDir),
+		pkg.GetPackageCompiledDir(c.HostWorkDir))
 }
 
 func (c *Compilator) isPackageCompiled(pkg *model.Package) (bool, error) {
 	// If compiled package exists on hard disk
-	compiledPackagePath := c.getPackageCompiledDir(pkg)
+	compiledPackagePath := pkg.GetPackageCompiledDir(c.HostWorkDir)
 	compiledPackagePathExists, err := validatePath(compiledPackagePath, true, "package path")
 	if err != nil {
 		return false, err
@@ -654,29 +683,17 @@ func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 	return nil
 }
 
-func (c *Compilator) getTargetPackageSourcesDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "sources")
-}
-
-func (c *Compilator) getPackageCompiledTempDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "compiled-temp")
-}
-
-func (c *Compilator) getPackageCompiledDir(pkg *model.Package) string {
-	return filepath.Join(c.HostWorkDir, pkg.Name, pkg.Fingerprint, "compiled")
-}
-
 func (c *Compilator) getDependenciesPackageDir(pkg *model.Package) string {
-	return filepath.Join(c.getTargetPackageSourcesDir(pkg), "var", "vcap", "packages")
+	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), "var", "vcap", "packages")
 }
 
 func (c *Compilator) getSourcePackageDir(pkg *model.Package) string {
-	return filepath.Join(c.getTargetPackageSourcesDir(pkg), "var", "vcap", "source")
+	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), "var", "vcap", "source")
 }
 
 func (c *Compilator) copyDependencies(pkg *model.Package) error {
 	for _, dep := range pkg.Dependencies {
-		depCompiledPath := c.getPackageCompiledDir(dep)
+		depCompiledPath := dep.GetPackageCompiledDir(c.HostWorkDir)
 		depDestinationPath := filepath.Join(c.getDependenciesPackageDir(pkg), dep.Name)
 		if err := os.RemoveAll(depDestinationPath); err != nil {
 			return err
@@ -728,12 +745,6 @@ func (c *Compilator) BaseImageName() string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
 }
 
-func (c *Compilator) initPackageMaps(packages []*model.Package) {
-	for _, pkg := range packages {
-		c.packageDone[pkg.Fingerprint] = make(chan struct{})
-	}
-}
-
 // removeCompiledPackages must be called after initPackageMaps as it closes
 // the broadcast channels of anything already compiled.
 func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model.Package, error) {
@@ -746,7 +757,7 @@ func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model
 		}
 
 		if compiled {
-			close(c.packageDone[p.Fingerprint])
+			close(c.signalDependencies[p.Fingerprint])
 		} else {
 			culledPackages = append(culledPackages, p)
 		}

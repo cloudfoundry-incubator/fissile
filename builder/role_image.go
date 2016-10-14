@@ -118,7 +118,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 				continue
 			}
 
-			compiledDir := filepath.Join(r.compiledPackagesPath, pkg.Name, pkg.Fingerprint, "compiled")
+			compiledDir := pkg.GetPackageCompiledDir(r.compiledPackagesPath)
 			if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
 				return "", err
 			}

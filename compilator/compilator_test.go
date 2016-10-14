@@ -364,14 +364,14 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
+	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.NoError(err)
 
-	compilator.initPackageMaps(release.Packages)
+	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Fingerprint, "compiled")
 
-	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Name, release.Packages[0].Fingerprint, "compiled")
 	err = os.MkdirAll(compiledPackagePath, 0755)
 	assert.NoError(err)
 
@@ -480,12 +480,11 @@ func TestGetPackageStatusNone(t *testing.T) {
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
+	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.NoError(err)
-
-	compilator.initPackageMaps(release.Packages)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
 
@@ -547,10 +546,10 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	assert.Nil(err)
 	err = compilator.createCompilationDirStructure(pkg)
 	assert.Nil(err)
-	err = os.MkdirAll(compilator.getPackageCompiledDir(pkg.Dependencies[0]), 0755)
+	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), 0755)
 	assert.Nil(err)
 
-	dummyCompiledFile := filepath.Join(compilator.getPackageCompiledDir(pkg.Dependencies[0]), "foo")
+	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), "foo")
 	file, err := os.Create(dummyCompiledFile)
 	assert.Nil(err)
 	file.Close()
@@ -613,24 +612,28 @@ func TestCreateDepBuckets(t *testing.T) {
 
 	packages := []*model.Package{
 		{
-			Name: "consul",
+			Name:        "consul",
+			Fingerprint: "CO",
 			Dependencies: []*model.Package{
-				{Name: "go-1.4"},
+				{Fingerprint: "GO", Name: "go-1.4"},
 			},
 		},
 		{
 			Name:         "go-1.4",
+			Fingerprint:  "GO",
 			Dependencies: nil,
 		},
 		{
-			Name: "cloud_controller_go",
+			Name:        "cloud_controller_go",
+			Fingerprint: "CC",
 			Dependencies: []*model.Package{
-				{Name: "go-1.4"},
-				{Name: "ruby-2.5"},
+				{Fingerprint: "GO", Name: "go-1.4"},
+				{Fingerprint: "RU", Name: "ruby-2.5"},
 			},
 		},
 		{
 			Name:         "ruby-2.5",
+			Fingerprint:  "RU",
 			Dependencies: nil,
 		},
 	}
@@ -647,9 +650,27 @@ func TestCreateDepBucketsOnChain(t *testing.T) {
 	t.Parallel()
 
 	packages := []*model.Package{
-		{Name: "A", Dependencies: nil},
-		{Name: "B", Dependencies: []*model.Package{{Name: "C"}}},
-		{Name: "C", Dependencies: []*model.Package{{Name: "A"}}},
+		{
+			Fingerprint:  "a",
+			Name:         "A",
+			Dependencies: nil,
+		},
+		{
+			Fingerprint: "b",
+			Name:        "B",
+			Dependencies: []*model.Package{{
+				Fingerprint: "c",
+				Name:        "C",
+			}},
+		},
+		{
+			Fingerprint: "c",
+			Name:        "C",
+			Dependencies: []*model.Package{{
+				Fingerprint: "a",
+				Name:        "A",
+			}},
+		},
 	}
 
 	buckets := createDepBuckets(packages)
@@ -657,6 +678,20 @@ func TestCreateDepBucketsOnChain(t *testing.T) {
 	assert.Equal(t, buckets[0].Name, "A")
 	assert.Equal(t, buckets[1].Name, "C")
 	assert.Equal(t, buckets[2].Name, "B")
+}
+
+func TestGatherPackages(t *testing.T) {
+	assert := assert.New(t)
+
+	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	assert.NoError(err)
+
+	releases := genTestCase("ruby-2.5", "go-1.4.1:G", "go-1.4:G")
+	packages := c.gatherPackages(releases, nil)
+
+	assert.Equal(2, len(packages))
+	assert.Equal(packages[0].Name, "ruby-2.5")
+	assert.Equal(packages[1].Name, "go-1.4.1")
 }
 
 func TestRemoveCompiledPackages(t *testing.T) {
@@ -676,8 +711,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 
 	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	c.initPackageMaps(releases[0].Packages)
-	packages, err := c.removeCompiledPackages(releases[0].Packages)
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, nil))
 	assert.NoError(err)
 
 	assert.Equal(2, len(packages))
@@ -692,6 +726,7 @@ func genTestCase(args ...string) []*model.Release {
 	}
 
 	for _, pkgDef := range args {
+		// Split definition into name+fingerprint and dependencies
 		splits := strings.Split(pkgDef, ">")
 		pkgName := splits[0]
 
@@ -704,10 +739,21 @@ func genTestCase(args ...string) []*model.Release {
 			}
 		}
 
+		// Split n+f into name and fingerprint
+		splits = strings.Split(pkgName, ":")
+		pkgName = splits[0]
+
+		var pkgFingerprint string
+		if len(splits) == 2 {
+			pkgFingerprint = splits[1]
+		} else {
+			pkgFingerprint = pkgName
+		}
+
 		packages = append(packages, &model.Package{
 			Release:      &release,
 			Name:         pkgName,
-			Fingerprint:  pkgName,
+			Fingerprint:  pkgFingerprint,
 			Dependencies: deps,
 		})
 	}
