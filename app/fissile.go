@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -314,18 +313,79 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 	return nil
 }
 
+// GeneratePackagesRoleImage builds the docker image for the shared layer where
+// all packages are included
+func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, lightManifestPath, darkManifestPath string, roleBuilder *builder.RoleImageBuilder) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	dockerManager, err := docker.NewImageManager()
+	if err != nil {
+		return fmt.Errorf("Error connecting to docker: %s", err.Error())
+	}
+
+	sharedImageName := builder.GetRolePackageImageName(repository, roleManifest, f.Version)
+	if !force {
+		if hasImage, err := dockerManager.HasImage(sharedImageName); err == nil && hasImage {
+			f.UI.Printf("Shared dev image %s already exists. Skipping ...\n", color.YellowString(sharedImageName))
+			return nil
+		}
+	}
+
+	baseImageName := builder.GetBaseImageName(repository, f.Version)
+	if hasImage, err := dockerManager.HasImage(baseImageName); err != nil {
+		return fmt.Errorf("Error getting base image: %s", err)
+	} else if !hasImage {
+		return fmt.Errorf("Failed to find role base %s, did you build it first?", baseImageName)
+	}
+
+	f.UI.Printf("Creating Dockerfile for shared image...\n")
+	buildDir, err := roleBuilder.CreatePackagesDockerBuildDir(roleManifest, lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(buildDir)
+
+	if noBuild {
+		f.UI.Println("Skipping image build beacause of flag.")
+		return nil
+	}
+
+	if !strings.HasSuffix(buildDir, string(os.PathSeparator)) {
+		buildDir = fmt.Sprintf("%s%c", buildDir, os.PathSeparator)
+	}
+	f.UI.Printf("Building docker image %s in %s ...\n",
+		color.YellowString(sharedImageName),
+		color.YellowString(buildDir))
+	log := new(bytes.Buffer)
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		docker.ColoredBuildStringFunc(sharedImageName),
+	)
+
+	err = dockerManager.BuildImage(buildDir, sharedImageName, stdoutWriter)
+	if err != nil {
+		log.WriteTo(f.UI)
+		return fmt.Errorf("Error building image: %s", err.Error())
+	}
+	f.UI.Println(color.GreenString("Done."))
+
+	return nil
+}
+
 // GenerateRoleImages generates all role images using dev releases
 func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	roleBuilder := builder.NewRoleImageBuilder(
+	roleBuilder, err := builder.NewRoleImageBuilder(
 		repository,
 		compiledPackagesPath,
 		targetPath,
@@ -333,33 +393,18 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		f.Version,
 		f.UI,
 	)
-
-	// Generate configuration
-	configTargetPath, err := ioutil.TempDir("", "role-spec-config")
 	if err != nil {
-		return fmt.Errorf("Error creating temporary directory %s: %s", configTargetPath, err.Error())
+		return err
 	}
 
-	defer func() {
-		os.RemoveAll(configTargetPath)
-	}()
-
-	f.UI.Println("Generating configuration JSON specs ...")
-
-	configStore := configstore.NewConfigStoreBuilder(
-		configstore.JSONProvider,
-		lightManifestPath,
-		darkManifestPath,
-		configTargetPath,
-	)
-
-	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
-		return fmt.Errorf("Error writing base config: %s", err.Error())
+	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, lightManifestPath, darkManifestPath, roleBuilder)
+	if err != nil {
+		return err
 	}
 
-	f.UI.Println(color.GreenString("Done."))
+	sharedImageName := builder.GetRolePackageImageName(repository, roleManifest, f.Version)
 
-	if err := roleBuilder.BuildRoleImages(rolesManifest.Roles, repository, configTargetPath, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roleManifest.Roles, repository, sharedImageName, force, noBuild, workerCount); err != nil {
 		return err
 	}
 

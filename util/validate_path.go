@@ -7,7 +7,7 @@ import (
 
 // ValidatePath validates that a path (file or dir) exists
 func ValidatePath(path string, shouldBeDir bool, pathDescription string) error {
-	pathInfo, err := os.Stat(path)
+	pathInfo, err := os.Lstat(path)
 
 	if err != nil {
 		if os.IsNotExist(err) {
