@@ -136,3 +136,21 @@ func (p *Package) loadPackageDependencies() (err error) {
 func (p *Package) packageArchivePath() string {
 	return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
 }
+
+// GetTargetPackageSourcesDir returns the path to the sources of the
+// package, underneath the main cache directory
+func (p *Package) GetTargetPackageSourcesDir(workDir string) string {
+	return filepath.Join(workDir, p.Fingerprint, "sources")
+}
+
+// GetPackageCompiledTempDir returns the path to the build temp
+// directory for the package, underneath the main cache directory
+func (p *Package) GetPackageCompiledTempDir(workDir string) string {
+	return filepath.Join(workDir, p.Fingerprint, "compiled-temp")
+}
+
+// GetPackageCompiledDir returns the path to the build result
+// directory of the package, underneath the main cache directory
+func (p *Package) GetPackageCompiledDir(workDir string) string {
+	return filepath.Join(workDir, p.Fingerprint, "compiled")
+}
