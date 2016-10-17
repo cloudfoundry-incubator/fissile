@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/hpcloud/fissile/util"
@@ -193,4 +194,24 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "not found in job")
+}
+
+func TestJobsSort(t *testing.T) {
+	assert := assert.New(t)
+
+	jobs := Jobs{
+		{Name: "aaa"},
+		{Name: "bbb"},
+	}
+	sort.Sort(jobs)
+	assert.Equal(jobs[0].Name, "aaa")
+	assert.Equal(jobs[1].Name, "bbb")
+
+	jobs = Jobs{
+		{Name: "ddd"},
+		{Name: "ccc"},
+	}
+	sort.Sort(jobs)
+	assert.Equal(jobs[0].Name, "ccc")
+	assert.Equal(jobs[1].Name, "ddd")
 }

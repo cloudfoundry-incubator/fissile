@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -18,7 +19,7 @@ const (
 
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
-	Roles         []*Role        `yaml:"roles"`
+	Roles         Roles          `yaml:"roles"`
 	Configuration *configuration `yaml:"configuration"`
 
 	manifestFilePath string
@@ -38,6 +39,9 @@ type Role struct {
 	rolesManifest *RoleManifest
 }
 
+// Roles is an array of Role*
+type Roles []*Role
+
 type configuration struct {
 	Templates map[string]string `yaml:"templates"`
 }
@@ -45,6 +49,21 @@ type configuration struct {
 type roleJob struct {
 	Name        string `yaml:"name"`
 	ReleaseName string `yaml:"release_name"`
+}
+
+// Len is the number of roles in the slice
+func (roles Roles) Len() int {
+	return len(roles)
+}
+
+// Less reports whether role at index i short sort before role at index j
+func (roles Roles) Less(i, j int) bool {
+	return strings.Compare(roles[i].Name, roles[j].Name) < 0
+}
+
+// Swap exchanges roles at index i and index j
+func (roles Roles) Swap(i, j int) {
+	roles[i], roles[j] = roles[j], roles[i]
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
@@ -113,6 +132,22 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	}
 
 	return &rolesManifest, nil
+}
+
+// GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
+	// Make sure our roles are sorted, to have consistent output
+	roles := append(Roles{}, m.Roles...)
+	sort.Sort(roles)
+
+	hasher := sha1.New()
+	hasher.Write([]byte(extra))
+
+	for _, role := range roles {
+		hasher.Write([]byte(role.GetRoleDevVersion()))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // GetScriptPaths returns the paths to the startup / post configgin scripts for a role

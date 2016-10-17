@@ -3,6 +3,7 @@ package model
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -174,4 +175,71 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
 	assert.Equal(2, len(rolesManifest.Roles))
+}
+
+func TestRolesSort(t *testing.T) {
+	assert := assert.New(t)
+
+	roles := Roles{
+		{Name: "aaa"},
+		{Name: "bbb"},
+	}
+	sort.Sort(roles)
+	assert.Equal(roles[0].Name, "aaa")
+	assert.Equal(roles[1].Name, "bbb")
+
+	roles = Roles{
+		{Name: "ddd"},
+		{Name: "ccc"},
+	}
+	sort.Sort(roles)
+	assert.Equal(roles[0].Name, "ccc")
+	assert.Equal(roles[1].Name, "ddd")
+}
+
+func TestGetRoleManifestDevPackageVersion(t *testing.T) {
+	assert := assert.New(t)
+
+	refRole := &Role{
+		Name: "bbb",
+		Jobs: Jobs{
+			{
+				SHA1: "Role 2 Job 1",
+				Packages: Packages{
+					{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
+					{Name: "bbb", SHA1: "Role 2 Job 1 Package 2"},
+				},
+			},
+			{
+				SHA1: "Role 2 Job 2",
+				Packages: Packages{
+					{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},
+				},
+			},
+		},
+	}
+	wrongJobOrder := &Role{
+		Name: refRole.Name,
+		Jobs: Jobs{refRole.Jobs[1], refRole.Jobs[0]},
+	}
+	altRole := &Role{
+		Name: "aaa",
+		Jobs: Jobs{
+			{
+				SHA1: "Role 1 Job 1",
+				Packages: Packages{
+					{Name: "zzz", SHA1: "Role 1	 Job 1 Package 1"},
+				},
+			},
+		},
+	}
+
+	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
+	firstHash := firstManifest.GetRoleManifestDevPackageVersion("")
+	secondHash := (&RoleManifest{Roles: Roles{altRole, refRole}}).GetRoleManifestDevPackageVersion("")
+	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
+	jobOrderHash := (&RoleManifest{Roles: Roles{wrongJobOrder, altRole}}).GetRoleManifestDevPackageVersion("")
+	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
+	differentExtraHash := firstManifest.GetRoleManifestDevPackageVersion("some string")
+	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }

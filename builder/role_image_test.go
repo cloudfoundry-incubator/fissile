@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,28 +29,31 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	releaseVersion := "3.14.15"
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, releaseVersion, "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, releaseVersion, "6.28.30", ui)
+	assert.NoError(err)
 
-	dockerfileContents, err := roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
-	assert.Nil(err)
+	var dockerfileContents bytes.Buffer
+	baseImage := GetBaseImageName(roleImageBuilder.repository, roleImageBuilder.fissileVersion)
+	err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0], baseImage, &dockerfileContents)
+	assert.NoError(err)
 
-	dockerfileString := string(dockerfileContents)
+	dockerfileString := dockerfileContents.String()
 	assert.Contains(dockerfileString, "foo-role-base:6.28.30")
 	assert.Contains(dockerfileString, "MAINTAINER", "release images should contain maintainer information")
 	assert.Contains(
@@ -58,9 +62,10 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 		"Expected role label",
 	)
 
-	dockerfileContents, err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0])
-	assert.Nil(err)
-	dockerfileString = string(dockerfileContents)
+	dockerfileContents.Reset()
+	err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0], baseImage, &dockerfileContents)
+	assert.NoError(err)
+	dockerfileString = dockerfileContents.String()
 	assert.Contains(dockerfileString, "MAINTAINER", "dev mode should generate a maintainer layer")
 }
 
@@ -90,7 +95,8 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.NoError(err)
@@ -127,7 +133,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
@@ -135,26 +141,27 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
-	roleImageBuilder := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	assert.NoError(err)
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(
 		rolesManifest.Roles[0],
 		releasePathConfigSpec,
 	)
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(dockerfileDir)
 
-	assert.Equal(filepath.Join(targetPath, "myrole"), dockerfileDir)
+	assert.Equal(targetPath, filepath.Dir(dockerfileDir), "Docker file %s not created in directory %s", dockerfileDir, targetPath)
 
 	for _, info := range []struct {
 		path  string
@@ -170,15 +177,46 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
 		{path: "root/var/vcap/jobs-src/tor/monit", isDir: false, desc: "job monit file"},
 		{path: "root/var/vcap/jobs-src/tor/templates/bin/monit_debugger", isDir: false, desc: "job template file"},
-		{path: "root/var/vcap/packages/tor", isDir: true, desc: "package dir"},
-		{path: "root/var/vcap/packages/tor/bar", isDir: false, desc: "compilation artifact"},
+		{path: "root/var/vcap/packages/tor", isDir: false, desc: "package symlink"},
 	} {
-		path := filepath.ToSlash(filepath.Join(targetPath, "myrole", info.path))
-		assert.Nil(util.ValidatePath(path, info.isDir, info.desc))
+		path := filepath.ToSlash(filepath.Join(dockerfileDir, info.path))
+		assert.NoError(util.ValidatePath(path, info.isDir, info.desc))
+	}
+
+	symlinkPath := filepath.Join(dockerfileDir, "root/var/vcap/packages/tor")
+	if pathInfo, err := os.Lstat(symlinkPath); assert.NoError(err) {
+		assert.Equal(os.ModeSymlink, pathInfo.Mode()&os.ModeSymlink)
+		if target, err := os.Readlink(symlinkPath); assert.NoError(err) {
+			pkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
+			if assert.NotNil(pkg, "Failed to find package") {
+				expectedTarget := filepath.Join("..", "packages-src", pkg.Fingerprint)
+				assert.Equal(expectedTarget, target)
+			}
+		}
 	}
 
 	// job.MF should not be there
-	assert.NotNil(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
+	assert.Error(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
+}
+
+// getPackage is a helper to get a package from a list of roles
+func getPackage(roles model.Roles, role, job, pkg string) *model.Package {
+	for _, r := range roles {
+		if r.Name != role {
+			continue
+		}
+		for _, j := range r.Jobs {
+			if j.Name != job {
+				continue
+			}
+			for _, p := range j.Packages {
+				if p.Name == pkg {
+					return p
+				}
+			}
+		}
+	}
+	return nil
 }
 
 type buildImageCallback func(name string) error
@@ -224,7 +262,6 @@ func TestBuildRoleImages(t *testing.T) {
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
-	releasePathConfigSpec := filepath.Join(releasePath, "config_spec")
 
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
@@ -238,7 +275,7 @@ func TestBuildRoleImages(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder := NewRoleImageBuilder(
+	roleImageBuilder, err := NewRoleImageBuilder(
 		"test-repository",
 		compiledPackagesDir,
 		targetPath,
@@ -246,6 +283,7 @@ func TestBuildRoleImages(t *testing.T) {
 		"6.28.30",
 		ui,
 	)
+	assert.NoError(err)
 
 	// Check that making the first wait for the second job works
 	secondJobReady := make(chan struct{})
@@ -265,7 +303,8 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
-		releasePathConfigSpec,
+		"",
+		false,
 		false,
 		2,
 	)
@@ -274,11 +313,17 @@ func TestBuildRoleImages(t *testing.T) {
 	err = os.RemoveAll(targetPath)
 	assert.NoError(err, "Failed to remove target")
 
+	targetPath, err = ioutil.TempDir("", "fissile-test")
+	assert.NoError(err)
+	defer os.RemoveAll(targetPath)
+	roleImageBuilder.targetPath = targetPath
+
 	// Should not allow invalid worker counts
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
-		releasePathConfigSpec,
+		"",
+		false,
 		false,
 		0,
 	)
@@ -302,7 +347,8 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
-		releasePathConfigSpec,
+		"",
+		false,
 		false,
 		1,
 	)
@@ -319,7 +365,8 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
-		releasePathConfigSpec,
+		"",
+		false,
 		false,
 		len(rolesManifest.Roles),
 	)

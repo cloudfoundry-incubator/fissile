@@ -50,7 +50,10 @@ type RoleImageBuilder struct {
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, fissileVersion string, ui *termui.UI) *RoleImageBuilder {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+	if err := os.MkdirAll(targetPath, 0755); err != nil {
+		return nil, err
+	}
 	return &RoleImageBuilder{
 		repository:           repository,
 		compiledPackagesPath: compiledPackagesPath,
@@ -58,17 +61,27 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, 
 		version:              version,
 		fissileVersion:       fissileVersion,
 		ui:                   ui,
-	}
+	}, nil
 }
 
 // CreateDockerfileDir generates a Dockerfile and assets in the targetDir and returns a path to the dir
-func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir string) (string, error) {
+func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName string) (string, error) {
 	if len(role.Jobs) == 0 {
 		return "", fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 	}
 
+	succeeded := false
+	roleDir, err := ioutil.TempDir(r.targetPath, fmt.Sprintf("role-%s", role.Name))
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if !succeeded {
+			os.RemoveAll(roleDir)
+		}
+	}()
+
 	// Create a dir for the role
-	roleDir := filepath.Join(r.targetPath, role.Name)
 	rootDir := filepath.Join(roleDir, "root")
 	if err := os.MkdirAll(roleDir, 0755); err != nil {
 		return "", err
@@ -98,7 +111,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 		}
 	}
 
-	// Copy compiled packages
+	// Symlink compiled packages
 	packagesDir := filepath.Join(rootDir, "var/vcap/packages")
 	if err := os.MkdirAll(packagesDir, 0755); err != nil {
 		return "", err
@@ -106,37 +119,19 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 	packageSet := map[string]string{}
 	for _, job := range role.Jobs {
 		for _, pkg := range job.Packages {
-			// Only copy packages that we haven't copied before
-			if _, ok := packageSet[pkg.Name]; ok == false {
+			if _, ok := packageSet[pkg.Name]; !ok {
+				sourceDir := filepath.Join("..", "packages-src", pkg.Fingerprint)
+				packageDir := filepath.Join(packagesDir, pkg.Name)
+				err := os.Symlink(sourceDir, packageDir)
+				if err != nil {
+					return "", err
+				}
 				packageSet[pkg.Name] = pkg.Fingerprint
 			} else {
 				if pkg.Fingerprint != packageSet[pkg.Name] {
 					r.ui.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
 						color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
 				}
-
-				continue
-			}
-
-			compiledDir := pkg.GetPackageCompiledDir(r.compiledPackagesPath)
-			if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
-				return "", err
-			}
-
-			packageDir := filepath.Join(packagesDir, pkg.Name)
-
-			err := shutil.CopyTree(
-				compiledDir,
-				packageDir,
-				&shutil.CopyTreeOptions{
-					Symlinks:               true,
-					Ignore:                 nil,
-					CopyFunction:           shutil.Copy,
-					IgnoreDanglingSymlinks: false},
-			)
-
-			if err != nil {
-				return "", err
 			}
 		}
 	}
@@ -146,6 +141,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 	if err := os.MkdirAll(jobsDir, 0755); err != nil {
 		return "", err
 	}
+	jsonSpecsDir := filepath.Join(rootDir, "opt/hcf/specs")
 	for _, job := range role.Jobs {
 		jobDir, err := job.Extract(jobsDir)
 		if err != nil {
@@ -166,12 +162,17 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 			}
 		}
 
-		// Copy spec configuration file
-		// from <JSON_SPEC_DIR>/<ROLE_NAME>/<JOB>.json
+		// Symlink spec configuration file
+		// from <ROOT_DIR>/opt/hcf/specs/<ROLE_NAME>/<JOB>.json
 		specConfigSource := filepath.Join(jsonSpecsDir, role.Name, job.Name+configstore.JobConfigFileExtension)
 		// into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
 		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename+configstore.JobConfigFileExtension)
-		if shutil.CopyFile(specConfigSource, specConfigDestination, true); err != nil {
+		// The symlink must be relative, since the path is different in the docker image
+		specConfigRelativeSource, err := filepath.Rel(filepath.Dir(specConfigDestination), specConfigSource)
+		if err != nil {
+			return "", err
+		}
+		if err := os.Symlink(specConfigRelativeSource, specConfigDestination); err != nil {
 			return "", err
 		}
 	}
@@ -214,15 +215,16 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, jsonSpecsDir st
 	}
 
 	// Generate Dockerfile
-	dockerfileContents, err := r.generateDockerfile(role)
+	dockerfile, err := os.Create(filepath.Join(roleDir, "Dockerfile"))
 	if err != nil {
 		return "", err
 	}
-	dockerfilePath := filepath.Join(roleDir, "Dockerfile")
-	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0644); err != nil {
+	defer dockerfile.Close()
+	if err := r.generateDockerfile(role, baseImageName, dockerfile); err != nil {
 		return "", err
 	}
 
+	succeeded = true
 	return roleDir, nil
 }
 
@@ -258,17 +260,17 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
-func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) {
-	baseImage := GetBaseImageName(r.repository, r.fissileVersion)
-
+// generateDockerfile builds a docker file for a given role.
+func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName string, outputFile io.Writer) error {
 	asset, err := dockerfiles.Asset("Dockerfile-role")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	dockerfileTemplate := template.New("Dockerfile-role")
+
 	context := map[string]interface{}{
-		"base_image":    baseImage,
+		"base_image":    baseImageName,
 		"image_version": r.version,
 		"role":          role,
 		"licenses":      role.Jobs[0].Release.License.Files,
@@ -276,16 +278,14 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role) ([]byte, error) 
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var output bytes.Buffer
-	err = dockerfileTemplate.Execute(&output, context)
-	if err != nil {
-		return nil, err
+	if err := dockerfileTemplate.Execute(outputFile, context); err != nil {
+		return err
 	}
 
-	return output.Bytes(), nil
+	return nil
 }
 
 type roleBuildJob struct {
@@ -298,7 +298,7 @@ type roleBuildJob struct {
 	resultsCh     chan<- error
 	abort         <-chan struct{}
 	repository    string
-	configSpecDir string
+	baseImageName string
 }
 
 func (j roleBuildJob) Run() {
@@ -315,21 +315,21 @@ func (j roleBuildJob) Run() {
 			j.resultsCh <- err
 			return
 		} else if hasImage {
-			j.ui.Println("Skipping image build because it exists")
+			j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
 			j.resultsCh <- nil
 			return
 		}
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
-	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.configSpecDir)
+	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.baseImageName)
 	if err != nil {
 		j.resultsCh <- fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
 		return
 	}
 
 	if j.noBuild {
-		j.ui.Println("Skipping image build because of flag.")
+		j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
 		j.resultsCh <- nil
 		return
 	}
@@ -338,7 +338,7 @@ func (j roleBuildJob) Run() {
 		dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
 	}
 
-	j.ui.Printf("Building docker image in %s ...\n", color.YellowString(dockerfileDir))
+	j.ui.Printf("Building docker image of %s in %s ...\n", color.YellowString(j.role.Name), color.YellowString(dockerfileDir))
 
 	log := new(bytes.Buffer)
 	stdoutWriter := docker.NewFormattingWriter(
@@ -356,7 +356,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, configSpecDir string, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -376,12 +376,13 @@ func (r *RoleImageBuilder) BuildRoleImages(roles []*model.Role, repository, conf
 			role:          role,
 			builder:       r,
 			ui:            r.ui,
+			force:         force,
 			noBuild:       noBuild,
 			dockerManager: dockerManager,
 			resultsCh:     resultsCh,
 			abort:         abort,
 			repository:    repository,
-			configSpecDir: configSpecDir,
+			baseImageName: baseImageName,
 		})
 	}
 

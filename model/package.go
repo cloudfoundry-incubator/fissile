@@ -89,6 +89,16 @@ func (slice Packages) Len() int {
 
 // Less implements the Less function to satisfy sort.Interface
 func (slice Packages) Less(i, j int) bool {
+	var releaseNameI, releaseNameJ string
+	if slice[i].Release != nil {
+		releaseNameI = slice[i].Release.Name
+	}
+	if slice[j].Release != nil {
+		releaseNameJ = slice[j].Release.Name
+	}
+	if releaseNameI != releaseNameJ {
+		return releaseNameI < releaseNameJ
+	}
 	return slice[i].Name < slice[j].Name
 }
 
