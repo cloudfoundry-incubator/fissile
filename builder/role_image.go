@@ -64,88 +64,6 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, 
 	}, nil
 }
 
-// CreatePackagesDockerBuildDir generates a Dockerfile and assets for the shared packages layer and returns a path to the dir
-func (r *RoleImageBuilder) CreatePackagesDockerBuildDir(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string) (string, error) {
-	if len(roleManifest.Roles) == 0 {
-		return "", fmt.Errorf("No roles to build")
-	}
-
-	succeeded := false
-	buildDir, err := ioutil.TempDir(r.targetPath, "role-packages")
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if !succeeded {
-			os.RemoveAll(buildDir)
-		}
-	}()
-	rootDir := filepath.Join(buildDir, "root")
-
-	// Generate dockerfile
-	dockerfile, err := os.Create(filepath.Join(buildDir, "Dockerfile"))
-	if err != nil {
-		return "", err
-	}
-	defer dockerfile.Close()
-	baseImageName := GetBaseImageName(r.repository, r.fissileVersion)
-	if err := r.generateDockerfile(nil, baseImageName, dockerfile); err != nil {
-		return "", err
-	}
-
-	// Generate configuration
-	r.ui.Println("Generating configuration JSON specs ...")
-	configStore := configstore.NewConfigStoreBuilder(
-		configstore.JSONProvider,
-		lightManifestPath,
-		darkManifestPath,
-		filepath.Join(rootDir, "opt/hcf/specs"),
-	)
-
-	if err := configStore.WriteBaseConfig(roleManifest); err != nil {
-		return "", fmt.Errorf("Error writing base config: %s", err.Error())
-	}
-
-	// Copy packages
-	r.ui.Println("Copying compiled packages...")
-	copiedFingerprints := make(map[string]bool)
-	for _, role := range roleManifest.Roles {
-		for _, job := range role.Jobs {
-			for _, pkg := range job.Packages {
-				if _, ok := copiedFingerprints[pkg.Fingerprint]; ok {
-					// Package has already been copied (possibly due to a different role)
-					continue
-				}
-
-				compiledDir := pkg.GetPackageCompiledDir(r.compiledPackagesPath)
-				if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
-					return "", err
-				}
-
-				packageDir := filepath.Join(rootDir, "var/vcap/packages-src", pkg.Fingerprint)
-				err = shutil.CopyTree(
-					compiledDir,
-					packageDir,
-					&shutil.CopyTreeOptions{
-						Symlinks:               true,
-						Ignore:                 nil,
-						CopyFunction:           shutil.Copy,
-						IgnoreDanglingSymlinks: false,
-					},
-				)
-				if err != nil {
-					return "", err
-				}
-
-				copiedFingerprints[pkg.Fingerprint] = true
-			}
-		}
-	}
-
-	succeeded = true
-	return buildDir, nil
-}
-
 // CreateDockerfileDir generates a Dockerfile and assets in the targetDir and returns a path to the dir
 func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName string) (string, error) {
 	if len(role.Jobs) == 0 {
@@ -342,31 +260,22 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
-// generateDockerfile builds a docker file for a given role, or, if no role was
-// provided, the docker file for the shared layer.
-func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImage string, outputFile io.Writer) error {
-	var asset []byte
-	var err error
+// generateDockerfile builds a docker file for a given role.
+func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName string, outputFile io.Writer) error {
+	asset, err := dockerfiles.Asset("Dockerfile-role")
+	if err != nil {
+		return err
+	}
+
+	dockerfileTemplate := template.New("Dockerfile-role")
+
 	context := map[string]interface{}{
-		"base_image":    baseImage,
+		"base_image":    baseImageName,
 		"image_version": r.version,
 		"role":          role,
-	}
-	if role != nil {
-		context["licenses"] = role.Jobs[0].Release.License.Files
-
-		asset, err = dockerfiles.Asset("Dockerfile-role")
-		if err != nil {
-			return err
-		}
-	} else {
-		asset, err = dockerfiles.Asset("Dockerfile-packages")
-		if err != nil {
-			return err
-		}
+		"licenses":      role.Jobs[0].Release.License.Files,
 	}
 
-	dockerfileTemplate := template.New("Dockerfile")
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
 	if err != nil {
 		return err
@@ -406,7 +315,7 @@ func (j roleBuildJob) Run() {
 			j.resultsCh <- err
 			return
 		} else if hasImage {
-			j.ui.Printf("Skipping build of role images %s because it exists\n", color.YellowString(j.role.Name))
+			j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
 			j.resultsCh <- nil
 			return
 		}
@@ -500,13 +409,5 @@ func GetRoleDevImageName(repository string, role *model.Role, version string) st
 		repository,
 		role.Name,
 		version,
-	))
-}
-
-// GetRolePackageImageName generates a docker image name for the amalgamation for a role image
-func GetRolePackageImageName(repository string, roleManifest *model.RoleManifest, version string) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
-		repository,
-		roleManifest.GetRoleManifestDevPackageVersion(version),
 	))
 }
