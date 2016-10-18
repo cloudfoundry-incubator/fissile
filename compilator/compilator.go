@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -140,6 +141,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 		c.ui.Println("No package needed to be built")
 		return nil
 	}
+	sort.Sort(packages)
 
 	// Setup the queuing system ...
 	doneCh := make(chan compileResult)
@@ -205,7 +207,7 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	return err
 }
 
-func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *model.RoleManifest) []*model.Package {
+func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *model.RoleManifest) model.Packages {
 	var packages []*model.Package
 
 	for _, release := range releases {
@@ -747,19 +749,18 @@ func (c *Compilator) BaseImageName() string {
 
 // removeCompiledPackages must be called after initPackageMaps as it closes
 // the broadcast channels of anything already compiled.
-func (c *Compilator) removeCompiledPackages(packages []*model.Package) ([]*model.Package, error) {
-	var culledPackages []*model.Package
-	for i := 0; i < len(packages); i++ {
-		p := packages[i]
-		compiled, err := isPackageCompiledHarness(c, p)
+func (c *Compilator) removeCompiledPackages(packages model.Packages) (model.Packages, error) {
+	var culledPackages model.Packages
+	for _, pkg := range packages {
+		compiled, err := isPackageCompiledHarness(c, pkg)
 		if err != nil {
 			return nil, err
 		}
 
 		if compiled {
-			close(c.signalDependencies[p.Fingerprint])
+			close(c.signalDependencies[pkg.Fingerprint])
 		} else {
-			culledPackages = append(culledPackages, p)
+			culledPackages = append(culledPackages, pkg)
 		}
 	}
 
