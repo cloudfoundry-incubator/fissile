@@ -1,6 +1,7 @@
 package compilator
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -29,7 +30,7 @@ const (
 var dockerImageName string
 
 var ui = termui.New(
-	os.Stdin,
+	&bytes.Buffer{},
 	ioutil.Discard,
 	nil,
 )

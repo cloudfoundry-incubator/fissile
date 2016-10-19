@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestListPackages(t *testing.T) {
-	ui := termui.New(os.Stdin, ioutil.Discard, nil)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -37,7 +38,7 @@ func TestListPackages(t *testing.T) {
 }
 
 func TestListJobs(t *testing.T) {
-	ui := termui.New(os.Stdin, ioutil.Discard, nil)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -61,7 +62,7 @@ func TestListJobs(t *testing.T) {
 }
 
 func TestListProperties(t *testing.T) {
-	ui := termui.New(os.Stdin, ioutil.Discard, nil)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()

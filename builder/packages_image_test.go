@@ -31,7 +31,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
@@ -64,7 +64,7 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
