@@ -1,3 +1,5 @@
 FROM {{ index . "base_image" }}
 
-ADD root /
+ADD specs /opt/hcf/specs
+
+ADD packages-src /var/vcap/packages-src/

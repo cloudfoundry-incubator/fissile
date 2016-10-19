@@ -21,7 +21,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
@@ -73,7 +73,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
@@ -127,7 +127,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
@@ -252,7 +252,7 @@ func TestBuildRoleImages(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
-		os.Stdin,
+		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
