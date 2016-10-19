@@ -15,6 +15,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Given the contents of a Dockerfile, return each non-comment line in an array
+func getDockerfileLines(text string) []string {
+	var result []string
+	for _, line := range strings.Split(text, "\n") {
+		line := strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			result = append(result, line)
+		}
+	}
+	return result
+}
+
 func TestGenerateDockerfile(t *testing.T) {
 	assert := assert.New(t)
 
@@ -35,19 +47,11 @@ func TestGenerateDockerfile(t *testing.T) {
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
-	baseImage := "scratch:latest"
-
 	dockerfile := bytes.Buffer{}
-	err = packagesImageBuilder.generateDockerfile(baseImage, &dockerfile)
+	err = packagesImageBuilder.generateDockerfile("scratch:latest", &dockerfile)
 	assert.NoError(err)
 
-	var lines []string
-	for _, line := range strings.Split(dockerfile.String(), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
+	lines := getDockerfileLines(dockerfile.String())
 
 	assert.Equal([]string{
 		"FROM scratch:latest",
@@ -134,27 +138,18 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		if !assert.NoError(err) {
 			break
 		}
-		if expected, ok := expectedContents[header.Name]; ok {
-			actual, err := ioutil.ReadAll(tarReader)
-			assert.NoError(err)
-			if strings.HasSuffix(header.Name, ".json") {
-				assert.JSONEq(expected, string(actual))
-			} else {
-				var expectedLines, actualLines []string
-				for _, line := range strings.Split(expected, "\n") {
-					line = strings.TrimSpace(line)
-					if line != "" {
-						expectedLines = append(expectedLines, line)
-					}
-				}
-				for _, line := range strings.Split(string(actual), "\n") {
-					line = strings.TrimSpace(line)
-					if line != "" {
-						actualLines = append(actualLines, line)
-					}
-				}
-				assert.Equal(expectedLines, actualLines)
-			}
+		expected, ok := expectedContents[header.Name]
+		if !ok {
+			continue
+		}
+		actual, err := ioutil.ReadAll(tarReader)
+		assert.NoError(err)
+		if strings.HasSuffix(header.Name, ".json") {
+			assert.JSONEq(expected, string(actual))
+		} else {
+			expectedLines := getDockerfileLines(expected)
+			actualLines := getDockerfileLines(string(actual))
+			assert.Equal(expectedLines, actualLines)
 		}
 	}
 

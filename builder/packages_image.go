@@ -51,10 +51,12 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
+
 	header, err := tar.FileInfoHeader(info, "")
 	if err != nil {
 		return err
 	}
+
 	if (info.Mode() & os.ModeSymlink) != 0 {
 		linkname, err := os.Readlink(path)
 		if err != nil {
@@ -62,25 +64,29 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 		}
 		header.Linkname = linkname
 	}
+
 	relPath, err := filepath.Rel(w.root, path)
 	if err != nil {
 		return err
 	}
+
 	header.Name = filepath.Join(w.prefix, relPath)
 	if err := w.stream.WriteHeader(header); err != nil {
 		return err
 	}
-	if info.Mode().IsRegular() {
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		if _, err = io.CopyN(w.stream, file, info.Size()); err != nil {
-			return err
-		}
+
+	if !info.Mode().IsRegular() {
+		return nil
 	}
-	return nil
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.CopyN(w.stream, file, info.Size())
+	return err
 }
 
 // CreatePackagesDockerStream generates a tar stream containing the docker context to build the packages layer image with
@@ -94,79 +100,75 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 
 	go func() {
 		defer close(errors)
-		defer pipeWriter.Close()
-		tarStream := tar.NewWriter(pipeWriter)
-		defer tarStream.Close()
+		errors <- func() error {
+			defer pipeWriter.Close()
+			tarStream := tar.NewWriter(pipeWriter)
+			defer tarStream.Close()
 
-		// Generate configuration
-		specDir, err := ioutil.TempDir("", "fissile-spec-dir")
-		if err != nil {
-			errors <- err
-			return
-		}
-		defer os.RemoveAll(specDir)
-		configStore := configstore.NewConfigStoreBuilder(
-			configstore.JSONProvider,
-			lightManifestPath,
-			darkManifestPath,
-			specDir,
-		)
+			// Generate configuration
+			specDir, err := ioutil.TempDir("", "fissile-spec-dir")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(specDir)
+			configStore := configstore.NewConfigStoreBuilder(
+				configstore.JSONProvider,
+				lightManifestPath,
+				darkManifestPath,
+				specDir,
+			)
 
-		if err := configStore.WriteBaseConfig(roleManifest); err != nil {
-			errors <- fmt.Errorf("Error writing base config: %s", err.Error())
-			return
-		}
-		walker := &tarWalker{stream: tarStream, root: specDir, prefix: "specs"}
-		if err := filepath.Walk(specDir, walker.walk); err != nil {
-			errors <- err
-			return
-		}
+			if err := configStore.WriteBaseConfig(roleManifest); err != nil {
+				return fmt.Errorf("Error writing base config: %s", err.Error())
+			}
+			walker := &tarWalker{stream: tarStream, root: specDir, prefix: "specs"}
+			if err := filepath.Walk(specDir, walker.walk); err != nil {
+				return err
+			}
 
-		// Collect compiled packages
-		foundFingerprints := make(map[string]bool)
-		for _, role := range roleManifest.Roles {
-			for _, job := range role.Jobs {
-				for _, pkg := range job.Packages {
-					if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
-						// Package has already been found (possibly due to a different role)
-						continue
+			// Collect compiled packages
+			foundFingerprints := make(map[string]struct{})
+			for _, role := range roleManifest.Roles {
+				for _, job := range role.Jobs {
+					for _, pkg := range job.Packages {
+						if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
+							// Package has already been found (possibly due to a different role)
+							continue
+						}
+						walker := &tarWalker{
+							stream: tarStream,
+							root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
+							prefix: filepath.Join("packages-src", pkg.Fingerprint),
+						}
+						if err := filepath.Walk(walker.root, walker.walk); err != nil {
+							return err
+						}
+						foundFingerprints[pkg.Fingerprint] = struct{}{}
 					}
-					walker := &tarWalker{
-						stream: tarStream,
-						root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
-						prefix: filepath.Join("packages-src", pkg.Fingerprint),
-					}
-					err := filepath.Walk(walker.root, walker.walk)
-					if err != nil {
-						errors <- err
-						return
-					}
-					foundFingerprints[pkg.Fingerprint] = true
 				}
 			}
-		}
 
-		// Generate dockerfile
-		dockerfile := bytes.Buffer{}
-		baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
-		if err := p.generateDockerfile(baseImageName, &dockerfile); err != nil {
-			errors <- err
-			return
-		}
-		header := tar.Header{
-			Name:     "Dockerfile",
-			Mode:     0644,
-			Size:     int64(dockerfile.Len()),
-			Typeflag: tar.TypeReg,
-		}
-		if err := tarStream.WriteHeader(&header); err != nil {
-			errors <- err
-			return
-		}
-		if _, err := tarStream.Write(dockerfile.Bytes()); err != nil {
-			errors <- err
-			return
-		}
+			// Generate dockerfile
+			dockerfile := bytes.Buffer{}
+			baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+			if err := p.generateDockerfile(baseImageName, &dockerfile); err != nil {
+				return err
+			}
+			header := tar.Header{
+				Name:     "Dockerfile",
+				Mode:     0644,
+				Size:     int64(dockerfile.Len()),
+				Typeflag: tar.TypeReg,
+			}
+			if err := tarStream.WriteHeader(&header); err != nil {
+				return err
+			}
+			if _, err := tarStream.Write(dockerfile.Bytes()); err != nil {
+				return err
+			}
+
+			return nil
+		}()
 	}()
 	return pipeReader, errors, nil
 }

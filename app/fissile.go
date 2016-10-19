@@ -367,11 +367,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	}
 	f.UI.Println(color.GreenString("Done."))
 
-	for err = range errors {
-		return err
-	}
-
-	return nil
+	return <-errors
 }
 
 // GenerateRoleImages generates all role images using dev releases
