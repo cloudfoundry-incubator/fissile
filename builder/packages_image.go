@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -13,7 +15,6 @@ import (
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
 	"github.com/hpcloud/termui"
-	shutil "github.com/termie/go-shutil"
 )
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image
@@ -39,86 +40,135 @@ func NewPackagesImageBuilder(repository, compiledPackagesPath, targetPath, fissi
 	}, nil
 }
 
-// CreatePackagesDockerBuildDir generates a Dockerfile and assets for the shared packages layer and returns a path to the dir
-func (p *PackagesImageBuilder) CreatePackagesDockerBuildDir(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string) (string, error) {
-	if len(roleManifest.Roles) == 0 {
-		return "", fmt.Errorf("No roles to build")
-	}
+// tarWalker is a helper to copy files into a tar stream
+type tarWalker struct {
+	stream *tar.Writer // The stream to copy the files into
+	root   string      // The base directory on disk where the walking started
+	prefix string      // The prefix in the tar file the names should have
+}
 
-	succeeded := false
-	buildDir, err := ioutil.TempDir(p.targetPath, "role-packages")
+func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer func() {
-		if !succeeded {
-			os.RemoveAll(buildDir)
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return err
+	}
+	if (info.Mode() & os.ModeSymlink) != 0 {
+		linkname, err := os.Readlink(path)
+		if err != nil {
+			return err
 		}
-	}()
-	rootDir := filepath.Join(buildDir, "root")
-
-	// Generate dockerfile
-	dockerfile, err := os.Create(filepath.Join(buildDir, "Dockerfile"))
+		header.Linkname = linkname
+	}
+	relPath, err := filepath.Rel(w.root, path)
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer dockerfile.Close()
-	baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
-	if err := p.generateDockerfile(baseImageName, dockerfile); err != nil {
-		return "", err
+	header.Name = filepath.Join(w.prefix, relPath)
+	if err := w.stream.WriteHeader(header); err != nil {
+		return err
+	}
+	if info.Mode().IsRegular() {
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		if _, err = io.CopyN(w.stream, file, info.Size()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CreatePackagesDockerStream generates a tar stream containing the docker context to build the packages layer image with
+func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string) (io.ReadCloser, <-chan error, error) {
+	if len(roleManifest.Roles) == 0 {
+		return nil, nil, fmt.Errorf("No roles to build")
 	}
 
-	// Generate configuration
-	p.ui.Println("Generating configuration JSON specs ...")
-	configStore := configstore.NewConfigStoreBuilder(
-		configstore.JSONProvider,
-		lightManifestPath,
-		darkManifestPath,
-		filepath.Join(rootDir, "opt/hcf/specs"),
-	)
+	pipeReader, pipeWriter := io.Pipe()
+	errors := make(chan error)
 
-	if err := configStore.WriteBaseConfig(roleManifest); err != nil {
-		return "", fmt.Errorf("Error writing base config: %s", err.Error())
-	}
+	go func() {
+		defer close(errors)
+		defer pipeWriter.Close()
+		tarStream := tar.NewWriter(pipeWriter)
+		defer tarStream.Close()
 
-	// Copy packages
-	p.ui.Println("Copying compiled packages...")
-	copiedFingerprints := make(map[string]bool)
-	for _, role := range roleManifest.Roles {
-		for _, job := range role.Jobs {
-			for _, pkg := range job.Packages {
-				if _, ok := copiedFingerprints[pkg.Fingerprint]; ok {
-					// Package has already been copied (possibly due to a different role)
-					continue
+		// Generate configuration
+		specDir, err := ioutil.TempDir("", "fissile-spec-dir")
+		if err != nil {
+			errors <- err
+			return
+		}
+		defer os.RemoveAll(specDir)
+		configStore := configstore.NewConfigStoreBuilder(
+			configstore.JSONProvider,
+			lightManifestPath,
+			darkManifestPath,
+			specDir,
+		)
+
+		if err := configStore.WriteBaseConfig(roleManifest); err != nil {
+			errors <- fmt.Errorf("Error writing base config: %s", err.Error())
+			return
+		}
+		walker := &tarWalker{stream: tarStream, root: specDir, prefix: "specs"}
+		if err := filepath.Walk(specDir, walker.walk); err != nil {
+			errors <- err
+			return
+		}
+
+		// Collect compiled packages
+		foundFingerprints := make(map[string]bool)
+		for _, role := range roleManifest.Roles {
+			for _, job := range role.Jobs {
+				for _, pkg := range job.Packages {
+					if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
+						// Package has already been found (possibly due to a different role)
+						continue
+					}
+					walker := &tarWalker{
+						stream: tarStream,
+						root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
+						prefix: filepath.Join("packages-src", pkg.Fingerprint),
+					}
+					err := filepath.Walk(walker.root, walker.walk)
+					if err != nil {
+						errors <- err
+						return
+					}
+					foundFingerprints[pkg.Fingerprint] = true
 				}
-
-				compiledDir := pkg.GetPackageCompiledDir(p.compiledPackagesPath)
-				if err := util.ValidatePath(compiledDir, true, fmt.Sprintf("compiled dir for package %s", pkg.Name)); err != nil {
-					return "", err
-				}
-
-				packageDir := filepath.Join(rootDir, "var/vcap/packages-src", pkg.Fingerprint)
-				err = shutil.CopyTree(
-					compiledDir,
-					packageDir,
-					&shutil.CopyTreeOptions{
-						Symlinks:               true,
-						Ignore:                 nil,
-						CopyFunction:           shutil.Copy,
-						IgnoreDanglingSymlinks: false,
-					},
-				)
-				if err != nil {
-					return "", err
-				}
-
-				copiedFingerprints[pkg.Fingerprint] = true
 			}
 		}
-	}
 
-	succeeded = true
-	return buildDir, nil
+		// Generate dockerfile
+		dockerfile := bytes.Buffer{}
+		baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+		if err := p.generateDockerfile(baseImageName, &dockerfile); err != nil {
+			errors <- err
+			return
+		}
+		header := tar.Header{
+			Name:     "Dockerfile",
+			Mode:     0644,
+			Size:     int64(dockerfile.Len()),
+			Typeflag: tar.TypeReg,
+		}
+		if err := tarStream.WriteHeader(&header); err != nil {
+			errors <- err
+			return
+		}
+		if _, err := tarStream.Write(dockerfile.Bytes()); err != nil {
+			errors <- err
+			return
+		}
+	}()
+	return pipeReader, errors, nil
 }
 
 // generateDockerfile builds a docker file for the shared packages layer.

@@ -341,35 +341,35 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	}
 
 	f.UI.Printf("Creating Dockerfile for packages layer...\n")
-	buildDir, err := packagesImageBuilder.CreatePackagesDockerBuildDir(roleManifest, lightManifestPath, darkManifestPath)
+	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(roleManifest, lightManifestPath, darkManifestPath)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(buildDir)
+	defer tarStream.Close()
 
 	if noBuild {
 		f.UI.Println("Skipping packages layer docker image build because of --no-build flag.")
 		return nil
 	}
 
-	if !strings.HasSuffix(buildDir, string(os.PathSeparator)) {
-		buildDir = fmt.Sprintf("%s%c", buildDir, os.PathSeparator)
-	}
-	f.UI.Printf("Building packages layer docker image %s in %s ...\n",
-		color.YellowString(packagesLayerImageName),
-		color.YellowString(buildDir))
+	f.UI.Printf("Building packages layer docker image %s ...\n",
+		color.YellowString(packagesLayerImageName))
 	log := new(bytes.Buffer)
 	stdoutWriter := docker.NewFormattingWriter(
 		log,
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	err = dockerManager.BuildImage(buildDir, packagesLayerImageName, stdoutWriter)
+	err = dockerManager.BuildImageFromStream(tarStream, packagesLayerImageName, stdoutWriter)
 	if err != nil {
 		log.WriteTo(f.UI)
 		return fmt.Errorf("Error building packages layer docker image: %s", err.Error())
 	}
 	f.UI.Println(color.GreenString("Done."))
+
+	for err = range errors {
+		return err
+	}
 
 	return nil
 }

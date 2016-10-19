@@ -148,6 +148,40 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 	return nil
 }
 
+// BuildImageFromStream builds a docker image using a tar file stream containing a Dockerfile
+// A io.Writer can be given for log messages; if it implments io.Closer, it will be closed when done.
+func (d *ImageManager) BuildImageFromStream(stream io.Reader, name string, stdoutWriter io.Writer) error {
+	bio := dockerclient.BuildImageOptions{
+		Name:         name,
+		NoCache:      true,
+		InputStream:  stream,
+		OutputStream: stdoutWriter,
+	}
+
+	for _, envVar := range []string{"http_proxy", "https_proxy", "no_proxy"} {
+		for _, name := range []string{strings.ToLower(envVar), strings.ToUpper(envVar)} {
+			if val, ok := os.LookupEnv(name); ok {
+				bio.BuildArgs = append(bio.BuildArgs, dockerclient.BuildArg{
+					Name:  name,
+					Value: val,
+				})
+			}
+		}
+	}
+
+	if stdoutCloser, ok := stdoutWriter.(io.Closer); ok {
+		defer func() {
+			stdoutCloser.Close()
+		}()
+	}
+
+	if err := d.client.BuildImage(bio); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // FindImage will lookup an image in Docker
 func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) {
 	image, err := d.client.InspectImage(imageName)
