@@ -341,7 +341,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	}
 
 	f.UI.Printf("Creating Dockerfile for packages layer...\n")
-	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(roleManifest, lightManifestPath, darkManifestPath)
+	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(roleManifest, lightManifestPath, darkManifestPath, force)
 	if err != nil {
 		return err
 	}

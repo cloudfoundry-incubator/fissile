@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
+	"github.com/golang/mock/gomock"
+	_ "github.com/golang/mock/mockgen" // Force godep to pick it up
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -484,4 +486,190 @@ func TestBuildImageFromStream(t *testing.T) {
 			assert.False(hasImage, "Failed to remove image")
 		}
 	}
+}
+
+//go:generate -command mockgen go run ../vendor/github.com/golang/mock/mockgen/mockgen.go ../vendor/github.com/golang/mock/mockgen/parse.go ../vendor/github.com/golang/mock/mockgen/reflect.go
+//go:generate mockgen -source docker.go -package docker -destination mock_dockerclient_generated.go dockerClient
+
+type mockImage struct {
+	name    string
+	labels  map[string]string
+	history []dockerclient.ImageHistory
+}
+
+func setupFindBestImageWithLabels(mock *MockdockerClient, data []mockImage) {
+	var laterImages []dockerclient.APIImages
+	for _, image := range data {
+		mock.EXPECT().
+			ImageHistory(image.name).
+			Return(image.history, nil)
+		if image.name != data[0].name {
+			apiImage := dockerclient.APIImages{
+				ID:     image.history[0].ID,
+				Size:   image.history[0].Size,
+				Labels: image.labels,
+			}
+			laterImages = append(laterImages, apiImage)
+		}
+	}
+	expectedListOptions := dockerclient.ListImagesOptions{
+		All:     true,
+		Filters: map[string][]string{"since": []string{data[0].name}},
+	}
+	mock.EXPECT().
+		ListImages(expectedListOptions).
+		Return(laterImages, nil)
+	mock.EXPECT().
+		ListImages(dockerclient.ListImagesOptions{Filter: data[0].name}).
+		Return([]dockerclient.APIImages{
+			dockerclient.APIImages{ID: data[0].history[0].ID},
+		}, nil)
+}
+
+func TestFindBestImageWithLabels_OnlyBase(t *testing.T) {
+	assert := assert.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDockerClient := NewMockdockerClient(mockCtl)
+	dockerManager := &ImageManager{
+		client: mockDockerClient,
+	}
+
+	images := []mockImage{
+		{
+			name: "base-image:tag",
+			history: []dockerclient.ImageHistory{
+				{ID: "base-image-id"},
+			},
+		},
+	}
+	setupFindBestImageWithLabels(mockDockerClient, images)
+
+	wantedTags := []string{"wanted-tag"} // There is no match here
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags)
+	assert.NoError(err)
+	assert.Equal(images[0].history[0].ID, desiredImage)
+	assert.Empty(foundLabels)
+}
+
+func TestFindBestImageWithLabels_Simple(t *testing.T) {
+	assert := assert.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDockerClient := NewMockdockerClient(mockCtl)
+	dockerManager := &ImageManager{
+		client: mockDockerClient,
+	}
+
+	wantedTag := "wanted-tag"
+	images := []mockImage{
+		{
+			name: "base-image:tag",
+			history: []dockerclient.ImageHistory{
+				{ID: "base-image-id"},
+			},
+		},
+		{
+			name: "some-other-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-other-layer", Size: 1},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{wantedTag: "value"},
+		},
+	}
+	setupFindBestImageWithLabels(mockDockerClient, images)
+
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag})
+	assert.NoError(err)
+	assert.Equal(images[1].history[0].ID, desiredImage)
+	assert.Equal(images[1].labels, foundLabels)
+}
+
+func TestFindBestImageWithLabels_PickSmaller(t *testing.T) {
+	assert := assert.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDockerClient := NewMockdockerClient(mockCtl)
+	dockerManager := &ImageManager{
+		client: mockDockerClient,
+	}
+
+	wantedTag := "wanted-tag"
+	images := []mockImage{
+		{
+			name: "base-image:tag",
+			history: []dockerclient.ImageHistory{
+				{ID: "base-image-id"},
+			},
+		},
+		{
+			name: "some-other-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-other-layer", Size: 2},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{wantedTag: "value"},
+		},
+		{
+			name: "some-third-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-third-layer", Size: 1},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{wantedTag: "other-value"},
+		},
+	}
+	setupFindBestImageWithLabels(mockDockerClient, images)
+
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag})
+	assert.NoError(err)
+	assert.Equal(images[2].history[0].ID, desiredImage)
+	assert.Equal(images[2].labels, foundLabels)
+}
+
+func TestFindBestImageWithLabels_PickMostMatchingTags(t *testing.T) {
+	assert := assert.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDockerClient := NewMockdockerClient(mockCtl)
+	dockerManager := &ImageManager{
+		client: mockDockerClient,
+	}
+
+	wantedTags := []string{"tag-one", "tag-two"}
+	images := []mockImage{
+		{
+			name: "base-image:tag",
+			history: []dockerclient.ImageHistory{
+				{ID: "base-image-id"},
+			},
+		},
+		{
+			name: "some-other-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-other-layer", Size: 2},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{"tag-one": "1", "tag-two": "2"},
+		},
+		{
+			name: "some-third-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-third-layer", Size: 1},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{"tag-one": "1"},
+		},
+	}
+	setupFindBestImageWithLabels(mockDockerClient, images)
+
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags)
+	assert.NoError(err)
+	assert.Equal(images[1].history[0].ID, desiredImage)
+	assert.Equal(images[1].labels, foundLabels)
 }

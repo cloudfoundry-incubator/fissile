@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -28,9 +29,28 @@ var (
 	ErrImageNotFound = fmt.Errorf("Image not found")
 )
 
+// dockerClient is an interface to represent a dockerclient.Client
+// It exists so we can replace it with a mock object in tests
+type dockerClient interface {
+	AttachToContainerNonBlocking(dockerclient.AttachToContainerOptions) (dockerclient.CloseWaiter, error)
+	BuildImage(dockerclient.BuildImageOptions) error
+	CommitContainer(dockerclient.CommitContainerOptions) (*dockerclient.Image, error)
+	CreateContainer(dockerclient.CreateContainerOptions) (*dockerclient.Container, error)
+	CreateVolume(dockerclient.CreateVolumeOptions) (*dockerclient.Volume, error)
+	ImageHistory(string) ([]dockerclient.ImageHistory, error)
+	InspectImage(string) (*dockerclient.Image, error)
+	ListImages(dockerclient.ListImagesOptions) ([]dockerclient.APIImages, error)
+	ListVolumes(dockerclient.ListVolumesOptions) ([]dockerclient.Volume, error)
+	RemoveContainer(dockerclient.RemoveContainerOptions) error
+	RemoveImage(string) error
+	RemoveVolume(string) error
+	StartContainer(string, *dockerclient.HostConfig) error
+	WaitContainer(string) (int, error)
+}
+
 // ImageManager handles Docker images
 type ImageManager struct {
-	client *dockerclient.Client
+	client dockerClient
 }
 
 // NewImageManager creates an instance of ImageManager
@@ -193,6 +213,121 @@ func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) 
 	}
 
 	return image, nil
+}
+
+// FindBestImageWithLabels finds the best image that has a given base image, and
+// has as many of the given labels as possible.  Returns the best matching image
+// name, and all of the matched labels (and their values).
+func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []string) (string, map[string]string, error) {
+	// We want to walk through all images newer than the provided base image,
+	// and find everything with some set of matching labels.  For all of the
+	// images with at least one match, we use the smallest-sized image for each
+	// unique combination of labels (i.e. discard images that had additional
+	// unrelated labels on top).  We then want to use the largest-sized image
+	// in the hopes of reducing copies from unchanged packages.
+	// Note that this means the _number_ of matching labels don't matter as long
+	// as it's at least one.
+
+	// Get information about the image we have first
+	history, err := d.client.ImageHistory(baseImageName)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(history) < 1 {
+		return "", nil, fmt.Errorf("Image %s has no history", baseImageName)
+	}
+	desiredLayer := history[0].ID
+
+	// Convert the desired labels to a hash for easier lookup
+	desiredLabels := make(map[string]bool, len(labels))
+	for _, label := range labels {
+		desiredLabels[label] = true
+	}
+
+	// Iterate through all available images and find candidates
+	matchingImages := make(map[string]dockerclient.APIImages)
+	listOptions := dockerclient.ListImagesOptions{
+		All:     true,
+		Filters: map[string][]string{"since": []string{baseImageName}},
+	}
+	candidates, err := d.client.ListImages(listOptions)
+	if err != nil {
+		return "", nil, err
+	}
+	for _, candidate := range candidates {
+		history, err = d.client.ImageHistory(candidate.ID)
+		if err != nil {
+			return "", nil, err
+		}
+		found := false
+		for _, layer := range history {
+			if layer.ID == desiredLayer {
+				found = true
+				break
+			}
+		}
+		if !found {
+			// This image does not derive from the desired base image
+			continue
+		}
+
+		// Figure out how many labels we match and put it in the list
+		var matchedLabels []string
+		for label := range candidate.Labels {
+			if _, ok := desiredLabels[label]; ok {
+				matchedLabels = append(matchedLabels, label)
+			}
+		}
+		if len(matchedLabels) == 0 {
+			// This is no better than the base image
+			continue
+		}
+		sort.Strings(matchedLabels)
+		matchKey := strings.Join(matchedLabels, "\n")
+		oldMatch, ok := matchingImages[matchKey]
+		if !ok {
+			// No previous match, this is the best so far
+			matchingImages[matchKey] = candidate
+			continue
+		}
+		if oldMatch.Size > candidate.Size {
+			// The new candidate matches all the labels of the old one,
+			// but is smaller
+			matchingImages[matchKey] = candidate
+		} else if oldMatch.Size == candidate.Size {
+			// The images have the same size; this can happen if there are
+			// additional metadata steps (e.g. LABEL, ENTRYPOINT).  We want to
+			// have as few layers as possible, though.  As a proxy, use the
+			// older image by creation date; if one is an ancestor of the other,
+			// this will get us the image with fewer layers.
+			if oldMatch.Created > candidate.Created {
+				matchingImages[matchKey] = candidate
+			}
+		}
+	}
+
+	// Find the largest match
+	listOptions = dockerclient.ListImagesOptions{Filter: baseImageName}
+	baseImages, err := d.client.ListImages(listOptions)
+	if err != nil {
+		return "", nil, err
+	}
+	bestMatch := baseImages[0]
+	for _, candidate := range matchingImages {
+		if candidate.Size > bestMatch.Size {
+			bestMatch = candidate
+		}
+	}
+
+	// Find the matching labels
+	matchedLabels := make(map[string]string)
+	for _, label := range labels {
+		if value, ok := bestMatch.Labels[label]; ok {
+			matchedLabels[label] = value
+		}
+	}
+
+	return bestMatch.ID, matchedLabels, nil
 }
 
 // HasImage determines if the given image already exists in Docker

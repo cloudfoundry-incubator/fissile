@@ -3,6 +3,7 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
@@ -48,11 +50,11 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	dockerfile := bytes.Buffer{}
-	err = packagesImageBuilder.generateDockerfile("scratch:latest", &dockerfile)
+
+	err = packagesImageBuilder.generateDockerfile("scratch:latest", nil, &dockerfile)
 	assert.NoError(err)
 
 	lines := getDockerfileLines(dockerfile.String())
-
 	assert.Equal([]string{
 		"FROM scratch:latest",
 		"ADD specs /opt/hcf/specs",
@@ -71,6 +73,9 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 
 	workDir, err := os.Getwd()
 	assert.NoError(err)
+
+	baseImageOverride = defaultDockerTestImage
+	defer func() { baseImageOverride = "" }()
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
@@ -94,6 +99,7 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		rolesManifest,
 		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
 		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),
+		false,
 	)
 	assert.NoError(err)
 	defer tarStream.Close()
@@ -103,12 +109,37 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		return
 	}
 
-	expectedContents := map[string]string{
-		"Dockerfile": `
-			FROM foo-role-base:3.14.15
-			ADD specs /opt/hcf/specs
-			ADD packages-src /var/vcap/packages-src/`,
-		"specs/foorole/tor.json": `{
+	// Get the docker id for the image we'll be building from...
+	dockerManager, err := docker.NewImageManager()
+	assert.NoError(err)
+	baseImage, err := dockerManager.FindImage(baseImageOverride)
+	assert.NoError(err)
+
+	testFunctions := map[string]func(string){
+		"Dockerfile": func(contents string) {
+			var i int
+			var line string
+			testers := []func(){
+				func() { assert.Equal(fmt.Sprintf("FROM %s", baseImage.ID), line, "line 1 should start with FROM") },
+				func() { assert.Equal("ADD specs /opt/hcf/specs", line, "line 2 mismatch") },
+				func() { assert.Equal("ADD packages-src /var/vcap/packages-src/", line, "line 3 mismatch") },
+				func() {
+					expected := []string{
+						"LABEL",
+						fmt.Sprintf(`"fingerprint.%s"="libevent"`, getPackage(rolesManifest.Roles, "myrole", "tor", "libevent").Fingerprint),
+						fmt.Sprintf(`"fingerprint.%s"="tor"`, getPackage(rolesManifest.Roles, "myrole", "tor", "tor").Fingerprint),
+					}
+					assert.Equal(expected, strings.Fields(line), "line 4 has unexpected fields")
+				},
+			}
+			for i, line = range getDockerfileLines(contents) {
+				if assert.True(i < len(testers), "Extra line #%d: %s", i+1, line) {
+					testers[i]()
+				}
+			}
+		},
+		"specs/foorole/tor.json": func(contents string) {
+			expected := `{
 				"job": {
 					"name": "foorole",
 					"templates": [{"name": "tor"}]
@@ -125,9 +156,12 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 						"private_key": null
 					}
 				}
-			}`,
-		// The next file is empty
-		"packages-src/b9973278a447dfb5e8e67661deaa5fe7001ad742/foo": ``,
+			}`
+			assert.JSONEq(expected, string(contents))
+		},
+		"packages-src/b9973278a447dfb5e8e67661deaa5fe7001ad742/bar": func(contents string) {
+			assert.Empty(contents)
+		},
 	}
 	tarReader := tar.NewReader(tarStream)
 	for {
@@ -138,22 +172,14 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		if !assert.NoError(err) {
 			break
 		}
-		expected, ok := expectedContents[header.Name]
-		if !ok {
-			continue
-		}
-		actual, err := ioutil.ReadAll(tarReader)
-		assert.NoError(err)
-		if strings.HasSuffix(header.Name, ".json") {
-			assert.JSONEq(expected, string(actual))
-		} else {
-			expectedLines := getDockerfileLines(expected)
-			actualLines := getDockerfileLines(string(actual))
-			assert.Equal(expectedLines, actualLines)
+		if tester, ok := testFunctions[header.Name]; ok {
+			actual, err := ioutil.ReadAll(tarReader)
+			assert.NoError(err)
+			tester(string(actual))
+			delete(testFunctions, header.Name)
 		}
 	}
+	assert.Empty(testFunctions, "Missing files in tar stream")
 
-	for err := range errors {
-		assert.NoError(err)
-	}
+	assert.NoError(<-errors)
 }
