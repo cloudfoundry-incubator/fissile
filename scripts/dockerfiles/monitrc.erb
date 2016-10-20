@@ -1,7 +1,13 @@
 set daemon 10
 set logfile /var/vcap/monit/monit.log
 
+# We use a random account here that's not read-only to allow local access to
+# monit via the monit CLI. This is the only mechanism we've found that ensures
+# remote access is read-only and accessible using the "knowable" credentials 
+# provided by the user. We're afraid of exposing writable access to remote clients
+# using a non-TLS enabled connection.
 set httpd port <%= p("hcf.monit.port") %> and use address 0.0.0.0
+  allow "<%= SecureRandom.hex %>":"<%= SecureRandom.hex %>"
   allow "<%= p("hcf.monit.user") %>":"<%= p("hcf.monit.password") %>" read-only
 
 include /etc/monit/monitrc.d/cron
