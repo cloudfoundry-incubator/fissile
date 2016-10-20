@@ -30,7 +30,7 @@ RUN useradd -m --comment 'hcf user' vcap && \
     usermod -G vcap syslog && \
     apt-get autoremove -y && \
     apt-get clean && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
