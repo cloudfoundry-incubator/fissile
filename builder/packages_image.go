@@ -9,8 +9,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	configstore "github.com/hpcloud/fissile/config-store"
+	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
@@ -25,6 +27,9 @@ type PackagesImageBuilder struct {
 	fissileVersion       string
 	ui                   *termui.UI
 }
+
+// baseImageOverride is used for tests; if not set, we use the correct one
+var baseImageOverride string
 
 // NewPackagesImageBuilder creates a new PackagesImageBuilder
 func NewPackagesImageBuilder(repository, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
@@ -89,6 +94,49 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 	return err
 }
 
+// determinePackagesLayerBaseImage finds the best base image to use for the
+// packages layer image.  Given a list of packages, it returns the base image
+// name to use, as well as the set of packages that still need to be inserted.
+func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Packages) (string, model.Packages, error) {
+	baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+	if baseImageOverride != "" {
+		baseImageName = baseImageOverride
+	}
+
+	var labels []string
+	remainingPackages := make(map[string]*model.Package, len(packages))
+	for _, pkg := range packages {
+		labels = append(labels, fmt.Sprintf("fingerprint.%s", pkg.Fingerprint))
+		remainingPackages[pkg.Fingerprint] = pkg
+	}
+
+	dockerManger, err := docker.NewImageManager()
+	if err != nil {
+		return "", nil, err
+	}
+	matchedImage, foundLabels, err := dockerManger.FindBestImageWithLabels(baseImageName, labels)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Find the list of packages remaining
+	for label := range foundLabels {
+		parts := strings.Split(label, ".")
+		if len(parts) != 2 || parts[0] != "fingerprint" {
+			// Should never reach here...
+			continue
+		}
+		delete(remainingPackages, parts[1])
+	}
+
+	packages = make(model.Packages, 0, len(remainingPackages))
+	for _, pkg := range remainingPackages {
+		packages = append(packages, pkg)
+	}
+
+	return matchedImage, packages, nil
+}
+
 // CreatePackagesDockerStream generates a tar stream containing the docker context to build the packages layer image with
 func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string) (io.ReadCloser, <-chan error, error) {
 	if len(roleManifest.Roles) == 0 {
@@ -118,16 +166,17 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 				specDir,
 			)
 
-			if err := configStore.WriteBaseConfig(roleManifest); err != nil {
+			if err = configStore.WriteBaseConfig(roleManifest); err != nil {
 				return fmt.Errorf("Error writing base config: %s", err.Error())
 			}
 			walker := &tarWalker{stream: tarStream, root: specDir, prefix: "specs"}
-			if err := filepath.Walk(specDir, walker.walk); err != nil {
+			if err = filepath.Walk(specDir, walker.walk); err != nil {
 				return err
 			}
 
 			// Collect compiled packages
 			foundFingerprints := make(map[string]struct{})
+			var packages model.Packages
 			for _, role := range roleManifest.Roles {
 				for _, job := range role.Jobs {
 					for _, pkg := range job.Packages {
@@ -135,14 +184,7 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 							// Package has already been found (possibly due to a different role)
 							continue
 						}
-						walker := &tarWalker{
-							stream: tarStream,
-							root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
-							prefix: filepath.Join("packages-src", pkg.Fingerprint),
-						}
-						if err := filepath.Walk(walker.root, walker.walk); err != nil {
-							return err
-						}
+						packages = append(packages, pkg)
 						foundFingerprints[pkg.Fingerprint] = struct{}{}
 					}
 				}
@@ -150,8 +192,11 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 
 			// Generate dockerfile
 			dockerfile := bytes.Buffer{}
-			baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
-			if err := p.generateDockerfile(baseImageName, &dockerfile); err != nil {
+			baseImageName, packages, err := p.determinePackagesLayerBaseImage(packages)
+			if err != nil {
+				return err
+			}
+			if err = p.generateDockerfile(baseImageName, packages, &dockerfile); err != nil {
 				return err
 			}
 			header := tar.Header{
@@ -160,11 +205,34 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 				Size:     int64(dockerfile.Len()),
 				Typeflag: tar.TypeReg,
 			}
-			if err := tarStream.WriteHeader(&header); err != nil {
+			if err = tarStream.WriteHeader(&header); err != nil {
 				return err
 			}
-			if _, err := tarStream.Write(dockerfile.Bytes()); err != nil {
+			if _, err = tarStream.Write(dockerfile.Bytes()); err != nil {
 				return err
+			}
+
+			// Make sure we have the directory, even if we have no packages to add
+			header = tar.Header{
+				Name:     "packages-src",
+				Mode:     0755,
+				Size:     0,
+				Typeflag: tar.TypeDir,
+			}
+			if err = tarStream.WriteHeader(&header); err != nil {
+				return err
+			}
+
+			// Actually insert the packages into the tar stream
+			for _, pkg := range packages {
+				walker := &tarWalker{
+					stream: tarStream,
+					root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
+					prefix: filepath.Join("packages-src", pkg.Fingerprint),
+				}
+				if err = filepath.Walk(walker.root, walker.walk); err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -174,9 +242,10 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 }
 
 // generateDockerfile builds a docker file for the shared packages layer.
-func (p *PackagesImageBuilder) generateDockerfile(baseImage string, outputFile io.Writer) error {
+func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages model.Packages, outputFile io.Writer) error {
 	context := map[string]interface{}{
 		"base_image": baseImage,
+		"packages":   packages,
 	}
 	asset, err := dockerfiles.Asset("Dockerfile-packages")
 	if err != nil {
