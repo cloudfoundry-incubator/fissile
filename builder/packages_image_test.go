@@ -99,6 +99,7 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		rolesManifest,
 		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
 		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),
+		false,
 	)
 	assert.NoError(err)
 	defer tarStream.Close()

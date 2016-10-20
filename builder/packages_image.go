@@ -138,7 +138,7 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 }
 
 // CreatePackagesDockerStream generates a tar stream containing the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string) (io.ReadCloser, <-chan error, error) {
+func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string, forceBuildAll bool) (io.ReadCloser, <-chan error, error) {
 	if len(roleManifest.Roles) == 0 {
 		return nil, nil, fmt.Errorf("No roles to build")
 	}
@@ -192,9 +192,12 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 
 			// Generate dockerfile
 			dockerfile := bytes.Buffer{}
-			baseImageName, packages, err := p.determinePackagesLayerBaseImage(packages)
-			if err != nil {
-				return err
+			baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+			if !forceBuildAll {
+				baseImageName, packages, err = p.determinePackagesLayerBaseImage(packages)
+				if err != nil {
+					return err
+				}
 			}
 			if err = p.generateDockerfile(baseImageName, packages, &dockerfile); err != nil {
 				return err
