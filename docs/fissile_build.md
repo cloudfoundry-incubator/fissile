@@ -10,7 +10,7 @@ Has subcommands to build all images and necessary artifacts.
 ### Options inherited from parent commands
 
 ```
-  -c, --cache-dir string         Local BOSH cache directory. (default "/Users/vladi/.bosh/cache")
+  -c, --cache-dir string         Local BOSH cache directory. (default "~/.bosh/cache")
       --config string            config file (default is $HOME/.fissile.yaml)
   -f, --configgin string         Path to the tarball containing configgin.
   -d, --dark-opinions string     Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.
