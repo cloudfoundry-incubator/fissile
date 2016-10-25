@@ -11,12 +11,6 @@ Displays information about all the docker layers used by fissile.
 fissile show layer
 ```
 
-### Options
-
-```
-  -B, --base-image string   Docker image used as a base for the layers (default "ubuntu:14.04")
-```
-
 ### Options inherited from parent commands
 
 ```
