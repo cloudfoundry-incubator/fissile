@@ -3,3 +3,7 @@ FROM {{ index . "base_image" }}
 ADD specs /opt/hcf/specs
 
 ADD packages-src /var/vcap/packages-src/
+
+{{ if .packages }}
+LABEL {{ range .packages }} "fingerprint.{{.Fingerprint}}"="{{.Name}}" {{ end }}
+{{ end }}
