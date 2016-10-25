@@ -38,15 +38,10 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 }
 
 // ShowBaseImage will show details about the base BOSH images
-func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
+func (f *Fissile) ShowBaseImage(repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
-	image, err := dockerManager.FindImage(baseImage)
-	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
 	}
 
 	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
@@ -54,13 +49,9 @@ func (f *Fissile) ShowBaseImage(baseImage, repository string) error {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	f.UI.Printf("Base: %s\n", color.GreenString(baseImage))
-	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
-
-	image, err = dockerManager.FindImage(comp.BaseImageName())
+	image, err := dockerManager.FindImage(comp.BaseImageName())
 	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", baseImage, err.Error())
+		return fmt.Errorf("Error looking up base image %s: %s", comp.BaseImageName(), err.Error())
 	}
 
 	f.UI.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
