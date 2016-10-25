@@ -39,3 +39,6 @@ test:
 
 reap:
 	${GIT_ROOT}/make/reap
+
+markdown:
+	${GIT_ROOT}/make/generate-markdown
