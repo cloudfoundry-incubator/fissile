@@ -14,7 +14,7 @@ var showLayerCmd = &cobra.Command{
 	Use:   "layer",
 	Short: "Displays information about all the docker layers used by fissile.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		flagShowLayerFrom = viper.GetString("from")
+		flagShowLayerFrom = viper.GetString("base-image")
 
 		return fissile.ShowBaseImage(
 			flagShowLayerFrom,
@@ -27,8 +27,8 @@ func init() {
 	showCmd.AddCommand(showLayerCmd)
 
 	showLayerCmd.PersistentFlags().StringP(
-		"from",
-		"F",
+		"base-image",
+		"B",
 		"ubuntu:14.04",
 		"Docker image used as a base for the layers",
 	)
