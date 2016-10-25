@@ -137,6 +137,7 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 					testers[i]()
 				}
 			}
+			assert.Equal(len(testers), len(getDockerfileLines(contents)), "Not enough lines")
 		},
 		"specs/foorole/tor.json": func(contents string) {
 			expected := `{
