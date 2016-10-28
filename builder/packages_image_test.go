@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -129,7 +130,10 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 						fmt.Sprintf(`"fingerprint.%s"="libevent"`, getPackage(rolesManifest.Roles, "myrole", "tor", "libevent").Fingerprint),
 						fmt.Sprintf(`"fingerprint.%s"="tor"`, getPackage(rolesManifest.Roles, "myrole", "tor", "tor").Fingerprint),
 					}
-					assert.Equal(expected, strings.Fields(line), "line 4 has unexpected fields")
+					actual := strings.Fields(line)
+					sort.Strings(expected[1:])
+					sort.Strings(actual[1:])
+					assert.Equal(expected, actual, "line 4 has unexpected fields")
 				},
 			}
 			for i, line = range getDockerfileLines(contents) {
