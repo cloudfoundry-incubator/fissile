@@ -189,3 +189,75 @@ func TestConfigMapDifferenceError(t *testing.T) {
 	err := configMapDifference(config, difference, []string{"q"})
 	assert.EqualError(err, "Attempting to descend into dark opinions key q.a.b which is not a hash in the base configuration")
 }
+
+func TestJSONConfigWriterProvider_MultipleBOSHReleases(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
+	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
+
+	tmpDir, err := ioutil.TempDir("", "fissile-config-json-tests-mutliple-bosh-releases")
+	assert.NoError(err)
+	defer os.RemoveAll(tmpDir)
+	outDir := filepath.Join(tmpDir, "store")
+
+	builder := NewConfigStoreBuilder(JSONProvider, opinionsFile, opinionsFileDark, outDir)
+
+	var releases []*model.Release
+	for _, releaseName := range []string{"tor-boshrelease", "ntp-release"} {
+		releasePath := filepath.Join(workDir, "../test-assets", releaseName)
+		releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+		release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
+		assert.NoError(err)
+		releases = append(releases, release)
+	}
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, releases)
+	assert.NoError(err)
+
+	err = builder.WriteBaseConfig(rolesManifest)
+	assert.NoError(err)
+
+	// Just check that the ntpd job was loaded, we don't care about its contents
+	jsonPath := filepath.Join(outDir, "myrole", "ntpd.json")
+	info, err := os.Stat(jsonPath)
+	assert.NoError(err)
+	assert.NotZero(info.Size())
+
+	// Check that the new_hostname job didn't pick up superfluous properties
+	jsonPath = filepath.Join(outDir, "myrole", "new_hostname.json")
+
+	buf, err := ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
+		return
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(buf, &result)
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
+
+	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
+
+	templates := result["job"].(map[string]interface{})["templates"]
+	assert.Contains(templates, map[string]interface{}{"name": "tor"})
+	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
+	assert.Len(templates, 3)
+
+	actualJSON, err := json.Marshal(result["properties"])
+	if assert.NoError(err) {
+		assert.JSONEq(`{
+			"tor": {
+				"client_keys": null,
+				"hashed_control_password": null,
+				"hostname": "localhost",
+				"private_key": null
+			}
+		}`, string(actualJSON), "Unexpected properties")
+	}
+}

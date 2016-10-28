@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hpcloud/fissile/model"
+	"github.com/hpcloud/fissile/util"
 )
 
 const (
@@ -94,19 +95,25 @@ func BoshKeyToConsulPath(key, store string) (string, error) {
 }
 
 // getAllPropertiesForRoleManifest returns all of the properties available from a role manifest's specs
-func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[string]interface{}, map[string]bool, error) {
-	props := make(map[string]interface{})
-	names := make(map[string]bool)
+func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[*model.Release]map[string]interface{}, map[*model.Release]map[string]struct{}, error) {
+	props := make(map[*model.Release]map[string]interface{})
+	names := make(map[*model.Release]map[string]struct{})
 
 	for _, role := range roleManifest.Roles {
 		for _, job := range role.Jobs {
 			for _, property := range job.Properties {
-				if err := insertConfig(props, property.Name, property.Default); err != nil {
+				if _, ok := props[job.Release]; !ok {
+					props[job.Release] = make(map[string]interface{})
+				}
+				if err := insertConfig(props[job.Release], property.Name, property.Default); err != nil {
 					return nil, nil, err
 				}
 				if property.Default == nil {
 					// Allow children of things with no defaults; they are empty hashes / lists.
-					names[property.Name] = true
+					if _, ok := names[job.Release]; !ok {
+						names[job.Release] = make(map[string]struct{})
+					}
+					names[job.Release][property.Name] = struct{}{}
 				}
 			}
 		}
@@ -120,21 +127,21 @@ func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[stri
 // If any key exists in props with no default value, it is skipped as children are expected.
 // Only the top level key being missing can generate errors; if any child is missing, they are emitted as
 // warnings on warningWriter.
-func checkKeysInProperties(opinions, props map[string]interface{}, namesWithoutDefaults map[string]bool, opinionName string, warningWriter io.Writer) error {
+func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Release]map[string]interface{}, namesWithoutDefaults map[*model.Release]map[string]struct{}, opinionName string, warningWriter io.Writer) error {
 	var results []string
 	var warnings []string
 
 	// Declare checkInner to capture itself in a closure so we can recurse
-	var checkInner func(opinions map[interface{}]interface{}, props map[string]interface{}, keyGramPrefix []string)
+	var checkInner func(opinions map[interface{}]interface{}, props map[string]interface{}, namesWithoutDefaults map[string]struct{}, keyGramPrefix []string)
 
-	checkInner = func(opinions map[interface{}]interface{}, props map[string]interface{}, keyGramPrefix []string) {
+	checkInner = func(opinions map[interface{}]interface{}, props map[string]interface{}, namesWithoutDefaults map[string]struct{}, keyGramPrefix []string) {
 		for key, value := range opinions {
 			keyStr := key.(string)
 			newKeyGramPrefix := append(keyGramPrefix, keyStr)
 
 			// If a key has no defaults, ignore it and all descendents - it's a hash or list to be filled in.
 			keyName := strings.Join(newKeyGramPrefix, ".")
-			if namesWithoutDefaults[keyName] {
+			if _, ok := namesWithoutDefaults[keyName]; ok {
 				continue
 			}
 
@@ -146,7 +153,7 @@ func checkKeysInProperties(opinions, props map[string]interface{}, namesWithoutD
 						results = append(results, newKeyGramPrefix[0])
 					}
 				} else {
-					checkInner(opinionValue, paramValue, newKeyGramPrefix)
+					checkInner(opinionValue, paramValue, namesWithoutDefaults, newKeyGramPrefix)
 				}
 			} else {
 				if _, ok := props[keyStr]; !ok {
@@ -160,11 +167,27 @@ func checkKeysInProperties(opinions, props map[string]interface{}, namesWithoutD
 		}
 	}
 
+	// For the purposes of this function, we don't need to distinguish between releases
+	flattenedProps := make(map[string]interface{})
+	for _, releaseProps := range props {
+		if err := util.JSONMergeBlobs(flattenedProps, releaseProps); err != nil {
+			return err
+		}
+	}
+
+	flattenedNamesWithoutDefaults := make(map[string]struct{})
+	for _, releaseNamesWithoutDefaults := range namesWithoutDefaults {
+		for name := range releaseNamesWithoutDefaults {
+			flattenedNamesWithoutDefaults[name] = struct{}{}
+		}
+	}
+
 	properties, ok := opinions["properties"].(map[interface{}]interface{})
 	if !ok {
 		return fmt.Errorf("failed to load %s opinions from %+v", opinionName, opinions)
 	}
-	checkInner(properties, props, []string{})
+
+	checkInner(properties, flattenedProps, flattenedNamesWithoutDefaults, []string{})
 
 	if len(results) > 0 {
 		indent := "\n    "

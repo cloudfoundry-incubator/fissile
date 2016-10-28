@@ -69,7 +69,7 @@ func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 }
 
 // getKeys is a helper method to get all the keys in a nested JSON structure, as BOSH-style dot-separated names
-func getKeys(props map[string]interface{}) []string {
+func getKeys(props map[*model.Release]map[string]interface{}) []string {
 	var results []string
 	var innerFunc func(props map[string]interface{}, prefix []string)
 
@@ -84,7 +84,9 @@ func getKeys(props map[string]interface{}) []string {
 		}
 	}
 
-	innerFunc(props, []string{})
+	for _, releaseProps := range props {
+		innerFunc(releaseProps, []string{})
+	}
 	return results
 }
 
@@ -116,8 +118,10 @@ func TestGetAllPropertiesForRoleManifest(t *testing.T) {
 	}, keys)
 
 	var noDefaultKeys []string
-	for key := range namesWithoutDefaults {
-		noDefaultKeys = append(noDefaultKeys, key)
+	for _, namesWithoutDefaultsForRole := range namesWithoutDefaults {
+		for key := range namesWithoutDefaultsForRole {
+			noDefaultKeys = append(noDefaultKeys, key)
+		}
 	}
 	sort.Strings(noDefaultKeys)
 	assert.Equal([]string{
@@ -211,13 +215,14 @@ func TestCheckKeysInProperties(t *testing.T) {
 			continue
 		}
 
-		namesWithoutDefaults := make(map[string]bool, len(testSample.namesWithoutDefaults))
+		namesWithoutDefaultsForRole := make(map[string]struct{}, len(testSample.namesWithoutDefaults))
 		for _, name := range testSample.namesWithoutDefaults {
-			namesWithoutDefaults[name] = true
+			namesWithoutDefaultsForRole[name] = struct{}{}
 		}
+		namesWithoutDefaults := map[*model.Release]map[string]struct{}{nil: namesWithoutDefaultsForRole}
 
 		warningBuf := bytes.Buffer{}
-		err = checkKeysInProperties(opinions, props, namesWithoutDefaults, testSample.name, &warningBuf)
+		err = checkKeysInProperties(opinions, map[*model.Release]map[string]interface{}{nil: props}, namesWithoutDefaults, testSample.name, &warningBuf)
 
 		if len(testSample.expectedErrors) > 0 {
 			// We expect errors back from the function
