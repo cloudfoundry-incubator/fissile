@@ -1,0 +1,29 @@
+---
+packages:
+- name: ntp-4.2.8p2
+  version: !binary |-
+    NTQzMjE5ZmJkYWY2ZWM2ZjhhZjI5NTYwMTYwNTVmMmZiMTAwZDc4Mg==
+  fingerprint: !binary |-
+    NTQzMjE5ZmJkYWY2ZWM2ZjhhZjI5NTYwMTYwNTVmMmZiMTAwZDc4Mg==
+  sha1: !binary |-
+    YTYyMjY0Nzk0NWNhOGY0NTNjZTIwNDBlNDNjNDYxYWM1M2MyYTQ5ZA==
+  dependencies: []
+jobs:
+- name: ntpd
+  version: !binary |-
+    MTM5Zjc1MjJiMGRkYTBiYzY4N2YyNDAxYjcxYzAyOTM5ZDJlNzlkNA==
+  fingerprint: !binary |-
+    MTM5Zjc1MjJiMGRkYTBiYzY4N2YyNDAxYjcxYzAyOTM5ZDJlNzlkNA==
+  sha1: !binary |-
+    YzA4MWQwY2M0ZDcxNjJiODA4MTljYzdhNjljMzhkOWM2ZWNiNjQ1Yg==
+license:
+  version: !binary |-
+    NTk2MzE2YjkzY2RlZGVkMzM5ZjgzNTY2MGE1YjUwZWFjMmVjYzU3YQ==
+  fingerprint: !binary |-
+    NTk2MzE2YjkzY2RlZGVkMzM5ZjgzNTY2MGE1YjUwZWFjMmVjYzU3YQ==
+  sha1: !binary |-
+    MThkZTgyOTJhNjBiZjgxZTNhMWI1YmVhNzdjMTY4Y2VhY2JlZGViYg==
+commit_hash: '00000000'
+uncommitted_changes: false
+name: ntp
+version: 2+dev.2

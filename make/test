@@ -4,3 +4,5 @@ set -o errexit
 
 go generate ./docker/ # for mocks
 go test -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')
+#go test -v -run TestNoImageChangesAfterDarkOpinionValueChanged -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')
+#go test -v -run TestGetRoleManifestDevPackageVersion  -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')

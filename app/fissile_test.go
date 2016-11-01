@@ -159,3 +159,166 @@ func TestDevDiffConfigurations(t *testing.T) {
 	v, ok = hashDiffs.ChangedValues["/spec/cf/bogus/key"]
 	assert.False(ok)
 }
+
+// *****************************************************************************
+// Test changes that require rebuilding images
+
+type differentHashType [3]string
+
+var beforeHashCache map[string]string
+
+func getBeforeHash(ui *termui.UI) (map[string]string, error) {
+	if beforeHashCache != nil {
+		return beforeHashCache, nil
+	}
+	tmp, err := getFullHash(ui, "before")
+	if err != nil {
+		return nil, err
+	}
+	beforeHashCache = tmp
+	return beforeHashCache, err
+}
+
+func getFullHash(ui *termui.UI, targetDir string) (map[string]string, error) {
+	workDir, err := os.Getwd()
+	baseDir := filepath.Join(workDir, "../test-assets/detect-changes-configs/")
+	releasePath := filepath.Join(baseDir, "ntp-release")
+	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
+	f := NewFissileApplication(".", ui)
+	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load releases from %s:%s", releasePath, err)
+	}
+	if len(f.releases) != 1 {
+		return nil, fmt.Errorf("expected to load 1 release, got %d\n", len(f.releases))
+	}
+	configBaseDir := filepath.Join(baseDir, "small01")
+	mainConfigDir := filepath.Join(configBaseDir, targetDir)
+	rolesManifestPath := filepath.Join(mainConfigDir, "role-manifest.yml")
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	if err != nil {
+		return nil, fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+	lightManifestPath := filepath.Join(mainConfigDir, "opinions.yml")
+	darkManifestPath := filepath.Join(mainConfigDir, "dark-opinions.yml")
+	err = rolesManifest.SetGlobalConfig(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return nil, err
+	}
+	result := map[string]string{}
+	for _, role := range rolesManifest.Roles {
+		versionHash, err := role.GetRoleDevVersion()
+		if err != nil {
+			return nil, err
+		}
+		result[role.Name] = versionHash
+	}
+	return result, nil
+}
+
+func doTestImageChangesOneRoleChange(t *testing.T, targetDir string) {
+	assert := assert.New(t)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	beforeHash, err := getBeforeHash(ui)
+	if !assert.Nil(err) {
+		return
+	}
+	afterHash, err := getFullHash(ui, targetDir)
+	if !assert.Nil(err) {
+		return
+	}
+	droppedKeys, addedKeys, commonKeys, differentValues := getCacheDiffs(beforeHash, afterHash) // Keys are related to roles
+	assert.Equal(0, len(droppedKeys))
+	assert.Equal(0, len(addedKeys))
+	if assert.Equal(1, len(commonKeys)) {
+		assert.Equal("ntpd", commonKeys[0])
+	}
+	if assert.Equal(1, len(differentValues)) {
+		assert.Equal("ntpd", differentValues[0][0])
+	}
+}
+
+func doTestImageChangesZeroRoleChanges(t *testing.T, targetDir string) {
+	assert := assert.New(t)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	beforeHash, err := getBeforeHash(ui)
+	if !assert.Nil(err) {
+		return
+	}
+	afterHash, err := getFullHash(ui, targetDir)
+	if !assert.Nil(err) {
+		return
+	}
+	droppedKeys, addedKeys, commonKeys, differentValues := getCacheDiffs(beforeHash, afterHash) // Keys are related to roles
+	assert.Equal(0, len(droppedKeys))
+	assert.Equal(0, len(addedKeys))
+	if assert.Equal(1, len(commonKeys)) {
+		assert.Equal("ntpd", commonKeys[0])
+	}
+	assert.Equal(0, len(differentValues))
+}
+
+func TestImageChangesAddPropertyToManifest(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-new-property-in-manifest")
+}
+
+func TestImageChangesAddPropertyToOpinions(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-new-property-in-opinions")
+}
+
+func TestImageChangesDropPropertyFromConfigs(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-property-dropped")
+}
+
+func TestImageChangesOpinionValueChanged(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-prop-value-change")
+}
+
+func TestNoImageChangesAfterRunChange(t *testing.T) {
+	doTestImageChangesZeroRoleChanges(t, "after-run-change")
+}
+
+func TestImageChangesAfterScriptListChange(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-scriptlist-change")
+}
+
+func TestImageChangesAfterScriptContentsChange(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-script-change")
+}
+
+func TestImageAddDarkOpinionValueChanged(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-dark-opinion-add")
+}
+
+func TestImageDropDarkOpinionValueChanged(t *testing.T) {
+	doTestImageChangesOneRoleChange(t, "after-dark-opinion-drop")
+}
+
+func TestNoImageChangesAfterDarkOpinionValueChanged(t *testing.T) {
+	doTestImageChangesZeroRoleChanges(t, "after-dark-opinion-value-change")
+}
+
+func getCacheDiffs(oldKeys, newKeys map[string]string) ([]string, []string, []string, []differentHashType) {
+	droppedKeys := []string{}
+	addedKeys := []string{}
+	commonKeys := []string{}
+	differentValues := []differentHashType{}
+	for k, oldV := range oldKeys {
+		newV, ok := newKeys[k]
+		if ok {
+			commonKeys = append(commonKeys, k)
+			if oldV != newV {
+				differentValues = append(differentValues, differentHashType{k, oldV, newV})
+			}
+		} else {
+			droppedKeys = append(droppedKeys, k)
+		}
+	}
+	for k := range newKeys {
+		_, ok := oldKeys[k]
+		if !ok {
+			addedKeys = append(addedKeys, k)
+		}
+	}
+	return droppedKeys, addedKeys, commonKeys, differentValues
+}

@@ -234,12 +234,27 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 		},
 	}
 
-	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
-	firstHash := firstManifest.GetRoleManifestDevPackageVersion("")
-	secondHash := (&RoleManifest{Roles: Roles{altRole, refRole}}).GetRoleManifestDevPackageVersion("")
+	emptyConfig := &configuration{Templates: map[string]string{}}
+	refRole.Configuration = emptyConfig
+	altRole.Configuration = emptyConfig
+	wrongJobOrder.Configuration = emptyConfig
+	manifest01 := &RoleManifest{Roles: Roles{refRole, altRole}, Configuration: emptyConfig}
+	refRole.rolesManifest = manifest01
+	altRole.rolesManifest = manifest01
+	manifest02 := &RoleManifest{Roles: Roles{altRole, refRole}, Configuration: &configuration{Templates: map[string]string{}}}
+	refRole.rolesManifest = manifest02
+	altRole.rolesManifest = manifest02
+	manifest03 := &RoleManifest{Roles: Roles{wrongJobOrder, altRole}, Configuration: &configuration{Templates: map[string]string{}}}
+	wrongJobOrder.rolesManifest = manifest03
+	altRole.rolesManifest = manifest03
+	manifest01.SetGlobalConfig("/dev/null", "/dev/null")
+	manifest02.SetGlobalConfig("/dev/null", "/dev/null")
+	manifest03.SetGlobalConfig("/dev/null", "/dev/null")
+	firstHash := manifest01.GetRoleManifestDevPackageVersion("")
+	secondHash := manifest02.GetRoleManifestDevPackageVersion("")
 	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
-	jobOrderHash := (&RoleManifest{Roles: Roles{wrongJobOrder, altRole}}).GetRoleManifestDevPackageVersion("")
+	jobOrderHash := manifest03.GetRoleManifestDevPackageVersion("")
 	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
-	differentExtraHash := firstManifest.GetRoleManifestDevPackageVersion("some string")
+	differentExtraHash := manifest01.GetRoleManifestDevPackageVersion("some string")
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }

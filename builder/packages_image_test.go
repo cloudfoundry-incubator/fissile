@@ -91,6 +91,7 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	rolesManifest.SetGlobalConfig("/dev/null", "/dev/null")
 	assert.NoError(err)
 
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)

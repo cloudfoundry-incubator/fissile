@@ -1,0 +1,9 @@
+---
+properties:
+  with:
+    json:
+      default:
+        default
+    port: 4222
+    user: nats
+  property3: 41
