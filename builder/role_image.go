@@ -320,7 +320,6 @@ func (j roleBuildJob) Run() {
 			j.resultsCh <- err
 			return
 		} else if hasImage {
-
 			j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
 			j.resultsCh <- nil
 			return
