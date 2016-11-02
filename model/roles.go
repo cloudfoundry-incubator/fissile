@@ -149,19 +149,16 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 // that it needs later to calculate the dev version:
 // the global properties, processed light opinions (to get the properties), and raw dark opinions
 func (m *RoleManifest) SetGlobalConfig(lightManifestPath, darkManifestPath string) error {
-	manifestConfig := manifestConfiguration{}
-	opinions, err := manifestConfig.loadOpinionsFromPath(lightManifestPath)
+	lightOpinions, err := loadOpinionsFromPath(lightManifestPath)
 	if err != nil {
 		return err
 	}
-	manifestConfig.lightOpinions = opinions
-	opinions, err = manifestConfig.loadOpinionsFromPath(darkManifestPath)
+	darkOpinions, err := loadOpinionsFromPath(darkManifestPath)
 	if err != nil {
 		return err
 	}
-	manifestConfig.darkOpinions = opinions
-	manifestConfig.globalDefaultValues = getDefaultValuesHash(m.Configuration.Templates)
-	m.globalConfig = &manifestConfig
+	globalDefaultValues := getDefaultValuesHash(m.Configuration.Templates)
+	m.globalConfig = &manifestConfiguration{darkOpinions: darkOpinions, lightOpinions: lightOpinions, globalDefaultValues: globalDefaultValues}
 	return nil
 }
 
@@ -186,7 +183,7 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 
 // loadOpinionsFromPath flattens the opinions yaml data into a map of dotted property
 // names to values and returns it
-func (manifest *manifestConfiguration) loadOpinionsFromPath(opinionsPath string) (map[string]string, error) {
+func loadOpinionsFromPath(opinionsPath string) (map[string]string, error) {
 	contents, err := ioutil.ReadFile(opinionsPath)
 	if err != nil {
 		return nil, fmt.Errorf("Error loading opinions from %s: %s\n", opinionsPath, err)
