@@ -49,9 +49,6 @@ type RoleImageBuilder struct {
 	ui                   *termui.UI
 }
 
-// HashCacheType is used to map role names to config fingerprints
-type HashCacheType map[string]string
-
 // NewRoleImageBuilder creates a new RoleImageBuilder
 func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
