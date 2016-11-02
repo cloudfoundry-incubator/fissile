@@ -24,9 +24,8 @@ import (
 )
 
 const (
-	binPrefix               = "bin"
-	jobConfigSpecFilename   = "config_spec"
-	roleCacheConfigBasename = "roleConfigs.json"
+	binPrefix             = "bin"
+	jobConfigSpecFilename = "config_spec"
 )
 
 var (
