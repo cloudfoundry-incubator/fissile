@@ -127,7 +127,7 @@ func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[*mod
 // If any key exists in props with no default value, it is skipped as children are expected.
 // Only the top level key being missing can generate errors; if any child is missing, they are emitted as
 // warnings on warningWriter.
-func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Release]map[string]interface{}, namesWithoutDefaults map[*model.Release]map[string]struct{}, opinionName string, warningWriter io.Writer) error {
+func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Release]map[string]interface{}, namesWithoutDefaultsPerRelease map[*model.Release]map[string]struct{}, opinionName string, warningWriter io.Writer) error {
 	var results []string
 	var warnings []string
 
@@ -175,10 +175,10 @@ func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Rel
 		}
 	}
 
-	flattenedNamesWithoutDefaults := make(map[string]struct{})
-	for _, releaseNamesWithoutDefaults := range namesWithoutDefaults {
+	flattenedNamesWithoutDefaultsPerRelease := make(map[string]struct{})
+	for _, releaseNamesWithoutDefaults := range namesWithoutDefaultsPerRelease {
 		for name := range releaseNamesWithoutDefaults {
-			flattenedNamesWithoutDefaults[name] = struct{}{}
+			flattenedNamesWithoutDefaultsPerRelease[name] = struct{}{}
 		}
 	}
 
@@ -187,7 +187,7 @@ func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Rel
 		return fmt.Errorf("failed to load %s opinions from %+v", opinionName, opinions)
 	}
 
-	checkInner(properties, flattenedProps, flattenedNamesWithoutDefaults, []string{})
+	checkInner(properties, flattenedProps, flattenedNamesWithoutDefaultsPerRelease, []string{})
 
 	if len(results) > 0 {
 		indent := "\n    "
