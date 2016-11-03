@@ -119,10 +119,11 @@ func TestReleaseMetadataOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
+	// These values from test-assets/ntp-release/dev_releases/ntp/ntp-2+dev.3.yml
 	assert.Equal("ntp", release.Name)
-	assert.Equal("28645bc3", release.CommitHash)
-	assert.Equal(false, release.UncommittedChanges)
-	assert.Equal("2+dev.2", release.Version)
+	assert.Equal("036e7564", release.CommitHash)
+	assert.Equal(true, release.UncommittedChanges)
+	assert.Equal("2+dev.3", release.Version)
 }
 
 func TestReleasePackagesOk(t *testing.T) {

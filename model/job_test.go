@@ -25,12 +25,16 @@ func TestJobInfoOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal("ntpd", release.Jobs[0].Name)
-	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Version)
-	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Fingerprint)
-	assert.Equal("cf1722e891564d1f667c2218d6685679fe149591", release.Jobs[0].SHA1)
+	// Hashes taken from test-assets/ntp-release/dev_releases/ntp/ntp-2+dev.3.yml
+	ntpdJobFingerprint := "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
+	ntpdJobSha1Hash := "c4c278b2d10c7aea06d41b6f655037fcd642aa0f"
 
-	jobPath := filepath.Join(ntpReleasePathCacheDir, "cf1722e891564d1f667c2218d6685679fe149591")
+	assert.Equal("ntpd", release.Jobs[0].Name)
+	assert.Equal(ntpdJobFingerprint, release.Jobs[0].Version)
+	assert.Equal(ntpdJobFingerprint, release.Jobs[0].Fingerprint)
+	assert.Equal(ntpdJobSha1Hash, release.Jobs[0].SHA1)
+
+	jobPath := filepath.Join(ntpReleasePathCacheDir, ntpdJobSha1Hash)
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
 	err = util.ValidatePath(jobPath, false, "")
@@ -148,7 +152,7 @@ func TestJobPropertiesOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(2, len(release.Jobs[0].Properties))
+	assert.Equal(3, len(release.Jobs[0].Properties))
 
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
@@ -167,12 +171,15 @@ func TestGetJobPropertyOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(2, len(release.Jobs[0].Properties))
-
-	property, err := release.Jobs[0].getProperty("ntp_conf")
-
-	assert.Nil(err)
-	assert.Equal("ntp_conf", property.Name)
+	// properties from test-assets/ntp-release/jobs/ntpd/spec
+	names := []string{"ntp_conf", "with.json.default", "tor.private_key"}
+	job := release.Jobs[0]
+	for _, name := range names {
+		property, err := job.getProperty(name)
+		if assert.Nil(err) {
+			assert.Equal(name, property.Name)
+		}
+	}
 }
 
 func TestGetJobPropertyNotOk(t *testing.T) {
@@ -187,13 +194,11 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Jobs))
-
-	assert.Equal(2, len(release.Jobs[0].Properties))
-
 	_, err = release.Jobs[0].getProperty("foo")
 
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "not found in job")
+	if assert.NotNil(err) {
+		assert.Contains(err.Error(), "not found in job")
+	}
 }
 
 func TestJobsSort(t *testing.T) {

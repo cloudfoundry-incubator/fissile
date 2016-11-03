@@ -69,7 +69,7 @@ func TestBOSHKeyToConsulPathConversionError(t *testing.T) {
 }
 
 // getKeys is a helper method to get all the keys in a nested JSON structure, as BOSH-style dot-separated names
-func getKeys(props map[*model.Release]map[string]interface{}) []string {
+func getKeys(props map[string]map[string]interface{}) []string {
 	var results []string
 	var innerFunc func(props map[string]interface{}, prefix []string)
 
@@ -219,10 +219,10 @@ func TestCheckKeysInProperties(t *testing.T) {
 		for _, name := range testSample.namesWithoutDefaults {
 			namesWithoutDefaultsForRole[name] = struct{}{}
 		}
-		namesWithoutDefaults := map[*model.Release]map[string]struct{}{nil: namesWithoutDefaultsForRole}
+		namesWithoutDefaults := map[string]map[string]struct{}{"R:J": namesWithoutDefaultsForRole}
 
 		warningBuf := bytes.Buffer{}
-		err = checkKeysInProperties(opinions, map[*model.Release]map[string]interface{}{nil: props}, namesWithoutDefaults, testSample.name, &warningBuf)
+		err = checkKeysInProperties(opinions, map[string]map[string]interface{}{"R:J": props}, namesWithoutDefaults, testSample.name, &warningBuf)
 
 		if len(testSample.expectedErrors) > 0 {
 			// We expect errors back from the function

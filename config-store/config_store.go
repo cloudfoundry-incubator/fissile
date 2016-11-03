@@ -94,26 +94,33 @@ func BoshKeyToConsulPath(key, store string) (string, error) {
 	return strings.Join(keyGrams, "/"), nil
 }
 
+func getReleaseJobName(job *model.Job) string {
+	return job.Release.Name + ":" + job.Name
+}
+
 // getAllPropertiesForRoleManifest returns all of the properties available from a role manifest's specs
-func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[*model.Release]map[string]interface{}, map[*model.Release]map[string]struct{}, error) {
-	props := make(map[*model.Release]map[string]interface{})
-	names := make(map[*model.Release]map[string]struct{})
+// The return values props and names have types
+// releaseName+":"+jobName => { property-name => property-value }
+func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[string]map[string]interface{}, map[string]map[string]struct{}, error) {
+	props := make(map[string]map[string]interface{})
+	names := make(map[string]map[string]struct{})
 
 	for _, role := range roleManifest.Roles {
 		for _, job := range role.Jobs {
+			releaseJobName := getReleaseJobName(job)
 			for _, property := range job.Properties {
-				if _, ok := props[job.Release]; !ok {
-					props[job.Release] = make(map[string]interface{})
+				if _, ok := props[releaseJobName]; !ok {
+					props[releaseJobName] = make(map[string]interface{})
 				}
-				if err := insertConfig(props[job.Release], property.Name, property.Default); err != nil {
+				if err := insertConfig(props[releaseJobName], property.Name, property.Default); err != nil {
 					return nil, nil, err
 				}
 				if property.Default == nil {
 					// Allow children of things with no defaults; they are empty hashes / lists.
-					if _, ok := names[job.Release]; !ok {
-						names[job.Release] = make(map[string]struct{})
+					if _, ok := names[releaseJobName]; !ok {
+						names[releaseJobName] = make(map[string]struct{})
 					}
-					names[job.Release][property.Name] = struct{}{}
+					names[releaseJobName][property.Name] = struct{}{}
 				}
 			}
 		}
@@ -127,7 +134,7 @@ func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[*mod
 // If any key exists in props with no default value, it is skipped as children are expected.
 // Only the top level key being missing can generate errors; if any child is missing, they are emitted as
 // warnings on warningWriter.
-func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Release]map[string]interface{}, namesWithoutDefaultsPerRelease map[*model.Release]map[string]struct{}, opinionName string, warningWriter io.Writer) error {
+func checkKeysInProperties(opinions map[string]interface{}, props map[string]map[string]interface{}, namesWithoutDefaultsPerReleaseJob map[string]map[string]struct{}, opinionName string, warningWriter io.Writer) error {
 	var results []string
 	var warnings []string
 
@@ -176,7 +183,7 @@ func checkKeysInProperties(opinions map[string]interface{}, props map[*model.Rel
 	}
 
 	flattenedNamesWithoutDefaultsPerRelease := make(map[string]struct{})
-	for _, releaseNamesWithoutDefaults := range namesWithoutDefaultsPerRelease {
+	for _, releaseNamesWithoutDefaults := range namesWithoutDefaultsPerReleaseJob {
 		for name := range releaseNamesWithoutDefaults {
 			flattenedNamesWithoutDefaultsPerRelease[name] = struct{}{}
 		}

@@ -21,10 +21,10 @@ const (
 
 type jsonConfigWriterProvider struct {
 	opinions *opinions
-	allProps map[*model.Release]map[string]interface{}
+	allProps map[string]map[string]interface{}
 }
 
-func newJSONConfigWriterProvider(opinions *opinions, allProps map[*model.Release]map[string]interface{}) (*jsonConfigWriterProvider, error) {
+func newJSONConfigWriterProvider(opinions *opinions, allProps map[string]map[string]interface{}) (*jsonConfigWriterProvider, error) {
 	return &jsonConfigWriterProvider{
 		opinions: opinions,
 		allProps: allProps,
@@ -60,7 +60,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 				return err
 			}
 
-			properties, err := getPropertiesForJob(job, w.allProps[job.Release], w.opinions)
+			properties, err := getPropertiesForJob(job, w.allProps[getReleaseJobName(job)], w.opinions)
 			if err != nil {
 				return err
 			}
