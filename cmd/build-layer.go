@@ -15,7 +15,10 @@ var buildLayerCmd = &cobra.Command{
 	Use:   "layer",
 	Short: "Has subcommands for building Docker layers used during the creation of your images.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := RootCmd.PersistentPreRunE(cmd, args); err != nil {
+		// Inline the parts of the RootCmd.PersistentPreRunE we need.
+		// Exclude the validateReleaseArgs(), this part we don't want.
+
+		if err := validateBasicFlags(); err != nil {
 			return err
 		}
 
