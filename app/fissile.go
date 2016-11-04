@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -300,6 +301,65 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 	if err := comp.Compile(workerCount, f.releases, roleManifest); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
+
+	return nil
+}
+
+// CleanCache inspects the compilation cache and removes all packages
+// which are not referenced (anymore).
+func (f *Fissile) CleanCache(targetPath string) error {
+	// 1. Collect list of packages referenced by the releases. A
+	//    variant of the code in ListPackages, we keep only the
+	//    hashes.
+
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	referenced := make(map[string]int)
+	for _, release := range f.releases {
+		for _, pkg := range release.Packages {
+			referenced[pkg.Version] = 1
+		}
+
+	}
+
+	/// 2. Scan local compilation cache, compare to referenced,
+	///    remove anything not found.
+
+	f.UI.Printf("Cleaning up %s\n", color.MagentaString(targetPath))
+
+	cached, err := filepath.Glob(targetPath + "/*")
+	if err != nil {
+		return err
+	}
+
+	removed := 0
+	for _, cache := range cached {
+		key := filepath.Base(cache)
+		if _, ok := referenced[key]; ok {
+			continue
+		}
+
+		f.UI.Printf("- Removing %s\n", color.YellowString(key))
+		if err := os.RemoveAll(cache); err != nil {
+			return err
+		}
+		removed++
+	}
+
+	if removed == 0 {
+		f.UI.Printf("Nothing found to remove\n")
+		return nil
+	}
+
+	plural := ""
+	if removed > 1 {
+		plural = "s"
+	}
+	f.UI.Printf("Removed %s package%s\n",
+		color.MagentaString(fmt.Sprintf("%d", removed)),
+		plural)
 
 	return nil
 }
