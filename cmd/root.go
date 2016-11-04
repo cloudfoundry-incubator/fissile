@@ -52,37 +52,7 @@ agent.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		flagRoleManifest = viper.GetString("role-manifest")
-		flagRelease = splitNonEmpty(viper.GetString("release"), ",")
-		flagReleaseName = splitNonEmpty(viper.GetString("release-name"), ",")
-		flagReleaseVersion = splitNonEmpty(viper.GetString("release-version"), ",")
-		flagCacheDir = viper.GetString("cache-dir")
-		flagWorkDir = viper.GetString("work-dir")
-		flagRepository = viper.GetString("repository")
-		flagWorkers = viper.GetInt("workers")
-		flagConfiggin = viper.GetString("configgin")
-		flagLightOpinions = viper.GetString("light-opinions")
-		flagDarkOpinions = viper.GetString("dark-opinions")
-		flagOutputFormat = viper.GetString("output")
-
-		extendPathsFromWorkDirectory()
-
-		if err = absolutePaths(
-			&flagRoleManifest,
-			&flagCacheDir,
-			&flagWorkDir,
-			&flagConfiggin,
-			&flagLightOpinions,
-			&flagDarkOpinions,
-			&workPathCompilationDir,
-			&workPathConfigDir,
-			&workPathBaseDockerfile,
-			&workPathDockerDir,
-		); err != nil {
-			return err
-		}
-
-		if flagRelease, err = absolutePathsForArray(flagRelease); err != nil {
+		if err = validateBasicFlags(); err != nil {
 			return err
 		}
 
@@ -247,6 +217,46 @@ func extendPathsFromWorkDirectory() {
 	if flagDarkOpinions == "" {
 		flagDarkOpinions = filepath.Join(workDir, "dark-opinions.yml")
 	}
+}
+
+func validateBasicFlags() error {
+	var err error
+
+	flagRoleManifest = viper.GetString("role-manifest")
+	flagRelease = splitNonEmpty(viper.GetString("release"), ",")
+	flagReleaseName = splitNonEmpty(viper.GetString("release-name"), ",")
+	flagReleaseVersion = splitNonEmpty(viper.GetString("release-version"), ",")
+	flagCacheDir = viper.GetString("cache-dir")
+	flagWorkDir = viper.GetString("work-dir")
+	flagRepository = viper.GetString("repository")
+	flagWorkers = viper.GetInt("workers")
+	flagConfiggin = viper.GetString("configgin")
+	flagLightOpinions = viper.GetString("light-opinions")
+	flagDarkOpinions = viper.GetString("dark-opinions")
+	flagOutputFormat = viper.GetString("output")
+
+	extendPathsFromWorkDirectory()
+
+	if err = absolutePaths(
+		&flagRoleManifest,
+		&flagCacheDir,
+		&flagWorkDir,
+		&flagConfiggin,
+		&flagLightOpinions,
+		&flagDarkOpinions,
+		&workPathCompilationDir,
+		&workPathConfigDir,
+		&workPathBaseDockerfile,
+		&workPathDockerDir,
+	); err != nil {
+		return err
+	}
+
+	if flagRelease, err = absolutePathsForArray(flagRelease); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func validateReleaseArgs() error {
