@@ -71,34 +71,88 @@ func JSONMergeBlobs(dest, src map[string]interface{}) error {
 	return jsonMergeBlobsHelper(dest, src, []string{})
 }
 
+func assignBlob(dest map[string]interface{}, srcKey string, srcValue interface{}) error {
+	// No destValue for key
+	if _, ok := srcValue.(map[string]interface{}); ok {
+		// If the source is a hash, we need to copy it. Otherwise a leaf of the source
+		// tree could be modified while it's sitting in the dest tree, and that would
+		// mutate the source tree.  Easy way to copy a tree in go is to json marshal/unmarshal
+		jsonBytes, err := json.Marshal(srcValue)
+		if err != nil {
+			return err
+		}
+		newValue := map[string]interface{}{}
+		err = json.Unmarshal(jsonBytes, &newValue)
+		if err != nil {
+			return err
+		}
+		dest[srcKey] = newValue
+	} else {
+		dest[srcKey] = srcValue
+	}
+	return nil
+}
+
+// Preconditions:
+// destValue != nil
+// srcValue != nil
+// destValue is not a map[string]itf
+
+// Return an error if src is a map, or if one is an array, and the other isn't.
+func typeCheck(destValue, srcValue interface{}, srcKey string, path []string) error {
+	srcType := reflect.TypeOf(srcValue)
+	destType := reflect.TypeOf(destValue)
+	_, srcIsMap := srcValue.(map[string]interface{})
+	if srcIsMap {
+		return fmt.Errorf("Invalid merge near %s: cannot merge non-map %v (%v) with map %v (%v)",
+			strings.Join(append(path, srcKey), "."), destValue, destType, srcValue, srcType)
+	}
+	_, srcIsArray := srcValue.([]interface{})
+	_, destIsArray := destValue.([]interface{})
+	if srcIsArray != destIsArray {
+		return fmt.Errorf("Invalid merge near %s: cannot merge array/non-array %v (%v) with %v (%v)",
+			strings.Join(append(path, srcKey), "."), destValue, destType, srcValue, srcType)
+	}
+	return nil
+}
+
 func jsonMergeBlobsHelper(dest, src map[string]interface{}, path []string) error {
 	for srcKey, srcValue := range src {
 		destValue, ok := dest[srcKey]
 		if !ok {
-			// No destValue for key
-			dest[srcKey] = srcValue
+			err := assignBlob(dest, srcKey, srcValue)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 		destMap, ok := destValue.(map[string]interface{})
 		if !ok {
 			// destValue is _not_ a map; not sure about new value yet
-			// complain only if both values' types are different, and non-nil
+			// if either the src or dest is a nil use the other
+			// if src is a map, complain
 			if srcValue == nil {
 				// Ignore src nils
 				continue
 			}
 			if destValue == nil {
 				// Copy the src value for the dest
-				dest[srcKey] = srcValue
+				err := assignBlob(dest, srcKey, srcValue)
+				if err != nil {
+					return err
+				}
+				// dest[srcKey] = srcValue
 				continue
 			}
-			srcType := reflect.TypeOf(srcValue)
-			destType := reflect.TypeOf(destValue)
-			if srcType != destType {
-				return fmt.Errorf("Invalid merge near %s: cannot merge %v with %v",
-					strings.Join(append(path, srcKey), "."), destValue, srcValue)
+			err := typeCheck(destValue, srcValue, srcKey, path)
+			if err != nil {
+				return err
 			}
-			dest[srcKey] = srcValue
+			err = assignBlob(dest, srcKey, srcValue)
+			if err != nil {
+				return err
+			}
+			// dest[srcKey] = srcValue
 			continue
 		}
 		srcMap, ok := srcValue.(map[string]interface{})

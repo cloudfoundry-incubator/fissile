@@ -130,10 +130,22 @@ func TestMergeJSONBlobs(t *testing.T) {
 			expected: `{"root": {"child": [1]}}`,
 		},
 		jsonMergeBlobsTestData{
-			name:   "Error trying to merge different types",
+			name:   "Error trying to merge different types (src:array, dest:scalar)",
 			source: `{"root": {"child": [1]}}`,
 			dest:   `{"root": {"child": 2}}`,
-			errMsg: "near root.child: cannot merge 2 with [1]",
+			errMsg: "near root.child: cannot merge array/non-array 2 (float64) with [1]",
+		},
+		jsonMergeBlobsTestData{
+			name:   "Error trying to merge hash and non-hash (src:array, dest:hash)",
+			source: `{"root": {"child": {"c":3}}}`,
+			dest:   `{"root": {"child": [1]}}`,
+			errMsg: "near root.child: cannot merge non-map [1] ([]interface {}) with map map[c:3] (map[string]interface {})",
+		},
+		jsonMergeBlobsTestData{
+			name:   "Error trying to merge hash and non-hash (src:array, dest:hash)",
+			source: `{"root": {"child": [1]}}`,
+			dest:   `{"root": {"child": {"c":3}}}`,
+			errMsg: "near root.child: was map[c:3], new value is [1]",
 		},
 	}
 

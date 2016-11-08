@@ -60,7 +60,7 @@ func (w *jsonConfigWriterProvider) WriteConfigs(roleManifest *model.RoleManifest
 				return err
 			}
 
-			properties, err := getPropertiesForJob(job, w.allProps[getReleaseJobName(job)], w.opinions)
+			properties, err := getPropertiesForJob(job, w.allProps[propSetDistinguisher(job)], w.opinions)
 			if err != nil {
 				return err
 			}

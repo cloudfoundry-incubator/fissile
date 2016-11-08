@@ -94,8 +94,8 @@ func BoshKeyToConsulPath(key, store string) (string, error) {
 	return strings.Join(keyGrams, "/"), nil
 }
 
-func getReleaseJobName(job *model.Job) string {
-	return job.Release.Name + ":" + job.Name
+func propSetDistinguisher(job *model.Job) string {
+	return job.Release.Name
 }
 
 // getAllPropertiesForRoleManifest returns all of the properties available from a role manifest's specs
@@ -107,7 +107,7 @@ func getAllPropertiesForRoleManifest(roleManifest *model.RoleManifest) (map[stri
 
 	for _, role := range roleManifest.Roles {
 		for _, job := range role.Jobs {
-			releaseJobName := getReleaseJobName(job)
+			releaseJobName := propSetDistinguisher(job)
 			for _, property := range job.Properties {
 				if _, ok := props[releaseJobName]; !ok {
 					props[releaseJobName] = make(map[string]interface{})

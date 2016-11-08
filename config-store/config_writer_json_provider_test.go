@@ -2,7 +2,6 @@ package configstore
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -253,49 +252,29 @@ func TestJSONConfigWriterProvider_MultipleBOSHReleases(t *testing.T) {
 		}
 	}
 
-	// Check that the new_hostname job didn't pick up superfluous properties
-	jsonPath = filepath.Join(outDir, "myrole", "new_hostname.json")
-	buf, err = ioutil.ReadFile(jsonPath)
+	// tor and new_hostname are both part of the tor release and should have the
+	// same set of properties.
+	verifyTorReleaseConfigs(assert, outDir, "new_hostname.json")
+	verifyTorReleaseConfigs(assert, outDir, "tor.json")
+}
+
+func verifyTorReleaseConfigs(assert *assert.Assertions, outDir, baseFile string) {
+	jsonPath := filepath.Join(outDir, "myrole", baseFile)
+	buf, err := ioutil.ReadFile(jsonPath)
 	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
 		return
 	}
+	var result map[string]interface{}
 	err = json.Unmarshal(buf, &result)
 	if !assert.NoError(err, "Error unmarshalling output") {
 		return
 	}
 	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
-	templates = result["job"].(map[string]interface{})["templates"]
+	templates := result["job"].(map[string]interface{})["templates"]
 	assert.Contains(templates, map[string]interface{}{"name": "tor"})
 	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
 	assert.Len(templates, 3)
-	nullProperties := result["properties"]
-	if assert.NotNil(nullProperties, "new_hostname.properties shouldn't be nil") {
-		npFixed, ok := nullProperties.(map[string]interface{})
-		if assert.True(ok, "Expected nullProperties to be a hash, got %v", nullProperties) {
-			for k, v := range npFixed {
-				assert.Fail(fmt.Sprintf("new_hostname.properties should be empty, have: key:%s, val:%v", k, v))
-			}
-		}
-	}
-
-	// Check that the tor job has correct settings
-	jsonPath = filepath.Join(outDir, "myrole", "tor.json")
-
-	buf, err = ioutil.ReadFile(jsonPath)
-	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
-		return
-	}
-
-	err = json.Unmarshal(buf, &result)
-	if !assert.NoError(err, "Error unmarshalling output") {
-		return
-	}
-	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
-	templates = result["job"].(map[string]interface{})["templates"]
-	assert.Contains(templates, map[string]interface{}{"name": "tor"})
-	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
-	assert.Len(templates, 3)
-	properties = result["properties"].(map[string]interface{})
+	properties := result["properties"].(map[string]interface{})
 
 	actualJSON, err := json.Marshal(properties)
 	if assert.NoError(err) {
