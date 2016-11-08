@@ -2,6 +2,7 @@ package configstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -268,7 +269,14 @@ func TestJSONConfigWriterProvider_MultipleBOSHReleases(t *testing.T) {
 	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
 	assert.Len(templates, 3)
 	nullProperties := result["properties"]
-	assert.Nil(nullProperties, "new_hostname shouldn't have any properties")
+	if assert.NotNil(nullProperties, "new_hostname.properties shouldn't be nil") {
+		npFixed, ok := nullProperties.(map[string]interface{})
+		if assert.True(ok, "Expected nullProperties to be a hash, got %v", nullProperties) {
+			for k, v := range npFixed {
+				assert.Fail(fmt.Sprintf("new_hostname.properties should be empty, have: key:%s, val:%v", k, v))
+			}
+		}
+	}
 
 	// Check that the tor job has correct settings
 	jsonPath = filepath.Join(outDir, "myrole", "tor.json")

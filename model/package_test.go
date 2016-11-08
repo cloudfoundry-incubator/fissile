@@ -24,15 +24,15 @@ func TestPackageInfoOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Packages))
 	// Hashes taken from test-assets/ntp-release/dev_releases/ntp/ntp-2+dev.3.yml
-	const fingerprint = "543219fbdaf6ec6f8af2956016055f2fb100d782"
-	const sha1Hash = "89eb67c9ed62a39d9393d6e0aeffaa5a48d29165"
+	const ntpPkgFingerprint = "543219fbdaf6ec6f8af2956016055f2fb100d782"
+	const ntpPackageSha1 = "beeacfdda7a3175a149ce0cba65f914e30db1da6"
 
 	assert.Equal("ntp-4.2.8p2", release.Packages[0].Name)
-	assert.Equal(fingerprint, release.Packages[0].Version)
-	assert.Equal(fingerprint, release.Packages[0].Fingerprint)
-	assert.Equal(sha1Hash, release.Packages[0].SHA1)
+	assert.Equal(ntpPkgFingerprint, release.Packages[0].Version)
+	assert.Equal(ntpPkgFingerprint, release.Packages[0].Fingerprint)
+	assert.Equal(ntpPackageSha1, release.Packages[0].SHA1)
 
-	packagePath := filepath.Join(ntpReleasePathBoshCache, sha1Hash)
+	packagePath := filepath.Join(ntpReleasePathBoshCache, ntpPackageSha1)
 	assert.Equal(packagePath, release.Packages[0].Path)
 
 	err = util.ValidatePath(packagePath, false, "")

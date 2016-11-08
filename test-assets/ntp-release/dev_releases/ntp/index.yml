@@ -6,4 +6,6 @@ builds:
     version: 2+dev.2
   ce2fb83d-960f-47ca-b905-f757a82711b4:
     version: 2+dev.3
+  906c9b29-9e15-4e46-b885-944a87372a4d:
+    version: 2+dev.4
 format-version: '2'

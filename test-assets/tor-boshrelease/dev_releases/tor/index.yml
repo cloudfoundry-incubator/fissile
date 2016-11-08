@@ -6,4 +6,6 @@ builds:
     version: 0.3.5+dev.2
   a39aa9e3-c3c6-49fe-9ea9-e4c27f83825c:
     version: 0.3.5+dev.3
+  6f50d505-2e27-4f73-91be-a244f334b0db:
+    version: 0.3.5+dev.4
 format-version: '2'

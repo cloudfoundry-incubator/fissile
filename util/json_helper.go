@@ -72,38 +72,44 @@ func JSONMergeBlobs(dest, src map[string]interface{}) error {
 }
 
 func jsonMergeBlobsHelper(dest, src map[string]interface{}, path []string) error {
-	for k, v := range src {
-		old, ok := dest[k]
+	for srcKey, srcValue := range src {
+		destValue, ok := dest[srcKey]
 		if !ok {
-			// No old value
-			dest[k] = v
+			// No destValue for key
+			dest[srcKey] = srcValue
 			continue
 		}
-		oldMap, ok := old.(map[string]interface{})
+		destMap, ok := destValue.(map[string]interface{})
 		if !ok {
-			// old value is _not_ a map; not sure about new value yet
-			if !reflect.DeepEqual(old, v) {
-				if old == nil {
-					// Allow overriding nils
-					dest[k] = v
-					continue
-				}
-				if v == nil {
-					// Ignore new nils
-					continue
-				}
-				return fmt.Errorf("Invalid merge near %s: cannot merge %v with %v",
-					strings.Join(append(path, k), "."), old, v)
+			// destValue is _not_ a map; not sure about new value yet
+			// complain only if both values' types are different, and non-nil
+			if srcValue == nil {
+				// Ignore src nils
+				continue
 			}
-			dest[k] = v
+			if destValue == nil {
+				// Copy the src value for the dest
+				dest[srcKey] = srcValue
+				continue
+			}
+			srcType := reflect.TypeOf(srcValue)
+			destType := reflect.TypeOf(destValue)
+			if srcType != destType {
+				return fmt.Errorf("Invalid merge near %s: cannot merge %v with %v",
+					strings.Join(append(path, srcKey), "."), destValue, srcValue)
+			}
+			dest[srcKey] = srcValue
 			continue
 		}
-		newMap, ok := v.(map[string]interface{})
+		srcMap, ok := srcValue.(map[string]interface{})
 		if !ok {
+			if srcValue == nil {
+				continue
+			}
 			return fmt.Errorf("Invalid merge near %s: was %v, new value is %v",
-				strings.Join(append(path, k), "."), old, v)
+				strings.Join(append(path, srcKey), "."), destValue, srcValue)
 		}
-		if err := jsonMergeBlobsHelper(oldMap, newMap, append(path, k)); err != nil {
+		if err := jsonMergeBlobsHelper(destMap, srcMap, append(path, srcKey)); err != nil {
 			return err
 		}
 	}

@@ -26,8 +26,8 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Equal(1, len(release.Jobs))
 
 	// Hashes taken from test-assets/ntp-release/dev_releases/ntp/ntp-2+dev.3.yml
-	ntpdJobFingerprint := "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
-	ntpdJobSha1Hash := "c4c278b2d10c7aea06d41b6f655037fcd642aa0f"
+	ntpdJobFingerprint := "7e6c93b84419de23d9fdb40ffd8fc4e8080a615a"
+	ntpdJobSha1Hash := "7d83e6fe8fd98f7774d48b259f452d2bfc869bca"
 
 	assert.Equal("ntpd", release.Jobs[0].Name)
 	assert.Equal(ntpdJobFingerprint, release.Jobs[0].Version)
@@ -152,7 +152,7 @@ func TestJobPropertiesOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(3, len(release.Jobs[0].Properties))
+	assert.Equal(4, len(release.Jobs[0].Properties))
 
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
