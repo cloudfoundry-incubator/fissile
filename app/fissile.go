@@ -321,7 +321,6 @@ func (f *Fissile) CleanCache(targetPath string) error {
 		for _, pkg := range release.Packages {
 			referenced[pkg.Version] = 1
 		}
-
 	}
 
 	/// 2. Scan local compilation cache, compare to referenced,
@@ -349,7 +348,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 	}
 
 	if removed == 0 {
-		f.UI.Printf("Nothing found to remove\n")
+		f.UI.Println("Nothing found to remove")
 		return nil
 	}
 

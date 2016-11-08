@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// buildCleancacheCmd represents the cleancache command
-var buildCleancacheCmd = &cobra.Command{
+// buildCleanCacheCmd represents the cleancache command
+var buildCleanCacheCmd = &cobra.Command{
 	Use:   "cleancache",
 	Short: "Removes unused BOSH packages from the compilation cache.",
 	Long: `
@@ -27,5 +27,5 @@ and remove all which are not required anymore.`,
 }
 
 func init() {
-	buildCmd.AddCommand(buildCleancacheCmd)
+	buildCmd.AddCommand(buildCleanCacheCmd)
 }
