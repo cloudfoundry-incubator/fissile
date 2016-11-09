@@ -5,11 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/hpcloud/fissile/scripts/configgin"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
 )
@@ -27,7 +27,7 @@ func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 }
 
 // NewDockerPopulator returns a function that will populate the docker tar archive
-func (b *BaseImageBuilder) NewDockerPopulator(configginTarballPath string) func(*tar.Writer) error {
+func (b *BaseImageBuilder) NewDockerPopulator() func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		// Generate dockerfile
 		dockerfileContents, err := b.generateDockerfile()
@@ -62,12 +62,12 @@ func (b *BaseImageBuilder) NewDockerPopulator(configginTarballPath string) func(
 		}
 
 		// Add configgin
-		configginGzip, err := ioutil.ReadFile(configginTarballPath)
+		configginGzip, err := configgin.Asset("configgin.tgz")
 		if err != nil {
 			return err
 		}
 		err = util.TargzIterate(
-			configginTarballPath,
+			"configgin.tgz",
 			bytes.NewReader(configginGzip),
 			func(reader *tar.Reader, header *tar.Header) error {
 				header.Name = filepath.Join("configgin", header.Name)

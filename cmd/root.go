@@ -25,7 +25,6 @@ var (
 	flagWorkDir        string
 	flagRepository     string
 	flagWorkers        int
-	flagConfiggin      string
 	flagLightOpinions  string
 	flagDarkOpinions   string
 	flagOutputFormat   string
@@ -138,13 +137,6 @@ func init() {
 	)
 
 	RootCmd.PersistentFlags().StringP(
-		"configgin",
-		"f",
-		"",
-		"Path to the tarball containing configgin.",
-	)
-
-	RootCmd.PersistentFlags().StringP(
 		"light-opinions",
 		"l",
 		"",
@@ -206,10 +198,6 @@ func extendPathsFromWorkDirectory() {
 		flagRoleManifest = filepath.Join(workDir, "role-manifest.yml")
 	}
 
-	if flagConfiggin == "" {
-		flagConfiggin = filepath.Join(workDir, "configgin.tar.gz")
-	}
-
 	if flagLightOpinions == "" {
 		flagLightOpinions = filepath.Join(workDir, "opinions.yml")
 	}
@@ -230,7 +218,6 @@ func validateBasicFlags() error {
 	flagWorkDir = viper.GetString("work-dir")
 	flagRepository = viper.GetString("repository")
 	flagWorkers = viper.GetInt("workers")
-	flagConfiggin = viper.GetString("configgin")
 	flagLightOpinions = viper.GetString("light-opinions")
 	flagDarkOpinions = viper.GetString("dark-opinions")
 	flagOutputFormat = viper.GetString("output")
@@ -241,7 +228,6 @@ func validateBasicFlags() error {
 		&flagRoleManifest,
 		&flagCacheDir,
 		&flagWorkDir,
-		&flagConfiggin,
 		&flagLightOpinions,
 		&flagDarkOpinions,
 		&workPathCompilationDir,
