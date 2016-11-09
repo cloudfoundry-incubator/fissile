@@ -25,12 +25,13 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 		flagShowImageDockerOnly = viper.GetBool("docker-only")
 		flagShowImageWithSizes = viper.GetBool("with-sizes")
 
-		if err := fissile.LoadReleases(
+		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
 			flagCacheDir,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 

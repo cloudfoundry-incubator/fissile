@@ -25,12 +25,13 @@ compiled once.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		if err := fissile.LoadReleases(
+		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
 			flagCacheDir,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 
