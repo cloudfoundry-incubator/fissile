@@ -37,12 +37,13 @@ the image.
 		flagBuildImagesNoBuild = viper.GetBool("no-build")
 		flagBuildImagesForce = viper.GetBool("force")
 
-		if err := fissile.LoadReleases(
+		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
 			flagCacheDir,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 

@@ -14,6 +14,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCleanCacheEmpty(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
+
+	f := NewFissileApplication(".", ui)
+	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if assert.NoError(err) {
+		err = f.CleanCache(workDir + "compilation")
+		assert.Nil(err, "Expected CleanCache to find the release")
+	}
+}
+
 func TestListPackages(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	assert := assert.New(t)

@@ -15,12 +15,13 @@ The report contains the name, version, description and counts of jobs and packag
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show job information
 
-		if err := fissile.LoadReleases(
+		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
 			flagCacheDir,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 
