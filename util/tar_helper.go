@@ -70,3 +70,23 @@ func TargzIterate(filename string, targz io.Reader, fn func(*tar.Reader, *tar.He
 		}
 	}
 }
+
+// WriteToTarStream writes a byte array of data into a tar stream
+func WriteToTarStream(stream *tar.Writer, data []byte, header tar.Header) error {
+	if header.Mode == 0 {
+		header.Mode = 0644
+	}
+	if header.Size == 0 {
+		header.Size = int64(len(data))
+	}
+	if header.Typeflag == 0 {
+		header.Typeflag = tar.TypeReg
+	}
+	if err := stream.WriteHeader(&header); err != nil {
+		return err
+	}
+	if _, err := stream.Write(data); err != nil {
+		return err
+	}
+	return nil
+}

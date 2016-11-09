@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"archive/tar"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -39,35 +41,44 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 	assert.Contains(string(dockerfileContents), "foo:bar")
 }
 
-func TestBaseImageCreateDockerfileDir(t *testing.T) {
+func TestBaseImageCreateDockerStream(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.Nil(err)
-
 	configginTarball := filepath.Join(workDir, "../test-assets/configgin/fake-configgin.tgz")
 
-	targetDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
-	defer os.RemoveAll(targetDir)
-
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
+	tarStream, errors := baseImageBuilder.CreateDockerStream(configginTarball)
 
-	err = baseImageBuilder.CreateDockerfileDir(targetDir, configginTarball)
-	assert.Nil(err)
+	testFunctions := map[string]func([]byte){
+		"Dockerfile": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "foo:bar")
+		},
+		"configgin/configgin": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "exit 0")
+		},
+		"monitrc.erb": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "hcf.monit.password")
+		},
+	}
 
-	dockerfilePath := filepath.Join(targetDir, "Dockerfile")
-	contents, err := ioutil.ReadFile(dockerfilePath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "foo:bar")
-
-	configginPath := filepath.Join(targetDir, "configgin", "configgin")
-	contents, err = ioutil.ReadFile(configginPath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "exit 0")
-
-	monitrcPath := filepath.Join(targetDir, "monitrc.erb")
-	contents, err = ioutil.ReadFile(monitrcPath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "hcf.monit.password")
+	tarReader := tar.NewReader(tarStream)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if !assert.NoError(err) {
+			break
+		}
+		if tester, ok := testFunctions[header.Name]; ok {
+			actual, err := ioutil.ReadAll(tarReader)
+			assert.NoError(err)
+			tester(actual)
+			delete(testFunctions, header.Name)
+		}
+	}
+	assert.Empty(testFunctions, "Missing files in tar stream")
+	assert.NoError(<-errors)
 }

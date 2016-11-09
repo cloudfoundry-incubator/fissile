@@ -122,13 +122,8 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
-	f.UI.Println("Creating Dockerfile ...")
-
-	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
-		return fmt.Errorf("Error creating Dockerfile and/or assets: %s", err.Error())
-	}
-
-	f.UI.Println("Dockerfile created.")
+	f.UI.Println("Creating Docker tar stream ...")
+	tarStream, streamErrors := baseImageBuilder.CreateDockerStream(configginTarball)
 
 	if !noBuild {
 		f.UI.Println("Building docker image ...")
@@ -140,16 +135,22 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 			docker.ColoredBuildStringFunc(baseImageName),
 		)
 
-		err = dockerManager.BuildImage(targetPath, baseImageName, stdoutWriter)
+		err = dockerManager.BuildImageFromStream(tarStream, baseImageName, stdoutWriter)
 		if err != nil {
 			log.WriteTo(f.UI)
-			return fmt.Errorf("Error building base image: %s", err.Error())
+			if streamError, ok := <-streamErrors; ok {
+				return fmt.Errorf("Error building base image tar stream: %s", streamError)
+			}
+			return fmt.Errorf("Error building base image: %s", err)
 		}
 
 	} else {
 		f.UI.Println("Skipping image build because of flag.")
 	}
 
+	if err = <-streamErrors; err != nil {
+		return fmt.Errorf("Error building base image tar stream: %s", err)
+	}
 	f.UI.Println(color.GreenString("Done."))
 
 	return nil
