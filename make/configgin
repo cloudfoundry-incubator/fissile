@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# This script will package configgin
+
+set -o errexit -o nounset
+
+cd scripts/configgin
+# Make sure to delete previous bindata output so it doesn't go into the archive
+rm -rf output/ configgin.go
+make/package
+mv output/configgin-*.tgz output/configgin.tgz

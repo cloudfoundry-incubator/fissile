@@ -18,7 +18,7 @@ lint:
 vet:
 	${GIT_ROOT}/make/vet
 
-bindata:
+bindata: scripts/configgin/output/configgin.tgz
 	${GIT_ROOT}/make/bindata
 
 build:
@@ -42,3 +42,8 @@ reap:
 
 markdown:
 	${GIT_ROOT}/make/generate-markdown
+
+configgin: scripts/configgin/output/configgin.tgz
+
+scripts/configgin/output/configgin.tgz:
+	${GIT_ROOT}/make/configgin
