@@ -41,31 +41,6 @@ func (b *BaseImageBuilder) PopulateDockerArchive(configginTarballPath string) fu
 			return err
 		}
 
-		// Add configgin
-		// The local function is to ensure we scope everything with access
-		// to the (large) configgin binary so it can be freed early
-		configginGzip, err := ioutil.ReadFile(configginTarballPath)
-		if err != nil {
-			return err
-		}
-		err = util.TargzIterate(
-			configginTarballPath,
-			bytes.NewReader(configginGzip),
-			func(reader *tar.Reader, header *tar.Header) error {
-				header.Name = filepath.Join("configgin", header.Name)
-				if err = tarWriter.WriteHeader(header); err != nil {
-					return err
-				}
-				if _, err = io.Copy(tarWriter, reader); err != nil {
-					return err
-				}
-				return nil
-			})
-		if err != nil {
-			return err
-		}
-		configginGzip = nil
-
 		// Add monitrc
 		monitrcContents, err := dockerfiles.Asset("monitrc.erb")
 		if err != nil {
@@ -94,6 +69,28 @@ func (b *BaseImageBuilder) PopulateDockerArchive(configginTarballPath string) fu
 			if err != nil {
 				return err
 			}
+		}
+
+		// Add configgin
+		configginGzip, err := ioutil.ReadFile(configginTarballPath)
+		if err != nil {
+			return err
+		}
+		err = util.TargzIterate(
+			configginTarballPath,
+			bytes.NewReader(configginGzip),
+			func(reader *tar.Reader, header *tar.Header) error {
+				header.Name = filepath.Join("configgin", header.Name)
+				if err = tarWriter.WriteHeader(header); err != nil {
+					return err
+				}
+				if _, err = io.Copy(tarWriter, reader); err != nil {
+					return err
+				}
+				return nil
+			})
+		if err != nil {
+			return err
 		}
 
 		return nil
