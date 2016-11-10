@@ -139,7 +139,7 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 
 // PopulateTarStream returns a function which can populate a tar stream with the docker context to build the packages layer image with
 func (p *PackagesImageBuilder) PopulateTarStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string, forceBuildAll bool) func(*tar.Writer) error {
-	return func(tarStream *tar.Writer) error {
+	return func(tarWriter *tar.Writer) error {
 		if len(roleManifest.Roles) == 0 {
 			return fmt.Errorf("No roles to build")
 		}
@@ -160,7 +160,7 @@ func (p *PackagesImageBuilder) PopulateTarStream(roleManifest *model.RoleManifes
 		if err = configStore.WriteBaseConfig(roleManifest); err != nil {
 			return fmt.Errorf("Error writing base config: %s", err.Error())
 		}
-		walker := &tarWalker{stream: tarStream, root: specDir, prefix: "specs"}
+		walker := &tarWalker{stream: tarWriter, root: specDir, prefix: "specs"}
 		if err = filepath.Walk(specDir, walker.walk); err != nil {
 			return err
 		}
@@ -193,34 +193,27 @@ func (p *PackagesImageBuilder) PopulateTarStream(roleManifest *model.RoleManifes
 		if err = p.generateDockerfile(baseImageName, packages, &dockerfile); err != nil {
 			return err
 		}
-		header := tar.Header{
-			Name:     "Dockerfile",
-			Mode:     0644,
-			Size:     int64(dockerfile.Len()),
-			Typeflag: tar.TypeReg,
-		}
-		if err = tarStream.WriteHeader(&header); err != nil {
-			return err
-		}
-		if _, err = tarStream.Write(dockerfile.Bytes()); err != nil {
+		err = util.WriteToTarStream(tarWriter, dockerfile.Bytes(), tar.Header{
+			Name: "Dockerfile",
+		})
+		if err != nil {
 			return err
 		}
 
 		// Make sure we have the directory, even if we have no packages to add
-		header = tar.Header{
+		err = util.WriteToTarStream(tarWriter, []byte{}, tar.Header{
 			Name:     "packages-src",
 			Mode:     0755,
-			Size:     0,
 			Typeflag: tar.TypeDir,
-		}
-		if err = tarStream.WriteHeader(&header); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 
 		// Actually insert the packages into the tar stream
 		for _, pkg := range packages {
 			walker := &tarWalker{
-				stream: tarStream,
+				stream: tarWriter,
 				root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
 				prefix: filepath.Join("packages-src", pkg.Fingerprint),
 			}
