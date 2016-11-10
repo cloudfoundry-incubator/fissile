@@ -1,0 +1,8 @@
+---
+builds:
+  !binary "NTk2MzE2YjkzY2RlZGVkMzM5ZjgzNTY2MGE1YjUwZWFjMmVjYzU3YQ==":
+    version: !binary |-
+      NTk2MzE2YjkzY2RlZGVkMzM5ZjgzNTY2MGE1YjUwZWFjMmVjYzU3YQ==
+    sha1: !binary |-
+      MThkZTgyOTJhNjBiZjgxZTNhMWI1YmVhNzdjMTY4Y2VhY2JlZGViYg==
+format-version: '2'

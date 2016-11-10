@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	configstore "github.com/hpcloud/fissile/config-store"
@@ -189,6 +190,7 @@ func (p *PackagesImageBuilder) CreatePackagesDockerStream(roleManifest *model.Ro
 					}
 				}
 			}
+			sort.Sort(packages)
 
 			// Generate dockerfile
 			dockerfile := bytes.Buffer{}

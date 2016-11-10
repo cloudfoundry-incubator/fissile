@@ -309,7 +309,12 @@ func (j roleBuildJob) Run() {
 	default:
 	}
 
-	roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
+	versionHash, err := j.role.GetRoleDevVersion()
+	if err != nil {
+		j.resultsCh <- err
+		return
+	}
+	roleImageName := GetRoleDevImageName(j.repository, j.role, versionHash)
 	if !j.force {
 		if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
 			j.resultsCh <- err
@@ -371,6 +376,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 
 	resultsCh := make(chan error)
 	abort := make(chan struct{})
+
 	for _, role := range roles {
 		worker.Add(roleBuildJob{
 			role:          role,
@@ -399,7 +405,6 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 			err = result
 		}
 	}
-
 	return err
 }
 

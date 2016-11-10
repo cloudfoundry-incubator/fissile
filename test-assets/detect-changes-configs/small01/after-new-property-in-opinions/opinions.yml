@@ -1,0 +1,12 @@
+---
+properties:
+  ntp_conf: before-value
+  with:
+    json:
+      default:
+        default
+    port: 4222
+    user: nats
+  property03: 41
+  property05: spaf
+  

@@ -375,6 +375,11 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
+	err = roleManifest.SetGlobalConfig(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+
 	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest)
 	if !force {
 		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
@@ -430,6 +435,10 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
+	err = roleManifest.SetGlobalConfig(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
 		repository,
@@ -469,7 +478,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(repository string, rolesManifestPath, lightManifestPath, darkManifestPath string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -492,9 +501,17 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
+	err = rolesManifest.SetGlobalConfig(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
 
 	for _, role := range rolesManifest.Roles {
-		imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
+		versionHash, err := role.GetRoleDevVersion()
+		if err != nil {
+			return err
+		}
+		imageName := builder.GetRoleDevImageName(repository, role, versionHash)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)
