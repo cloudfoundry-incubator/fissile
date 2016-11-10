@@ -96,9 +96,7 @@ func TestPopulateTarStream(t *testing.T) {
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
-	tarFile, err := ioutil.TempFile("", "fissile-test-package-image")
-	assert.NoError(err)
-	defer os.Remove(tarFile.Name())
+	tarFile := &bytes.Buffer{}
 
 	tarPopulator := packagesImageBuilder.PopulateTarStream(
 		rolesManifest,
@@ -174,8 +172,6 @@ func TestPopulateTarStream(t *testing.T) {
 		},
 	}
 
-	_, err = tarFile.Seek(0, os.SEEK_SET)
-	assert.NoError(err)
 	tarReader := tar.NewReader(tarFile)
 	for {
 		header, err := tarReader.Next()

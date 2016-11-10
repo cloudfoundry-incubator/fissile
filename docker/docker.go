@@ -172,7 +172,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 // BuildImageFromCallback builds a docker image by letting a callback popuplate
 // a tar.Writer; the callback must write a Dockerfile into the tar stream (as
 // well as any additional build context).  If stdoutWriter implements io.Closer,
-// it well be closed when done.
+// it will be closed when done.
 func (d *ImageManager) BuildImageFromCallback(name string, stdoutWriter io.Writer, callback func(*tar.Writer) error) error {
 	pipeReader, pipeWriter, err := os.Pipe()
 	if err != nil {
@@ -217,18 +217,13 @@ func (d *ImageManager) BuildImageFromCallback(name string, stdoutWriter io.Write
 
 	err = d.client.BuildImage(bio)
 
-	writerErr := <-writerErrorChan
 	// Prefer returning the error from the tar writer; that normally
 	// has more useful details.
-	if writerErr != nil {
+	if writerErr := <-writerErrorChan; writerErr != nil {
 		return writerErr
 	}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // FindImage will lookup an image in Docker
