@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"archive/tar"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -39,35 +41,60 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 	assert.Contains(string(dockerfileContents), "foo:bar")
 }
 
-func TestBaseImageCreateDockerfileDir(t *testing.T) {
+func TestBaseImageNewDockerPopulator(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.Nil(err)
-
 	configginTarball := filepath.Join(workDir, "../test-assets/configgin/fake-configgin.tgz")
 
-	targetDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
-	defer os.RemoveAll(targetDir)
-
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
+	pipeReader, pipeWriter, err := os.Pipe()
+	if !assert.NoError(err) {
+		return
+	}
+	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
+	assert.NoError(tarPopulator(tar.NewWriter(pipeWriter)))
+	assert.NoError(pipeWriter.Close())
 
-	err = baseImageBuilder.CreateDockerfileDir(targetDir, configginTarball)
-	assert.Nil(err)
+	testFunctions := map[string]func([]byte){
+		"Dockerfile": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "foo:bar")
+		},
+		"configgin/configgin": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "exit 0")
+		},
+		"monitrc.erb": func(rawContents []byte) {
+			assert.Contains(string(rawContents), "hcf.monit.password")
+		},
+	}
 
-	dockerfilePath := filepath.Join(targetDir, "Dockerfile")
-	contents, err := ioutil.ReadFile(dockerfilePath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "foo:bar")
+	tarReader := tar.NewReader(pipeReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if !assert.NoError(err) {
+			break
+		}
+		if tester, ok := testFunctions[header.Name]; ok {
+			actual, err := ioutil.ReadAll(tarReader)
+			assert.NoError(err)
+			tester(actual)
+			delete(testFunctions, header.Name)
+		}
+	}
+	assert.Empty(testFunctions, "Missing files in tar stream")
+}
 
-	configginPath := filepath.Join(targetDir, "configgin", "configgin")
-	contents, err = ioutil.ReadFile(configginPath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "exit 0")
+func TestBaseImageNewDockerPopulatorWithError(t *testing.T) {
+	assert := assert.New(t)
 
-	monitrcPath := filepath.Join(targetDir, "monitrc.erb")
-	contents, err = ioutil.ReadFile(monitrcPath)
-	assert.Nil(err)
-	assert.Contains(string(contents), "hcf.monit.password")
+	tarPopulator := NewBaseImageBuilder("foo:bar").NewDockerPopulator("")
+	pipeReader, pipeWriter, err := os.Pipe()
+	defer pipeReader.Close()
+	assert.NoError(err)
+	err = tarPopulator(tar.NewWriter(pipeWriter))
+	assert.Error(err)
 }

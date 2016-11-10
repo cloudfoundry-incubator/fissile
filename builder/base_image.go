@@ -1,16 +1,17 @@
 package builder
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
-	"github.com/pivotal-golang/archiver/extractor"
 )
 
 // BaseImageBuilder represents a builder of docker base images
@@ -25,53 +26,65 @@ func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 	}
 }
 
-// CreateDockerfileDir generates a Dockerfile and assets in the targetDir
-func (b *BaseImageBuilder) CreateDockerfileDir(targetDir, configginTarballPath string) error {
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return err
+// NewDockerPopulator returns a function that will populate the docker tar archive
+func (b *BaseImageBuilder) NewDockerPopulator(configginTarballPath string) func(*tar.Writer) error {
+	return func(tarWriter *tar.Writer) error {
+		// Generate dockerfile
+		dockerfileContents, err := b.generateDockerfile()
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, dockerfileContents, tar.Header{
+			Name: "Dockerfile",
+		})
+		if err != nil {
+			return err
+		}
+
+		// Add rsyslog_conf and monitrc.erb
+		for _, assetName := range dockerfiles.AssetNames() {
+			switch {
+			case strings.HasPrefix(assetName, "rsyslog_conf/"):
+			case assetName == "monitrc.erb":
+			default:
+				continue
+			}
+			assetContents, err := dockerfiles.Asset(assetName)
+			if err != nil {
+				return err
+			}
+			err = util.WriteToTarStream(tarWriter, assetContents, tar.Header{
+				Name: assetName,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		// Add configgin
+		configginGzip, err := ioutil.ReadFile(configginTarballPath)
+		if err != nil {
+			return err
+		}
+		err = util.TargzIterate(
+			configginTarballPath,
+			bytes.NewReader(configginGzip),
+			func(reader *tar.Reader, header *tar.Header) error {
+				header.Name = filepath.Join("configgin", header.Name)
+				if err = tarWriter.WriteHeader(header); err != nil {
+					return err
+				}
+				if _, err = io.Copy(tarWriter, reader); err != nil {
+					return err
+				}
+				return nil
+			})
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
-
-	dockerfilePath := filepath.Join(targetDir, "Dockerfile")
-	dockerfileContents, err := b.generateDockerfile()
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(dockerfilePath, dockerfileContents, 0644); err != nil {
-		return err
-	}
-
-	if err := b.unpackConfiggin(targetDir, configginTarballPath); err != nil {
-		return err
-	}
-
-	if err := dockerfiles.RestoreAsset(targetDir, "monitrc.erb"); err != nil {
-		return err
-	}
-	if err := os.Chmod(filepath.Join(targetDir, "monitrc.erb"), 0600); err != nil {
-		return err
-	}
-
-	if err := dockerfiles.RestoreAssets(targetDir, "rsyslog_conf"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (b *BaseImageBuilder) unpackConfiggin(targetDir, configginTarballPath string) error {
-
-	configginDir := filepath.Join(targetDir, "configgin")
-
-	if err := os.MkdirAll(configginDir, 0755); err != nil {
-		return err
-	}
-
-	if err := extractor.NewTgz().Extract(configginTarballPath, configginDir); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {

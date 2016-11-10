@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -168,13 +169,20 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 	return nil
 }
 
-// BuildImageFromStream builds a docker image using a tar file stream containing a Dockerfile
-// A io.Writer can be given for log messages; if it implments io.Closer, it will be closed when done.
-func (d *ImageManager) BuildImageFromStream(stream io.Reader, name string, stdoutWriter io.Writer) error {
+// BuildImageFromCallback builds a docker image by letting a callback popuplate
+// a tar.Writer; the callback must write a Dockerfile into the tar stream (as
+// well as any additional build context).  If stdoutWriter implements io.Closer,
+// it will be closed when done.
+func (d *ImageManager) BuildImageFromCallback(name string, stdoutWriter io.Writer, callback func(*tar.Writer) error) error {
+	pipeReader, pipeWriter, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
 	bio := dockerclient.BuildImageOptions{
 		Name:         name,
 		NoCache:      true,
-		InputStream:  stream,
+		InputStream:  pipeReader,
 		OutputStream: stdoutWriter,
 	}
 
@@ -195,11 +203,27 @@ func (d *ImageManager) BuildImageFromStream(stream io.Reader, name string, stdou
 		}()
 	}
 
-	if err := d.client.BuildImage(bio); err != nil {
-		return err
+	writerErrorChan := make(chan error, 1)
+	go func() {
+		defer close(writerErrorChan)
+		defer pipeWriter.Close()
+		tarWriter := tar.NewWriter(pipeWriter)
+		var err error
+		if err = callback(tarWriter); err == nil {
+			err = tarWriter.Close()
+		}
+		writerErrorChan <- err
+	}()
+
+	err = d.client.BuildImage(bio)
+
+	// Prefer returning the error from the tar writer; that normally
+	// has more useful details.
+	if writerErr := <-writerErrorChan; writerErr != nil {
+		return writerErr
 	}
 
-	return nil
+	return err
 }
 
 // FindImage will lookup an image in Docker

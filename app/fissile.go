@@ -123,34 +123,24 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
-	f.UI.Println("Creating Dockerfile ...")
-
-	if err := baseImageBuilder.CreateDockerfileDir(targetPath, configginTarball); err != nil {
-		return fmt.Errorf("Error creating Dockerfile and/or assets: %s", err.Error())
-	}
-
-	f.UI.Println("Dockerfile created.")
-
-	if !noBuild {
-		f.UI.Println("Building docker image ...")
-
-		baseImageName := builder.GetBaseImageName(repository, f.Version)
-		log := new(bytes.Buffer)
-		stdoutWriter := docker.NewFormattingWriter(
-			log,
-			docker.ColoredBuildStringFunc(baseImageName),
-		)
-
-		err = dockerManager.BuildImage(targetPath, baseImageName, stdoutWriter)
-		if err != nil {
-			log.WriteTo(f.UI)
-			return fmt.Errorf("Error building base image: %s", err.Error())
-		}
-
-	} else {
+	if noBuild {
 		f.UI.Println("Skipping image build because of flag.")
+		return nil
 	}
 
+	f.UI.Println("Building base docker image ...")
+	log := new(bytes.Buffer)
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		docker.ColoredBuildStringFunc(baseImageName),
+	)
+
+	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
+	err = dockerManager.BuildImageFromCallback(baseImageName, stdoutWriter, tarPopulator)
+	if err != nil {
+		log.WriteTo(f.UI)
+		return fmt.Errorf("Error building base image: %s", err)
+	}
 	f.UI.Println(color.GreenString("Done."))
 
 	return nil
@@ -390,13 +380,6 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		return fmt.Errorf("Failed to find role base %s, did you build it first?", baseImageName)
 	}
 
-	f.UI.Printf("Creating Dockerfile for packages layer...\n")
-	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(roleManifest, lightManifestPath, darkManifestPath, force)
-	if err != nil {
-		return err
-	}
-	defer tarStream.Close()
-
 	if noBuild {
 		f.UI.Println("Skipping packages layer docker image build because of --no-build flag.")
 		return nil
@@ -410,14 +393,15 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	err = dockerManager.BuildImageFromStream(tarStream, packagesLayerImageName, stdoutWriter)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, lightManifestPath, darkManifestPath, force)
+	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
 		return fmt.Errorf("Error building packages layer docker image: %s", err.Error())
 	}
 	f.UI.Println(color.GreenString("Done."))
 
-	return <-errors
+	return nil
 }
 
 // GenerateRoleImages generates all role images using dev releases
