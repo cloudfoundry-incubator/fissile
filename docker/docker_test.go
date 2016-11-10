@@ -442,53 +442,6 @@ func TestFormatWriterOneLine(t *testing.T) {
 	verifyWriteOutput(t, "multipl", "e\ncalls\n")
 }
 
-func TestBuildImageFromStream(t *testing.T) {
-	assert := assert.New(t)
-
-	dockerManager, err := NewImageManager()
-	assert.NoError(err)
-
-	imageName := uuid.New()
-	hasImage, err := dockerManager.HasImage(imageName)
-	if assert.NoError(err) {
-		assert.False(hasImage, "Failed to get an unused image name")
-	}
-
-	pipeReader, pipeWriter := io.Pipe()
-
-	doneCh := make(chan struct{})
-	go func() {
-		tarStream := tar.NewWriter(pipeWriter)
-		contents := bytes.NewBufferString("FROM scratch\nENV hello=world")
-		header := tar.Header{
-			Name:     "Dockerfile",
-			Mode:     0644,
-			Size:     int64(contents.Len()),
-			Typeflag: tar.TypeReg,
-		}
-		assert.NoError(tarStream.WriteHeader(&header))
-		_, err := io.Copy(tarStream, contents)
-		assert.NoError(err)
-		assert.NoError(tarStream.Close(), "Error closing tar stream")
-		assert.NoError(pipeWriter.Close(), "Error closing tar pipe")
-		close(doneCh)
-	}()
-
-	err = dockerManager.BuildImageFromStream(pipeReader, imageName, ioutil.Discard)
-	if assert.NoError(err) {
-		hasImage, err = dockerManager.HasImage(imageName)
-		if assert.NoError(err) {
-			assert.True(hasImage, "Image did not build")
-		}
-		err = dockerManager.RemoveImage(imageName)
-		assert.NoError(err, "Failed to remove image %s", imageName)
-		hasImage, err = dockerManager.HasImage(imageName)
-		if assert.NoError(err) {
-			assert.False(hasImage, "Failed to remove image")
-		}
-	}
-}
-
 func doTestBuildImageFromCallback(t *testing.T, callback func(*tar.Writer) error, postRun func(error, *ImageManager, string)) {
 	assert := assert.New(t)
 
