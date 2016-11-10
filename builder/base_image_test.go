@@ -41,7 +41,7 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 	assert.Contains(string(dockerfileContents), "foo:bar")
 }
 
-func TestBaseImageCreateDockerStream(t *testing.T) {
+func TestBaseImagePopulateDockerArchive(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -49,7 +49,13 @@ func TestBaseImageCreateDockerStream(t *testing.T) {
 	configginTarball := filepath.Join(workDir, "../test-assets/configgin/fake-configgin.tgz")
 
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
-	tarStream, errors := baseImageBuilder.CreateDockerStream(configginTarball)
+	pipeReader, pipeWriter, err := os.Pipe()
+	if !assert.NoError(err) {
+		return
+	}
+	tarPopulator := baseImageBuilder.PopulateDockerArchive(configginTarball)
+	assert.NoError(tarPopulator(tar.NewWriter(pipeWriter)))
+	assert.NoError(pipeWriter.Close())
 
 	testFunctions := map[string]func([]byte){
 		"Dockerfile": func(rawContents []byte) {
@@ -63,7 +69,7 @@ func TestBaseImageCreateDockerStream(t *testing.T) {
 		},
 	}
 
-	tarReader := tar.NewReader(tarStream)
+	tarReader := tar.NewReader(pipeReader)
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -80,5 +86,15 @@ func TestBaseImageCreateDockerStream(t *testing.T) {
 		}
 	}
 	assert.Empty(testFunctions, "Missing files in tar stream")
-	assert.NoError(<-errors)
+}
+
+func TestBaseImagePopulateDockerArchiveWithError(t *testing.T) {
+	assert := assert.New(t)
+
+	tarPopulator := NewBaseImageBuilder("foo:bar").PopulateDockerArchive("")
+	pipeReader, pipeWriter, err := os.Pipe()
+	defer pipeReader.Close()
+	assert.NoError(err)
+	err = tarPopulator(tar.NewWriter(pipeWriter))
+	assert.Error(err)
 }

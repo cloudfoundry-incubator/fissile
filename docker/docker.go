@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -162,6 +163,68 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 	}
 
 	if err := d.client.BuildImage(bio); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// BuildImageFromCallback builds a docker image by letting a callback popuplate
+// a tar.Writer; the callback must write a Dockerfile into the tar stream (as
+// well as any additional build context).  If stdoutWriter implements io.Closer,
+// it well be closed when done.
+func (d *ImageManager) BuildImageFromCallback(name string, stdoutWriter io.Writer, callback func(*tar.Writer) error) error {
+	pipeReader, pipeWriter, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	bio := dockerclient.BuildImageOptions{
+		Name:         name,
+		NoCache:      true,
+		InputStream:  pipeReader,
+		OutputStream: stdoutWriter,
+	}
+
+	for _, envVar := range []string{"http_proxy", "https_proxy", "no_proxy"} {
+		for _, name := range []string{strings.ToLower(envVar), strings.ToUpper(envVar)} {
+			if val, ok := os.LookupEnv(name); ok {
+				bio.BuildArgs = append(bio.BuildArgs, dockerclient.BuildArg{
+					Name:  name,
+					Value: val,
+				})
+			}
+		}
+	}
+
+	if stdoutCloser, ok := stdoutWriter.(io.Closer); ok {
+		defer func() {
+			stdoutCloser.Close()
+		}()
+	}
+
+	writerErrorChan := make(chan error, 1)
+	go func() {
+		defer close(writerErrorChan)
+		defer pipeWriter.Close()
+		tarWriter := tar.NewWriter(pipeWriter)
+		var err error
+		if err = callback(tarWriter); err == nil {
+			err = tarWriter.Close()
+		}
+		writerErrorChan <- err
+	}()
+
+	err = d.client.BuildImage(bio)
+
+	writerErr := <-writerErrorChan
+	// Prefer returning the error from the tar writer; that normally
+	// has more useful details.
+	if writerErr != nil {
+		return writerErr
+	}
+
+	if err != nil {
 		return err
 	}
 

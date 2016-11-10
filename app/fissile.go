@@ -122,34 +122,23 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 
 	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
 
-	f.UI.Println("Creating Docker tar stream ...")
-	tarStream, streamErrors := baseImageBuilder.CreateDockerStream(configginTarball)
-
-	if !noBuild {
-		f.UI.Println("Building docker image ...")
-
-		baseImageName := builder.GetBaseImageName(repository, f.Version)
-		log := new(bytes.Buffer)
-		stdoutWriter := docker.NewFormattingWriter(
-			log,
-			docker.ColoredBuildStringFunc(baseImageName),
-		)
-
-		err = dockerManager.BuildImageFromStream(tarStream, baseImageName, stdoutWriter)
-		if err != nil {
-			log.WriteTo(f.UI)
-			if streamError, ok := <-streamErrors; ok {
-				return fmt.Errorf("Error building base image tar stream: %s", streamError)
-			}
-			return fmt.Errorf("Error building base image: %s", err)
-		}
-
-	} else {
+	if noBuild {
 		f.UI.Println("Skipping image build because of flag.")
+		return nil
 	}
 
-	if err = <-streamErrors; err != nil {
-		return fmt.Errorf("Error building base image tar stream: %s", err)
+	f.UI.Println("Building base docker image ...")
+	log := new(bytes.Buffer)
+	stdoutWriter := docker.NewFormattingWriter(
+		log,
+		docker.ColoredBuildStringFunc(baseImageName),
+	)
+
+	tarPopulator := baseImageBuilder.PopulateDockerArchive(configginTarball)
+	err = dockerManager.BuildImageFromCallback(baseImageName, stdoutWriter, tarPopulator)
+	if err != nil {
+		log.WriteTo(f.UI)
+		return fmt.Errorf("Error building base image: %s", err)
 	}
 	f.UI.Println(color.GreenString("Done."))
 

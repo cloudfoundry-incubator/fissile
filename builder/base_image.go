@@ -26,89 +26,78 @@ func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 	}
 }
 
-// CreateDockerStream generates a Dockerfile and assets in the targetDir
-func (b *BaseImageBuilder) CreateDockerStream(configginTarballPath string) (io.ReadCloser, <-chan error) {
-	pipeReader, pipeWriter := io.Pipe()
-	errors := make(chan error)
+// PopulateDockerArchive returns a function that will populate the docker tar archive
+func (b *BaseImageBuilder) PopulateDockerArchive(configginTarballPath string) func(*tar.Writer) error {
+	return func(tarWriter *tar.Writer) error {
+		// Generate dockerfile
+		dockerfileContents, err := b.generateDockerfile()
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, dockerfileContents, tar.Header{
+			Name: "Dockerfile",
+		})
+		if err != nil {
+			return err
+		}
 
-	go func() {
-		defer close(errors)
-		errors <- func() error {
-			defer pipeWriter.Close()
-			tarStream := tar.NewWriter(pipeWriter)
-			defer tarStream.Close()
-
-			// Generate dockerfile
-			dockerfileContents, err := b.generateDockerfile()
-			if err != nil {
-				return err
-			}
-			err = util.WriteToTarStream(tarStream, dockerfileContents, tar.Header{
-				Name: "Dockerfile",
-			})
-			if err != nil {
-				return err
-			}
-
-			// Add configgin
-			// The local function is to ensure we scope everything with access
-			// to the (large) configgin binary so it can be freed early
-			err = func() error {
-				configginGzip, err := ioutil.ReadFile(configginTarballPath)
-				if err != nil {
+		// Add configgin
+		// The local function is to ensure we scope everything with access
+		// to the (large) configgin binary so it can be freed early
+		configginGzip, err := ioutil.ReadFile(configginTarballPath)
+		if err != nil {
+			return err
+		}
+		err = util.TargzIterate(
+			configginTarballPath,
+			bytes.NewReader(configginGzip),
+			func(reader *tar.Reader, header *tar.Header) error {
+				header.Name = filepath.Join("configgin", header.Name)
+				if err = tarWriter.WriteHeader(header); err != nil {
 					return err
 				}
-				err = util.TargzIterate(configginTarballPath, bytes.NewReader(configginGzip), func(reader *tar.Reader, header *tar.Header) error {
-					header.Name = filepath.Join("configgin", header.Name)
-					if err = tarStream.WriteHeader(header); err != nil {
-						return err
-					}
-					if _, err = io.Copy(tarStream, reader); err != nil {
-						return err
-					}
-					return nil
-				})
+				if _, err = io.Copy(tarWriter, reader); err != nil {
+					return err
+				}
 				return nil
-			}()
-			if err != nil {
-				return err
-			}
+			})
+		if err != nil {
+			return err
+		}
+		configginGzip = nil
 
-			// Add monitrc
-			monitrcContents, err := dockerfiles.Asset("monitrc.erb")
+		// Add monitrc
+		monitrcContents, err := dockerfiles.Asset("monitrc.erb")
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, monitrcContents, tar.Header{
+			Name: "monitrc.erb",
+			Mode: 0600,
+		})
+		if err != nil {
+			return err
+		}
+
+		// Add rsyslog_conf
+		for _, assetName := range dockerfiles.AssetNames() {
+			if !strings.HasPrefix(assetName, "rsyslog_conf/") {
+				continue
+			}
+			assetContents, err := dockerfiles.Asset(assetName)
 			if err != nil {
 				return err
 			}
-			err = util.WriteToTarStream(tarStream, monitrcContents, tar.Header{
-				Name: "monitrc.erb",
-				Mode: 0600,
+			err = util.WriteToTarStream(tarWriter, assetContents, tar.Header{
+				Name: assetName,
 			})
 			if err != nil {
 				return err
 			}
+		}
 
-			// Add rsyslog_conf
-			for _, assetName := range dockerfiles.AssetNames() {
-				if !strings.HasPrefix(assetName, "rsyslog_conf/") {
-					continue
-				}
-				assetContents, err := dockerfiles.Asset(assetName)
-				if err != nil {
-					return err
-				}
-				err = util.WriteToTarStream(tarStream, assetContents, tar.Header{
-					Name: assetName,
-				})
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-		}()
-	}()
-
-	return pipeReader, errors
+		return nil
+	}
 }
 
 func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {

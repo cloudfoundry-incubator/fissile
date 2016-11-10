@@ -15,6 +15,7 @@ import (
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/golang/mock/gomock"
 	_ "github.com/golang/mock/mockgen" // Force godep to pick it up
+	"github.com/hpcloud/fissile/util"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -486,6 +487,88 @@ func TestBuildImageFromStream(t *testing.T) {
 			assert.False(hasImage, "Failed to remove image")
 		}
 	}
+}
+
+func doTestBuildImageFromCallback(t *testing.T, callback func(*tar.Writer) error, postRun func(error, *ImageManager, string)) {
+	assert := assert.New(t)
+
+	dockerManager, err := NewImageManager()
+	assert.NoError(err)
+
+	imageName := uuid.New()
+	hasImage, err := dockerManager.HasImage(imageName)
+	if assert.NoError(err) {
+		assert.False(hasImage, "Failed to get an unused image name")
+	}
+
+	err = dockerManager.BuildImageFromCallback(imageName, ioutil.Discard, callback)
+	postRun(err, dockerManager, imageName)
+}
+
+func TestBuildImageFromCallback(t *testing.T) {
+	assert := assert.New(t)
+	doTestBuildImageFromCallback(t, func(tarStream *tar.Writer) error {
+		contents := bytes.NewBufferString("FROM scratch\nENV hello=world")
+		header := tar.Header{
+			Name:     "Dockerfile",
+			Mode:     0644,
+			Size:     int64(contents.Len()),
+			Typeflag: tar.TypeReg,
+		}
+		assert.NoError(tarStream.WriteHeader(&header))
+		_, err := io.Copy(tarStream, contents)
+		assert.NoError(err)
+		return nil
+	}, func(err error, dockerManager *ImageManager, imageName string) {
+		if !assert.NoError(err) {
+			return
+		}
+		hasImage, err := dockerManager.HasImage(imageName)
+		if assert.NoError(err) {
+			assert.True(hasImage, "Image did not build")
+		}
+		err = dockerManager.RemoveImage(imageName)
+		assert.NoError(err, "Failed to remove image %s", imageName)
+		hasImage, err = dockerManager.HasImage(imageName)
+		if assert.NoError(err) {
+			assert.False(hasImage, "Failed to remove image")
+		}
+	})
+}
+
+func TestBuildImageFromCallbackCallbackFailure(t *testing.T) {
+	assert := assert.New(t)
+	doTestBuildImageFromCallback(t, func(tarStream *tar.Writer) error {
+		err := util.WriteToTarStream(tarStream, []byte("FROM scratch\nENV hello=world"), tar.Header{
+			Name: "Dockerfile",
+		})
+		assert.NoError(err)
+		return fmt.Errorf("Dummy error")
+	}, func(err error, dockerManager *ImageManager, imageName string) {
+		if assert.Error(err) {
+			assert.EqualError(err, "Dummy error", "Error message should be from callback")
+		}
+		// The image _could_ have been built, since nothing in it is missing
+		hasImage, err := dockerManager.HasImage(imageName)
+		if assert.NoError(err) && hasImage {
+			assert.NoError(dockerManager.RemoveImage(imageName))
+		}
+	})
+}
+
+func TestBuildImageFromCallbackDockerFailure(t *testing.T) {
+	assert := assert.New(t)
+	doTestBuildImageFromCallback(t, func(*tar.Writer) error {
+		// We don't have a Dockerfile, it should fail to build
+		return nil
+	}, func(err error, dockerManager *ImageManager, imageName string) {
+		if assert.Error(err, "Image should have failed to build") {
+			assert.Contains(err.Error(), "Cannot locate specified Dockerfile")
+		}
+		hasImage, err := dockerManager.HasImage(imageName)
+		assert.NoError(err)
+		assert.False(hasImage, "Image %s should not be available", imageName)
+	})
 }
 
 //go:generate -command mockgen go run ../vendor/github.com/golang/mock/mockgen/mockgen.go ../vendor/github.com/golang/mock/mockgen/parse.go ../vendor/github.com/golang/mock/mockgen/reflect.go
