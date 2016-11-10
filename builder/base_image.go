@@ -26,8 +26,8 @@ func NewBaseImageBuilder(baseImage string) *BaseImageBuilder {
 	}
 }
 
-// PopulateDockerArchive returns a function that will populate the docker tar archive
-func (b *BaseImageBuilder) PopulateDockerArchive(configginTarballPath string) func(*tar.Writer) error {
+// NewDockerPopulator returns a function that will populate the docker tar archive
+func (b *BaseImageBuilder) NewDockerPopulator(configginTarballPath string) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		// Generate dockerfile
 		dockerfileContents, err := b.generateDockerfile()
@@ -41,22 +41,12 @@ func (b *BaseImageBuilder) PopulateDockerArchive(configginTarballPath string) fu
 			return err
 		}
 
-		// Add monitrc
-		monitrcContents, err := dockerfiles.Asset("monitrc.erb")
-		if err != nil {
-			return err
-		}
-		err = util.WriteToTarStream(tarWriter, monitrcContents, tar.Header{
-			Name: "monitrc.erb",
-			Mode: 0600,
-		})
-		if err != nil {
-			return err
-		}
-
-		// Add rsyslog_conf
+		// Add rsyslog_conf and monitrc.erb
 		for _, assetName := range dockerfiles.AssetNames() {
-			if !strings.HasPrefix(assetName, "rsyslog_conf/") {
+			switch {
+			case strings.HasPrefix(assetName, "rsyslog_conf/"):
+			case assetName == "monitrc.erb":
+			default:
 				continue
 			}
 			assetContents, err := dockerfiles.Asset(assetName)

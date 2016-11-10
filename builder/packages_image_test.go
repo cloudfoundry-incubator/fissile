@@ -63,7 +63,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	}, lines, "Unexpected dockerfile contents found")
 }
 
-func TestPopulateTarStream(t *testing.T) {
+func TestNewDockerPopulator(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
@@ -98,7 +98,7 @@ func TestPopulateTarStream(t *testing.T) {
 
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.PopulateTarStream(
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(
 		rolesManifest,
 		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
 		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),

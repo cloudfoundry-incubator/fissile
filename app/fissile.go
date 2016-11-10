@@ -134,7 +134,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 		docker.ColoredBuildStringFunc(baseImageName),
 	)
 
-	tarPopulator := baseImageBuilder.PopulateDockerArchive(configginTarball)
+	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
 	err = dockerManager.BuildImageFromCallback(baseImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -334,7 +334,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.PopulateTarStream(roleManifest, lightManifestPath, darkManifestPath, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, lightManifestPath, darkManifestPath, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)

@@ -41,7 +41,7 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 	assert.Contains(string(dockerfileContents), "foo:bar")
 }
 
-func TestBaseImagePopulateDockerArchive(t *testing.T) {
+func TestBaseImageNewDockerPopulator(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -53,7 +53,7 @@ func TestBaseImagePopulateDockerArchive(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-	tarPopulator := baseImageBuilder.PopulateDockerArchive(configginTarball)
+	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
 	assert.NoError(tarPopulator(tar.NewWriter(pipeWriter)))
 	assert.NoError(pipeWriter.Close())
 
@@ -88,10 +88,10 @@ func TestBaseImagePopulateDockerArchive(t *testing.T) {
 	assert.Empty(testFunctions, "Missing files in tar stream")
 }
 
-func TestBaseImagePopulateDockerArchiveWithError(t *testing.T) {
+func TestBaseImageNewDockerPopulatorWithError(t *testing.T) {
 	assert := assert.New(t)
 
-	tarPopulator := NewBaseImageBuilder("foo:bar").PopulateDockerArchive("")
+	tarPopulator := NewBaseImageBuilder("foo:bar").NewDockerPopulator("")
 	pipeReader, pipeWriter, err := os.Pipe()
 	defer pipeReader.Close()
 	assert.NoError(err)

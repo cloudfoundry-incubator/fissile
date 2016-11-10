@@ -137,8 +137,8 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 	return matchedImage, packages, nil
 }
 
-// PopulateTarStream returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) PopulateTarStream(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string, forceBuildAll bool) func(*tar.Writer) error {
+// NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
+func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		if len(roleManifest.Roles) == 0 {
 			return fmt.Errorf("No roles to build")
