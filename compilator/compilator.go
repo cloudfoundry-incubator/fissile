@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
@@ -44,6 +46,7 @@ var (
 type Compilator struct {
 	DockerManager    *docker.ImageManager
 	HostWorkDir      string
+	MetricsFile      string
 	RepositoryPrefix string
 	BaseType         string
 	FissileVersion   string
@@ -77,6 +80,7 @@ type compileJob struct {
 func NewCompilator(
 	dockerManager *docker.ImageManager,
 	hostWorkDir string,
+	metricsPath string,
 	repositoryPrefix string,
 	baseType string,
 	fissileVersion string,
@@ -87,6 +91,7 @@ func NewCompilator(
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
 		HostWorkDir:      hostWorkDir,
+		MetricsFile:      metricsPath,
 		RepositoryPrefix: repositoryPrefix,
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
@@ -132,6 +137,14 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
+	// Metrics I: Overall time for compilation
+	if c.MetricsFile != "" {
+		_, fname, lno, _ := runtime.Caller(0)
+		location := fmt.Sprintf("%s:%d", fname, lno)
+		stampy.Stamp(c.MetricsFile, location, "compilator", "start")
+		defer stampy.Stamp(c.MetricsFile, location, "compilator", "done")
+	}
+
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
 
 	if err != nil {
@@ -237,9 +250,28 @@ func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *mod
 func (j compileJob) Run() {
 	c := j.compilator
 
+	// Metrics II: Overall time for the specific job
+	var location string
+	var waitser string
+	var runser string
+	if c.MetricsFile != "" {
+		_, fname, lno, _ := runtime.Caller(0)
+		location = fmt.Sprintf("%s:%d", fname, lno)
+		series := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		waitser = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		runser = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+
+		stampy.Stamp(c.MetricsFile, location, series, "start")
+		defer stampy.Stamp(c.MetricsFile, location, series, "done")
+
+		stampy.Stamp(c.MetricsFile, location, waitser, "start")
+	}
+
 	// (xx) Wait for our deps. Note how without deps the killCh is
 	// not checked and ignored. It is also in a race with (**)
 	// draining doneCh and actually signaling the kill.
+
+	// Time spent waiting
 	for _, dep := range j.pkg.Dependencies {
 		done := false
 		for !done {
@@ -249,6 +281,10 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name))
 				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
+
+				if c.MetricsFile != "" {
+					stampy.Stamp(c.MetricsFile, location, waitser, "done")
+				}
 				return
 			case <-time.After(5 * time.Second):
 				c.ui.Printf("waiting: %s/%s - %s\n",
@@ -265,11 +301,25 @@ func (j compileJob) Run() {
 		}
 	}
 
+	if c.MetricsFile != "" {
+		stampy.Stamp(c.MetricsFile, location, waitser, "done")
+	}
+
 	c.ui.Printf("compile: %s/%s\n",
 		color.MagentaString(j.pkg.Release.Name),
 		color.MagentaString(j.pkg.Name))
 
+	// Time spent in actual compilation
+	if c.MetricsFile != "" {
+		stampy.Stamp(c.MetricsFile, location, runser, "start")
+	}
+
 	workerErr := compilePackageHarness(c, j.pkg)
+
+	if c.MetricsFile != "" {
+		stampy.Stamp(c.MetricsFile, location, runser, "done")
+	}
+
 	c.ui.Printf("done:    %s/%s\n",
 		color.MagentaString(j.pkg.Release.Name),
 		color.MagentaString(j.pkg.Name))

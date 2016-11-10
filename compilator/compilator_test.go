@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -49,7 +50,11 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	metrics := "test-metrics.csv"
+	expected := `.*/compilator.go:.*,compilator,start\n.*/compilator.go:.*,compilator,done`
+	defer os.RemoveAll(metrics)
+
+	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
 	assert.Nil(err)
 
 	waitCh := make(chan struct{})
@@ -60,9 +65,17 @@ func TestCompilationEmpty(t *testing.T) {
 	}()
 
 	<-waitCh
+
+	contents, err := ioutil.ReadFile(metrics)
+	assert.Nil(err)
+	assert.Regexp(regexp.MustCompile(expected), string(contents))
 }
 
 func TestCompilationBasic(t *testing.T) {
+	metrics := "test-metrics.csv"
+	expected := `.*,compilator,start\n.*,compilator::job::test-release/ruby-2.5,start\n.*,compilator::job::wait::test-release/ruby-2.5,start\n.*,compilator::job::wait::test-release/ruby-2.5,start\n.*,compilator::job::run::test-release/ruby-2.5,start\n.*,compilator::job::run::test-release/ruby-2.5,done\n.*,compilator::job::test-release/ruby-2.5,done\n.*,compilator::job::test-release/go-1.4,start\n.*,compilator::job::wait::test-release/go-1.4,start\n.*,compilator::job::wait::test-release/go-1.4,start\n.*,compilator::job::run::test-release/go-1.4,start\n.*,compilator::job::run::test-release/go-1.4,done\n.*,compilator::job::test-release/go-1.4,done\n.*,compilator::job::test-release/consul,start\n.*,compilator::job::wait::test-release/consul,start\n.*,compilator::job::wait::test-release/consul,start\n.*,compilator::job::run::test-release/consul,start\n.*,compilator::job::run::test-release/consul,done\n.*,compilator::job::test-release/consul,done\n.*/compilator.go:.*,compilator,done`
+	defer os.RemoveAll(metrics)
+
 	saveCompilePackage := compilePackageHarness
 	defer func() {
 		compilePackageHarness = saveCompilePackage
@@ -76,7 +89,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
 	assert.NoError(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
@@ -100,6 +113,10 @@ func TestCompilationBasic(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		assert.Fail("Timed out waiting for overall completion")
 	}
+
+	contents, err := ioutil.ReadFile(metrics)
+	assert.Nil(err)
+	assert.Regexp(regexp.MustCompile(expected), string(contents))
 }
 
 func TestCompilationSkipCompiled(t *testing.T) {
@@ -122,7 +139,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
@@ -152,7 +169,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.NoError(err)
 
 	workDir, err := os.Getwd()
@@ -240,7 +257,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepContainer, ui)
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepContainer, ui)
 	assert.NoError(err)
 
 	imageName := comp.BaseImageName()
@@ -342,7 +359,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
@@ -368,7 +385,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.NoError(err)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Fingerprint, "compiled")
@@ -447,7 +464,7 @@ func TestCompilationParallel(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.NoError(err)
 
 	testDoneCh := make(chan struct{})
@@ -484,7 +501,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.NoError(err)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
@@ -509,7 +526,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -540,7 +557,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	assert.Nil(err)
 
-	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
+	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
 	assert.Nil(err)
 
 	pkg, err := release.LookupPackage("tor")
@@ -587,7 +604,7 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
-	comp, err := NewCompilator(dockerManager, compilationWorkDir, testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
+	comp, err := NewCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.Nil(err)
 
 	imageName := comp.BaseImageName()
@@ -684,7 +701,7 @@ func TestCreateDepBucketsOnChain(t *testing.T) {
 func TestGatherPackages(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.NoError(err)
 
 	releases := genTestCase("ruby-2.5", "go-1.4.1:G", "go-1.4:G")
@@ -707,7 +724,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewCompilator(nil, "", "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.NoError(err)
 
 	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")

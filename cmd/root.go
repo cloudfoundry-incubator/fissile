@@ -29,6 +29,7 @@ var (
 	flagLightOpinions  string
 	flagDarkOpinions   string
 	flagOutputFormat   string
+	flagMetrics        string
 
 	// workPath* variables contain paths derived from flagWorkDir
 	workPathCompilationDir string
@@ -159,6 +160,13 @@ func init() {
 	)
 
 	RootCmd.PersistentFlags().StringP(
+		"metrics",
+		"M",
+		"",
+		"Path to a CSV file to store timing metrics into.",
+	)
+
+	RootCmd.PersistentFlags().StringP(
 		"output",
 		"o",
 		"human",
@@ -217,6 +225,10 @@ func extendPathsFromWorkDirectory() {
 	if flagDarkOpinions == "" {
 		flagDarkOpinions = filepath.Join(workDir, "dark-opinions.yml")
 	}
+
+	if flagMetrics == "" {
+		flagMetrics = filepath.Join(workDir, "metrics.csv")
+	}
 }
 
 func validateBasicFlags() error {
@@ -234,6 +246,7 @@ func validateBasicFlags() error {
 	flagLightOpinions = viper.GetString("light-opinions")
 	flagDarkOpinions = viper.GetString("dark-opinions")
 	flagOutputFormat = viper.GetString("output")
+	flagMetrics = viper.GetString("metrics")
 
 	extendPathsFromWorkDirectory()
 
@@ -244,6 +257,7 @@ func validateBasicFlags() error {
 		&flagConfiggin,
 		&flagLightOpinions,
 		&flagDarkOpinions,
+		&flagMetrics,
 		&workPathCompilationDir,
 		&workPathConfigDir,
 		&workPathBaseDockerfile,
