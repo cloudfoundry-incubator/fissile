@@ -321,13 +321,6 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		return fmt.Errorf("Failed to find role base %s, did you build it first?", baseImageName)
 	}
 
-	f.UI.Printf("Creating Dockerfile for packages layer...\n")
-	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(roleManifest, lightManifestPath, darkManifestPath, force)
-	if err != nil {
-		return err
-	}
-	defer tarStream.Close()
-
 	if noBuild {
 		f.UI.Println("Skipping packages layer docker image build because of --no-build flag.")
 		return nil
@@ -341,14 +334,15 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	err = dockerManager.BuildImageFromStream(tarStream, packagesLayerImageName, stdoutWriter)
+	tarPopulator := packagesImageBuilder.PopulateTarStream(roleManifest, lightManifestPath, darkManifestPath, force)
+	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
 		return fmt.Errorf("Error building packages layer docker image: %s", err.Error())
 	}
 	f.UI.Println(color.GreenString("Done."))
 
-	return <-errors
+	return nil
 }
 
 // GenerateRoleImages generates all role images using dev releases

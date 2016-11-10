@@ -63,7 +63,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	}, lines, "Unexpected dockerfile contents found")
 }
 
-func TestCreatePackagesDockerStream(t *testing.T) {
+func TestPopulateTarStream(t *testing.T) {
 	assert := assert.New(t)
 
 	ui := termui.New(
@@ -96,14 +96,19 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
-	tarStream, errors, err := packagesImageBuilder.CreatePackagesDockerStream(
+	tarFile, err := ioutil.TempFile("", "fissile-test-package-image")
+	assert.NoError(err)
+	defer os.Remove(tarFile.Name())
+
+	tarPopulator := packagesImageBuilder.PopulateTarStream(
 		rolesManifest,
 		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
 		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),
 		false,
 	)
-	assert.NoError(err)
-	defer tarStream.Close()
+	tarWriter := tar.NewWriter(tarFile)
+	assert.NoError(tarPopulator(tarWriter))
+	assert.NoError(tarWriter.Close())
 
 	pkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
 	if !assert.NotNil(pkg) {
@@ -168,7 +173,10 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 			assert.Empty(contents)
 		},
 	}
-	tarReader := tar.NewReader(tarStream)
+
+	_, err = tarFile.Seek(0, os.SEEK_SET)
+	assert.NoError(err)
+	tarReader := tar.NewReader(tarFile)
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -185,6 +193,4 @@ func TestCreatePackagesDockerStream(t *testing.T) {
 		}
 	}
 	assert.Empty(testFunctions, "Missing files in tar stream")
-
-	assert.NoError(<-errors)
 }
