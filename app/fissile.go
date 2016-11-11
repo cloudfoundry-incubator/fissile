@@ -95,7 +95,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 }
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
-func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImage string, noBuild bool, repository string) error {
+func (f *Fissile) GenerateBaseDockerImage(targetPath, baseImage string, noBuild bool, repository string) error {
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -135,7 +135,7 @@ func (f *Fissile) GenerateBaseDockerImage(targetPath, configginTarball, baseImag
 		docker.ColoredBuildStringFunc(baseImageName),
 	)
 
-	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
+	tarPopulator := baseImageBuilder.NewDockerPopulator()
 	err = dockerManager.BuildImageFromCallback(baseImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)

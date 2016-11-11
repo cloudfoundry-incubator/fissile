@@ -2,10 +2,10 @@ package builder
 
 import (
 	"archive/tar"
+	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,32 +44,24 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 func TestBaseImageNewDockerPopulator(t *testing.T) {
 	assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.Nil(err)
-	configginTarball := filepath.Join(workDir, "../test-assets/configgin/fake-configgin.tgz")
-
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
-	pipeReader, pipeWriter, err := os.Pipe()
-	if !assert.NoError(err) {
-		return
-	}
-	tarPopulator := baseImageBuilder.NewDockerPopulator(configginTarball)
-	assert.NoError(tarPopulator(tar.NewWriter(pipeWriter)))
-	assert.NoError(pipeWriter.Close())
+	buffer := &bytes.Buffer{}
+	tarPopulator := baseImageBuilder.NewDockerPopulator()
+	assert.NoError(tarPopulator(tar.NewWriter(buffer)))
 
 	testFunctions := map[string]func([]byte){
 		"Dockerfile": func(rawContents []byte) {
 			assert.Contains(string(rawContents), "foo:bar")
 		},
 		"configgin/configgin": func(rawContents []byte) {
-			assert.Contains(string(rawContents), "exit 0")
+			assert.Contains(string(rawContents), "BUNDLE_GEMFILE")
 		},
 		"monitrc.erb": func(rawContents []byte) {
 			assert.Contains(string(rawContents), "hcf.monit.password")
 		},
 	}
 
-	tarReader := tar.NewReader(pipeReader)
+	tarReader := tar.NewReader(buffer)
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -91,10 +83,12 @@ func TestBaseImageNewDockerPopulator(t *testing.T) {
 func TestBaseImageNewDockerPopulatorWithError(t *testing.T) {
 	assert := assert.New(t)
 
-	tarPopulator := NewBaseImageBuilder("foo:bar").NewDockerPopulator("")
+	tarPopulator := NewBaseImageBuilder("foo:bar").NewDockerPopulator()
+	// We give it a closed writer, and ensure that the error bubbles up
 	pipeReader, pipeWriter, err := os.Pipe()
-	defer pipeReader.Close()
 	assert.NoError(err)
+	assert.NoError(pipeWriter.Close())
+	assert.NoError(pipeReader.Close())
 	err = tarPopulator(tar.NewWriter(pipeWriter))
 	assert.Error(err)
 }
