@@ -225,10 +225,6 @@ func extendPathsFromWorkDirectory() {
 	if flagDarkOpinions == "" {
 		flagDarkOpinions = filepath.Join(workDir, "dark-opinions.yml")
 	}
-
-	if flagMetrics == "" {
-		flagMetrics = filepath.Join(workDir, "metrics.csv")
-	}
 }
 
 func validateBasicFlags() error {

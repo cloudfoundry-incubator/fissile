@@ -51,7 +51,7 @@ func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
 	metrics := "test-metrics.csv"
-	expected := `.*/compilator.go:.*,compilator,start\n.*/compilator.go:.*,compilator,done`
+	expected := `.*,fissile,compilator,start\n.*,fissile,compilator,done`
 	defer os.RemoveAll(metrics)
 
 	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
@@ -72,10 +72,13 @@ func TestCompilationEmpty(t *testing.T) {
 }
 
 func TestCompilationBasic(t *testing.T) {
-	metrics := "test-metrics.csv"
-	expected := `.*,compilator,start\n.*,compilator::job::test-release/ruby-2.5,start\n.*,compilator::job::wait::test-release/ruby-2.5,start\n.*,compilator::job::wait::test-release/ruby-2.5,done\n.*,compilator::job::run::test-release/ruby-2.5,start\n.*,compilator::job::run::test-release/ruby-2.5,done\n.*,compilator::job::test-release/ruby-2.5,done\n.*,compilator::job::test-release/go-1.4,start\n.*,compilator::job::wait::test-release/go-1.4,start\n.*,compilator::job::wait::test-release/go-1.4,done\n.*,compilator::job::run::test-release/go-1.4,start\n.*,compilator::job::run::test-release/go-1.4,done\n.*,compilator::job::test-release/go-1.4,done\n.*,compilator::job::test-release/consul,start\n.*,compilator::job::wait::test-release/consul,start\n.*,compilator::job::wait::test-release/consul,done\n.*,compilator::job::run::test-release/consul,start\n.*,compilator::job::run::test-release/consul,done\n.*,compilator::job::test-release/consul,done
-.*/compilator.go:.*,compilator,done`
-	defer os.RemoveAll(metrics)
+	assert := assert.New(t)
+
+	file, err := ioutil.TempFile("", "metrics")
+	assert.NoError(err)
+
+	metrics := file.Name()
+	defer os.Remove(metrics)
 
 	saveCompilePackage := compilePackageHarness
 	defer func() {
@@ -87,8 +90,6 @@ func TestCompilationBasic(t *testing.T) {
 		compileChan <- pkg.Name
 		return nil
 	}
-
-	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
 	assert.NoError(err)
@@ -115,9 +116,42 @@ func TestCompilationBasic(t *testing.T) {
 		assert.Fail("Timed out waiting for overall completion")
 	}
 
+	expected := []string{
+		",compilator,start",
+		",compilator::job::test-release/ruby-2.5,start",
+		",compilator::job::wait::test-release/ruby-2.5,start",
+		",compilator::job::wait::test-release/ruby-2.5,done",
+		",compilator::job::run::test-release/ruby-2.5,start",
+		",compilator::job::run::test-release/ruby-2.5,done",
+		",compilator::job::test-release/ruby-2.5,done",
+		",compilator::job::test-release/go-1.4,start",
+		",compilator::job::wait::test-release/go-1.4,start",
+		",compilator::job::wait::test-release/go-1.4,done",
+		",compilator::job::run::test-release/go-1.4,start",
+		",compilator::job::run::test-release/go-1.4,done",
+		",compilator::job::test-release/go-1.4,done",
+		",compilator::job::test-release/consul,start",
+		",compilator::job::wait::test-release/consul,start",
+		",compilator::job::wait::test-release/consul,done",
+		",compilator::job::run::test-release/consul,start",
+		",compilator::job::run::test-release/consul,done",
+		",compilator::job::test-release/consul,done",
+		",fissile,compilator,done",
+	}
+
 	contents, err := ioutil.ReadFile(metrics)
-	assert.Nil(err)
-	assert.Regexp(regexp.MustCompile(expected), string(contents))
+	assert.NoError(err)
+
+	actual := strings.Split(strings.TrimSpace(string(contents)), "\n")
+	if assert.Len(actual, len(expected)) {
+		for lineno, suffix := range expected {
+			if !strings.HasSuffix(actual[lineno], suffix) {
+				assert.Fail(fmt.Sprintf("Doesn't have suffix: \n"+
+					"value: %s\nsuffix: %s\n",
+					actual[lineno], suffix))
+			}
+		}
+	}
 }
 
 func TestCompilationSkipCompiled(t *testing.T) {

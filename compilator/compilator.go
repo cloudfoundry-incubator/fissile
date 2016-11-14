@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -46,7 +45,7 @@ var (
 type Compilator struct {
 	DockerManager    *docker.ImageManager
 	HostWorkDir      string
-	MetricsFile      string
+	MetricsPath      string
 	RepositoryPrefix string
 	BaseType         string
 	FissileVersion   string
@@ -91,7 +90,7 @@ func NewCompilator(
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
 		HostWorkDir:      hostWorkDir,
-		MetricsFile:      metricsPath,
+		MetricsPath:      metricsPath,
 		RepositoryPrefix: repositoryPrefix,
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
@@ -137,12 +136,10 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	// Metrics I: Overall time for compilation
-	if c.MetricsFile != "" {
-		_, fname, lno, _ := runtime.Caller(0)
-		location := fmt.Sprintf("%s:%d", fname, lno)
-		stampy.Stamp(c.MetricsFile, location, "compilator", "start")
-		defer stampy.Stamp(c.MetricsFile, location, "compilator", "done")
+	// Metrics: Overall time for compilation
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", "compilator", "start")
+		defer stampy.Stamp(c.MetricsPath, "fissile", "compilator", "done")
 	}
 
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
@@ -250,21 +247,18 @@ func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *mod
 func (j compileJob) Run() {
 	c := j.compilator
 
-	// Metrics II: Overall time for the specific job
-	var location string
-	var waitser string
-	var runser string
-	if c.MetricsFile != "" {
-		_, fname, lno, _ := runtime.Caller(0)
-		location = fmt.Sprintf("%s:%d", fname, lno)
-		series := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		waitser = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		runser = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+	// Metrics: Overall time for the specific job
+	var waitSeriesName string
+	var runSeriesName string
+	if c.MetricsPath != "" {
+		seriesName := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		waitSeriesName = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		runSeriesName = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
 
-		stampy.Stamp(c.MetricsFile, location, series, "start")
-		defer stampy.Stamp(c.MetricsFile, location, series, "done")
+		stampy.Stamp(c.MetricsPath, "fissile", seriesName, "start")
+		defer stampy.Stamp(c.MetricsPath, "fissile", seriesName, "done")
 
-		stampy.Stamp(c.MetricsFile, location, waitser, "start")
+		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "start")
 	}
 
 	// (xx) Wait for our deps. Note how without deps the killCh is
@@ -282,8 +276,8 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Name))
 				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
 
-				if c.MetricsFile != "" {
-					stampy.Stamp(c.MetricsFile, location, waitser, "done")
+				if c.MetricsPath != "" {
+					stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
 				}
 				return
 			case <-time.After(5 * time.Second):
@@ -301,8 +295,8 @@ func (j compileJob) Run() {
 		}
 	}
 
-	if c.MetricsFile != "" {
-		stampy.Stamp(c.MetricsFile, location, waitser, "done")
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
 	}
 
 	c.ui.Printf("compile: %s/%s\n",
@@ -310,14 +304,14 @@ func (j compileJob) Run() {
 		color.MagentaString(j.pkg.Name))
 
 	// Time spent in actual compilation
-	if c.MetricsFile != "" {
-		stampy.Stamp(c.MetricsFile, location, runser, "start")
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "start")
 	}
 
 	workerErr := compilePackageHarness(c, j.pkg)
 
-	if c.MetricsFile != "" {
-		stampy.Stamp(c.MetricsFile, location, runser, "done")
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "done")
 	}
 
 	c.ui.Printf("done:    %s/%s\n",
