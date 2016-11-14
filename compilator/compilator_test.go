@@ -50,9 +50,13 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	metrics := "test-metrics.csv"
+	file, err := ioutil.TempFile("", "metrics")
+	assert.NoError(err)
+
+	metrics := file.Name()
+	defer os.Remove(metrics)
+
 	expected := `.*,fissile,compilator,start\n.*,fissile,compilator,done`
-	defer os.RemoveAll(metrics)
 
 	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
 	assert.Nil(err)
