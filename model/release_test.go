@@ -92,14 +92,14 @@ func TestReleaseValidationStructure(t *testing.T) {
 	assert.Nil(err)
 	err = release.validatePathStructure()
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "(packages directory) does not exist.")
+	assert.Contains(err.Error(), "(packages directory) does not exist")
 
 	// Create an empty packages dir
 	err = os.MkdirAll(filepath.Join(releaseDir, packagesDir), 0755)
 	assert.Nil(err)
 	err = release.validatePathStructure()
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "(jobs directory) does not exist.")
+	assert.Contains(err.Error(), "(jobs directory) does not exist")
 
 	// Create an empty jobs dir
 	err = os.MkdirAll(filepath.Join(releaseDir, jobsDir), 0755)

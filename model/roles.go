@@ -79,7 +79,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		_, ok := mappedReleases[release.Name]
 
 		if ok {
-			return nil, fmt.Errorf("Error - release %s has been loaded more than once.", release.Name)
+			return nil, fmt.Errorf("Error - release %s has been loaded more than once", release.Name)
 		}
 
 		mappedReleases[release.Name] = release
@@ -116,7 +116,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
 			if !ok {
-				return nil, fmt.Errorf("Error - release %s has not been loaded and is referenced by job %s in role %s.",
+				return nil, fmt.Errorf("Error - release %s has not been loaded and is referenced by job %s in role %s",
 					roleJob.ReleaseName, roleJob.Name, role.Name)
 			}
 

@@ -502,7 +502,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 					err = removeErr
 				} else {
 					err = fmt.Errorf(
-						"Image creation error: %s. Image removal error: %s.",
+						"Image creation error: %s. Image removal error: %s",
 						err,
 						removeErr,
 					)
@@ -694,9 +694,9 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	}
 
 	if pathInfo.IsDir() && !shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
+		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file", path, pathDescription)
 	} else if !pathInfo.IsDir() && shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
+		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory", path, pathDescription)
 	}
 
 	return true, nil
