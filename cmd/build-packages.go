@@ -39,6 +39,7 @@ compiled once.
 			flagRepository,
 			workPathCompilationDir,
 			flagRoleManifest,
+			flagMetrics,
 			flagWorkers,
 		)
 	},

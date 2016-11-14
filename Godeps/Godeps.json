@@ -155,6 +155,10 @@
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},
 		{
+			"ImportPath": "github.com/hpcloud/stampy",
+			"Rev": "4d305fae6f7ef4be26203a24cd21f9e95a6fa3ee"
+		},
+		{
 			"ImportPath": "github.com/hpcloud/termui/sigint",
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},

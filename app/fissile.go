@@ -45,7 +45,7 @@ func (f *Fissile) ShowBaseImage(repository string) error {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
+	comp, err := compilator.NewCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -82,7 +82,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 
 	f.UI.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	comp, err := compilator.NewCompilator(dockerManager, "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
+	comp, err := compilator.NewCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -263,7 +263,7 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, workerCount int) error {
+func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, workerCount int) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -283,7 +283,7 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath string, worke
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, targetPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
+	comp, err := compilator.NewCompilator(dockerManager, targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}

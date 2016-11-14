@@ -16,6 +16,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
 	dockerClient "github.com/fsouza/go-dockerclient"
@@ -44,6 +45,7 @@ var (
 type Compilator struct {
 	DockerManager    *docker.ImageManager
 	HostWorkDir      string
+	MetricsPath      string
 	RepositoryPrefix string
 	BaseType         string
 	FissileVersion   string
@@ -77,6 +79,7 @@ type compileJob struct {
 func NewCompilator(
 	dockerManager *docker.ImageManager,
 	hostWorkDir string,
+	metricsPath string,
 	repositoryPrefix string,
 	baseType string,
 	fissileVersion string,
@@ -87,6 +90,7 @@ func NewCompilator(
 	compilator := &Compilator{
 		DockerManager:    dockerManager,
 		HostWorkDir:      hostWorkDir,
+		MetricsPath:      metricsPath,
 		RepositoryPrefix: repositoryPrefix,
 		BaseType:         baseType,
 		FissileVersion:   fissileVersion,
@@ -132,6 +136,12 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
+	// Metrics: Overall time for compilation
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", "compilator", "start")
+		defer stampy.Stamp(c.MetricsPath, "fissile", "compilator", "done")
+	}
+
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
 
 	if err != nil {
@@ -237,9 +247,25 @@ func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *mod
 func (j compileJob) Run() {
 	c := j.compilator
 
+	// Metrics: Overall time for the specific job
+	var waitSeriesName string
+	var runSeriesName string
+	if c.MetricsPath != "" {
+		seriesName := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		waitSeriesName = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		runSeriesName = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+
+		stampy.Stamp(c.MetricsPath, "fissile", seriesName, "start")
+		defer stampy.Stamp(c.MetricsPath, "fissile", seriesName, "done")
+
+		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "start")
+	}
+
 	// (xx) Wait for our deps. Note how without deps the killCh is
 	// not checked and ignored. It is also in a race with (**)
 	// draining doneCh and actually signaling the kill.
+
+	// Time spent waiting
 	for _, dep := range j.pkg.Dependencies {
 		done := false
 		for !done {
@@ -249,6 +275,10 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Release.Name),
 					color.MagentaString(j.pkg.Name))
 				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
+
+				if c.MetricsPath != "" {
+					stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
+				}
 				return
 			case <-time.After(5 * time.Second):
 				c.ui.Printf("waiting: %s/%s - %s\n",
@@ -265,11 +295,25 @@ func (j compileJob) Run() {
 		}
 	}
 
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
+	}
+
 	c.ui.Printf("compile: %s/%s\n",
 		color.MagentaString(j.pkg.Release.Name),
 		color.MagentaString(j.pkg.Name))
 
+	// Time spent in actual compilation
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "start")
+	}
+
 	workerErr := compilePackageHarness(c, j.pkg)
+
+	if c.MetricsPath != "" {
+		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "done")
+	}
+
 	c.ui.Printf("done:    %s/%s\n",
 		color.MagentaString(j.pkg.Release.Name),
 		color.MagentaString(j.pkg.Name))
@@ -458,7 +502,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 					err = removeErr
 				} else {
 					err = fmt.Errorf(
-						"Image creation error: %s. Image removal error: %s.",
+						"Image creation error: %s. Image removal error: %s",
 						err,
 						removeErr,
 					)
@@ -650,9 +694,9 @@ func validatePath(path string, shouldBeDir bool, pathDescription string) (bool, 
 	}
 
 	if pathInfo.IsDir() && !shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file.", path, pathDescription)
+		return false, fmt.Errorf("Path %s (%s) points to a directory. It should be a a file", path, pathDescription)
 	} else if !pathInfo.IsDir() && shouldBeDir {
-		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory.", path, pathDescription)
+		return false, fmt.Errorf("Path %s (%s) points to a file. It should be a directory", path, pathDescription)
 	}
 
 	return true, nil
