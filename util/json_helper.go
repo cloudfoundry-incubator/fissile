@@ -141,7 +141,6 @@ func jsonMergeBlobsHelper(dest, src map[string]interface{}, path []string) error
 				if err != nil {
 					return err
 				}
-				// dest[srcKey] = srcValue
 				continue
 			}
 			err := typeCheck(destValue, srcValue, srcKey, path)
@@ -152,7 +151,6 @@ func jsonMergeBlobsHelper(dest, src map[string]interface{}, path []string) error
 			if err != nil {
 				return err
 			}
-			// dest[srcKey] = srcValue
 			continue
 		}
 		srcMap, ok := srcValue.(map[string]interface{})
