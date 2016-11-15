@@ -310,7 +310,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 
-	comp.BaseType = compilation.FailBase
+	comp.baseType = compilation.FailBase
 	err = comp.compilePackage(release.Packages[0])
 	// We expect the package to fail this time.
 	assert.Error(err)
@@ -603,10 +603,10 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	assert.Nil(err)
 	err = compilator.createCompilationDirStructure(pkg)
 	assert.Nil(err)
-	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), 0755)
+	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), 0755)
 	assert.Nil(err)
 
-	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), "foo")
+	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), "foo")
 	file, err := os.Create(dummyCompiledFile)
 	assert.Nil(err)
 	file.Close()
