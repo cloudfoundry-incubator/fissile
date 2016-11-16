@@ -376,11 +376,6 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	if r.metricsPath != "" {
-		stampy.Stamp(r.metricsPath, "fissile", "builder::role_image", "start")
-		defer stampy.Stamp(r.metricsPath, "fissile", "builder::role_image", "done")
-	}
-
 	workerLib.MaxJobs = workerCount
 	worker := workerLib.NewWorker()
 

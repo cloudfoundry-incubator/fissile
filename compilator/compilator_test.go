@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -50,15 +49,7 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "metrics")
-	assert.NoError(err)
-
-	metrics := file.Name()
-	defer os.Remove(metrics)
-
-	expected := `.*,fissile,compilator,start\n.*,fissile,compilator,done`
-
-	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	waitCh := make(chan struct{})
@@ -69,10 +60,6 @@ func TestCompilationEmpty(t *testing.T) {
 	}()
 
 	<-waitCh
-
-	contents, err := ioutil.ReadFile(metrics)
-	assert.Nil(err)
-	assert.Regexp(regexp.MustCompile(expected), string(contents))
 }
 
 func TestCompilationBasic(t *testing.T) {
@@ -121,7 +108,6 @@ func TestCompilationBasic(t *testing.T) {
 	}
 
 	expected := []string{
-		",compilator,start",
 		",compilator::job::test-release/ruby-2.5,start",
 		",compilator::job::wait::test-release/ruby-2.5,start",
 		",compilator::job::wait::test-release/ruby-2.5,done",
@@ -140,7 +126,6 @@ func TestCompilationBasic(t *testing.T) {
 		",compilator::job::run::test-release/consul,start",
 		",compilator::job::run::test-release/consul,done",
 		",compilator::job::test-release/consul,done",
-		",fissile,compilator,done",
 	}
 
 	contents, err := ioutil.ReadFile(metrics)

@@ -405,12 +405,10 @@ func TestBuildRoleImages(t *testing.T) {
 	)
 	assert.NoError(err)
 
-	expected := `.*,fissile,builder::role_image,start
-.*,fissile,builder::role_image::test-repository-myrole:[a-z0-9]{40},start
+	expected := `.*,fissile,builder::role_image::test-repository-myrole:[a-z0-9]{40},start
 .*,fissile,builder::role_image::test-repository-myrole:[a-z0-9]{40},done
 .*,fissile,builder::role_image::test-repository-foorole:[a-z0-9]{40},start
-.*,fissile,builder::role_image::test-repository-foorole:[a-z0-9]{40},done
-.*,fissile,builder::role_image,done`
+.*,fissile,builder::role_image::test-repository-foorole:[a-z0-9]{40},done`
 
 	contents, err := ioutil.ReadFile(metrics)
 	assert.NoError(err)

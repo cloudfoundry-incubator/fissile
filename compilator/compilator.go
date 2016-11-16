@@ -136,12 +136,6 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	// Metrics: Overall time for compilation
-	if c.metricsPath != "" {
-		stampy.Stamp(c.metricsPath, "fissile", "compilator", "start")
-		defer stampy.Stamp(c.metricsPath, "fissile", "compilator", "done")
-	}
-
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
 
 	if err != nil {

@@ -279,6 +279,11 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		return fmt.Errorf("Releases not loaded")
 	}
 
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "compile-packages", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "compile-packages", "done")
+	}
+
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -419,6 +424,11 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
+	}
+
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "create-role-images", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-role-images", "done")
 	}
 
 	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
