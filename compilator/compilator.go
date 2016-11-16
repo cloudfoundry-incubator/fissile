@@ -245,9 +245,9 @@ func (j compileJob) Run() {
 	var waitSeriesName string
 	var runSeriesName string
 	if c.metricsPath != "" {
-		seriesName := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		waitSeriesName = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		runSeriesName = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		seriesName := fmt.Sprintf("compile-packages::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		waitSeriesName = fmt.Sprintf("compile-packages::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		runSeriesName = fmt.Sprintf("compile-packages::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
 
 		stampy.Stamp(c.metricsPath, "fissile", seriesName, "start")
 		defer stampy.Stamp(c.metricsPath, "fissile", seriesName, "done")

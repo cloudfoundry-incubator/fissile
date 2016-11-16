@@ -325,7 +325,7 @@ func (j roleBuildJob) Run() {
 	}
 
 	if j.builder.metricsPath != "" {
-		seriesName := fmt.Sprintf("builder::role_image::%s", roleImageName)
+		seriesName := fmt.Sprintf("create-role-images::%s", roleImageName)
 
 		stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
 		defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
