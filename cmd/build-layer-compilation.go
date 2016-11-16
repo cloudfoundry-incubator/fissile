@@ -31,6 +31,7 @@ If the compilation base image already exists, this command does not do anything.
 		err := fissile.CreateBaseCompilationImage(
 			flagBuildLayerFrom,
 			flagRepository,
+			flagMetrics,
 			flagBuildLayerCompilationDebug,
 		)
 

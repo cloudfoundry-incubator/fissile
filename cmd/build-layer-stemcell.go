@@ -21,6 +21,7 @@ Fissile will create a Dockerfile and a directory structure with all dependencies
 		return fissile.GenerateBaseDockerImage(
 			workPathBaseDockerfile,
 			flagBuildLayerFrom,
+			flagMetrics,
 			flagBuildLayerNoBuild,
 			flagRepository,
 		)
