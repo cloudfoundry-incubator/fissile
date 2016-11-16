@@ -405,7 +405,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -437,6 +437,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		repository,
 		compiledPackagesPath,
 		targetPath,
+		metricsPath,
 		"",
 		f.Version,
 		f.UI,
