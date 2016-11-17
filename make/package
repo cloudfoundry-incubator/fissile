@@ -10,4 +10,4 @@ GOOS=${GOOS:-$(go env GOOS)}
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
 ${GIT_ROOT}/make/build
-tar czf ${APP_VERSION}-${GOOS}.${GOARCH}.tgz fissile
+tar czf ${APP_VERSION}.${GOOS}-${GOARCH}.tgz fissile
