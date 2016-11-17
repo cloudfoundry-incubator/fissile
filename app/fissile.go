@@ -15,6 +15,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
@@ -69,7 +70,12 @@ func (f *Fissile) ShowBaseImage(repository string) error {
 }
 
 // CreateBaseCompilationImage will recompile the base BOSH image for a release
-func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, keepContainer bool) error {
+func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository, metricsPath string, keepContainer bool) error {
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "create-compilation-image", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-compilation-image", "done")
+	}
+
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -95,7 +101,12 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository string, k
 }
 
 // GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
-func (f *Fissile) GenerateBaseDockerImage(targetPath, baseImage string, noBuild bool, repository string) error {
+func (f *Fissile) GenerateBaseDockerImage(targetPath, baseImage, metricsPath string, noBuild bool, repository string) error {
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "create-role-base", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-role-base", "done")
+	}
+
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -268,6 +279,11 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		return fmt.Errorf("Releases not loaded")
 	}
 
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "compile-packages", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "compile-packages", "done")
+	}
+
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
@@ -405,9 +421,14 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
+	}
+
+	if metricsPath != "" {
+		stampy.Stamp(metricsPath, "fissile", "create-role-images", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-role-images", "done")
 	}
 
 	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
@@ -437,6 +458,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository string, noBuild, for
 		repository,
 		compiledPackagesPath,
 		targetPath,
+		metricsPath,
 		"",
 		f.Version,
 		f.UI,

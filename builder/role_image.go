@@ -15,6 +15,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
@@ -44,13 +45,14 @@ type RoleImageBuilder struct {
 	repository           string
 	compiledPackagesPath string
 	targetPath           string
+	metricsPath          string
 	version              string
 	fissileVersion       string
 	ui                   *termui.UI
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, metricsPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -58,6 +60,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, version, 
 		repository:           repository,
 		compiledPackagesPath: compiledPackagesPath,
 		targetPath:           targetPath,
+		metricsPath:          metricsPath,
 		version:              version,
 		fissileVersion:       fissileVersion,
 		ui:                   ui,
@@ -319,6 +322,13 @@ func (j roleBuildJob) Run() {
 			j.resultsCh <- nil
 			return
 		}
+	}
+
+	if j.builder.metricsPath != "" {
+		seriesName := fmt.Sprintf("create-role-images::%s", roleImageName)
+
+		stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
+		defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
 	}
 
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))

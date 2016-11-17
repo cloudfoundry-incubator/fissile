@@ -50,6 +50,7 @@ the image.
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagRepository,
+			flagMetrics,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
 			flagWorkers,

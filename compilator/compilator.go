@@ -43,12 +43,12 @@ var (
 
 // Compilator represents the BOSH compiler
 type Compilator struct {
-	DockerManager    *docker.ImageManager
-	HostWorkDir      string
-	MetricsPath      string
-	RepositoryPrefix string
-	BaseType         string
-	FissileVersion   string
+	dockerManager    *docker.ImageManager
+	hostWorkDir      string
+	metricsPath      string
+	repositoryPrefix string
+	baseType         string
+	fissileVersion   string
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -88,12 +88,12 @@ func NewCompilator(
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		DockerManager:    dockerManager,
-		HostWorkDir:      hostWorkDir,
-		MetricsPath:      metricsPath,
-		RepositoryPrefix: repositoryPrefix,
-		BaseType:         baseType,
-		FissileVersion:   fissileVersion,
+		dockerManager:    dockerManager,
+		hostWorkDir:      hostWorkDir,
+		metricsPath:      metricsPath,
+		repositoryPrefix: repositoryPrefix,
+		baseType:         baseType,
+		fissileVersion:   fissileVersion,
 		keepContainer:    keepContainer,
 		ui:               ui,
 
@@ -136,12 +136,6 @@ type compileResult struct {
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
 func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	// Metrics: Overall time for compilation
-	if c.MetricsPath != "" {
-		stampy.Stamp(c.MetricsPath, "fissile", "compilator", "start")
-		defer stampy.Stamp(c.MetricsPath, "fissile", "compilator", "done")
-	}
-
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
 
 	if err != nil {
@@ -250,15 +244,15 @@ func (j compileJob) Run() {
 	// Metrics: Overall time for the specific job
 	var waitSeriesName string
 	var runSeriesName string
-	if c.MetricsPath != "" {
-		seriesName := fmt.Sprintf("compilator::job::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		waitSeriesName = fmt.Sprintf("compilator::job::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
-		runSeriesName = fmt.Sprintf("compilator::job::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+	if c.metricsPath != "" {
+		seriesName := fmt.Sprintf("compile-packages::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		waitSeriesName = fmt.Sprintf("compile-packages::wait::%s/%s", j.pkg.Release.Name, j.pkg.Name)
+		runSeriesName = fmt.Sprintf("compile-packages::run::%s/%s", j.pkg.Release.Name, j.pkg.Name)
 
-		stampy.Stamp(c.MetricsPath, "fissile", seriesName, "start")
-		defer stampy.Stamp(c.MetricsPath, "fissile", seriesName, "done")
+		stampy.Stamp(c.metricsPath, "fissile", seriesName, "start")
+		defer stampy.Stamp(c.metricsPath, "fissile", seriesName, "done")
 
-		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "start")
+		stampy.Stamp(c.metricsPath, "fissile", waitSeriesName, "start")
 	}
 
 	// (xx) Wait for our deps. Note how without deps the killCh is
@@ -276,8 +270,8 @@ func (j compileJob) Run() {
 					color.MagentaString(j.pkg.Name))
 				j.doneCh <- compileResult{pkg: j.pkg, err: errWorkerAbort}
 
-				if c.MetricsPath != "" {
-					stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
+				if c.metricsPath != "" {
+					stampy.Stamp(c.metricsPath, "fissile", waitSeriesName, "done")
 				}
 				return
 			case <-time.After(5 * time.Second):
@@ -295,8 +289,8 @@ func (j compileJob) Run() {
 		}
 	}
 
-	if c.MetricsPath != "" {
-		stampy.Stamp(c.MetricsPath, "fissile", waitSeriesName, "done")
+	if c.metricsPath != "" {
+		stampy.Stamp(c.metricsPath, "fissile", waitSeriesName, "done")
 	}
 
 	c.ui.Printf("compile: %s/%s\n",
@@ -304,14 +298,14 @@ func (j compileJob) Run() {
 		color.MagentaString(j.pkg.Name))
 
 	// Time spent in actual compilation
-	if c.MetricsPath != "" {
-		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "start")
+	if c.metricsPath != "" {
+		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "start")
 	}
 
 	workerErr := compilePackageHarness(c, j.pkg)
 
-	if c.MetricsPath != "" {
-		stampy.Stamp(c.MetricsPath, "fissile", runSeriesName, "done")
+	if c.metricsPath != "" {
+		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
 	}
 
 	c.ui.Printf("done:    %s/%s\n",
@@ -445,7 +439,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	containerName := c.baseCompilationContainerName()
 	c.ui.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
 
-	image, err = c.DockerManager.FindImage(imageName)
+	image, err = c.dockerManager.FindImage(imageName)
 	if err != nil {
 		c.ui.Println("Image doesn't exist, it will be created ...")
 	} else {
@@ -466,7 +460,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	targetScriptName := "compilation-prerequisites.sh"
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
 	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
-	if err = compilation.SaveScript(c.BaseType, compilation.PrerequisitesScript, hostScriptPath); err != nil {
+	if err = compilation.SaveScript(c.baseType, compilation.PrerequisitesScript, hostScriptPath); err != nil {
 		return nil, fmt.Errorf("Error saving script asset: %s", err.Error())
 	}
 
@@ -485,7 +479,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 			return color.GreenString("compilation-container > %s", color.RedString("%s", line))
 		},
 	)
-	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     baseImageName,
 		Cmd:           []string{"bash", "-c", containerScriptPath},
@@ -496,7 +490,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	})
 	if container != nil {
 		defer func() {
-			removeErr := c.DockerManager.RemoveContainer(container.ID)
+			removeErr := c.dockerManager.RemoveContainer(container.ID)
 			if removeErr != nil {
 				if err == nil {
 					err = removeErr
@@ -521,7 +515,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 		return nil, fmt.Errorf("Error - script script exited with code %d", exitCode)
 	}
 
-	image, err = c.DockerManager.CreateImage(
+	image, err = c.dockerManager.CreateImage(
 		container.ID,
 		c.baseCompilationImageRepository(),
 		imageTag,
@@ -553,9 +547,9 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 
 	// Generate a compilation script
 	targetScriptName := "compile.sh"
-	hostScriptPath := filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), targetScriptName)
+	hostScriptPath := filepath.Join(pkg.GetTargetPackageSourcesDir(c.hostWorkDir), targetScriptName)
 	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
-	if err := compilation.SaveScript(c.BaseType, compilation.CompilationScript, hostScriptPath); err != nil {
+	if err := compilation.SaveScript(c.baseType, compilation.CompilationScript, hostScriptPath); err != nil {
 		return err
 	}
 
@@ -585,15 +579,15 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	)
 	sourceMountName := fmt.Sprintf("source_mount-%s", uuid.New())
 	mounts := map[string]string{
-		pkg.GetTargetPackageSourcesDir(c.HostWorkDir): docker.ContainerInPath,
-		pkg.GetPackageCompiledTempDir(c.HostWorkDir):  docker.ContainerOutPath,
+		pkg.GetTargetPackageSourcesDir(c.hostWorkDir): docker.ContainerInPath,
+		pkg.GetPackageCompiledTempDir(c.hostWorkDir):  docker.ContainerOutPath,
 		// Add the volume mount to work around AUFS issues.  We will clean
 		// the volume up (as long as we're not trying to keep the container
 		// around for debugging).  We don't give it an actual directory to mount
 		// from, so it will be in some docker-maintained storage.
 		sourceMountName: ContainerSourceDir,
 	}
-	exitCode, container, err := c.DockerManager.RunInContainer(docker.RunInContainerOpts{
+	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     c.BaseImageName(),
 		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
@@ -611,9 +605,9 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 		// caller, i.e.  override the 'return'ed value,
 		// because 'err' is a __named__ return parameter.
 		defer func() {
-			// Remove container - DockerManager.RemoveContainer does a force-rm
+			// Remove container - dockerManager.RemoveContainer does a force-rm
 
-			if removeErr := c.DockerManager.RemoveContainer(container.ID); removeErr != nil {
+			if removeErr := c.dockerManager.RemoveContainer(container.ID); removeErr != nil {
 				if err == nil {
 					err = removeErr
 				} else {
@@ -621,7 +615,7 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 				}
 			}
 
-			if removeErr := c.DockerManager.RemoveVolumes(container); removeErr != nil {
+			if removeErr := c.dockerManager.RemoveVolumes(container); removeErr != nil {
 				if err == nil {
 					err = removeErr
 				} else {
@@ -642,13 +636,13 @@ func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
 	}
 
 	return os.Rename(
-		pkg.GetPackageCompiledTempDir(c.HostWorkDir),
-		pkg.GetPackageCompiledDir(c.HostWorkDir))
+		pkg.GetPackageCompiledTempDir(c.hostWorkDir),
+		pkg.GetPackageCompiledDir(c.hostWorkDir))
 }
 
 func (c *Compilator) isPackageCompiled(pkg *model.Package) (bool, error) {
 	// If compiled package exists on hard disk
-	compiledPackagePath := pkg.GetPackageCompiledDir(c.HostWorkDir)
+	compiledPackagePath := pkg.GetPackageCompiledDir(c.hostWorkDir)
 	compiledPackagePathExists, err := validatePath(compiledPackagePath, true, "package path")
 	if err != nil {
 		return false, err
@@ -730,16 +724,16 @@ func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 }
 
 func (c *Compilator) getDependenciesPackageDir(pkg *model.Package) string {
-	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), "var", "vcap", "packages")
+	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.hostWorkDir), "var", "vcap", "packages")
 }
 
 func (c *Compilator) getSourcePackageDir(pkg *model.Package) string {
-	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.HostWorkDir), "var", "vcap", "source")
+	return filepath.Join(pkg.GetTargetPackageSourcesDir(c.hostWorkDir), "var", "vcap", "source")
 }
 
 func (c *Compilator) copyDependencies(pkg *model.Package) error {
 	for _, dep := range pkg.Dependencies {
-		depCompiledPath := dep.GetPackageCompiledDir(c.HostWorkDir)
+		depCompiledPath := dep.GetPackageCompiledDir(c.hostWorkDir)
 		depDestinationPath := filepath.Join(c.getDependenciesPackageDir(pkg), dep.Name)
 		if err := os.RemoveAll(depDestinationPath); err != nil {
 			return err
@@ -763,7 +757,7 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 
 // baseCompilationContainerName will return the compilation container's name
 func (c *Compilator) baseCompilationContainerName() string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.FissileVersion))
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.fissileVersion))
 }
 
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
@@ -778,12 +772,12 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 
 // BaseCompilationImageTag will return the compilation image tag
 func (c *Compilator) baseCompilationImageTag() string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s", c.FissileVersion))
+	return util.SanitizeDockerName(fmt.Sprintf("%s", c.fissileVersion))
 }
 
 // baseCompilationImageRepository will return the compilation image repository
 func (c *Compilator) baseCompilationImageRepository() string {
-	return fmt.Sprintf("%s-cbase", c.RepositoryPrefix)
+	return fmt.Sprintf("%s-cbase", c.repositoryPrefix)
 }
 
 // BaseImageName returns the name of the compilation base image

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, releaseVersion, "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", releaseVersion, "6.28.30", ui)
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
@@ -95,7 +96,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.Nil(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
@@ -151,7 +152,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(
@@ -279,6 +280,7 @@ func TestBuildRoleImages(t *testing.T) {
 		"test-repository",
 		compiledPackagesDir,
 		targetPath,
+		"",
 		"3.14.15",
 		"6.28.30",
 		ui,
@@ -372,4 +374,43 @@ func TestBuildRoleImages(t *testing.T) {
 	)
 	assert.NoError(err)
 	assert.Empty(buildersRan, "should not have ran any builders")
+
+	// Check that we write timestamps to the metrics file
+	file, err := ioutil.TempFile("", "metrics")
+	assert.NoError(err)
+
+	metrics := file.Name()
+	defer os.Remove(metrics)
+	roleImageBuilder.metricsPath = metrics
+
+	err = os.RemoveAll(targetPath)
+	assert.NoError(err, "Failed to remove target")
+
+	targetPath, err = ioutil.TempDir("", "fissile-test")
+	assert.NoError(err)
+	defer os.RemoveAll(targetPath)
+	roleImageBuilder.targetPath = targetPath
+
+	mockBuilder.hasImage = false
+	mockBuilder.callback = func(name string) error {
+		return nil
+	}
+	err = roleImageBuilder.BuildRoleImages(
+		rolesManifest.Roles,
+		"test-repository",
+		"",
+		false,
+		false,
+		1,
+	)
+	assert.NoError(err)
+
+	expected := `.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},start
+.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},done
+.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},start
+.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},done`
+
+	contents, err := ioutil.ReadFile(metrics)
+	assert.NoError(err)
+	assert.Regexp(regexp.MustCompile(expected), string(contents))
 }

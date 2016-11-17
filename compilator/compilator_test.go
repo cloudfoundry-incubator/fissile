@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -50,15 +49,7 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "metrics")
-	assert.NoError(err)
-
-	metrics := file.Name()
-	defer os.Remove(metrics)
-
-	expected := `.*,fissile,compilator,start\n.*,fissile,compilator,done`
-
-	c, err := NewCompilator(nil, "", metrics, "", "", "", false, ui)
+	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
 	assert.Nil(err)
 
 	waitCh := make(chan struct{})
@@ -69,10 +60,6 @@ func TestCompilationEmpty(t *testing.T) {
 	}()
 
 	<-waitCh
-
-	contents, err := ioutil.ReadFile(metrics)
-	assert.Nil(err)
-	assert.Regexp(regexp.MustCompile(expected), string(contents))
 }
 
 func TestCompilationBasic(t *testing.T) {
@@ -121,26 +108,24 @@ func TestCompilationBasic(t *testing.T) {
 	}
 
 	expected := []string{
-		",compilator,start",
-		",compilator::job::test-release/ruby-2.5,start",
-		",compilator::job::wait::test-release/ruby-2.5,start",
-		",compilator::job::wait::test-release/ruby-2.5,done",
-		",compilator::job::run::test-release/ruby-2.5,start",
-		",compilator::job::run::test-release/ruby-2.5,done",
-		",compilator::job::test-release/ruby-2.5,done",
-		",compilator::job::test-release/go-1.4,start",
-		",compilator::job::wait::test-release/go-1.4,start",
-		",compilator::job::wait::test-release/go-1.4,done",
-		",compilator::job::run::test-release/go-1.4,start",
-		",compilator::job::run::test-release/go-1.4,done",
-		",compilator::job::test-release/go-1.4,done",
-		",compilator::job::test-release/consul,start",
-		",compilator::job::wait::test-release/consul,start",
-		",compilator::job::wait::test-release/consul,done",
-		",compilator::job::run::test-release/consul,start",
-		",compilator::job::run::test-release/consul,done",
-		",compilator::job::test-release/consul,done",
-		",fissile,compilator,done",
+		",compile-packages::test-release/ruby-2.5,start",
+		",compile-packages::wait::test-release/ruby-2.5,start",
+		",compile-packages::wait::test-release/ruby-2.5,done",
+		",compile-packages::run::test-release/ruby-2.5,start",
+		",compile-packages::run::test-release/ruby-2.5,done",
+		",compile-packages::test-release/ruby-2.5,done",
+		",compile-packages::test-release/go-1.4,start",
+		",compile-packages::wait::test-release/go-1.4,start",
+		",compile-packages::wait::test-release/go-1.4,done",
+		",compile-packages::run::test-release/go-1.4,start",
+		",compile-packages::run::test-release/go-1.4,done",
+		",compile-packages::test-release/go-1.4,done",
+		",compile-packages::test-release/consul,start",
+		",compile-packages::wait::test-release/consul,start",
+		",compile-packages::wait::test-release/consul,done",
+		",compile-packages::run::test-release/consul,start",
+		",compile-packages::run::test-release/consul,done",
+		",compile-packages::test-release/consul,done",
 	}
 
 	contents, err := ioutil.ReadFile(metrics)
@@ -310,7 +295,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 
-	comp.BaseType = compilation.FailBase
+	comp.baseType = compilation.FailBase
 	err = comp.compilePackage(release.Packages[0])
 	// We expect the package to fail this time.
 	assert.Error(err)
@@ -603,10 +588,10 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	assert.Nil(err)
 	err = compilator.createCompilationDirStructure(pkg)
 	assert.Nil(err)
-	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), 0755)
+	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), 0755)
 	assert.Nil(err)
 
-	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.HostWorkDir), "foo")
+	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), "foo")
 	file, err := os.Create(dummyCompiledFile)
 	assert.Nil(err)
 	file.Close()
