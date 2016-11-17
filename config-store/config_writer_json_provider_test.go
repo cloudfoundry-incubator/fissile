@@ -41,7 +41,7 @@ func TestJSONConfigWriterProvider(t *testing.T) {
 	err = builder.WriteBaseConfig(rolesManifest)
 	assert.NoError(err)
 
-	jsonPath := filepath.Join(outDir, "myrole", "new_hostname.json")
+	jsonPath := filepath.Join(outDir, "myrole", "tor.json")
 
 	buf, err := ioutil.ReadFile(jsonPath)
 	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
@@ -222,21 +222,14 @@ func TestJSONConfigWriterProvider_MultipleBOSHReleases(t *testing.T) {
 	err = builder.WriteBaseConfig(rolesManifest)
 	assert.NoError(err)
 
-	// Just check that the ntpd job was loaded, we don't care about its contents
+	var result map[string]interface{}
+
+	// Verify the properties are correctly reflected into the three different JSONs
 	jsonPath := filepath.Join(outDir, "myrole", "ntpd.json")
-	info, err := os.Stat(jsonPath)
-	assert.NoError(err)
-	assert.NotZero(info.Size())
-
-	// Check that the new_hostname job didn't pick up superfluous properties
-	jsonPath = filepath.Join(outDir, "myrole", "new_hostname.json")
-
 	buf, err := ioutil.ReadFile(jsonPath)
 	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
 		return
 	}
-
-	var result map[string]interface{}
 	err = json.Unmarshal(buf, &result)
 	if !assert.NoError(err, "Error unmarshalling output") {
 		return
@@ -247,9 +240,43 @@ func TestJSONConfigWriterProvider_MultipleBOSHReleases(t *testing.T) {
 	templates := result["job"].(map[string]interface{})["templates"]
 	assert.Contains(templates, map[string]interface{}{"name": "tor"})
 	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
+	assert.Contains(templates, map[string]interface{}{"name": "ntpd"})
 	assert.Len(templates, 3)
 
-	actualJSON, err := json.Marshal(result["properties"])
+	properties := result["properties"].(map[string]interface{})
+	torProp, ok := properties["tor"].(map[string]interface{})
+	if assert.True(ok) {
+		privateKey, ok := torProp["private_key"]
+		if assert.True(ok) {
+			assert.NotNil(privateKey)
+		}
+	}
+
+	// tor and new_hostname are both part of the tor release and should have the
+	// same set of properties.
+	verifyTorReleaseConfigs(assert, outDir, "new_hostname.json")
+	verifyTorReleaseConfigs(assert, outDir, "tor.json")
+}
+
+func verifyTorReleaseConfigs(assert *assert.Assertions, outDir, baseFile string) {
+	jsonPath := filepath.Join(outDir, "myrole", baseFile)
+	buf, err := ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read output %s\n", jsonPath) {
+		return
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal(buf, &result)
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
+	assert.Equal("myrole", result["job"].(map[string]interface{})["name"])
+	templates := result["job"].(map[string]interface{})["templates"]
+	assert.Contains(templates, map[string]interface{}{"name": "tor"})
+	assert.Contains(templates, map[string]interface{}{"name": "new_hostname"})
+	assert.Len(templates, 3)
+	properties := result["properties"].(map[string]interface{})
+
+	actualJSON, err := json.Marshal(properties)
 	if assert.NoError(err) {
 		assert.JSONEq(`{
 			"tor": {

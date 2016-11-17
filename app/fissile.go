@@ -529,28 +529,6 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 	return nil
 }
 
-//GenerateConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
-func (f *Fissile) GenerateConfigurationBase(rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, provider string) error {
-	if len(f.releases) == 0 {
-		return fmt.Errorf("Releases not loaded")
-	}
-
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
-	configStore := configstore.NewConfigStoreBuilder(provider, lightManifestPath, darkManifestPath, targetPath)
-
-	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
-		return fmt.Errorf("Error writing base config: %s", err.Error())
-	}
-
-	f.UI.Println(color.GreenString("Done."))
-
-	return nil
-}
-
 //LoadReleases loads information about BOSH releases
 func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
 	releases := make([]*model.Release, len(releasePaths))

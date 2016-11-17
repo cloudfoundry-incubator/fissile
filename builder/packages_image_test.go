@@ -119,6 +119,9 @@ func TestNewDockerPopulator(t *testing.T) {
 	baseImage, err := dockerManager.FindImage(baseImageOverride)
 	assert.NoError(err)
 
+	// From test-assets/tor-boshrelease/dev_releases/tor/tor-0.3.5+dev.3.yml
+	const torFingerprint = "59523b1cc4042dff1217ab5b79ff885cdd2de032"
+
 	testFunctions := map[string]func(string){
 		"Dockerfile": func(contents string) {
 			var i int
@@ -167,7 +170,7 @@ func TestNewDockerPopulator(t *testing.T) {
 			}`
 			assert.JSONEq(expected, string(contents))
 		},
-		"packages-src/b9973278a447dfb5e8e67661deaa5fe7001ad742/bar": func(contents string) {
+		"packages-src/" + torFingerprint + "/bar": func(contents string) {
 			assert.Empty(contents)
 		},
 	}
