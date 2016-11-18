@@ -24,16 +24,16 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Jobs))
-	const ntpd_fingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
-	const ntpd_version = ntpd_fingerprint
-	const ntpd_sha1 = "aab8da0094ac318f790ca40c53f7a5f4e137f841"
+	const ntpdFingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
+	const ntpdVersion = ntpdFingerprint
+	const ntpdSHA1 = "aab8da0094ac318f790ca40c53f7a5f4e137f841"
 
 	assert.Equal("ntpd", release.Jobs[0].Name)
-	assert.Equal(ntpd_fingerprint, release.Jobs[0].Version)
-	assert.Equal(ntpd_version, release.Jobs[0].Fingerprint)
-	assert.Equal(ntpd_sha1, release.Jobs[0].SHA1)
+	assert.Equal(ntpdFingerprint, release.Jobs[0].Version)
+	assert.Equal(ntpdVersion, release.Jobs[0].Fingerprint)
+	assert.Equal(ntpdSHA1, release.Jobs[0].SHA1)
 
-	jobPath := filepath.Join(ntpReleasePathCacheDir, ntpd_sha1)
+	jobPath := filepath.Join(ntpReleasePathCacheDir, ntpdSHA1)
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
 	err = util.ValidatePath(jobPath, false, "")
