@@ -4,4 +4,8 @@ builds:
     version: 0.3.5+dev.1
   239a4189-51e4-4690-b17f-291a960192de:
     version: 0.3.5+dev.2
+  bb290fd5-2fc0-4706-ba5f-d3844540df5e:
+    version: 0.3.5+dev.3
+  c902b94c-f64d-455a-958d-ec034a3298ec:
+    version: 0.3.5+dev.4
 format-version: '2'
