@@ -101,8 +101,6 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
 	assert.NoError(err)
-	assert.Contains(string(runScriptContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
-	assert.Contains(string(runScriptContents), "/opt/hcf/monitrc.erb")
 	assert.Contains(string(runScriptContents), "source /opt/hcf/startup/environ.sh")
 	assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
 	assert.NotContains(string(runScriptContents), "/opt/hcf/startup/environ/script/with/absolute/path.sh")
@@ -120,8 +118,51 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
 	assert.NoError(err)
 	assert.NotContains(string(runScriptContents), "monit -vI")
-	assert.NotContains(string(runScriptContents), "/etc/monitrc")
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
+}
+
+func TestGenerateRoleImageJobsConfig(t *testing.T) {
+	assert := assert.New(t)
+
+	ui := termui.New(
+		&bytes.Buffer{},
+		ioutil.Discard,
+		nil,
+	)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCache := filepath.Join(releasePath, "bosh-cache")
+	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
+	targetPath, err := ioutil.TempDir("", "fissile-test")
+	assert.Nil(err)
+	defer os.RemoveAll(targetPath)
+
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
+	assert.Nil(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	assert.Nil(err)
+
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
+	assert.NoError(err)
+
+	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(rolesManifest.Roles[0])
+	assert.NoError(err)
+	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/tor/bin/tor_ctl")
+	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
+	assert.Contains(string(jobsConfigContents), "/etc/monitrc")
+	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/new_hostname/bin/run")
+
+	jobsConfigContents, err = roleImageBuilder.generateJobsConfig(rolesManifest.Roles[1])
+	assert.NoError(err)
+	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/tor/bin/tor_ctl")
+	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
+	assert.NotContains(string(jobsConfigContents), "/etc/monitrc")
+	assert.NotContains(string(jobsConfigContents), "/var/vcap/jobs/new_hostname/bin/run")
 }
 
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
