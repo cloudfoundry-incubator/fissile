@@ -24,13 +24,16 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Nil(err)
 
 	assert.Equal(1, len(release.Jobs))
+	const ntpd_fingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
+	const ntpd_version = ntpd_fingerprint
+	const ntpd_sha1 = "aab8da0094ac318f790ca40c53f7a5f4e137f841"
 
 	assert.Equal("ntpd", release.Jobs[0].Name)
-	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Version)
-	assert.Equal("f1f3607917dfd9d64580f3a97d71b60c2545c51a", release.Jobs[0].Fingerprint)
-	assert.Equal("cf1722e891564d1f667c2218d6685679fe149591", release.Jobs[0].SHA1)
+	assert.Equal(ntpd_fingerprint, release.Jobs[0].Version)
+	assert.Equal(ntpd_version, release.Jobs[0].Fingerprint)
+	assert.Equal(ntpd_sha1, release.Jobs[0].SHA1)
 
-	jobPath := filepath.Join(ntpReleasePathCacheDir, "cf1722e891564d1f667c2218d6685679fe149591")
+	jobPath := filepath.Join(ntpReleasePathCacheDir, ntpd_sha1)
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
 	err = util.ValidatePath(jobPath, false, "")
@@ -148,10 +151,14 @@ func TestJobPropertiesOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(2, len(release.Jobs[0].Properties))
+	assert.Equal(3, len(release.Jobs[0].Properties))
 
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
+	// Looks like properties are sorted by name.
+	assert.Equal("tor.private_key", release.Jobs[0].Properties[1].Name)
+	assert.Equal("M3Efvw4x3kzW+YBWR1oPG7hoUcPcFYXWxoYkYR5+KT4=", release.Jobs[0].Properties[1].Default)
+	assert.Equal("", release.Jobs[0].Properties[1].Description)
 }
 
 func TestGetJobPropertyOk(t *testing.T) {
@@ -167,7 +174,7 @@ func TestGetJobPropertyOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(2, len(release.Jobs[0].Properties))
+	assert.Equal(3, len(release.Jobs[0].Properties))
 
 	property, err := release.Jobs[0].getProperty("ntp_conf")
 
@@ -188,7 +195,7 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 
 	assert.Equal(1, len(release.Jobs))
 
-	assert.Equal(2, len(release.Jobs[0].Properties))
+	assert.Equal(3, len(release.Jobs[0].Properties))
 
 	_, err = release.Jobs[0].getProperty("foo")
 
