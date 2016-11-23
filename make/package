@@ -6,8 +6,9 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
 set -o errexit -o nounset
 
-GOOS=${GOOS:-$(go env GOOS)}
+OSES="linux darwin"
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
-${GIT_ROOT}/make/build
-tar czf ${APP_VERSION}.${GOOS}-${GOARCH}.tgz fissile
+for OS in ${OSES}; do \
+  tar czf ${APP_VERSION}.${OS}-${GOARCH}.tgz build/${OS}-${GOARCH}/fissile
+done
