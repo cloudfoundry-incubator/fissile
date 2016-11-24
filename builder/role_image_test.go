@@ -80,21 +80,21 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
@@ -131,21 +131,21 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
