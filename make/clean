@@ -9,5 +9,5 @@ rm -f ${GIT_ROOT}/fissile
 rm -f ${GIT_ROOT}/scripts/compilation/compilation.go
 rm -f ${GIT_ROOT}/scripts/dockerfiles/dockerfiles.go
 rm -f ${GIT_ROOT}/scripts/templates/transformations.go
-rm -r ${GIT_ROOT}/scripts/configgin/configgin.go
+rm -f ${GIT_ROOT}/scripts/configgin/configgin.go
 rm -rf ${GIT_ROOT}/scripts/configgin/output
