@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -207,6 +208,26 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName s
 		return "", err
 	}
 
+	jobsConfigFile, err := os.Create(filepath.Join(rootDir, "opt/hcf/job_config.json"))
+	if err != nil {
+		return "", err
+	}
+
+	jobsConfigContents, err := r.generateJobsConfig(role)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = jobsConfigFile.Write(jobsConfigContents)
+	if err != nil {
+		return "", err
+	}
+
+	err = jobsConfigFile.Chmod(0644)
+	if err != nil {
+		return "", err
+	}
+
 	// Create env2conf templates file in /opt/hcf/env2conf.yml
 	configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
 	if err != nil {
@@ -261,6 +282,44 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 	}
 
 	return output.Bytes(), nil
+}
+
+func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) {
+	jobsConfig := make(map[string]map[string]interface{})
+
+	for index, job := range role.Jobs {
+		jobsConfig[job.Name] = make(map[string]interface{})
+		jobsConfig[job.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", job.Name)
+
+		files := make(map[string]string)
+
+		for _, file := range job.Templates {
+			src := fmt.Sprintf("/var/vcap/jobs-src/%s/templates/%s",
+				job.Name, file.SourcePath)
+			dest := fmt.Sprintf("/var/vcap/jobs/%s/%s",
+				job.Name, file.DestinationPath)
+			files[src] = dest
+		}
+
+		if role.Type != "bosh-task" {
+			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", job.Name)
+			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", job.Name)
+			files[src] = dest
+
+			if index == 0 {
+				files["/opt/hcf/monitrc.erb"] = "/etc/monitrc"
+			}
+		}
+
+		jobsConfig[job.Name]["files"] = files
+	}
+
+	jsonOut, err := json.Marshal(jobsConfig)
+	if err != nil {
+		return jsonOut, err
+	}
+
+	return jsonOut, nil
 }
 
 // generateDockerfile builds a docker file for a given role.

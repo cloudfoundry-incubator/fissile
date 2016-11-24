@@ -17,20 +17,6 @@ fi
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
 
-# Usage: run_configin <job> <input>  <output>
-#                     name  template destination
-function run_configgin()
-{
-	job_name="$1"
-	template_file="$2"
-	output_file="$3"
-	/opt/hcf/configgin/configgin \
-	--input-erb ${template_file} \
-	--output ${output_file} \
-	--base /var/vcap/jobs-src/${job_name}/config_spec.json \
-	--env2conf /opt/hcf/env2conf.yml
-}
-
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}
     source {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
@@ -40,37 +26,14 @@ function run_configgin()
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
 
-# Process templates
-{{ with $role := .role }}
-    # =====================================================
-    {{ range $job := $role.Jobs}}
-    # ============================================================================
-    #         Templates for job {{ $job.Name }}
-    # ============================================================================
-        {{ range $template := $job.Templates }}
-            run_configgin "{{$job.Name}}" \
-                "/var/vcap/jobs-src/{{$job.Name}}/templates/{{$template.SourcePath}}" \
-                "/var/vcap/jobs/{{$job.Name}}/{{$template.DestinationPath}}"
-            # =====================================================
-        {{ end }}
-        {{ if not (eq $role.Type "bosh-task") }}
-            # ============================================================================
-            #         Monit templates for job {{ $job.Name }}
-            # ============================================================================
-            run_configgin "{{$job.Name}}" \
-                "/var/vcap/jobs-src/{{$job.Name}}/monit" \
-                "/var/vcap/monit/{{$job.Name}}.monitrc"
-            # =====================================================
-        {{ end }}
-    {{ end }}
-    {{ if not (eq $role.Type "bosh-task") }}
-        # Process monitrc.erb template
-        run_configgin "{{(index $role.JobNameList 0).Name}}" \
-            "/opt/hcf/monitrc.erb" \
-            "/etc/monitrc"
-        chmod 0600 /etc/monitrc
-    {{ end }}
-{{ end }}
+/opt/hcf/configgin/configgin \
+	--jobs /opt/hcf/job_config.json \
+	--env2conf /opt/hcf/env2conf.yml
+
+if [ -e /etc/monitrc ]
+then
+  chmod 0600 /etc/monitrc
+fi
 
 # Create run dir
 mkdir -p /var/vcap/sys/run
