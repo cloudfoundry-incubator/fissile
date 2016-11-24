@@ -291,27 +291,27 @@ func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) 
 		jobsConfig[job.Name] = make(map[string]interface{})
 		jobsConfig[job.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", job.Name)
 
-		templates := make(map[string]string)
+		files := make(map[string]string)
 
-		for _, template := range job.Templates {
+		for _, file := range job.Templates {
 			src := fmt.Sprintf("/var/vcap/jobs-src/%s/templates/%s",
-				job.Name, template.SourcePath)
+				job.Name, file.SourcePath)
 			dest := fmt.Sprintf("/var/vcap/jobs/%s/%s",
-				job.Name, template.DestinationPath)
-			templates[src] = dest
+				job.Name, file.DestinationPath)
+			files[src] = dest
 		}
 
 		if role.Type != "bosh-task" {
 			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", job.Name)
 			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", job.Name)
-			templates[src] = dest
+			files[src] = dest
 
 			if index == 0 {
-				templates["/opt/hcf/monitrc.erb"] = "/etc/monitrc"
+				files["/opt/hcf/monitrc.erb"] = "/etc/monitrc"
 			}
 		}
 
-		jobsConfig[job.Name]["files"] = templates
+		jobsConfig[job.Name]["files"] = files
 	}
 
 	jsonOut, err := json.Marshal(jobsConfig)
