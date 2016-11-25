@@ -98,12 +98,7 @@ func TestNewDockerPopulator(t *testing.T) {
 
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(
-		rolesManifest,
-		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
-		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),
-		false,
-	)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(rolesManifest, false)
 	tarWriter := tar.NewWriter(tarFile)
 	assert.NoError(tarPopulator(tarWriter))
 	assert.NoError(tarWriter.Close())
@@ -148,27 +143,6 @@ func TestNewDockerPopulator(t *testing.T) {
 				}
 			}
 			assert.Equal(len(testers), len(getDockerfileLines(contents)), "Not enough lines")
-		},
-		"specs/foorole/tor.json": func(contents string) {
-			expected := `{
-				"job": {
-					"name": "foorole",
-					"templates": [{"name": "tor"}]
-				},
-				"networks": {
-					"default": {}
-				},
-				"parameters": {},
-				"properties": {
-					"tor": {
-						"client_keys": null,
-						"hashed_control_password": null,
-						"hostname": "localhost",
-						"private_key": null
-					}
-				}
-			}`
-			assert.JSONEq(expected, string(contents))
 		},
 		"packages-src/" + torFingerprint + "/bar": func(contents string) {
 			assert.Empty(contents)

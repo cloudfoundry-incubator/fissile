@@ -11,7 +11,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
@@ -49,11 +48,13 @@ type RoleImageBuilder struct {
 	metricsPath          string
 	version              string
 	fissileVersion       string
+	lightOpinionsPath    string
+	darkOpinionsPath     string
 	ui                   *termui.UI
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, metricsPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -64,6 +65,8 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, metricsPa
 		metricsPath:          metricsPath,
 		version:              version,
 		fissileVersion:       fissileVersion,
+		lightOpinionsPath:    lightOpinionsPath,
+		darkOpinionsPath:     darkOpinionsPath,
 		ui:                   ui,
 	}, nil
 }
@@ -168,9 +171,14 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName s
 
 		// Symlink spec configuration file
 		// from <ROOT_DIR>/opt/hcf/specs/<ROLE_NAME>/<JOB>.json
-		specConfigSource := filepath.Join(jsonSpecsDir, role.Name, job.Name+configstore.JobConfigFileExtension)
+		specConfigSource := filepath.Join(jsonSpecsDir, role.Name, job.Name+model.JobConfigFileExtension)
+		err = job.WriteConfigs(role, specConfigSource, r.lightOpinionsPath, r.darkOpinionsPath)
+		if err != nil {
+			return "", err
+		}
+
 		// into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename+configstore.JobConfigFileExtension)
+		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename+model.JobConfigFileExtension)
 		// The symlink must be relative, since the path is different in the docker image
 		specConfigRelativeSource, err := filepath.Rel(filepath.Dir(specConfigDestination), specConfigSource)
 		if err != nil {

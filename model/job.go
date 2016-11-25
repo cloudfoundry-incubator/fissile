@@ -2,6 +2,7 @@ package model
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,6 +33,14 @@ type Job struct {
 
 // Jobs is an array of Job*
 type Jobs []*Job
+
+const (
+	// JobConfigFileExtension is the file extension for json configurations
+	JobConfigFileExtension = ".json"
+
+	jobConfigPrefix = ""
+	jobConfigIndent = "    "
+)
 
 func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job, error) {
 	job := &Job{
@@ -223,6 +232,123 @@ func (j *Job) loadJobSpec() (err error) {
 	}
 
 	return nil
+}
+
+// MergeSpec is used to merge temporary spec patches into each job. otherJob should only be
+// the hcf/patch-properties job.
+func (j *Job) MergeSpec(otherJob *Job) {
+	// Ignore otherJob.Name, otherJob.Description
+	if otherJob.Packages != nil {
+		j.Packages = append(j.Packages, otherJob.Packages...)
+	}
+	// Skip templates
+	// Question for Vlad: how are the patch-properties templates used?
+	if otherJob.Properties != nil {
+		j.Properties = append(j.Properties, otherJob.Properties...)
+	}
+}
+
+// WriteConfigs merges the job's spec with the opinions and writes out json-encoding to the specified path.
+func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinionsPath string) (err error) {
+	config, err := initializeConfigJSON()
+	if err != nil {
+		return err
+	}
+
+	config["job"].(map[string]interface{})["name"] = role.Name
+
+	var templates []map[string]string
+	for _, roleJob := range role.Jobs {
+		templates = append(templates, map[string]string{"name": roleJob.Name})
+	}
+	config["job"].(map[string]interface{})["templates"] = templates
+
+	opinions, err := newOpinions(lightOpinionsPath, darkOpinionsPath)
+	if err != nil {
+		return err
+	}
+	properties, err := j.getPropertiesForJob(opinions)
+	if err != nil {
+		return err
+	}
+	config["properties"] = properties
+
+	// Write out the configuration
+	err = os.MkdirAll(filepath.Dir(outputPath), 0755)
+	if err != nil {
+		return err
+	}
+
+	jobJSON, err := json.MarshalIndent(config, jobConfigPrefix, jobConfigIndent)
+	if err != nil {
+		return err
+	}
+	if err = ioutil.WriteFile(outputPath, jobJSON, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+// getPropertiesForJob returns the parameters for the given job, using its specs and opinions
+func (j *Job) getPropertiesForJob(opinions *opinions) (map[string]interface{}, error) {
+	props := map[string]interface{}{}
+	lightOpinions, ok := opinions.Light["properties"]
+	if !ok {
+		return nil, fmt.Errorf("getPropertiesForJob: no 'properties' key in light opinions")
+	}
+	darkOpinions, ok := opinions.Dark["properties"]
+	if !ok {
+		return nil, fmt.Errorf("getPropertiesForJob: no 'properties' key in dark opinions")
+	}
+	lightOpinionsByString, ok := lightOpinions.(map[interface{}]interface{})
+	if !ok {
+		return nil, fmt.Errorf("getPropertiesForJob: can't convert lightOpinions into a string map")
+	}
+	darkOpinionsByString, ok := darkOpinions.(map[interface{}]interface{})
+	if !ok {
+		return nil, fmt.Errorf("getPropertiesForJob: can't convert darkOpinions into a string map")
+	}
+	for _, property := range j.Properties {
+		keyPieces, err := getKeyGrams(property.Name)
+		if err != nil {
+			return nil, err
+		}
+		_, ok := getOpinionValue(darkOpinionsByString, keyPieces)
+		if ok {
+			// Ignore dark opinions
+			continue
+		}
+		lightValue, hasLightValue := getOpinionValue(lightOpinionsByString, keyPieces)
+		var finalValue interface{}
+		if hasLightValue && lightValue != nil {
+			finalValue = lightValue
+		} else {
+			finalValue = property.Default
+		}
+		if err := insertConfig(props, property.Name, finalValue); err != nil {
+			return nil, err
+		}
+	}
+	return props, nil
+}
+
+// initializeConfigJSON returns the scaffolding for the BOSH-style JSON structure
+func initializeConfigJSON() (map[string]interface{}, error) {
+	var config map[string]interface{}
+	err := json.Unmarshal([]byte(`{
+		"job": {
+			"templates": []
+		},
+		"parameters": {},
+		"properties": {},
+		"networks": {
+			"default": {}
+		}
+	}`), &config)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal initial config: %+v", err)
+	}
+	return config, nil
 }
 
 // Len implements the Len function to satisfy sort.Interface

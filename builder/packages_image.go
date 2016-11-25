@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	configstore "github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/dockerfiles"
@@ -138,7 +137,7 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManifest, lightManifestPath, darkManifestPath string, forceBuildAll bool) func(*tar.Writer) error {
+func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManifest, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		if len(roleManifest.Roles) == 0 {
 			return fmt.Errorf("No roles to build")
@@ -150,16 +149,6 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManife
 			return err
 		}
 		defer os.RemoveAll(specDir)
-		configStore := configstore.NewConfigStoreBuilder(
-			configstore.JSONProvider,
-			lightManifestPath,
-			darkManifestPath,
-			specDir,
-		)
-
-		if err = configStore.WriteBaseConfig(roleManifest); err != nil {
-			return fmt.Errorf("Error writing base config: %s", err.Error())
-		}
 		walker := &tarWalker{stream: tarWriter, root: specDir, prefix: "specs"}
 		if err = filepath.Walk(specDir, walker.walk); err != nil {
 			return err

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -221,4 +222,37 @@ func TestJobsSort(t *testing.T) {
 	sort.Sort(jobs)
 	assert.Equal(jobs[0].Name, "ccc")
 	assert.Equal(jobs[1].Name, "ddd")
+}
+
+func TestJobsProperties(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
+	assert.Nil(err)
+
+	assert.Equal(1, len(release.Jobs))
+
+	lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
+	darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
+	opinions, err := newOpinions(lightOpinionsPath, darkOpinionsPath)
+	assert.Nil(err)
+
+	properties, err := release.Jobs[0].getPropertiesForJob(opinions)
+	assert.Equal(2, len(properties))
+	actualJSON, err := json.Marshal(properties)
+	if assert.NoError(err) {
+		assert.JSONEq(`{
+			"ntp_conf" : "zip.conf",
+			"with": {
+				"json": {
+					"default": { "key": "value" }
+				}
+			}
+		}`, string(actualJSON), "Unexpected properties")
+	}
 }

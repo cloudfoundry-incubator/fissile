@@ -10,7 +10,6 @@ import (
 
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
-	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
@@ -371,7 +370,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, lightManifestPath, darkManifestPath string, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, packagesImageBuilder *builder.PackagesImageBuilder) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -409,7 +408,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, lightManifestPath, darkManifestPath, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -447,7 +446,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, lightManifestPath, darkManifestPath, packagesImageBuilder)
+	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, packagesImageBuilder)
 	if err != nil {
 		return err
 	}
@@ -458,6 +457,8 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		repository,
 		compiledPackagesPath,
 		targetPath,
+		lightManifestPath,
+		darkManifestPath,
 		metricsPath,
 		"",
 		f.Version,
@@ -553,6 +554,10 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	}
 
 	f.releases = releases
+	err := f.injectPatchPropertiesJobSpec()
+	if err != nil {
+		return fmt.Errorf("Error loading release information: %s", err.Error())
+	}
 	return nil
 }
 
@@ -577,6 +582,32 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
 	return getDiffsFromReleases(f.releases)
+}
+
+// Since each job processes only its own spec, inject the hcf-release's
+// patches-properties pseudo-job's spec into all the other jobs.
+func (f *Fissile) injectPatchPropertiesJobSpec() error {
+	var patchPropertiesJob *model.Job
+	for _, release := range f.releases {
+		if release.Name == "hcf" {
+			for _, job := range release.Jobs {
+				if job.Name == "patch-properties" {
+					patchPropertiesJob = job
+				}
+			}
+		}
+	}
+	if patchPropertiesJob == nil {
+		return nil
+	}
+	for _, release := range f.releases {
+		for _, job := range release.Jobs {
+			if release.Name != "hcf" && job.Name != "patch-properties" {
+				job.MergeSpec(patchPropertiesJob)
+			}
+		}
+	}
+	return nil
 }
 
 type keyHash map[string]string
@@ -624,19 +655,12 @@ func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 	for idx, release := range releases {
 		configs := release.GetUniqueConfigs()
 		for _, config := range configs {
-			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore)
-			if err != nil {
-				return nil, fmt.Errorf("Error getting config %s for release %s: %s", config.Name, release.Name, err.Error())
-			}
-			hashes[idx][key] = config.Description
+			hashes[idx][config.Name] = config.Description
 		}
 		// Get the spec configs
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore)
-				if err != nil {
-					return nil, err
-				}
+				key := fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name)
 				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
 			}
 		}
