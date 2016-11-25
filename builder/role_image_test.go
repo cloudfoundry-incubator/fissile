@@ -153,7 +153,10 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(rolesManifest.Roles[0])
