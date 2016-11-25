@@ -1,0 +1,4 @@
+---
+properties:
+  ntp_conf: zip.conf
+  tor.client_keys: client_key_value
