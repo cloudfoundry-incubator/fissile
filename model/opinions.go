@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -18,25 +17,21 @@ func newOpinions(lightFile, darkFile string) (*opinions, error) {
 
 	manifestContents, err := ioutil.ReadFile(lightFile)
 	if err != nil {
-		fmt.Printf("QQQ: newOpinions #1: %s\n", err)
 		return nil, err
 	}
 
 	err = yaml.Unmarshal([]byte(manifestContents), &result.Light)
 	if err != nil {
-		fmt.Printf("QQQ: newOpinions #2: %s\n", err)
 		return nil, err
 	}
 
 	manifestContents, err = ioutil.ReadFile(darkFile)
 	if err != nil {
-		fmt.Printf("QQQ: newOpinions #3: %s\n", err)
 		return nil, err
 	}
 
 	err = yaml.Unmarshal([]byte(manifestContents), &result.Dark)
 	if err != nil {
-		fmt.Printf("QQQ: newOpinions #4: %s\n", err)
 		return nil, err
 	}
 

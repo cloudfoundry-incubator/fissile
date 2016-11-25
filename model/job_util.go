@@ -35,23 +35,18 @@ func insertConfig(config map[string]interface{}, name string, value interface{})
 }
 
 func getOpinionValue(parent map[interface{}]interface{}, keys []string) (interface{}, bool) {
-	// fmt.Printf("QQQ: >> getOpinionValue(parent:%v, keys:%s)\n", parent, keys)
 	var key string
 	for _, key = range keys[:len(keys)-1] {
 		child, ok := parent[key]
-		// fmt.Printf("QQQ: Try key %s => %v\n", key, ok)
 		if !ok {
-			// fmt.Printf("QQQ: Failed to find %s in %v\n", key, parent)
 			return nil, false
 		}
 		parent, ok = child.(map[interface{}]interface{})
 		if !ok {
-			// fmt.Printf("QQQ: Try type-checking child:%v\n", ok)
 			return nil, false
 		}
 	}
 	val, ok := parent[keys[len(keys)-1]]
-	// fmt.Printf("QQQ: << %s|%v\n", val, ok)
 	return val, ok
 }
 
