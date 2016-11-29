@@ -15,7 +15,7 @@ ${GIT_ROOT}/make/bindata
 OSES="linux darwin"
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
-for OS in ${OSES}; do \
+for OS in ${OSES}; do
   GOOS="${OS}" go build -ldflags="-X main.version=${APP_VERSION}" -o "build/${OS}-${GOARCH}/fissile" 
 done 
 
