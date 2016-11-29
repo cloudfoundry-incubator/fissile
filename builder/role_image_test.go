@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -232,6 +233,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
 		{path: "root/var/vcap/jobs-src/tor/monit", isDir: false, desc: "job monit file"},
 		{path: "root/var/vcap/jobs-src/tor/templates/bin/monit_debugger", isDir: false, desc: "job template file"},
+		{path: "root/var/vcap/jobs-src/tor/config_spec.json", isDir: false, desc: "tor config spec"},
+		{path: "root/var/vcap/jobs-src/new_hostname", isDir: true, desc: "new_hostname spec dir"},
+		{path: "root/var/vcap/jobs-src/new_hostname/config_spec.json", isDir: false, desc: "new_hostname config spec"},
 		{path: "root/var/vcap/packages/tor", isDir: false, desc: "package symlink"},
 	} {
 		path := filepath.ToSlash(filepath.Join(dockerfileDir, info.path))
@@ -252,6 +256,40 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	// job.MF should not be there
 	assert.Error(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
+
+	// And verify the config specs are as expected
+	jsonPath := filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/new_hostname/config_spec.json")
+	buf, err := ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read new_hostname/config_spec.json %s\n", jsonPath) {
+		return
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal(buf, &result)
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
+	assert.Equal(0, len(result["properties"].(map[string]interface{})))
+
+	jsonPath = filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/config_spec.json")
+	buf, err = ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read tor/config_spec.json %s\n", jsonPath) {
+		return
+	}
+	err = json.Unmarshal(buf, &result)
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
+
+	var expected map[string]interface{}
+	err = json.Unmarshal([]byte(`{
+		   "tor": {
+            "client_keys": null,
+            "hashed_control_password": null,
+            "hostname": "localhost",
+            "private_key": null
+        }
+	}`), &expected)
+	assert.NoError(err, "Failed to unmarshal expected data")
 }
 
 // getPackage is a helper to get a package from a list of roles
