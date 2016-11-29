@@ -8,6 +8,11 @@ EOL
 exit 0
 fi
 
+# Unmark the role. We may have this file from a previous run of the
+# role, i.e. this may be a restart. Ensure that we are not seen as
+# ready yet.
+rm -f /var/vcap/monit/ready /var/vcap/monit/ready.active
+
 # When the container gets restarted, processes may end up with different pids
 find /run -name "*.pid" -delete
 if [ -d /var/vcap/sys/run ]; then
@@ -85,6 +90,58 @@ done
         /var/vcap/jobs/{{ $job.Name }}/bin/run
     {{ end }}
 {{ else }}
+    # Run all the scripts called post-start, if any.
+    psp=$(find /var/vcap/jobs/*/bin -name post-start)
+
+    if [ "X$psp" != X ] ; then
+	# We have post-start scripts to run.
+
+	# We do this by adding a job to the monit configuration
+	# before invoking it. This actually trivial, we simply
+	# put a .monitrc file into the directory /var/vcap/monit/job
+	# and monit will pick it up on start.
+	#
+	# The trick is to make this new job ("PS") dependent on all
+	# the existing jobs (of the role). Because the monit we have
+	# has bugs in its dependency management our job's start
+	# command does the checking manually, parsing the output of
+	# `monit summary`.  We are also using `flock` to guard against
+	# monit starting the job multiple times (due to the checking
+	# itself or the called post-start scripts taking too long).
+	# The start command is a script we arrange to run all the
+	# post-start files. Its last action is setting the monitored
+	# marker file, completing things.
+
+
+	# Create the job script, runs all the post-start scripts
+	# found, then sets the marker.
+	cat > /opt/hcf/post-start.sh <<EOF
+#!/bin/bash
+set -e
+(
+  flock -n 9 || exit 1
+  notyet=\$(monit summary | tail -n+3 |grep -v 'Accessible\|Running'|wc -l)
+  if [ \$notyet -eq 1 ] ; then
+    for fname in ${psp} ; do
+      bash \$fname
+    done
+    touch /var/vcap/monit/ready
+  fi
+) 9> /var/vcap/monit/ready.active
+EOF
+        chmod ug+x /opt/hcf/post-start.sh
+
+	# Create the trivial configuration file for the new job. We
+	# keep using the standard timeout of 10 seconds here. The
+	# flock in the script guards against possible multiple
+	# invokations by monit.
+	cat > /var/vcap/monit/zomega.monitrc <<EOF
+check file zomega path /var/vcap/monit/ready
+  start program = "/opt/hcf/post-start.sh"
+EOF
+
+    fi
+
     # Replace bash with monit to handle both SIGTERM and SIGINT
     exec dumb-init -- monit -vI
 {{ end }}
