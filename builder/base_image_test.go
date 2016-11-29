@@ -35,7 +35,7 @@ func TestGenerateBaseImageDockerfile(t *testing.T) {
 	baseImageBuilder := NewBaseImageBuilder("foo:bar")
 
 	dockerfileContents, err := baseImageBuilder.generateDockerfile()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.NotNil(dockerfileContents)
 	assert.Contains(string(dockerfileContents), "foo:bar")

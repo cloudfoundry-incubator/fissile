@@ -17,12 +17,12 @@ func TestJobInfoOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 	const ntpdFingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
@@ -38,19 +38,19 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Equal(jobPath, release.Jobs[0].Path)
 
 	err = util.ValidatePath(jobPath, false, "")
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestJobSha1Ok(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -61,12 +61,12 @@ func TestJobSha1NotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -80,21 +80,21 @@ func TestJobExtractOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(tempDir)
 
 	jobDir, err := release.Jobs[0].Extract(tempDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Nil(util.ValidatePath(jobDir, true, ""))
 	assert.Nil(util.ValidatePath(filepath.Join(jobDir, "job.MF"), false, ""))
@@ -104,12 +104,12 @@ func TestJobPackagesOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -121,12 +121,12 @@ func TestJobTemplatesOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -143,12 +143,12 @@ func TestJobPropertiesOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -166,12 +166,12 @@ func TestGetJobPropertyOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -179,7 +179,7 @@ func TestGetJobPropertyOk(t *testing.T) {
 
 	property, err := release.Jobs[0].getProperty("ntp_conf")
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal("ntp_conf", property.Name)
 }
 
@@ -187,12 +187,12 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
@@ -228,19 +228,19 @@ func TestJobsProperties(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Jobs))
 
 	lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
 	darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
 	opinions, err := newOpinions(lightOpinionsPath, darkOpinionsPath)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	properties, err := release.Jobs[0].getPropertiesForJob(opinions)
 	assert.Equal(2, len(properties))

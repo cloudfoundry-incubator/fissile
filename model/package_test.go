@@ -15,12 +15,12 @@ func TestPackageInfoOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Packages))
 
@@ -36,19 +36,19 @@ func TestPackageInfoOk(t *testing.T) {
 	assert.Equal(packagePath, release.Packages[0].Path)
 
 	err = util.ValidatePath(packagePath, false, "")
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestPackageSHA1Ok(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Packages))
 
@@ -59,12 +59,12 @@ func TestPackageSHA1NotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Packages))
 
@@ -78,21 +78,21 @@ func TestPackageExtractOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal(1, len(release.Packages))
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(tempDir)
 
 	packageDir, err := release.Packages[0].Extract(tempDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Nil(util.ValidatePath(packageDir, true, ""))
 	assert.Nil(util.ValidatePath(filepath.Join(packageDir, "packaging"), false, ""))

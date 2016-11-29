@@ -19,7 +19,7 @@ func TestCleanCacheEmpty(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
@@ -37,7 +37,7 @@ func TestListPackages(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
@@ -60,7 +60,7 @@ func TestListJobs(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
@@ -84,7 +84,7 @@ func TestListProperties(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
@@ -112,19 +112,19 @@ func TestListProperties(t *testing.T) {
 func TestDevDiffConfigurations(t *testing.T) {
 	assert := assert.New(t)
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	releasePathV215 := filepath.Join(workDir, "../test-assets/test-dev-config-diff/cf-release-215")
 	releasePathV224 := filepath.Join(workDir, "../test-assets/test-dev-config-diff/cf-release-224")
 	cachePath := filepath.Join(workDir, "../test-assets/test-dev-config-diff/cache")
 
 	release215, err := model.NewDevRelease(releasePathV215, "", "", cachePath)
-	if !assert.Nil(err) {
+	if !assert.NoError(err) {
 		return
 	}
 	assert.NotNil(release215)
 	release224, err := model.NewDevRelease(releasePathV224, "", "", cachePath)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release224)
 
 	assert.Equal(11, len(release215.Packages)) // temp #
