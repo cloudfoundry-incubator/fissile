@@ -8,3 +8,6 @@ scripts/compilation/compilation.go
 scripts/dockerfiles/dockerfiles.go
 scripts/templates/transformations.go
 *_generated.go
+*~
+/test-assets/*/.dev_builds
+/test-assets/*/.blobs
