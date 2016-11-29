@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	flagBuildImagesNoBuild bool
-	flagBuildImagesForce   bool
+	flagBuildImagesNoBuild       bool
+	flagBuildImagesForce         bool
+	flagPatchPropertiesDirective string
 )
 
 // buildImagesCmd represents the images command
@@ -31,13 +32,22 @@ Before running this command, you should run ` + "`fissile build layer stemcell`"
 The images will be tagged: ` + "`<repository>-<role_name>:<SIGNATURE>`" + `.
 The SIGNATURE is based on the hashes of all jobs and packages that are included in
 the image.
+
+The --patch-properties-release flag is used to distinguish the patchProperties release/job spec
+from other specs.  At most one is allowed.  Its syntax is --patch-properties-release=<RELEASE>/<JOB>.
+For hcf: the value should be "hcf/patch-properties".
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		flagBuildImagesNoBuild = viper.GetBool("no-build")
 		flagBuildImagesForce = viper.GetBool("force")
+		flagPatchPropertiesDirective = viper.GetString("patch-properties-release")
 
-		err := fissile.LoadReleases(
+		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
+		if err != nil {
+			return err
+		}
+		err = fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -77,6 +87,13 @@ func init() {
 		"F",
 		false,
 		"If specified, image creation will proceed even when images already exist.",
+	)
+
+	buildImagesCmd.PersistentFlags().StringP(
+		"patch-properties-release",
+		"P",
+		"",
+		"Used to designate a \"patch-properties\" psuedo-job in a particular release.  Format: RELEASE/JOB.",
 	)
 
 	viper.BindPFlags(buildImagesCmd.PersistentFlags())

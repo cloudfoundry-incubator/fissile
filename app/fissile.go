@@ -24,10 +24,12 @@ import (
 
 // Fissile represents a fissile application
 type Fissile struct {
-	Version  string
-	UI       *termui.UI
-	cmdErr   error
-	releases []*model.Release // Only applies for some commands
+	Version                    string
+	UI                         *termui.UI
+	cmdErr                     error
+	releases                   []*model.Release // Only applies for some commands
+	patchPropertiesReleaseName string           // Only applies for some commands
+	patchPropertiesJobName     string           // Only applies for some commands
 }
 
 // NewFissileApplication creates a new app.Fissile
@@ -36,6 +38,26 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 		Version: version,
 		UI:      ui,
 	}
+}
+
+// SetPatchPropertiesDirective saves the patch-properties release and job names, if specified.
+func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) error {
+	if patchPropertiesDirective != "" {
+		msgStart := "Invalid format for --patch-properties-release flag: should be RELEASE/JOB;"
+		parts := strings.SplitN(patchPropertiesDirective, "/", 2)
+		if len(parts) <= 1 {
+			return fmt.Errorf(msgStart + " only one part is specified")
+		}
+		if len(parts[0]) == 0 {
+			return fmt.Errorf(msgStart + " no RELEASE is specified")
+		}
+		if len(parts[1]) == 0 {
+			return fmt.Errorf(msgStart + " no JOB is specified")
+		}
+		f.patchPropertiesReleaseName = parts[0]
+		f.patchPropertiesJobName = parts[1]
+	}
+	return nil
 }
 
 // ShowBaseImage will show details about the base BOSH images
@@ -556,7 +578,7 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	f.releases = releases
 	err := f.injectPatchPropertiesJobSpec()
 	if err != nil {
-		return fmt.Errorf("Error loading release information: %s", err.Error())
+		return fmt.Errorf("Error loading release information: %s", err)
 	}
 	return nil
 }
@@ -587,13 +609,15 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 // Since each job processes only its own spec, inject the hcf-release's
 // patches-properties pseudo-job's spec into all the other jobs.
 func (f *Fissile) injectPatchPropertiesJobSpec() error {
+	if f.patchPropertiesReleaseName == "" || f.patchPropertiesJobName == "" {
+		return nil
+	}
 	var patchPropertiesJob *model.Job
 	for _, release := range f.releases {
-		if release.Name == "hcf" {
-			for _, job := range release.Jobs {
-				if job.Name == "patch-properties" {
-					patchPropertiesJob = job
-				}
+		if release.Name == f.patchPropertiesReleaseName {
+			job, _ := release.LookupJob(f.patchPropertiesJobName)
+			if job != nil {
+				patchPropertiesJob = job
 			}
 		}
 	}
@@ -602,7 +626,7 @@ func (f *Fissile) injectPatchPropertiesJobSpec() error {
 	}
 	for _, release := range f.releases {
 		for _, job := range release.Jobs {
-			if release.Name != "hcf" && job.Name != "patch-properties" {
+			if release.Name != f.patchPropertiesReleaseName || job != patchPropertiesJob {
 				job.MergeSpec(patchPropertiesJob)
 			}
 		}

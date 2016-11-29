@@ -58,7 +58,6 @@ func TestGenerateDockerfile(t *testing.T) {
 	lines := getDockerfileLines(dockerfile.String())
 	assert.Equal([]string{
 		"FROM scratch:latest",
-		"ADD specs /opt/hcf/specs",
 		"ADD packages-src /var/vcap/packages-src/",
 	}, lines, "Unexpected dockerfile contents found")
 }
@@ -123,7 +122,6 @@ func TestNewDockerPopulator(t *testing.T) {
 			var line string
 			testers := []func(){
 				func() { assert.Equal(fmt.Sprintf("FROM %s", baseImage.ID), line, "line 1 should start with FROM") },
-				func() { assert.Equal("ADD specs /opt/hcf/specs", line, "line 2 mismatch") },
 				func() { assert.Equal("ADD packages-src /var/vcap/packages-src/", line, "line 3 mismatch") },
 				func() {
 					expected := []string{

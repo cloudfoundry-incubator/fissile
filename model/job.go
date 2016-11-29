@@ -235,14 +235,15 @@ func (j *Job) loadJobSpec() (err error) {
 }
 
 // MergeSpec is used to merge temporary spec patches into each job. otherJob should only be
-// the hcf/patch-properties job.
+// the hcf/patch-properties job.  The code assumes package and property objects are immutable,
+// as they're now being shared across jobs. Also, the results are undefined if specified packages
+// or properties already exist in the destination job.
 func (j *Job) MergeSpec(otherJob *Job) {
 	// Ignore otherJob.Name, otherJob.Description
 	if otherJob.Packages != nil {
 		j.Packages = append(j.Packages, otherJob.Packages...)
 	}
-	// Skip templates
-	// Question for Vlad: how are the patch-properties templates used?
+	// Skip templates -- they're only in place to keep `create-release` happy.
 	if otherJob.Properties != nil {
 		j.Properties = append(j.Properties, otherJob.Properties...)
 	}

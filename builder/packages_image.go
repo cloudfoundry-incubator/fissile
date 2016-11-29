@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,19 +138,9 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
 func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManifest, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
+		var err error
 		if len(roleManifest.Roles) == 0 {
 			return fmt.Errorf("No roles to build")
-		}
-
-		// Generate configuration
-		specDir, err := ioutil.TempDir("", "fissile-spec-dir")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(specDir)
-		walker := &tarWalker{stream: tarWriter, root: specDir, prefix: "specs"}
-		if err = filepath.Walk(specDir, walker.walk); err != nil {
-			return err
 		}
 
 		// Collect compiled packages
