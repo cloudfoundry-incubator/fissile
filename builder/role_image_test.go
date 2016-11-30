@@ -275,21 +275,29 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	if !assert.NoError(err, "Failed to read tor/config_spec.json %s\n", jsonPath) {
 		return
 	}
-	err = json.Unmarshal(buf, &result)
-	if !assert.NoError(err, "Error unmarshalling output") {
-		return
-	}
 
-	var expected map[string]interface{}
-	err = json.Unmarshal([]byte(`{
-		   "tor": {
-            "client_keys": null,
-            "hashed_control_password": null,
-            "hostname": "localhost",
-            "private_key": null
-        }
-	}`), &expected)
-	assert.NoError(err, "Failed to unmarshal expected data")
+	expectedString := `{
+		"job": {
+			"name": "myrole",
+			"templates": [
+				{"name":"new_hostname"},
+				{"name":"tor"}
+			]
+		},
+		"networks":{
+			"default":{}
+		},
+		"parameters":{},
+		"properties": {
+			"tor": {
+				"hashed_control_password":null,
+				"hostname":"localhost",
+				"private_key": null,
+				"client_keys":null
+			}
+		}
+	}`
+	assert.JSONEq(expectedString, string(buf))
 }
 
 // getPackage is a helper to get a package from a list of roles
