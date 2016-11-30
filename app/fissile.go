@@ -42,21 +42,22 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 
 // SetPatchPropertiesDirective saves the patch-properties release and job names, if specified.
 func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) error {
-	if patchPropertiesDirective != "" {
-		msgStart := "Invalid format for --patch-properties-release flag: should be RELEASE/JOB;"
-		parts := strings.SplitN(patchPropertiesDirective, "/", 2)
-		if len(parts) <= 1 {
-			return fmt.Errorf(msgStart + " only one part is specified")
-		}
-		if len(parts[0]) == 0 {
-			return fmt.Errorf(msgStart + " no RELEASE is specified")
-		}
-		if len(parts[1]) == 0 {
-			return fmt.Errorf(msgStart + " no JOB is specified")
-		}
-		f.patchPropertiesReleaseName = parts[0]
-		f.patchPropertiesJobName = parts[1]
+	if patchPropertiesDirective == "" {
+		return nil
 	}
+	msgStart := "Invalid format for --patch-properties-release flag: should be RELEASE/JOB;"
+	parts := strings.SplitN(patchPropertiesDirective, "/", 2)
+	if len(parts) <= 1 {
+		return fmt.Errorf(msgStart + " only one part is specified")
+	}
+	if len(parts[0]) == 0 {
+		return fmt.Errorf(msgStart + " no RELEASE is specified")
+	}
+	if len(parts[1]) == 0 {
+		return fmt.Errorf(msgStart + " no JOB is specified")
+	}
+	f.patchPropertiesReleaseName = parts[0]
+	f.patchPropertiesJobName = parts[1]
 	return nil
 }
 
