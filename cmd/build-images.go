@@ -35,7 +35,6 @@ the image.
 
 The --patch-properties-release flag is used to distinguish the patchProperties release/job spec
 from other specs.  At most one is allowed.  Its syntax is --patch-properties-release=<RELEASE>/<JOB>.
-For hcf: the value should be "hcf/patch-properties".
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
