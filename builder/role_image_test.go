@@ -268,7 +268,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	if !assert.NoError(err, "Error unmarshalling output") {
 		return
 	}
-	assert.Equal(0, len(result["properties"].(map[string]interface{})))
+	assert.Empty(result["properties"].(map[string]interface{}))
 
 	jsonPath = filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/config_spec.json")
 	buf, err = ioutil.ReadFile(jsonPath)
