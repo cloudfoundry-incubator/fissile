@@ -280,7 +280,7 @@ func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinio
 
 // getPropertiesForJob returns the parameters for the given job, using its specs and opinions
 func (j *Job) getPropertiesForJob(opinions *opinions) (map[string]interface{}, error) {
-	props := map[string]interface{}{}
+	props := make(map[string]interface{})
 	lightOpinions, ok := opinions.Light["properties"]
 	if !ok {
 		return nil, fmt.Errorf("getPropertiesForJob: no 'properties' key in light opinions")
