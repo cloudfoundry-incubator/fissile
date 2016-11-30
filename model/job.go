@@ -34,14 +34,6 @@ type Job struct {
 // Jobs is an array of Job*
 type Jobs []*Job
 
-const (
-	// JobConfigFileExtension is the file extension for json configurations
-	JobConfigFileExtension = ".json"
-
-	jobConfigPrefix = ""
-	jobConfigIndent = "    "
-)
-
 func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job, error) {
 	job := &Job{
 		Release: release,
@@ -280,7 +272,7 @@ func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinio
 		return err
 	}
 
-	jobJSON, err := json.MarshalIndent(config, jobConfigPrefix, jobConfigIndent)
+	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
 	if err != nil {
 		return err
 	}

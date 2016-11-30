@@ -26,7 +26,7 @@ import (
 
 const (
 	binPrefix             = "bin"
-	jobConfigSpecFilename = "config_spec"
+	jobConfigSpecFilename = "config_spec.json"
 )
 
 var (
@@ -169,7 +169,7 @@ func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName s
 		}
 
 		// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename+model.JobConfigFileExtension)
+		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename)
 		err = job.WriteConfigs(role, specConfigDestination, r.lightOpinionsPath, r.darkOpinionsPath)
 		if err != nil {
 			return "", err
