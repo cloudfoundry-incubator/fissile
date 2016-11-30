@@ -311,7 +311,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 
 	addedIDs := findStringSetDifference(afterCompileContainers, beforeCompileContainers)
 	if keepContainer {
-		assert.Equal(1, len(addedIDs))
+		assert.Len(addedIDs, 1)
 	} else {
 		assert.Empty(addedIDs)
 	}
@@ -731,7 +731,7 @@ func TestGatherPackages(t *testing.T) {
 	releases := genTestCase("ruby-2.5", "go-1.4.1:G", "go-1.4:G")
 	packages := c.gatherPackages(releases, nil)
 
-	assert.Equal(2, len(packages))
+	assert.Len(packages, 2)
 	assert.Equal(packages[0].Name, "ruby-2.5")
 	assert.Equal(packages[1].Name, "go-1.4.1")
 }
@@ -756,7 +756,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, nil))
 	assert.NoError(err)
 
-	assert.Equal(2, len(packages))
+	assert.Len(packages, 2)
 	assert.Equal(packages[0].Name, "consul")
 	assert.Equal(packages[1].Name, "go-1.4")
 }

@@ -208,7 +208,7 @@ func TestDevReleasePackagesOk(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barPkg, err := release.LookupPackage("bar")
 	assert.NoError(err)
@@ -231,7 +231,7 @@ func TestDevReleasePackageExtractOk(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barPkg, err := release.LookupPackage("bar")
 	assert.NoError(err)
@@ -260,7 +260,7 @@ func TestDevReleaseJobsOk(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Jobs))
+	assert.Len(release.Jobs, 2)
 
 	barJob, err := release.LookupJob("bar")
 	assert.NoError(err)
@@ -283,7 +283,7 @@ func TestDevReleaseJobExtractOk(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barJob, err := release.LookupJob("bar")
 	assert.NoError(err)

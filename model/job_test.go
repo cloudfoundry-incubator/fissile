@@ -24,7 +24,7 @@ func TestJobInfoOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 	const ntpdFingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
 	const ntpdVersion = ntpdFingerprint
 	const ntpdSHA1 = "aab8da0094ac318f790ca40c53f7a5f4e137f841"
@@ -52,7 +52,7 @@ func TestJobSha1Ok(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
 	assert.Nil(release.Jobs[0].ValidateSHA1())
 }
@@ -68,7 +68,7 @@ func TestJobSha1NotOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
 	// Mess up the manifest signature
 	release.Jobs[0].SHA1 += "foo"
@@ -87,7 +87,7 @@ func TestJobExtractOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.NoError(err)
@@ -111,9 +111,9 @@ func TestJobPackagesOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(1, len(release.Jobs[0].Packages))
+	assert.Len(release.Jobs[0].Packages, 1)
 	assert.Equal("ntp-4.2.8p2", release.Jobs[0].Packages[0].Name)
 }
 
@@ -128,9 +128,9 @@ func TestJobTemplatesOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(2, len(release.Jobs[0].Templates))
+	assert.Len(release.Jobs[0].Templates, 2)
 
 	assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, release.Jobs[0].Templates[0].SourcePath)
 	assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, release.Jobs[0].Templates[1].SourcePath)
@@ -150,9 +150,9 @@ func TestJobPropertiesOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(3, len(release.Jobs[0].Properties))
+	assert.Len(release.Jobs[0].Properties, 3)
 
 	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
 	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
@@ -173,9 +173,9 @@ func TestGetJobPropertyOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(3, len(release.Jobs[0].Properties))
+	assert.Len(release.Jobs[0].Properties, 3)
 
 	property, err := release.Jobs[0].getProperty("ntp_conf")
 
@@ -194,9 +194,9 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(3, len(release.Jobs[0].Properties))
+	assert.Len(release.Jobs[0].Properties, 3)
 
 	_, err = release.Jobs[0].getProperty("foo")
 
@@ -235,7 +235,7 @@ func TestJobsProperties(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
 	lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
 	darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
@@ -243,7 +243,7 @@ func TestJobsProperties(t *testing.T) {
 	assert.NoError(err)
 
 	properties, err := release.Jobs[0].getPropertiesForJob(opinions)
-	assert.Equal(2, len(properties))
+	assert.Len(properties, 2)
 	actualJSON, err := json.Marshal(properties)
 	if assert.NoError(err) {
 		assert.JSONEq(`{

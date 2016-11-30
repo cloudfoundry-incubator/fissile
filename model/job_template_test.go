@@ -19,9 +19,9 @@ func TestJobTemplatesContentOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(2, len(release.Jobs[0].Templates))
+	assert.Len(release.Jobs[0].Templates, 2)
 
 	for _, template := range release.Jobs[0].Templates {
 		assert.NotEmpty(template)

@@ -22,7 +22,7 @@ func TestPackageInfoOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Packages))
+	assert.Len(release.Packages, 1)
 
 	assert.Equal("ntp-4.2.8p2", release.Packages[0].Name)
 	const ntpdFingerprint = "543219fbdaf6ec6f8af2956016055f2fb100d782"
@@ -50,7 +50,7 @@ func TestPackageSHA1Ok(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Packages))
+	assert.Len(release.Packages, 1)
 
 	assert.Nil(release.Packages[0].ValidateSHA1())
 }
@@ -66,7 +66,7 @@ func TestPackageSHA1NotOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Packages))
+	assert.Len(release.Packages, 1)
 
 	// Mess up the manifest signature
 	release.Packages[0].SHA1 += "foo"
@@ -85,7 +85,7 @@ func TestPackageExtractOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Packages))
+	assert.Len(release.Packages, 1)
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
 	assert.NoError(err)

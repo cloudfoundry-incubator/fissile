@@ -127,28 +127,28 @@ func TestDevDiffConfigurations(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(release224)
 
-	assert.Equal(11, len(release215.Packages)) // temp #
-	assert.Equal(9, len(release224.Packages))
+	assert.Len(release215.Packages, 11) // temp #
+	assert.Len(release224.Packages, 9)
 
 	hashDiffs, err := getDiffsFromReleases([]*model.Release{release215, release224})
 	if !assert.Nil(err, "getDiffsFromReleases failed") {
 		return
 	}
-	if assert.Equal(4, len(hashDiffs.AddedKeys), fmt.Sprintf("Expected 4 added key, got %d: %s", len(hashDiffs.AddedKeys), hashDiffs.AddedKeys)) {
+	if assert.Len(hashDiffs.AddedKeys, 4, fmt.Sprintf("Expected 4 added key, got %d: %s", len(hashDiffs.AddedKeys), hashDiffs.AddedKeys)) {
 		sort.Strings(hashDiffs.AddedKeys)
 		assert.Equal("acceptance_tests.include_route_services", hashDiffs.AddedKeys[0])
 		assert.Equal("app_ssh.oauth_client_id", hashDiffs.AddedKeys[1])
 		assert.Equal("cf.acceptance-tests.acceptance_tests.include_route_services", hashDiffs.AddedKeys[2])
 		assert.Equal("cf.cloud_controller_ng.app_ssh.oauth_client_id", hashDiffs.AddedKeys[3])
 	}
-	if assert.Equal(4, len(hashDiffs.DeletedKeys), fmt.Sprintf("Expected 4 dropped key, got %d: %s", len(hashDiffs.DeletedKeys), hashDiffs.DeletedKeys)) {
+	if assert.Len(hashDiffs.DeletedKeys, 4, fmt.Sprintf("Expected 4 dropped key, got %d: %s", len(hashDiffs.DeletedKeys), hashDiffs.DeletedKeys)) {
 		sort.Strings(hashDiffs.DeletedKeys)
 		assert.Equal("acceptance_tests.old_key", hashDiffs.DeletedKeys[0])
 		assert.Equal("cf.acceptance-tests.acceptance_tests.old_key", hashDiffs.DeletedKeys[1])
 		assert.Equal("cf.cloud_controller_ng.networks.apps", hashDiffs.DeletedKeys[2])
 		assert.Equal("networks.apps", hashDiffs.DeletedKeys[3])
 	}
-	assert.Equal(5, len(hashDiffs.ChangedValues))
+	assert.Len(hashDiffs.ChangedValues, 5)
 	v, ok := hashDiffs.ChangedValues["cc.staging_upload_user"]
 	if assert.True(ok) {
 		assert.Equal("S3 Access key for staging droplets on AWS installs; Blobstore user for other IaaSs", v[0])

@@ -25,7 +25,7 @@ func TestLoadLicenseFiles(t *testing.T) {
 	files, err := LoadLicenseFiles(licenseTar, f, DefaultLicensePrefixFilters...)
 	assert.NoError(err)
 
-	assert.Equal(1, len(files))
+	assert.Len(files, 1)
 	assert.Equal(files["LICENSE"], []byte("license file\n"))
 }
 

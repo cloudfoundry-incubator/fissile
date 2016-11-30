@@ -138,7 +138,7 @@ func TestReleasePackagesOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Packages))
+	assert.Len(release.Packages, 1)
 }
 
 func TestReleaseJobsOk(t *testing.T) {
@@ -152,7 +152,7 @@ func TestReleaseJobsOk(t *testing.T) {
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 }
 
 func TestLookupPackageOk(t *testing.T) {
@@ -233,7 +233,7 @@ func TestPackageDependencies(t *testing.T) {
 	pkg, err := release.LookupPackage("tor")
 
 	assert.NoError(err)
-	assert.Equal(1, len(pkg.Dependencies))
+	assert.Len(pkg.Dependencies, 1)
 	assert.Equal("libevent", pkg.Dependencies[0].Name)
 }
 
@@ -284,7 +284,7 @@ func TestReleaseExtractedLicense(t *testing.T) {
 	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 
 	assert.Nil(err, "Release with extracted license should be valid")
-	assert.Equal(1, len(release.License.Files))
+	assert.Len(release.License.Files, 1)
 	assert.Equal([]byte("LICENSE file contents"), release.License.Files["LICENSE"])
 }
 
@@ -317,5 +317,5 @@ func TestGetDeploymentConfig(t *testing.T) {
 	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
-	assert.Equal(4, len(configs))
+	assert.Len(configs, 4)
 }

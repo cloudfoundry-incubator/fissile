@@ -26,7 +26,7 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 
 	myrole := rolesManifest.Roles[0]
 	assert.Equal([]string{
@@ -58,7 +58,7 @@ func TestGetScriptPaths(t *testing.T) {
 	assert.NotNil(rolesManifest)
 
 	fullScripts := rolesManifest.Roles[0].GetScriptPaths()
-	assert.Equal(3, len(fullScripts))
+	assert.Len(fullScripts, 3)
 	for _, leafName := range []string{"environ.sh", "myrole.sh", "post_config_script.sh"} {
 		assert.Equal(filepath.Join(workDir, "../test-assets/role-manifests", leafName), fullScripts[leafName])
 	}
@@ -121,10 +121,10 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 
 	myrole := rolesManifest.Roles[0]
-	assert.Equal(1, len(myrole.Scripts))
+	assert.Len(myrole.Scripts, 1)
 	assert.Equal("myrole.sh", myrole.Scripts[0])
 
 	foorole := rolesManifest.Roles[1]
@@ -174,7 +174,7 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 }
 
 func TestRolesSort(t *testing.T) {
