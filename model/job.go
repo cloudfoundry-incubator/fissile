@@ -232,13 +232,9 @@ func (j *Job) loadJobSpec() (err error) {
 // specified in the "other" job, that one takes precedence.
 func (j *Job) MergeSpec(otherJob *Job) {
 	// Ignore otherJob.Name, otherJob.Description
-	if otherJob.Packages != nil {
-		j.Packages = append(j.Packages, otherJob.Packages...)
-	}
 	// Skip templates -- they're only in place to keep `create-release` happy.
-	if otherJob.Properties != nil {
-		j.Properties = append(j.Properties, otherJob.Properties...)
-	}
+	j.Packages = append(j.Packages, otherJob.Packages...)
+	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
 // WriteConfigs merges the job's spec with the opinions and writes out json-encoding to the specified path.
