@@ -607,8 +607,8 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 	return getDiffsFromReleases(f.releases)
 }
 
-// Since each job processes only its own spec, inject the hcf-release's
-// patches-properties pseudo-job's spec into all the other jobs.
+// Since each job processes only its own spec, inject the designated
+// patches-properties pseudo-job's spec into all the other jobs' specs.
 func (f *Fissile) injectPatchPropertiesJobSpec() error {
 	if f.patchPropertiesReleaseName == "" || f.patchPropertiesJobName == "" {
 		return nil
