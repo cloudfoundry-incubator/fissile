@@ -13,20 +13,20 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 
 	myrole := rolesManifest.Roles[0]
 	assert.Equal([]string{
@@ -45,20 +45,20 @@ func TestGetScriptPaths(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(rolesManifest)
 
 	fullScripts := rolesManifest.Roles[0].GetScriptPaths()
-	assert.Equal(3, len(fullScripts))
+	assert.Len(fullScripts, 3)
 	for _, leafName := range []string{"environ.sh", "myrole.sh", "post_config_script.sh"} {
 		assert.Equal(filepath.Join(workDir, "../test-assets/role-manifests", leafName), fullScripts[leafName])
 	}
@@ -68,12 +68,12 @@ func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-bad.yml")
 	_, err = LoadRoleManifest(roleManifestPath, []*Release{release})
@@ -85,12 +85,12 @@ func TestLoadDuplicateReleases(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	_, err = LoadRoleManifest(roleManifestPath, []*Release{release, release})
@@ -103,28 +103,28 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	torRelease, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 
 	myrole := rolesManifest.Roles[0]
-	assert.Equal(1, len(myrole.Scripts))
+	assert.Len(myrole.Scripts, 1)
 	assert.Equal("myrole.sh", myrole.Scripts[0])
 
 	foorole := rolesManifest.Roles[1]
@@ -138,17 +138,17 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	torRelease, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-bad.yml")
 	_, err = LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
@@ -161,20 +161,20 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/non-bosh-roles.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(rolesManifest)
 
 	assert.Equal(roleManifestPath, rolesManifest.manifestFilePath)
-	assert.Equal(2, len(rolesManifest.Roles))
+	assert.Len(rolesManifest.Roles, 2)
 }
 
 func TestRolesSort(t *testing.T) {

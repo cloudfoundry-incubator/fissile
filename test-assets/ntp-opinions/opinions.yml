@@ -1,0 +1,3 @@
+---
+properties:
+  ntp_conf: zip.conf

@@ -1,4 +1,4 @@
-package configstore
+package model
 
 import (
 	"encoding/json"
@@ -6,21 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestGetKeyGrams(t *testing.T) {
-	assert := assert.New(t)
-
-	result, err := getKeyGrams("")
-	assert.Error(err, "Getting key grams for nothing should have an error")
-
-	result, err = getKeyGrams("hello")
-	assert.Nil(err)
-	assert.Equal([]string{"hello"}, result)
-
-	result, err = getKeyGrams("hello.world")
-	assert.Nil(err)
-	assert.Equal([]string{"hello", "world"}, result)
-}
 
 func TestValueToJSONable(t *testing.T) {
 	assert := assert.New(t)

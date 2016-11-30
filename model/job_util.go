@@ -1,7 +1,6 @@
-package configstore
+package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -35,6 +34,22 @@ func insertConfig(config map[string]interface{}, name string, value interface{})
 	return nil
 }
 
+func getOpinionValue(parent map[interface{}]interface{}, keys []string) (interface{}, bool) {
+	var key string
+	for _, key = range keys[:len(keys)-1] {
+		child, ok := parent[key]
+		if !ok {
+			return nil, false
+		}
+		parent, ok = child.(map[interface{}]interface{})
+		if !ok {
+			return nil, false
+		}
+	}
+	val, ok := parent[keys[len(keys)-1]]
+	return val, ok
+}
+
 // valueToJSONable ensures that the given value can be converted to JSON
 func valueToJSONable(value interface{}) interface{} {
 	if valueMap, ok := value.(map[interface{}]interface{}); ok {
@@ -52,17 +67,4 @@ func valueToJSONable(value interface{}) interface{} {
 		return result
 	}
 	return value
-}
-
-// deepCopy make a deep copy of a JSON-able map
-func deepCopy(in map[string]interface{}) (map[string]interface{}, error) {
-	buf, err := json.Marshal(in)
-	if err != nil {
-		return nil, err
-	}
-	var result map[string]interface{}
-	if err := json.Unmarshal(buf, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
 }

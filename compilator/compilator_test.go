@@ -50,13 +50,13 @@ func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	waitCh := make(chan struct{})
 	go func() {
 		err := c.Compile(1, genTestCase(), nil)
 		close(waitCh)
-		assert.Nil(err)
+		assert.NoError(err)
 	}()
 
 	<-waitCh
@@ -164,7 +164,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
@@ -311,7 +311,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 
 	addedIDs := findStringSetDifference(afterCompileContainers, beforeCompileContainers)
 	if keepContainer {
-		assert.Equal(1, len(addedIDs))
+		assert.Len(addedIDs, 1)
 	} else {
 		assert.Empty(addedIDs)
 	}
@@ -384,7 +384,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := NewCompilator(nil, "", "", "", "", "", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
@@ -538,30 +538,30 @@ func TestPackageFolderStructure(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
-	assert.Nil(err)
+	assert.NoError(err)
 
 	exists, err := validatePath(compilator.getDependenciesPackageDir(release.Packages[0]), true, "")
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.True(exists)
 
 	exists, err = validatePath(compilator.getSourcePackageDir(release.Packages[0]), true, "")
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.True(exists)
 }
 
@@ -569,39 +569,39 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	compilator, err := NewCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", false, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	pkg, err := release.LookupPackage("tor")
-	assert.Nil(err)
+	assert.NoError(err)
 	err = compilator.createCompilationDirStructure(pkg)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = os.MkdirAll(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), 0755)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	dummyCompiledFile := filepath.Join(pkg.Dependencies[0].GetPackageCompiledDir(compilator.hostWorkDir), "foo")
 	file, err := os.Create(dummyCompiledFile)
-	assert.Nil(err)
+	assert.NoError(err)
 	file.Close()
 
 	err = compilator.copyDependencies(pkg)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	expectedDummyFileLocation := filepath.Join(compilator.getDependenciesPackageDir(pkg), pkg.Dependencies[0].Name, "foo")
 	exists, err := validatePath(expectedDummyFileLocation, false, "")
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.True(exists, expectedDummyFileLocation)
 }
 
@@ -614,38 +614,38 @@ func doTestCompilePackage(t *testing.T, keepInContainer bool) {
 	assert := assert.New(t)
 
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
 
 	comp, err := NewCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	imageName := comp.BaseImageName()
 
 	_, err = comp.CreateCompilationBase(dockerImageName)
 	defer func() {
 		err = dockerManager.RemoveImage(imageName)
-		assert.Nil(err)
+		assert.NoError(err)
 	}()
-	assert.Nil(err)
+	assert.NoError(err)
 	beforeCompileContainers, err := getContainerIDs(imageName)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	err = comp.compilePackage(release.Packages[0])
-	assert.Nil(err)
+	assert.NoError(err)
 	afterCompileContainers, err := getContainerIDs(imageName)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(beforeCompileContainers, afterCompileContainers)
 }
 
@@ -731,7 +731,7 @@ func TestGatherPackages(t *testing.T) {
 	releases := genTestCase("ruby-2.5", "go-1.4.1:G", "go-1.4:G")
 	packages := c.gatherPackages(releases, nil)
 
-	assert.Equal(2, len(packages))
+	assert.Len(packages, 2)
 	assert.Equal(packages[0].Name, "ruby-2.5")
 	assert.Equal(packages[1].Name, "go-1.4.1")
 }
@@ -756,7 +756,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, nil))
 	assert.NoError(err)
 
-	assert.Equal(2, len(packages))
+	assert.Len(packages, 2)
 	assert.Equal(packages[0].Name, "consul")
 	assert.Equal(packages[1].Name, "go-1.4")
 }

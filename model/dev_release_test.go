@@ -15,28 +15,28 @@ func TestDevReleaseValidationOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 }
 
 func TestDevReleaseLatestVersionOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 	assert.Equal("test-dev", release.Name)
 	assert.Equal("0+dev.2", release.Version)
@@ -46,14 +46,14 @@ func TestDevReleaseSpecificVersionOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "0+dev.1", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 	assert.Equal("0+dev.1", release.Version)
 }
@@ -62,14 +62,14 @@ func TestDevReleaseSpecificNameOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "test2", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal("test2", release.Name)
 	assert.Equal("0+dev.1", release.Version)
 }
@@ -78,7 +78,7 @@ func TestDevReleaseValidationNotOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -93,14 +93,14 @@ func TestDevReleaseValidationBadConfigNoDevNameKeyWithFinalName(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-missing-dev-name")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal("test-final", release.Name)
 }
 
@@ -108,7 +108,7 @@ func TestDevReleaseValidationBadConfigNoDevNameKeyNoFinalName(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-missing-final-name")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -123,7 +123,7 @@ func TestDevReleaseValidationBadConfigWrongFinalNameType(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release-wrong-final-name-type")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -138,7 +138,7 @@ func TestDevReleaseValidationBadIndexNoBuildsKey(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -153,7 +153,7 @@ func TestDevReleaseValidationBadIndexWrongBuildsKeyType(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -168,7 +168,7 @@ func TestDevReleaseValidationBadIndexNoVersionKeyInBuild(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -183,7 +183,7 @@ func TestDevReleaseValidationBadIndexWrongVersionTypeInBuild(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
@@ -198,20 +198,20 @@ func TestDevReleasePackagesOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barPkg, err := release.LookupPackage("bar")
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal("bar", barPkg.Name)
 	assert.Equal("foo", barPkg.Dependencies[0].Name)
@@ -221,27 +221,27 @@ func TestDevReleasePackageExtractOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barPkg, err := release.LookupPackage("bar")
-	assert.Nil(err)
+	assert.NoError(err)
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(tempDir)
 
 	extractedPath, err := barPkg.Extract(tempDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Nil(util.ValidatePath(extractedPath, true, "extracted package dir"))
 }
@@ -250,20 +250,20 @@ func TestDevReleaseJobsOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Jobs))
+	assert.Len(release.Jobs, 2)
 
 	barJob, err := release.LookupJob("bar")
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Equal("bar", barJob.Name)
 	assert.Equal("bar", barJob.Packages[0].Name)
@@ -273,27 +273,27 @@ func TestDevReleaseJobExtractOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	emptyDevReleasePath := filepath.Join(workDir, "../test-assets/test-dev-release")
 	emptyDevReleaseCachePath := filepath.Join(workDir, "../test-assets/test-dev-release-cache")
 
 	release, err := NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(release)
 
-	assert.Equal(2, len(release.Packages))
+	assert.Len(release.Packages, 2)
 
 	barJob, err := release.LookupJob("bar")
-	assert.Nil(err)
+	assert.NoError(err)
 
 	tempDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.Nil(err)
+	assert.NoError(err)
 	defer os.RemoveAll(tempDir)
 
 	extractedPath, err := barJob.Extract(tempDir)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	assert.Nil(util.ValidatePath(extractedPath, true, "extracted job dir"))
 }

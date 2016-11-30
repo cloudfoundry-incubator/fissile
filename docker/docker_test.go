@@ -386,7 +386,7 @@ func verifyDebugContainerStays(t *testing.T, cmdShouldSucceed bool) {
 	assert.NotEmpty(wantedOutputLine, fmt.Sprintf("Didn't find a hit for running container: %s", container.ID))
 	if wantedOutputLine != "" {
 		parts := strings.Split(wantedOutputLine, "::")
-		assert.Equal(3, len(parts), fmt.Sprintf("Splitting up '%s' => %d parts", wantedOutputLine, len(parts)))
+		assert.Len(parts, 3, fmt.Sprintf("Splitting up '%s' => %d parts", wantedOutputLine, len(parts)))
 		assert.Equal(testName, parts[0], wantedOutputLine)
 		assert.Equal("\"sleep 365d\"", parts[2])
 	}

@@ -15,17 +15,17 @@ func TestLoadLicenseFiles(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	licenseTar := filepath.Join(workDir, "../test-assets/tarReadTest.tar.gz")
 
 	f, err := os.Open(licenseTar)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	files, err := LoadLicenseFiles(licenseTar, f, DefaultLicensePrefixFilters...)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	assert.Equal(1, len(files))
+	assert.Len(files, 1)
 	assert.Equal(files["LICENSE"], []byte("license file\n"))
 }
 

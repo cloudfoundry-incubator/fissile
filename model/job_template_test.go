@@ -12,16 +12,16 @@ func TestJobTemplatesContentOk(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
 	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.Nil(err)
+	assert.NoError(err)
 
-	assert.Equal(1, len(release.Jobs))
+	assert.Len(release.Jobs, 1)
 
-	assert.Equal(2, len(release.Jobs[0].Templates))
+	assert.Len(release.Jobs[0].Templates, 2)
 
 	for _, template := range release.Jobs[0].Templates {
 		assert.NotEmpty(template)

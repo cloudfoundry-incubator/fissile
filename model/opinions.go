@@ -1,4 +1,4 @@
-package configstore
+package model
 
 import (
 	"io/ioutil"
@@ -11,6 +11,7 @@ type opinions struct {
 	Dark  map[string]interface{}
 }
 
+// newOpinions returns the json opinions for the light and dark opinion files
 func newOpinions(lightFile, darkFile string) (*opinions, error) {
 	result := &opinions{}
 

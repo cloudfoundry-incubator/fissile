@@ -10,7 +10,6 @@ import (
 
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
-	"github.com/hpcloud/fissile/config-store"
 	"github.com/hpcloud/fissile/docker"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
@@ -25,10 +24,12 @@ import (
 
 // Fissile represents a fissile application
 type Fissile struct {
-	Version  string
-	UI       *termui.UI
-	cmdErr   error
-	releases []*model.Release // Only applies for some commands
+	Version                    string
+	UI                         *termui.UI
+	cmdErr                     error
+	releases                   []*model.Release // Only applies for some commands
+	patchPropertiesReleaseName string           // Only applies for some commands
+	patchPropertiesJobName     string           // Only applies for some commands
 }
 
 // NewFissileApplication creates a new app.Fissile
@@ -37,6 +38,27 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 		Version: version,
 		UI:      ui,
 	}
+}
+
+// SetPatchPropertiesDirective saves the patch-properties release and job names, if specified.
+func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) error {
+	if patchPropertiesDirective == "" {
+		return nil
+	}
+	msgStart := "Invalid format for --patch-properties-release flag: should be RELEASE/JOB;"
+	parts := strings.Split(patchPropertiesDirective, "/")
+	if len(parts) != 2 {
+		return fmt.Errorf(msgStart+" got %d part(s)", len(parts))
+	}
+	if parts[0] == "" {
+		return fmt.Errorf(msgStart + " no RELEASE is specified")
+	}
+	if parts[1] == "" {
+		return fmt.Errorf(msgStart + " no JOB is specified")
+	}
+	f.patchPropertiesReleaseName = parts[0]
+	f.patchPropertiesJobName = parts[1]
+	return nil
 }
 
 // ShowBaseImage will show details about the base BOSH images
@@ -371,7 +393,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, lightManifestPath, darkManifestPath string, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, packagesImageBuilder *builder.PackagesImageBuilder) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -409,7 +431,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, lightManifestPath, darkManifestPath, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -447,7 +469,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, lightManifestPath, darkManifestPath, packagesImageBuilder)
+	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, packagesImageBuilder)
 	if err != nil {
 		return err
 	}
@@ -458,6 +480,8 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		repository,
 		compiledPackagesPath,
 		targetPath,
+		lightManifestPath,
+		darkManifestPath,
 		metricsPath,
 		"",
 		f.Version,
@@ -529,28 +553,6 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 	return nil
 }
 
-//GenerateConfigurationBase generates a configuration base using dev BOSH releases and opinions from manifests
-func (f *Fissile) GenerateConfigurationBase(rolesManifestPath, lightManifestPath, darkManifestPath, targetPath, provider string) error {
-	if len(f.releases) == 0 {
-		return fmt.Errorf("Releases not loaded")
-	}
-
-	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
-	configStore := configstore.NewConfigStoreBuilder(provider, lightManifestPath, darkManifestPath, targetPath)
-
-	if err := configStore.WriteBaseConfig(rolesManifest); err != nil {
-		return fmt.Errorf("Error writing base config: %s", err.Error())
-	}
-
-	f.UI.Println(color.GreenString("Done."))
-
-	return nil
-}
-
 //LoadReleases loads information about BOSH releases
 func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
 	releases := make([]*model.Release, len(releasePaths))
@@ -575,6 +577,10 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	}
 
 	f.releases = releases
+	err := f.injectPatchPropertiesJobSpec()
+	if err != nil {
+		return fmt.Errorf("Error loading release information: %s", err)
+	}
 	return nil
 }
 
@@ -599,6 +605,34 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
 	return getDiffsFromReleases(f.releases)
+}
+
+// Since each job processes only its own spec, inject the designated
+// patches-properties pseudo-job's spec into all the other jobs' specs.
+func (f *Fissile) injectPatchPropertiesJobSpec() error {
+	if f.patchPropertiesReleaseName == "" || f.patchPropertiesJobName == "" {
+		return nil
+	}
+	var patchPropertiesJob *model.Job
+	for _, release := range f.releases {
+		if release.Name == f.patchPropertiesReleaseName {
+			job, _ := release.LookupJob(f.patchPropertiesJobName)
+			if job != nil {
+				patchPropertiesJob = job
+			}
+		}
+	}
+	if patchPropertiesJob == nil {
+		return nil
+	}
+	for _, release := range f.releases {
+		for _, job := range release.Jobs {
+			if release.Name != f.patchPropertiesReleaseName || job != patchPropertiesJob {
+				job.MergeSpec(patchPropertiesJob)
+			}
+		}
+	}
+	return nil
 }
 
 type keyHash map[string]string
@@ -646,19 +680,12 @@ func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 	for idx, release := range releases {
 		configs := release.GetUniqueConfigs()
 		for _, config := range configs {
-			key, err := configstore.BoshKeyToConsulPath(config.Name, configstore.DescriptionsStore)
-			if err != nil {
-				return nil, fmt.Errorf("Error getting config %s for release %s: %s", config.Name, release.Name, err.Error())
-			}
-			hashes[idx][key] = config.Description
+			hashes[idx][config.Name] = config.Description
 		}
 		// Get the spec configs
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				key, err := configstore.BoshKeyToConsulPath(fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name), configstore.SpecStore)
-				if err != nil {
-					return nil, err
-				}
+				key := fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name)
 				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
 			}
 		}

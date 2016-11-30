@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -46,7 +47,10 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", releaseVersion, "6.28.30", ui)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", releaseVersion, "6.28.30", ui)
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
@@ -95,8 +99,11 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
@@ -147,7 +154,10 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(rolesManifest.Roles[0])
@@ -193,7 +203,11 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, "", "3.14.15", "6.28.30", ui)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
+
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
 	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(
@@ -219,6 +233,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
 		{path: "root/var/vcap/jobs-src/tor/monit", isDir: false, desc: "job monit file"},
 		{path: "root/var/vcap/jobs-src/tor/templates/bin/monit_debugger", isDir: false, desc: "job template file"},
+		{path: "root/var/vcap/jobs-src/tor/config_spec.json", isDir: false, desc: "tor config spec"},
+		{path: "root/var/vcap/jobs-src/new_hostname", isDir: true, desc: "new_hostname spec dir"},
+		{path: "root/var/vcap/jobs-src/new_hostname/config_spec.json", isDir: false, desc: "new_hostname config spec"},
 		{path: "root/var/vcap/packages/tor", isDir: false, desc: "package symlink"},
 	} {
 		path := filepath.ToSlash(filepath.Join(dockerfileDir, info.path))
@@ -239,6 +256,48 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	// job.MF should not be there
 	assert.Error(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
+
+	// And verify the config specs are as expected
+	jsonPath := filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/new_hostname/config_spec.json")
+	buf, err := ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read new_hostname/config_spec.json %s\n", jsonPath) {
+		return
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal(buf, &result)
+	if !assert.NoError(err, "Error unmarshalling output") {
+		return
+	}
+	assert.Empty(result["properties"].(map[string]interface{}))
+
+	jsonPath = filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/config_spec.json")
+	buf, err = ioutil.ReadFile(jsonPath)
+	if !assert.NoError(err, "Failed to read tor/config_spec.json %s\n", jsonPath) {
+		return
+	}
+
+	expectedString := `{
+		"job": {
+			"name": "myrole",
+			"templates": [
+				{"name":"new_hostname"},
+				{"name":"tor"}
+			]
+		},
+		"networks":{
+			"default":{}
+		},
+		"parameters":{},
+		"properties": {
+			"tor": {
+				"hashed_control_password":null,
+				"hostname":"localhost",
+				"private_key": null,
+				"client_keys":null
+			}
+		}
+	}`
+	assert.JSONEq(expectedString, string(buf))
 }
 
 // getPackage is a helper to get a package from a list of roles
@@ -316,11 +375,16 @@ func TestBuildRoleImages(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
+	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
+	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
+	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
 	roleImageBuilder, err := NewRoleImageBuilder(
 		"test-repository",
 		compiledPackagesDir,
 		targetPath,
+		lightOpinionsPath,
+		darkOpinionsPath,
 		"",
 		"3.14.15",
 		"6.28.30",

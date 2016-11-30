@@ -58,7 +58,6 @@ func TestGenerateDockerfile(t *testing.T) {
 	lines := getDockerfileLines(dockerfile.String())
 	assert.Equal([]string{
 		"FROM scratch:latest",
-		"ADD specs /opt/hcf/specs",
 		"ADD packages-src /var/vcap/packages-src/",
 	}, lines, "Unexpected dockerfile contents found")
 }
@@ -98,12 +97,7 @@ func TestNewDockerPopulator(t *testing.T) {
 
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(
-		rolesManifest,
-		filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml"),
-		filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml"),
-		false,
-	)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(rolesManifest, false)
 	tarWriter := tar.NewWriter(tarFile)
 	assert.NoError(tarPopulator(tarWriter))
 	assert.NoError(tarWriter.Close())
@@ -128,7 +122,6 @@ func TestNewDockerPopulator(t *testing.T) {
 			var line string
 			testers := []func(){
 				func() { assert.Equal(fmt.Sprintf("FROM %s", baseImage.ID), line, "line 1 should start with FROM") },
-				func() { assert.Equal("ADD specs /opt/hcf/specs", line, "line 2 mismatch") },
 				func() { assert.Equal("ADD packages-src /var/vcap/packages-src/", line, "line 3 mismatch") },
 				func() {
 					expected := []string{
@@ -148,27 +141,6 @@ func TestNewDockerPopulator(t *testing.T) {
 				}
 			}
 			assert.Equal(len(testers), len(getDockerfileLines(contents)), "Not enough lines")
-		},
-		"specs/foorole/tor.json": func(contents string) {
-			expected := `{
-				"job": {
-					"name": "foorole",
-					"templates": [{"name": "tor"}]
-				},
-				"networks": {
-					"default": {}
-				},
-				"parameters": {},
-				"properties": {
-					"tor": {
-						"client_keys": null,
-						"hashed_control_password": null,
-						"hostname": "localhost",
-						"private_key": null
-					}
-				}
-			}`
-			assert.JSONEq(expected, string(contents))
 		},
 		"packages-src/" + torFingerprint + "/bar": func(contents string) {
 			assert.Empty(contents)
