@@ -237,7 +237,7 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
-// WriteConfigs merges the job's spec with the opinions and writes out json-encoding to the specified path.
+// WriteConfigs merges the job's spec with the opinions and writes out the result as JSON to the specified path.
 func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinionsPath string) (err error) {
 	config, err := initializeConfigJSON()
 	if err != nil {
