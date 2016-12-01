@@ -9,6 +9,7 @@ set -o errexit -o nounset
 OSES="linux darwin"
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
+${GIT_ROOT}/make/build
 for OS in ${OSES}; do
   tar czf ${APP_VERSION}.${OS}-${GOARCH}.tgz build/${OS}-${GOARCH}/fissile
 done
