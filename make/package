@@ -11,5 +11,5 @@ GOARCH=${GOARCH:-$(go env GOARCH)}
 
 ${GIT_ROOT}/make/build
 for OS in ${OSES}; do
-  tar czf ${APP_VERSION}.${OS}-${GOARCH}.tgz build/${OS}-${GOARCH}/fissile
+  tar czf ${APP_VERSION}.${OS}-${GOARCH}.tgz -C build/${OS}-${GOARCH} fissile
 done
