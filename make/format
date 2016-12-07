@@ -2,16 +2,18 @@
 
 set -o errexit
 
+. make/include/colors.sh
+
+printf "%b==> Formatting %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
+
 ISSUES=$(mktemp)
 
-trap "rm -f ${ISSUES}" HUP INT TERM
+trap "cat ${ISSUES} ; rm -f ${ISSUES}" EXIT
 
 go list -f '{{ .Dir }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d' | while read DIR; do
-    goimports -d -e ${DIR}/*.go | tee -a ${ISSUES}
+    goimports -d -e "${DIR}"/*.go >> "${ISSUES}"
 done
 
-ISSUE_COUNT=$(cat ${ISSUES} | wc -l)
+printf "%b" "${NO_COLOR}"
 
-rm -f ${ISSUES}
-
-test ${ISSUE_COUNT} -eq 0
+test ! -s "${ISSUES}"

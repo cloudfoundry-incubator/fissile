@@ -2,13 +2,18 @@
 
 set -o errexit
 
+. make/include/colors.sh
+
+printf "%b==> Linting%b\n" "${OK_COLOR}" "${ERROR_COLOR}"
+
 ISSUES=$(mktemp)
 
-trap "rm -f '${ISSUES}'" EXIT
+trap "cat ${ISSUES} ; rm -f ${ISSUES}" EXIT
 
 go list -f '{{ .Dir }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d ' | while read DIR; do
-    golint $(ls "${DIR}"/*.go | grep -v _generated.go) | tee -a "${ISSUES}"
+    golint $(ls "${DIR}"/*.go | grep -v _generated.go) >> "${ISSUES}"
 done
 
-# Check that the issues list is empty. (We fail with an error due to errexit)
+printf "%b" "${NO_COLOR}"
+
 test ! -s "${ISSUES}"
