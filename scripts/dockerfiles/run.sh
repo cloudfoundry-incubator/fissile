@@ -11,7 +11,7 @@ fi
 # Unmark the role. We may have this file from a previous run of the
 # role, i.e. this may be a restart. Ensure that we are not seen as
 # ready yet.
-rm -f /var/vcap/monit/ready /var/vcap/monit/ready.active
+rm -f /var/vcap/monit/ready /var/vcap/monit/ready.lock
 
 # When the container gets restarted, processes may end up with different pids
 find /run -name "*.pid" -delete
@@ -127,7 +127,7 @@ set -e
     done
     touch /var/vcap/monit/ready
   fi
-) 9> /var/vcap/monit/ready.active
+) 9> /var/vcap/monit/ready.lock
 EOF
         chmod ug+x /opt/hcf/post-start.sh
 
