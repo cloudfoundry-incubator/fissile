@@ -14,3 +14,13 @@ include /etc/monit/monitrc.d/rsyslog
 
 include /var/vcap/monit/*.monitrc
 include /var/vcap/monit/job/*.monitrc
+
+# Standard fissile job to handle post-start scripts.  Currently the
+# start command does its own dependency checking to work around issues
+# in monit. When we reach use of monit 5.15+ the dependency
+# information can shift out of the script to this job. It makes the
+# job dynamic however, i.e. it will then have to be created and added
+# by run.sh (As a zomega.monitrc file in the standard place).
+
+check file zomega path /var/vcap/monit/ready
+  start program = "/opt/hcf/post-start.sh"
