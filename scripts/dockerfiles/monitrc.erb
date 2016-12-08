@@ -20,7 +20,7 @@ include /var/vcap/monit/job/*.monitrc
 # in monit. When we reach use of monit 5.15+ the dependency
 # information can shift out of the script to this job. It makes the
 # job dynamic however, i.e. it will then have to be created and added
-# by run.sh (As a zomega.monitrc file in the standard place).
+# by run.sh (As a post-start.monitrc file in the standard place).
 
-check file zomega path /var/vcap/monit/ready
+check file post-start path /var/vcap/monit/ready
   start program = "/opt/hcf/post-start.sh"

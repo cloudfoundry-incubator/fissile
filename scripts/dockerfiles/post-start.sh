@@ -11,7 +11,7 @@
 #
 # * `monit summary` is used to check if the __other__ jobs are up.
 #   Nothing is done while they are not up yet. We know that we are
-#   `zomega`, important to exclude ourselves from the check
+#   `post-start`, important to exclude ourselves from the check
 #
 # Doing our own dependency checking works around issues in monit.
 # This can be shifted to monit itself ('depends on') when we reach use
@@ -20,7 +20,7 @@
 (
   flock -n 9 || exit 1
 
-  notyet=$(monit summary | tail -n+3 | grep -v zomega | grep -v 'Accessible\|Running')
+  notyet=$(monit summary | tail -n+3 | grep -v post-start | grep -v 'Accessible\|Running')
   if [ -z "$notyet" ]
   then
       scripts="$(find /var/vcap/jobs/*/bin -name post-start)"
