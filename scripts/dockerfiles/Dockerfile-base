@@ -34,6 +34,9 @@ RUN useradd -m --comment 'hcf user' vcap && \
 
 ADD monitrc.erb /opt/hcf/monitrc.erb
 
+ADD post-start.sh /opt/hcf/post-start.sh
+RUN chmod ug+x /opt/hcf/post-start.sh
+
 # Install configgin
 ADD configgin /opt/hcf/configgin/
 

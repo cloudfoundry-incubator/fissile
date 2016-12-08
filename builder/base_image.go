@@ -41,11 +41,12 @@ func (b *BaseImageBuilder) NewDockerPopulator() func(*tar.Writer) error {
 			return err
 		}
 
-		// Add rsyslog_conf and monitrc.erb
+		// Add rsyslog_conf, monitrc.erb, and the post-start handler.
 		for _, assetName := range dockerfiles.AssetNames() {
 			switch {
 			case strings.HasPrefix(assetName, "rsyslog_conf/"):
 			case assetName == "monitrc.erb":
+			case assetName == "post-start.sh":
 			default:
 				continue
 			}
