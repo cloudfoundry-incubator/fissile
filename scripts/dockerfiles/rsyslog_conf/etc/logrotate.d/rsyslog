@@ -1,14 +1,13 @@
 /var/log/syslog
 {
 	rotate 7
-	size 5M
+	maxsize=10M
+	minsize=9M
 	missingok
 	notifempty
 	delaycompress
 	compress
-	postrotate
-		reload rsyslog >/dev/null 2>&1 || true
-	endscript
+	copytruncate
 }
 
 /var/log/mail.info
@@ -25,13 +24,12 @@
 /var/log/messages
 {
 	rotate 4
-	size 5M
+	maxsize=10M
+	minsize=9M
 	missingok
 	notifempty
 	compress
 	delaycompress
 	sharedscripts
-	postrotate
-		reload rsyslog >/dev/null 2>&1 || true
-	endscript
+	copytruncate
 }
