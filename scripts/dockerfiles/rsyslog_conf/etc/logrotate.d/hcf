@@ -4,5 +4,6 @@
   compress
   delaycompress
   copytruncate
-  size=10M
+  maxsize=10M
+  minsize=9M
 }
