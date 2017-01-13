@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/dumb-init --single-child /bin/bash
+
 set -e
 
 if [[ "$1" == "--help" ]]; then
@@ -90,6 +91,31 @@ done
         /var/vcap/jobs/{{ $job.Name }}/bin/run
     {{ end }}
 {{ else }}
-    # Replace bash with monit to handle both SIGTERM and SIGINT
-    exec dumb-init -- monit -vI
+
+  killer() {
+    # Wait for all monit services to be stopped
+    echo "Received SIGTERM. Will run 'monit stop all'."
+
+    total_services=$(monit summary | grep -c "^Process")
+
+    monit stop all
+
+    echo "Ran 'monit stop all'."
+
+    while [ $total_services != $(monit summary | grep "^Process" | grep -c "Not monitored") ] ; do
+       sleep 1
+    done
+
+    echo "All monit processes have been stopped."
+    monit summary
+    monit quit
+  }
+
+  trap killer SIGTERM
+
+  # monit -v without the -I would fork a child, but then we can't wait on it,
+  # so it's not very useful.
+  monit -vI &
+  child=$!
+  wait "$child"
 {{ end }}
