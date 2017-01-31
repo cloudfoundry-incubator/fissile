@@ -4,24 +4,10 @@ import (
 	"bytes"
 
 	"k8s.io/client-go/1.5/pkg/api"
-	meta "k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/runtime"
 )
 
-func WriteConfig(namespace string) (string, error) {
-
-	r := &api.Namespace{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Namespace",
-		},
-		ObjectMeta: api.ObjectMeta{
-			Name: namespace,
-			Labels: map[string]string{
-				"what": "hcf",
-			},
-		},
-	}
-
+func GetYamlConfig(kubeObject *runtime.Object) (string, error) {
 	serializer, ok := api.Codecs.SerializerForFileExtension("yaml")
 	if !ok {
 		// There's a problem with the code, if we can't find the yaml serializer
@@ -29,7 +15,7 @@ func WriteConfig(namespace string) (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err := serializer.Encode(r, buf)
+	err := serializer.Encode(*kubeObject, buf)
 	if err != nil {
 		return "", err
 	}

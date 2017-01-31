@@ -11,12 +11,13 @@ import (
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
 	"github.com/hpcloud/fissile/docker"
+	"github.com/hpcloud/fissile/kube"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
-	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
+	"github.com/hpcloud/stampy"
 	"github.com/hpcloud/termui"
 
 	"gopkg.in/yaml.v2"
@@ -713,4 +714,17 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 		}
 	}
 	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
+}
+
+// GenerateKube will create a set of configuration files suitable for deployment
+// on Kubernetes
+func (f *Fissile) GenerateKube(roleManifestPath string) error {
+	roleManifest, err := kube.LoadExtendedRoleManifest(roleManifestPath)
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	f.UI.Println(color.GreenString("%d", roleManifest.Roles[0].Run.Memory))
+
+	return nil
 }

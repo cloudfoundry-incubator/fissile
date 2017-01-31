@@ -20,7 +20,7 @@ const (
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
 	Roles         Roles          `yaml:"roles"`
-	Configuration *configuration `yaml:"configuration"`
+	Configuration *Configuration `yaml:"configuration"`
 
 	manifestFilePath string
 }
@@ -34,7 +34,7 @@ type Role struct {
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
 	Type              string         `yaml:"type,omitempty"`
 	JobNameList       []*roleJob     `yaml:"jobs"`
-	Configuration     *configuration `yaml:"configuration"`
+	Configuration     *Configuration `yaml:"configuration"`
 
 	rolesManifest *RoleManifest
 }
@@ -42,7 +42,9 @@ type Role struct {
 // Roles is an array of Role*
 type Roles []*Role
 
-type configuration struct {
+// Configuration contains information about how to configure the
+// resulting images
+type Configuration struct {
 	Templates map[string]string `yaml:"templates"`
 }
 
@@ -102,7 +104,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	}
 
 	if rolesManifest.Configuration == nil {
-		rolesManifest.Configuration = &configuration{}
+		rolesManifest.Configuration = &Configuration{}
 	}
 	if rolesManifest.Configuration.Templates == nil {
 		rolesManifest.Configuration.Templates = map[string]string{}
@@ -192,7 +194,7 @@ func (r *Role) GetRoleDevVersion() string {
 
 func (r *Role) calculateRoleConfigurationTemplates() {
 	if r.Configuration == nil {
-		r.Configuration = &configuration{}
+		r.Configuration = &Configuration{}
 	}
 	if r.Configuration.Templates == nil {
 		r.Configuration.Templates = map[string]string{}
