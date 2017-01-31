@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/hpcloud/fissile",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v74",
+	"GodepVersion": "v78",
 	"Packages": [
 		"./..."
 	],
@@ -425,7 +425,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+			"Rev": "4c78c975fe7c825c6d1466c42be594d1d6f3aba6"
 		}
 	]
 }
