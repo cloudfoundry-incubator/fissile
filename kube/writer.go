@@ -7,7 +7,11 @@ import (
 	"k8s.io/client-go/1.5/pkg/runtime"
 )
 
-func GetYamlConfig(kubeObject *runtime.Object) (string, error) {
+const (
+	RoleNameLabel = "skiff-role-name"
+)
+
+func GetYamlConfig(kubeObject runtime.Object) (string, error) {
 	serializer, ok := api.Codecs.SerializerForFileExtension("yaml")
 	if !ok {
 		// There's a problem with the code, if we can't find the yaml serializer
@@ -15,7 +19,7 @@ func GetYamlConfig(kubeObject *runtime.Object) (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err := serializer.Encode(*kubeObject, buf)
+	err := serializer.Encode(kubeObject, buf)
 	if err != nil {
 		return "", err
 	}

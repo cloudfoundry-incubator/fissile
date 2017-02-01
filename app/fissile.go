@@ -718,13 +718,17 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath string) error {
-	roleManifest, err := kube.LoadExtendedRoleManifest(roleManifestPath)
+func (f *Fissile) GenerateKube(rolesManifestPath string) error {
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	f.UI.Println(color.GreenString("%d", roleManifest.Roles[0].Run.Memory))
+	for _, role := range rolesManifest.Roles {
+		deployment := kube.NewDeployment(role)
+		f.UI.Println(kube.GetYamlConfig(deployment))
+	}
 
 	return nil
 }
