@@ -51,8 +51,8 @@ type RoleRun struct {
 }
 
 type RoleRunScaling struct {
-	Min int `yaml:"min"`
-	Max int `yaml:"max"`
+	Min int32 `yaml:"min"`
+	Max int32 `yaml:"max"`
 }
 
 type RoleRunVolume struct {

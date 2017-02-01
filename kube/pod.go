@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
+// NewPodTemplate creates a new pod template spec for a given role
 func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
 	return v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
@@ -23,7 +24,7 @@ func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
 				v1.Container{
 					Name:         role.Name,
 					Image:        "foobar",
-					Ports:        getPorts(role),
+					Ports:        getContainerPorts(role),
 					VolumeMounts: getVolumeMounts(role),
 					Env:          getEnvVars(role),
 					Resources: v1.ResourceRequirements{
@@ -40,7 +41,8 @@ func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
 	}
 }
 
-func getPorts(role *model.Role) []v1.ContainerPort {
+// getContainerPorts returns a list of ports for a role
+func getContainerPorts(role *model.Role) []v1.ContainerPort {
 	result := make([]v1.ContainerPort, len(role.Run.ExposedPorts))
 
 	for i, port := range role.Run.ExposedPorts {
@@ -56,6 +58,7 @@ func getPorts(role *model.Role) []v1.ContainerPort {
 		result[i] = v1.ContainerPort{
 			Name:          port.Name,
 			ContainerPort: int32(port.Internal),
+			HostPort:      int32(port.External),
 			Protocol:      protocol,
 		}
 	}

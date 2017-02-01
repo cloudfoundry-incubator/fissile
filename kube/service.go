@@ -1,9 +1,15 @@
 package kube
 
 import (
-	"k8s.io/client-go/1.5/pkg/api"
+	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
 )
 
-func NewService(namespace string) *api.Service {
-	return &api.Service{}
+// NewService creates a new k8s service in the given namespace
+func NewService(namespace *apiv1.Namespace) *apiv1.Service {
+	return &apiv1.Service{
+		ObjectMeta: apiv1.ObjectMeta{
+			Name:      "",
+			Namespace: namespace.ObjectMeta.Name,
+		},
+	}
 }

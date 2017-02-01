@@ -11,6 +11,7 @@ const (
 	RoleNameLabel = "skiff-role-name"
 )
 
+// GetYamlConfig returns the YAML serialized configuration of a k8s object
 func GetYamlConfig(kubeObject runtime.Object) (string, error) {
 	serializer, ok := api.Codecs.SerializerForFileExtension("yaml")
 	if !ok {

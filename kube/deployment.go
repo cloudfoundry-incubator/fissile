@@ -4,27 +4,26 @@ import (
 	"github.com/hpcloud/fissile/model"
 
 	meta "k8s.io/client-go/1.5/pkg/api/unversioned"
-	"k8s.io/client-go/1.5/pkg/api/v1"
+	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
 	extra "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 )
 
+// NewDeployment creates a Deployment for the given role
 func NewDeployment(role *model.Role) *extra.Deployment {
-
-	replicas := int32(role.Run.Scaling.Min)
 
 	return &extra.Deployment{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "extensions/v1beta1",
 			Kind:       "Deployment",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: apiv1.ObjectMeta{
 			Name: role.Name,
 			Labels: map[string]string{
 				RoleNameLabel: role.Name,
 			},
 		},
 		Spec: extra.DeploymentSpec{
-			Replicas: &replicas,
+			Replicas: &role.Run.Scaling.Min,
 			Selector: &extra.LabelSelector{
 				MatchLabels: map[string]string{RoleNameLabel: role.Name},
 			},

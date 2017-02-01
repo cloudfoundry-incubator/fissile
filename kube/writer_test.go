@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func TestMain(m *testing.M) {
@@ -18,9 +19,9 @@ func TestWriteOK(t *testing.T) {
 	assert := assert.New(t)
 
 	// Act
-	config, err := WriteConfig("foo")
+	config, err := GetYamlConfig(&apiv1.List{})
 
 	// Assert
 	assert.NoError(err)
-	assert.Contains(config, "foo")
+	assert.Contains(config, "metadata")
 }
