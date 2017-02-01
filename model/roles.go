@@ -64,8 +64,8 @@ type RoleRunVolume struct {
 type RoleRunExposedPort struct {
 	Name     string `yaml:"name"`
 	Protocol string `yaml:"protocol"`
-	External int    `yaml:"external"`
-	Internal int    `yaml:"internal"`
+	External int32  `yaml:"external"`
+	Internal int32  `yaml:"internal"`
 	Public   bool   `yaml:"public"`
 }
 

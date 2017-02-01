@@ -150,10 +150,12 @@ func TestStatefulSetPorts(t *testing.T) {
 				-
 					name: http
 					port: 80
+					# targetPort must be undefined for headless services
 					targetPort: 0
 				-
 					name: https
 					port: 443
+					# targetPort must be undefined for headless services
 					targetPort: 0
 				selector:
 					skiff-role-name: myrole
