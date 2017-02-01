@@ -1,9 +1,14 @@
 package kube
 
 import (
-	"k8s.io/client-go/1.5/pkg/api"
+	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
 )
 
-func NewNamespace(namespace string) *api.Namespace {
-	return &api.Namespace{}
+// NewNamespace creates a k8s namespace with the given name
+func NewNamespace(namespace string) *apiv1.Namespace {
+	return &apiv1.Namespace{
+		ObjectMeta: apiv1.ObjectMeta{
+			Name: namespace,
+		},
+	}
 }

@@ -1,0 +1,18 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    scaling:
+      min: 1
+      max: 2
+    exposed-ports:
+      - name: http
+        protocol: TCP
+        external: 80
+        internal: 8080
+        public: true
+      - name: https
+        external: 443
+        internal: 443
+        public: true
