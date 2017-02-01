@@ -11,6 +11,16 @@ var buildKubeCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		err := fissile.LoadReleases(
+			flagRelease,
+			flagReleaseName,
+			flagReleaseVersion,
+			flagCacheDir,
+		)
+		if err != nil {
+			return err
+		}
+
 		return fissile.GenerateKube(flagRoleManifest)
 
 	},
