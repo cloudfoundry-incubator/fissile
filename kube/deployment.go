@@ -9,7 +9,12 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role
-func NewDeployment(role *model.Role) *extra.Deployment {
+func NewDeployment(role *model.Role) (*extra.Deployment, error) {
+
+	podTemplate, err := NewPodTemplate(role)
+	if err != nil {
+		return nil, err
+	}
 
 	return &extra.Deployment{
 		TypeMeta: meta.TypeMeta{
@@ -27,9 +32,9 @@ func NewDeployment(role *model.Role) *extra.Deployment {
 			Selector: &extra.LabelSelector{
 				MatchLabels: map[string]string{RoleNameLabel: role.Name},
 			},
-			Template: NewPodTemplate(role),
+			Template: podTemplate,
 		},
-	}
+	}, nil
 }
 
 //metadata:

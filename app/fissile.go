@@ -726,7 +726,11 @@ func (f *Fissile) GenerateKube(rolesManifestPath string) error {
 	}
 
 	for _, role := range rolesManifest.Roles {
-		deployment := kube.NewDeployment(role)
+		deployment, err := kube.NewDeployment(role)
+		if err != nil {
+			return err
+		}
+
 		f.UI.Println(kube.GetYamlConfig(deployment))
 	}
 
