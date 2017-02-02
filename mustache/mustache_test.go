@@ -5,6 +5,8 @@ import (
 	"path"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type Test struct {
@@ -277,4 +279,19 @@ func TestLayout(t *testing.T) {
 			t.Fatalf("%q expected %q got %q", test.tmpl, test.expected, output)
 		}
 	}
+}
+
+func TestGetVariables(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
+	parsed, err := ParseString("{{=(( ))=}}((FOO))FOOBAR((#BAR))((/BAR))")
+	assert.NoError(err)
+
+	// Act
+	vars := parsed.GetTemplateVariables()
+
+	// Assert
+	assert.Contains(vars, "FOO")
+	assert.Contains(vars, "BAR")
+	assert.NotContains(vars, "FOOBAR")
 }

@@ -88,7 +88,10 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	statefulset, deps := NewStatefulSet(role)
+	statefulset, deps, err := NewStatefulSet(role)
+	if !assert.NoError(err) {
+		return
+	}
 	var endpointService, headlessService *apiv1.Service
 
 	if assert.Len(deps.Items, 2, "Should have two services per stateful role") {

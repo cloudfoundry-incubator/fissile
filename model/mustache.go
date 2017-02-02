@@ -10,10 +10,10 @@ import (
 // calculating all the templates for the role
 func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
 
-	configsMap := map[string]*ConfigurationVariable{}
+	configsDictionary := map[string]*ConfigurationVariable{}
 
 	for _, config := range r.rolesManifest.Configuration.Variables {
-		configsMap[config.Name] = config
+		configsDictionary[config.Name] = config
 	}
 
 	configs := map[string]*ConfigurationVariable{}
@@ -30,7 +30,7 @@ func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
 				}
 
 				for _, envVar := range varsInTemplate {
-					if confVar, ok := configsMap[envVar]; ok {
+					if confVar, ok := configsDictionary[envVar]; ok {
 						configs[confVar.Name] = confVar
 					}
 				}
@@ -55,21 +55,5 @@ func parseTemplate(template string) ([]string, error) {
 		return nil, err
 	}
 
-	return getTemplateVars(parsed.Elems, []string{}), nil
-}
-
-func getTemplateVars(elements []interface{}, vars []string) []string {
-
-	for _, element := range elements {
-		switch element.(type) {
-		case *mustache.SectionElement:
-			section := element.(*mustache.SectionElement)
-			vars = append(vars, section.Name)
-			vars = append(vars, getTemplateVars(section.Elems, vars)...)
-		case *mustache.VarElement:
-			vars = append(vars, element.(*mustache.VarElement).Name)
-		}
-	}
-
-	return vars
+	return parsed.GetTemplateVariables(), nil
 }

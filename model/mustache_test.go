@@ -51,7 +51,7 @@ func TestRoleVariables(t *testing.T) {
 
 	assert.NoError(err)
 	assert.NotNil(vars)
-	assert.Equal(3, len(vars))
+	assert.Len(vars, 3)
 	assert.Contains([]string{"FOO", "BAR", "PELERINUL"}, vars[0].Name)
 	assert.Contains([]string{"FOO", "BAR", "PELERINUL"}, vars[1].Name)
 	assert.Contains([]string{"FOO", "BAR", "PELERINUL"}, vars[2].Name)
