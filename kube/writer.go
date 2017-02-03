@@ -8,7 +8,10 @@ import (
 )
 
 const (
+	// RoleNameLabel is a thing
 	RoleNameLabel = "skiff-role-name"
+	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
+	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
 
 // GetYamlConfig returns the YAML serialized configuration of a k8s object

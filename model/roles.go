@@ -87,7 +87,7 @@ type ConfigurationVariable struct {
 }
 
 type ConfigurationVariableGenerator struct {
-	Id        string `yaml:"id"`
+	ID        string `yaml:"id"`
 	Type      string `yaml:"type"`
 	ValueType string `yaml:"value_type"`
 }

@@ -55,22 +55,20 @@ func isYAMLSubset(assert *assert.Assertions, expected, actual interface{}, prefi
 	return assert.Equal(expected, actual, "unexpected value at YAML path %s", yamlPath)
 }
 
-func TestStatefulSetPorts(t *testing.T) {
-	assert := assert.New(t)
-
+func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/exposed-ports.yml")
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
-		return
+		return nil, nil
 	}
 	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
 	if !assert.NoError(err) {
-		return
+		return nil, nil
 	}
 
 	var role *model.Role
@@ -82,8 +80,20 @@ func TestStatefulSetPorts(t *testing.T) {
 		}
 	}
 	if !assert.NotNil(role, "Failed to find role in manifest") {
+		return nil, nil
+	}
+
+	return manifest, role
+}
+
+func TestStatefulSetPorts(t *testing.T) {
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "exposed-ports.yml")
+	if manifest == nil || role == nil {
 		return
 	}
+
 	portDef := role.Run.ExposedPorts[0]
 	if !assert.NotNil(portDef) {
 		return
@@ -189,6 +199,87 @@ func TestStatefulSetPorts(t *testing.T) {
 								name: https
 								containerPort: 443
 								hostPort: 443
+	`, "\t", "    ", -1)
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		return
+	}
+	_ = isYAMLSubset(assert, expected, actual, []string{})
+}
+
+func TestStatefulSetVolumes(t *testing.T) {
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "volumes.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	statefulset, _, err := NewStatefulSet(role)
+	if !assert.NoError(err) {
+		return
+	}
+
+	yamlConfig, err := GetYamlConfig(statefulset)
+	if !assert.NoError(err) {
+		return
+	}
+
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+		return
+	}
+	expectedYAML := strings.Replace(`---
+	metadata:
+		name: myrole
+	spec:
+		replicas: 1
+		serviceName: myrole-pod
+		template:
+			metadata:
+				labels:
+					skiff-role-name: myrole
+				name: myrole
+			spec:
+				containers:
+				-
+					name: myrole
+					volumeMounts:
+					-
+						name: persistent-volume
+						mountPath: /mnt/persistent
+					-
+						name: shared-volume
+						mountPath: /mnt/shared
+				volumes:
+					-
+						name: persistent-volume
+						persistentVolumeClaim:
+							claimName: myrole-persistent-persistent-volume
+					-
+						name: shared-volume
+						persistentVolumeClaim:
+							claimName: myrole-shared-shared-volume
+		volumeClaimTemplates:
+			-
+				metadata:
+					annotations:
+						volume.beta.kubernetes.io/storage-class: persistent
+					name: myrole-persistent-persistent-volume
+				spec:
+					accessModes: [ReadWriteOnce]
+					resources:
+						requests:
+							storage: 5G
+			-
+				metadata:
+					annotations:
+						volume.beta.kubernetes.io/storage-class: shared
+					name: myrole-shared-shared-volume
+				spec:
+					accessModes: [ReadWriteMany]
+					resources:
+						requests:
+							storage: 40G
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return

@@ -17,10 +17,17 @@ func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List, error)
 		panic(fmt.Sprintf("No role given"))
 	}
 
-	pod, err := NewPodTemplate(role)
+	podTemplate, templateDeps, err := NewPodTemplate(role)
 
 	if err != nil {
 		return nil, nil, err
+	}
+
+	var volumeClaimTemplates []apiv1.PersistentVolumeClaim
+	for _, templateDep := range templateDeps {
+		if volumeClaim, ok := templateDep.(*apiv1.PersistentVolumeClaim); ok {
+			volumeClaimTemplates = append(volumeClaimTemplates, *volumeClaim)
+		}
 	}
 
 	return &appsv1alpha1.PetSet{
@@ -31,9 +38,10 @@ func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List, error)
 				},
 			},
 			Spec: appsv1alpha1.PetSetSpec{
-				Replicas:    &role.Run.Scaling.Min,
-				ServiceName: fmt.Sprintf("%s-pod", role.Name),
-				Template:    pod,
+				Replicas:             &role.Run.Scaling.Min,
+				ServiceName:          fmt.Sprintf("%s-pod", role.Name),
+				Template:             podTemplate,
+				VolumeClaimTemplates: volumeClaimTemplates,
 			},
 		}, &apiv1.List{
 			Items: []runtime.RawExtension{
