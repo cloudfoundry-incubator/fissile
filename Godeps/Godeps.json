@@ -1,10 +1,9 @@
 {
 	"ImportPath": "github.com/hpcloud/fissile",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v76",
+	"GodepVersion": "v79",
 	"Packages": [
-		"./...",
-		"github.com/ugorji/go/codec"
+		"./..."
 	],
 	"Deps": [
 		{
@@ -459,6 +458,11 @@
 		},
 		{
 			"ImportPath": "k8s.io/client-go/1.5/pkg/apis/batch",
+			"Comment": "v1.5.0",
+			"Rev": "843f7c4f28b1f647f664f883697107d5c02c5acc"
+		},
+		{
+			"ImportPath": "k8s.io/client-go/1.5/pkg/apis/batch/v2alpha1",
 			"Comment": "v1.5.0",
 			"Rev": "843f7c4f28b1f647f664f883697107d5c02c5acc"
 		},

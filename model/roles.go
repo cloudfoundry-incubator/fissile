@@ -23,6 +23,7 @@ type RoleManifest struct {
 	Configuration *Configuration `yaml:"configuration"`
 
 	manifestFilePath string
+	rolesByName      map[string]*Role
 }
 
 // Role represents a collection of jobs that are colocated on a container
@@ -154,6 +155,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.Configuration.Templates = map[string]string{}
 	}
 
+	rolesManifest.rolesByName = make(map[string]*Role, len(rolesManifest.Roles))
+
 	for _, role := range rolesManifest.Roles {
 		role.rolesManifest = &rolesManifest
 		role.Jobs = make(Jobs, 0, len(role.JobNameList))
@@ -175,6 +178,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		role.calculateRoleConfigurationTemplates()
+		rolesManifest.rolesByName[role.Name] = role
 	}
 
 	return &rolesManifest, nil
@@ -194,6 +198,11 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 	}
 
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// LookupRole will find the given role in the role manifest
+func (m *RoleManifest) LookupRole(roleName string) *Role {
+	return m.rolesByName[roleName]
 }
 
 // GetScriptPaths returns the paths to the startup / post configgin scripts for a role
