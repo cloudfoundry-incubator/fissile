@@ -155,6 +155,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.Configuration.Templates = map[string]string{}
 	}
 
+	rolesManifest.rolesByName = make(map[string]*Role, len(rolesManifest.Roles))
+
 	for _, role := range rolesManifest.Roles {
 		role.rolesManifest = &rolesManifest
 		role.Jobs = make(Jobs, 0, len(role.JobNameList))
@@ -176,6 +178,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		role.calculateRoleConfigurationTemplates()
+		rolesManifest.rolesByName[role.Name] = role
 	}
 
 	return &rolesManifest, nil
@@ -199,12 +202,6 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
-	if m.rolesByName == nil {
-		m.rolesByName = make(map[string]*Role, len(m.Roles))
-		for _, role := range m.Roles {
-			m.rolesByName[role.Name] = role
-		}
-	}
 	return m.rolesByName[roleName]
 }
 
