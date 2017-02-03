@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 
 	"github.com/pivotal-golang/archiver/extractor"
@@ -302,10 +303,26 @@ func (j *Job) getPropertiesForJob(opinions *opinions) (map[string]interface{}, e
 		if err != nil {
 			return nil, err
 		}
-		_, ok := getOpinionValue(darkOpinionsByString, keyPieces)
+
+		// The check for darkness does not only test if the
+		// presented key is found in the dark opionions, but
+		// also the type of the associated value. Excluding a
+		// key like "a.b.c.d" does not mean that "a.b.c",
+		// etc. are excluded as well. Definitely not. So,
+		// finding a key we consider it to be an excluded leaf
+		// key only when the associated value, if any is
+		// neither map nor array. When finding a map or array,
+		// or no value at all we consider the key to be an
+		// inner node which is not excluded.
+
+		darkValue, ok := getOpinionValue(darkOpinionsByString, keyPieces)
 		if ok {
-			// Ignore dark opinions
-			continue
+			if (darkValue == nil) ||
+				((reflect.TypeOf(darkValue).Kind() != reflect.Map) &&
+				(reflect.TypeOf(darkValue).Kind() != reflect.Array)) {
+				// Ignore dark opinions
+				continue
+			}
 		}
 		lightValue, hasLightValue := getOpinionValue(lightOpinionsByString, keyPieces)
 		var finalValue interface{}
