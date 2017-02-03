@@ -11,7 +11,13 @@ import (
 )
 
 // NewPodTemplate creates a new pod template spec for a given role
-func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
+func NewPodTemplate(role *model.Role) (v1.PodTemplateSpec, error) {
+
+	vars, err := getEnvVars(role)
+	if err != nil {
+		return v1.PodTemplateSpec{}, err
+	}
+
 	return v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
@@ -26,7 +32,7 @@ func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
 					Image:        "foobar",
 					Ports:        getContainerPorts(role),
 					VolumeMounts: getVolumeMounts(role),
-					Env:          getEnvVars(role),
+					Env:          vars,
 					Resources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{
 							v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", role.Run.Memory)),
@@ -38,7 +44,7 @@ func NewPodTemplate(role *model.Role) v1.PodTemplateSpec {
 			RestartPolicy: v1.RestartPolicyAlways,
 			DNSPolicy:     v1.DNSClusterFirst,
 		},
-	}
+	}, nil
 }
 
 // getContainerPorts returns a list of ports for a role
@@ -107,11 +113,25 @@ func getVolumes(role *model.Role) []v1.Volume {
 	return result
 }
 
-func getEnvVars(role *model.Role) []v1.EnvVar {
-	result := make([]v1.EnvVar, 0)
+func getEnvVars(role *model.Role) ([]v1.EnvVar, error) {
+	configs, err := role.GetVariablesForRole()
 
-	return result
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]v1.EnvVar, len(configs))
+
+	for i, config := range configs {
+		result[i] = v1.EnvVar{
+			Name:  config.Name,
+			Value: fmt.Sprintf("%v", config.Default),
+		}
+	}
+
+	return result, nil
 }
+
 
 //metadata:
 //  name: wordpress-mysql

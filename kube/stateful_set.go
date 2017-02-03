@@ -10,12 +10,19 @@ import (
 )
 
 // NewStatefulSet returns a k8s stateful set for the given role
-func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List) {
+func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
 		panic(fmt.Sprintf("No role given"))
 	}
+
+	pod, err := NewPodTemplate(role)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &appsv1alpha1.PetSet{
 			ObjectMeta: apiv1.ObjectMeta{
 				Name: role.Name,
@@ -26,7 +33,7 @@ func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List) {
 			Spec: appsv1alpha1.PetSetSpec{
 				Replicas:    &role.Run.Scaling.Min,
 				ServiceName: fmt.Sprintf("%s-pod", role.Name),
-				Template:    NewPodTemplate(role),
+				Template:    pod,
 			},
 		}, &apiv1.List{
 			Items: []runtime.RawExtension{
@@ -37,5 +44,5 @@ func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List) {
 					Object: NewClusterIPService(role, true),
 				},
 			},
-		}
+		}, nil
 }
