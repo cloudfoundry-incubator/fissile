@@ -10,7 +10,8 @@ import (
 	"k8s.io/client-go/1.5/pkg/runtime"
 )
 
-// NewPodTemplate creates a new pod template spec for a given role
+// NewPodTemplate creates a new pod template spec for a given role, as well as
+// any objects it depends on
 func NewPodTemplate(role *model.Role) (v1.PodTemplateSpec, []runtime.Object, error) {
 
 	vars, err := getEnvVars(role)
