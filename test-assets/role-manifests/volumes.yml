@@ -1,0 +1,16 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    scaling:
+      min: 1
+      max: 2
+    persistent-volumes:
+    - path: /mnt/persistent
+      tag: persistent-volume
+      size: 5 # parsecs
+    shared-volumes:
+    - path: /mnt/shared
+      tag: shared-volume
+      size: 40 # cakes

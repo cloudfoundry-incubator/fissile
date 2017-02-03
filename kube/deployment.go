@@ -11,7 +11,7 @@ import (
 // NewDeployment creates a Deployment for the given role
 func NewDeployment(role *model.Role) (*extra.Deployment, error) {
 
-	podTemplate, err := NewPodTemplate(role)
+	podTemplate, _, err := NewPodTemplate(role)
 	if err != nil {
 		return nil, err
 	}
