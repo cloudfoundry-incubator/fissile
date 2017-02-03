@@ -359,9 +359,11 @@ type roleBuildJob struct {
 }
 
 func (j roleBuildJob) Run() {
+	var result error
+	defer func() { j.resultsCh <- result }()
+
 	select {
 	case <-j.abort:
-		j.resultsCh <- nil
 		return
 	default:
 	}
@@ -369,11 +371,10 @@ func (j roleBuildJob) Run() {
 	roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
 	if !j.force {
 		if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
-			j.resultsCh <- err
+			result = err
 			return
 		} else if hasImage {
 			j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
-			j.resultsCh <- nil
 			return
 		}
 	}
@@ -388,13 +389,12 @@ func (j roleBuildJob) Run() {
 	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
 	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.baseImageName)
 	if err != nil {
-		j.resultsCh <- fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
+		result = fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
 		return
 	}
 
 	if j.noBuild {
 		j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
-		j.resultsCh <- nil
 		return
 	}
 
@@ -416,7 +416,6 @@ func (j roleBuildJob) Run() {
 		j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
 		return
 	}
-	j.resultsCh <- nil
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
