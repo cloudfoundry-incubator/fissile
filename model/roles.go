@@ -196,6 +196,16 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
+// LookupRole will find the given role in the role manifest
+func (m *RoleManifest) LookupRole(roleName string) *Role {
+	for _, role := range m.Roles {
+		if role.Name == roleName {
+			return role
+		}
+	}
+	return nil
+}
+
 // GetScriptPaths returns the paths to the startup / post configgin scripts for a role
 func (r *Role) GetScriptPaths() map[string]string {
 	result := map[string]string{}
