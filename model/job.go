@@ -317,9 +317,12 @@ func (j *Job) getPropertiesForJob(opinions *opinions) (map[string]interface{}, e
 
 		darkValue, ok := getOpinionValue(darkOpinionsByString, keyPieces)
 		if ok {
-			if (darkValue == nil) ||
-				((reflect.TypeOf(darkValue).Kind() != reflect.Map) &&
-				(reflect.TypeOf(darkValue).Kind() != reflect.Array)) {
+			if darkValue == nil {
+				// Ignore dark opinions
+				continue
+			}
+			kind := reflect.TypeOf(darkValue).Kind()
+			if kind != reflect.Map && kind != reflect.Array {
 				// Ignore dark opinions
 				continue
 			}
