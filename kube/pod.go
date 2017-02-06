@@ -14,14 +14,23 @@ import (
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, repository string, defaults map[string]string) (v1.PodTemplateSpec, []runtime.Object, error) {
+func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTemplateSpec, []runtime.Object, error) {
 
-	vars, err := getEnvVars(role, defaults)
+	vars, err := getEnvVars(role, settings.Defaults)
 	if err != nil {
 		return v1.PodTemplateSpec{}, nil, err
 	}
 
-	imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
+	devImageName := builder.GetRoleDevImageName(settings.Repository, role, role.GetRoleDevVersion())
+	imageName := devImageName
+
+	if settings.Organization != "" && settings.Registry != "" {
+		imageName = fmt.Sprintf("%s/%s/%s", settings.Registry, settings.Organization, devImageName)
+	} else if settings.Organization != "" {
+		imageName = fmt.Sprintf("%s/%s", settings.Organization, devImageName)
+	} else if settings.Registry != "" {
+		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
+	}
 
 	volumes, volumeClaims := getVolumes(role)
 

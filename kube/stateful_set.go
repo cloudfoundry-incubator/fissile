@@ -11,14 +11,14 @@ import (
 )
 
 // NewStatefulSet returns a k8s stateful set for the given role
-func NewStatefulSet(role *model.Role, repository string, defaults map[string]string) (*v1beta1.StatefulSet, *apiv1.List, error) {
+func NewStatefulSet(role *model.Role, settings *KubeExportSettings) (*v1beta1.StatefulSet, *apiv1.List, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
 		panic(fmt.Sprintf("No role given"))
 	}
 
-	podTemplate, templateDeps, err := NewPodTemplate(role, repository, defaults)
+	podTemplate, templateDeps, err := NewPodTemplate(role, settings)
 
 	if err != nil {
 		return nil, nil, err

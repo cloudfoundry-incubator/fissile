@@ -11,9 +11,9 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role
-func NewDeployment(role *model.Role, repository string, defaults map[string]string) (*extra.Deployment, error) {
+func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deployment, error) {
 
-	podTemplate, podDeps, err := NewPodTemplate(role, repository, defaults)
+	podTemplate, podDeps, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err
 	}

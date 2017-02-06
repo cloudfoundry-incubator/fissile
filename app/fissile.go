@@ -719,7 +719,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, defaultFiles []string) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -732,6 +732,13 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 		return err
 	}
 
+	settings := &kube.KubeExportSettings{
+		Defaults:     defaults,
+		Registry:     registry,
+		Organization: organization,
+		Repository:   repository,
+	}
+
 	for _, role := range rolesManifest.Roles {
 		outputFile := filepath.Join(outputDir, fmt.Sprintf("%s.yml", role.Name))
 
@@ -742,7 +749,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 
 		switch role.Type {
 		case model.BoshTaskType:
-			job, deps, err := kube.NewJob(role, repository, defaults)
+			job, deps, err := kube.NewJob(role, settings)
 			if err != nil {
 				return err
 			}
@@ -769,7 +776,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
-				statefulSet, deps, err := kube.NewStatefulSet(role, repository, defaults)
+				statefulSet, deps, err := kube.NewStatefulSet(role, settings)
 				if err != nil {
 					return err
 				}
@@ -791,7 +798,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 				continue
 			}
 
-			deployment, err := kube.NewDeployment(role, repository, defaults)
+			deployment, err := kube.NewDeployment(role, settings)
 			if err != nil {
 				return err
 			}

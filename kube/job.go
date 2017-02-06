@@ -8,8 +8,8 @@ import (
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on
-func NewJob(role *model.Role, repository string, defaults map[string]string) (*extra.Job, []runtime.Object, error) {
-	podTemplate, deps, err := NewPodTemplate(role, repository, defaults)
+func NewJob(role *model.Role, settings *KubeExportSettings) (*extra.Job, []runtime.Object, error) {
+	podTemplate, deps, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, nil, err
 	}
