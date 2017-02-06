@@ -214,7 +214,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	statefulset, _, err := NewStatefulSet(role)
+	statefulset, _, err := NewStatefulSet(role, "foo", map[string]string{})
 	if !assert.NoError(err) {
 		return
 	}

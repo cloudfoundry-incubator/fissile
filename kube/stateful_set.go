@@ -18,7 +18,7 @@ func NewStatefulSet(role *model.Role, repository string, defaults map[string]str
 		panic(fmt.Sprintf("No role given"))
 	}
 
-	podTemplate, templateDeps, err := NewPodTemplate(role)
+	podTemplate, templateDeps, err := NewPodTemplate(role, repository, defaults)
 
 	if err != nil {
 		return nil, nil, err
@@ -43,9 +43,9 @@ func NewStatefulSet(role *model.Role, repository string, defaults map[string]str
 				},
 			},
 			Spec: v1beta1.StatefulSetSpec{
-				Replicas:    &role.Run.Scaling.Min,
-				ServiceName: fmt.Sprintf("%s-pod", role.Name),
-				Template:    pod,
+				Replicas:             &role.Run.Scaling.Min,
+				ServiceName:          fmt.Sprintf("%s-pod", role.Name),
+				Template:             podTemplate,
 				VolumeClaimTemplates: volumeClaimTemplates,
 			},
 		}, &apiv1.List{

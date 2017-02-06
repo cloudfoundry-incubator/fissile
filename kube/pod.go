@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
@@ -83,45 +84,89 @@ func getContainerPorts(role *model.Role) []v1.ContainerPort {
 	return result
 }
 
+// getVolumeMounts gets the list of volume mounts for a role
 func getVolumeMounts(role *model.Role) []v1.VolumeMount {
-	result := make([]v1.VolumeMount, len(role.Run.PersistentVolumes)+len(role.Run.SharedVolumes))
+	resultLen := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
+	result := make([]v1.VolumeMount, 0, resultLen)
 
-	for i, volume := range role.Run.PersistentVolumes {
-		result[i] = v1.VolumeMount{
+	for _, volume := range role.Run.PersistentVolumes {
+		result = append(result, v1.VolumeMount{
 			Name:      volume.Tag,
 			MountPath: volume.Path,
 			ReadOnly:  false,
-		}
+		})
 	}
 
-	for i, volume := range role.Run.SharedVolumes {
-		result[len(role.Run.PersistentVolumes)+i] = v1.VolumeMount{
+	for _, volume := range role.Run.SharedVolumes {
+		result = append(result, v1.VolumeMount{
 			Name:      volume.Tag,
 			MountPath: volume.Path,
 			ReadOnly:  false,
-		}
+		})
 	}
 
 	return result
 }
 
-func getVolumes(role *model.Role) []v1.Volume {
-	result := make([]v1.Volume, len(role.Run.PersistentVolumes)+len(role.Run.SharedVolumes))
+// getVolumes returns the list of volumes and their persistent volume claims
+// from a role
+func getVolumes(role *model.Role) ([]v1.Volume, []*v1.PersistentVolumeClaim) {
+	totalLength := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
+	volumes := make([]v1.Volume, 0, totalLength)
+	claims := make([]*v1.PersistentVolumeClaim, 0, totalLength)
 
-	for i, volume := range role.Run.PersistentVolumes {
-		result[i] = v1.Volume{
-			Name: volume.Tag,
-			// TODO needs a volume source
+	types := []struct {
+		volumeDefinitions []*model.RoleRunVolume
+		storageClass      string
+		accessMode        v1.PersistentVolumeAccessMode
+	}{
+		{
+			role.Run.PersistentVolumes,
+			"persistent",
+			v1.ReadWriteOnce,
+		},
+		{
+			role.Run.SharedVolumes,
+			"shared",
+			v1.ReadWriteMany,
+		},
+	}
+
+	for _, volumeTypeInfo := range types {
+		for _, volume := range volumeTypeInfo.volumeDefinitions {
+			pvc := &v1.PersistentVolumeClaim{
+				ObjectMeta: v1.ObjectMeta{
+					Name: fmt.Sprintf("%s-%s-%s", role.Name, volumeTypeInfo.storageClass, volume.Tag),
+					Annotations: map[string]string{
+						"volume.beta.kubernetes.io/storage-class": volumeTypeInfo.storageClass,
+					},
+				},
+				Spec: v1.PersistentVolumeClaimSpec{
+					AccessModes: []v1.PersistentVolumeAccessMode{
+						volumeTypeInfo.accessMode,
+					},
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: *resource.NewScaledQuantity(int64(volume.Size), resource.Giga),
+						},
+					},
+				},
+			}
+
+			claims = append(claims, pvc)
+
+			volumes = append(volumes, v1.Volume{
+				Name: volume.Tag,
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvc.ObjectMeta.Name,
+					},
+				},
+			})
 		}
 	}
 
-	for i, volume := range role.Run.SharedVolumes {
-		result[len(role.Run.PersistentVolumes)+i] = v1.Volume{
-			Name: volume.Tag,
-		}
-	}
-
-	return result
+	return volumes, claims
 }
 
 func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, error) {

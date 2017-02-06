@@ -43,7 +43,7 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 
-	job, _, err := NewJob(role)
+	job, _, err := NewJob(role, "foo", map[string]string{})
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
@@ -69,7 +69,6 @@ func TestJobPreFlight(t *testing.T) {
 				containers:
 				-
 					name: pre-role
-					image: foobar
 				restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
@@ -85,7 +84,7 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 
-	job, _, err := NewJob(role)
+	job, _, err := NewJob(role, "foo", map[string]string{})
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}
@@ -111,7 +110,6 @@ func TestJobPostFlight(t *testing.T) {
 				containers:
 				-
 					name: post-role
-					image: foobar
 				restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {

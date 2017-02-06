@@ -742,18 +742,34 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 
 		switch role.Type {
 		case model.BoshTaskType:
-			job := kube.NewJob(role)
-			content, err := kube.GetYamlConfig(job)
+			job, deps, err := kube.NewJob(role, repository, defaults)
 			if err != nil {
 				return err
 			}
+
+			jobContent, err := kube.GetYamlConfig(job)
+			if err != nil {
+				return err
+			}
+
+			depsContent := ""
+			for _, dep := range deps {
+				depContent, err := kube.GetYamlConfig(dep)
+				if err != nil {
+					return err
+				}
+
+				depsContent = fmt.Sprintf("%s\n---\n%s", depsContent, depContent)
+			}
+
+			content := fmt.Sprintf("%s\n---\n%s", jobContent, depsContent)
 
 			ioutil.WriteFile(outputFile, []byte(content), 0644)
 		case model.BoshType, "":
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
-				statefulSet, clusterIPServices, err := kube.NewStatefulSet(role, repository, defaults)
+				statefulSet, deps, err := kube.NewStatefulSet(role, repository, defaults)
 				if err != nil {
 					return err
 				}
@@ -763,12 +779,12 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, 
 					return err
 				}
 
-				servicesContent, err := kube.GetYamlConfig(clusterIPServices)
+				depsContent, err := kube.GetYamlConfig(deps)
 				if err != nil {
 					return err
 				}
 
-				content := fmt.Sprintf("%s\n---\n%s", statefulSetContent, servicesContent)
+				content := fmt.Sprintf("%s\n---\n%s", statefulSetContent, depsContent)
 
 				ioutil.WriteFile(outputFile, []byte(content), 0644)
 
