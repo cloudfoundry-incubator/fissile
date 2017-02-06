@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	boshTaskType = "bosh-task"
-	boshType     = "bosh"
+	BoshTaskType = "bosh-task"
+	BoshType     = "bosh"
 )
 
 // RoleManifest represents a collection of roles
@@ -37,6 +37,7 @@ type Role struct {
 	JobNameList       []*roleJob     `yaml:"jobs"`
 	Configuration     *Configuration `yaml:"configuration"`
 	Run               *RoleRun       `yaml:"run"`
+	Tags              []string       `yaml:"tags"`
 
 	rolesManifest *RoleManifest
 }
@@ -143,7 +144,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
-		if role.Type != "" && role.Type != boshTaskType && role.Type != boshType {
+		if role.Type != "" && role.Type != BoshTaskType && role.Type != BoshType {
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
 		}
 	}
@@ -243,6 +244,17 @@ func (r *Role) GetRoleDevVersion() string {
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// HasTag returns true if the role has a specific tag
+func (r *Role) HasTag(tag string) bool {
+	for _, t := range r.Tags {
+		if t == tag {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *Role) calculateRoleConfigurationTemplates() {

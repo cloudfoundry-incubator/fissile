@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/hpcloud/fissile/model"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	appsv1alpha1 "k8s.io/client-go/1.5/pkg/apis/apps/v1alpha1"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	meta "k8s.io/client-go/pkg/api/unversioned"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	v1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 // NewStatefulSet returns a k8s stateful set for the given role
-func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List, error) {
+func NewStatefulSet(role *model.Role, repository string, defaults map[string]string) (*v1beta1.StatefulSet, *apiv1.List, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
@@ -30,20 +31,28 @@ func NewStatefulSet(role *model.Role) (*appsv1alpha1.PetSet, *apiv1.List, error)
 		}
 	}
 
-	return &appsv1alpha1.PetSet{
+	return &v1beta1.StatefulSet{
+			TypeMeta: meta.TypeMeta{
+				APIVersion: "apps/v1beta1",
+				Kind:       "StatefulSet",
+			},
 			ObjectMeta: apiv1.ObjectMeta{
 				Name: role.Name,
 				Labels: map[string]string{
 					RoleNameLabel: role.Name,
 				},
 			},
-			Spec: appsv1alpha1.PetSetSpec{
-				Replicas:             &role.Run.Scaling.Min,
-				ServiceName:          fmt.Sprintf("%s-pod", role.Name),
-				Template:             podTemplate,
+			Spec: v1beta1.StatefulSetSpec{
+				Replicas:    &role.Run.Scaling.Min,
+				ServiceName: fmt.Sprintf("%s-pod", role.Name),
+				Template:    pod,
 				VolumeClaimTemplates: volumeClaimTemplates,
 			},
 		}, &apiv1.List{
+			TypeMeta: meta.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "List",
+			},
 			Items: []runtime.RawExtension{
 				runtime.RawExtension{
 					Object: NewClusterIPService(role, false),

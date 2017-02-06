@@ -1,7 +1,7 @@
 package kube
 
 import (
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
 
 // NewNamespace creates a k8s namespace with the given name

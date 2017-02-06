@@ -12,8 +12,8 @@ import (
 
 	"github.com/hpcloud/fissile/model"
 	"github.com/stretchr/testify/assert"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 func isYAMLSubset(assert *assert.Assertions, expected, actual interface{}, prefix []string) bool {
@@ -98,7 +98,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	statefulset, deps, err := NewStatefulSet(role)
+	statefulset, deps, err := NewStatefulSet(role, "foo", map[string]string{})
 	if !assert.NoError(err) {
 		return
 	}

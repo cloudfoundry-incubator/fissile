@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -19,7 +20,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hpcloud/stampy"
 	"github.com/hpcloud/termui"
-
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -718,20 +719,74 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath string) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository string, defaultFiles []string) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	for _, role := range rolesManifest.Roles {
-		deployment, err := kube.NewDeployment(role)
-		if err != nil {
-			return err
-		}
+	f.UI.Println("Loading defaults from env files")
+	defaults, err := godotenv.Read(defaultFiles...)
+	if err != nil {
+		return err
+	}
 
-		f.UI.Println(kube.GetYamlConfig(deployment))
+	for _, role := range rolesManifest.Roles {
+		outputFile := filepath.Join(outputDir, fmt.Sprintf("%s.yml", role.Name))
+
+		f.UI.Printf("Writing config %s for role %s\n",
+			color.CyanString(outputFile),
+			color.CyanString(role.Name),
+		)
+
+		switch role.Type {
+		case model.BoshTaskType:
+			job := kube.NewJob(role)
+			content, err := kube.GetYamlConfig(job)
+			if err != nil {
+				return err
+			}
+
+			ioutil.WriteFile(outputFile, []byte(content), 0644)
+		case model.BoshType, "":
+			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
+
+			if role.HasTag("clustered") || needsStorage {
+				statefulSet, clusterIPServices, err := kube.NewStatefulSet(role, repository, defaults)
+				if err != nil {
+					return err
+				}
+
+				statefulSetContent, err := kube.GetYamlConfig(statefulSet)
+				if err != nil {
+					return err
+				}
+
+				servicesContent, err := kube.GetYamlConfig(clusterIPServices)
+				if err != nil {
+					return err
+				}
+
+				content := fmt.Sprintf("%s\n---\n%s", statefulSetContent, servicesContent)
+
+				ioutil.WriteFile(outputFile, []byte(content), 0644)
+
+				continue
+			}
+
+			deployment, err := kube.NewDeployment(role, repository, defaults)
+			if err != nil {
+				return err
+			}
+
+			content, err := kube.GetYamlConfig(deployment)
+			if err != nil {
+				return err
+			}
+
+			ioutil.WriteFile(outputFile, []byte(content), 0644)
+		}
 	}
 
 	return nil

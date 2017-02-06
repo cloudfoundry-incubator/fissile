@@ -2,9 +2,9 @@ package kube
 
 import (
 	"github.com/hpcloud/fissile/model"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	batchv2alpha1 "k8s.io/client-go/1.5/pkg/apis/batch/v2alpha1"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on

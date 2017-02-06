@@ -4,13 +4,18 @@ import (
 	"fmt"
 
 	"github.com/hpcloud/fissile/model"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/pkg/util/intstr"
+	meta "k8s.io/client-go/pkg/api/unversioned"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/util/intstr"
 )
 
 // NewClusterIPService creates a new k8s ClusterIP service
 func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 	service := &apiv1.Service{
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Service",
+		},
 		ObjectMeta: apiv1.ObjectMeta{
 			Name: role.Name,
 		},
@@ -31,7 +36,7 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 			Port: portDef.External,
 		}
 		if !headless {
-			svcPort.TargetPort = intstr.FromString(portDef.Name)
+			svcPort.TargetPort = intstr.FromInt(int(portDef.Internal))
 		}
 		service.Spec.Ports = append(service.Spec.Ports, svcPort)
 	}
