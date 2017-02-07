@@ -11,6 +11,12 @@ import (
 
 // NewClusterIPService creates a new k8s ClusterIP service
 func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
+	if len(role.Run.ExposedPorts) == 0 {
+		// Kubernetes refuses to create services with no ports, so we should
+		// not return anything at all in this case
+		return nil
+	}
+
 	service := &apiv1.Service{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "v1",
@@ -24,6 +30,7 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 			Selector: map[string]string{
 				RoleNameLabel: role.Name,
 			},
+			Ports: make([]apiv1.ServicePort, 0, len(role.Run.ExposedPorts)),
 		},
 	}
 	if headless {

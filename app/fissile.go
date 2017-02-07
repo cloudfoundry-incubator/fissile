@@ -807,17 +807,19 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-			if _, err := outputFile.WriteString("---\n"); err != nil {
-				return err
-			}
+			if svc != nil {
+				if _, err := outputFile.WriteString("---\n"); err != nil {
+					return err
+				}
 
-			content, err = kube.GetYamlConfig(svc)
-			if err != nil {
-				return err
-			}
+				content, err = kube.GetYamlConfig(svc)
+				if err != nil {
+					return err
+				}
 
-			if _, err = outputFile.WriteString(content); err != nil {
-				return err
+				if _, err = outputFile.WriteString(content); err != nil {
+					return err
+				}
 			}
 		}
 	}
