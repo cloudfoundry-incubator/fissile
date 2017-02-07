@@ -749,7 +749,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 
 		switch role.Type {
 		case model.BoshTaskType:
-			job, deps, err := kube.NewJob(role, settings)
+			job, err := kube.NewJob(role, settings)
 			if err != nil {
 				return err
 			}
@@ -759,19 +759,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-			depsContent := ""
-			for _, dep := range deps {
-				depContent, err := kube.GetYamlConfig(dep)
-				if err != nil {
-					return err
-				}
-
-				depsContent = fmt.Sprintf("%s\n---\n%s", depsContent, depContent)
-			}
-
-			content := fmt.Sprintf("%s\n---\n%s", jobContent, depsContent)
-
-			ioutil.WriteFile(outputFile, []byte(content), 0644)
+			ioutil.WriteFile(outputFile, []byte(jobContent), 0644)
 		case model.BoshType, "":
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 

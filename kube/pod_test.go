@@ -51,40 +51,22 @@ func TestPodGetVolumes(t *testing.T) {
 		return
 	}
 
-	volumes, claims := getVolumes(role)
-	assert.Len(volumes, 2, "expected two volumes")
+	claims := getVolumeClaims(role)
+
 	assert.Len(claims, 2, "expected two claims")
 
-	var persistentVolume, sharedVolume *v1.Volume
-	for _, volRef := range volumes {
-		vol := volRef // Do a copy so they actually refer to different volumes
-		switch vol.Name {
-		case "persistent-volume":
-			assert.Nil(persistentVolume, "Multiple persistent volumes")
-			persistentVolume = &vol
-		case "shared-volume":
-			assert.Nil(sharedVolume, "Multiple shared volumes")
-			sharedVolume = &vol
-		default:
-			assert.Fail("Got unexpected volume", "%+v", vol)
-		}
-	}
-	assert.NotNil(persistentVolume)
-	assert.NotNil(sharedVolume)
-	assert.NotEqual(persistentVolume, sharedVolume)
-
-	// The persistent volume should have a related volume claim
-	var persistentClaim, sharedClaim *v1.PersistentVolumeClaim
+	var persistentClaim, sharedClaim v1.PersistentVolumeClaim
 	for _, claim := range claims {
 		switch claim.GetName() {
-		case persistentVolume.PersistentVolumeClaim.ClaimName:
+		case role.Run.PersistentVolumes[0].Tag:
 			persistentClaim = claim
-		case sharedVolume.PersistentVolumeClaim.ClaimName:
+		case role.Run.SharedVolumes[0].Tag:
 			sharedClaim = claim
 		default:
 			assert.Fail("Got unexpected claim", "%v", claim)
 		}
 	}
+
 	if assert.NotNil(persistentClaim) {
 		assert.Contains(persistentClaim.Annotations, VolumeStorageClassAnnotation)
 		assert.Equal("persistent", persistentClaim.Annotations[VolumeStorageClassAnnotation])
@@ -99,11 +81,6 @@ func TestPodGetVolumes(t *testing.T) {
 		}
 	}
 
-	for _, claim := range claims {
-		if claim.GetName() == sharedVolume.PersistentVolumeClaim.ClaimName {
-			sharedClaim = claim
-		}
-	}
 	if assert.NotNil(sharedClaim) {
 		assert.Contains(sharedClaim.Annotations, VolumeStorageClassAnnotation)
 		assert.Equal("shared", sharedClaim.Annotations[VolumeStorageClassAnnotation])

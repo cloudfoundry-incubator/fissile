@@ -250,21 +250,12 @@ func TestStatefulSetVolumes(t *testing.T) {
 					-
 						name: shared-volume
 						mountPath: /mnt/shared
-				volumes:
-					-
-						name: persistent-volume
-						persistentVolumeClaim:
-							claimName: myrole-persistent-persistent-volume
-					-
-						name: shared-volume
-						persistentVolumeClaim:
-							claimName: myrole-shared-shared-volume
 		volumeClaimTemplates:
 			-
 				metadata:
 					annotations:
 						volume.beta.kubernetes.io/storage-class: persistent
-					name: myrole-persistent-persistent-volume
+					name: persistent-volume
 				spec:
 					accessModes: [ReadWriteOnce]
 					resources:
@@ -274,7 +265,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 				metadata:
 					annotations:
 						volume.beta.kubernetes.io/storage-class: shared
-					name: myrole-shared-shared-volume
+					name: shared-volume
 				spec:
 					accessModes: [ReadWriteMany]
 					resources:

@@ -1,8 +1,6 @@
 package kube
 
 import (
-	"fmt"
-
 	"github.com/hpcloud/fissile/model"
 
 	meta "k8s.io/client-go/pkg/api/unversioned"
@@ -13,13 +11,9 @@ import (
 // NewDeployment creates a Deployment for the given role
 func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deployment, error) {
 
-	podTemplate, podDeps, err := NewPodTemplate(role, settings)
+	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(podDeps) > 0 {
-		return nil, fmt.Errorf("Unexpected dependent objects for deployment pod template")
 	}
 
 	return &extra.Deployment{

@@ -9,16 +9,15 @@ import (
 
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/runtime"
 )
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTemplateSpec, []runtime.Object, error) {
+func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTemplateSpec, error) {
 
 	vars, err := getEnvVars(role, settings.Defaults)
 	if err != nil {
-		return v1.PodTemplateSpec{}, nil, err
+		return v1.PodTemplateSpec{}, err
 	}
 
 	devImageName := builder.GetRoleDevImageName(settings.Repository, role, role.GetRoleDevVersion())
@@ -30,13 +29,6 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 		imageName = fmt.Sprintf("%s/%s", settings.Organization, devImageName)
 	} else if settings.Registry != "" {
 		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
-	}
-
-	volumes, volumeClaims := getVolumes(role)
-
-	deps := make([]runtime.Object, 0, len(volumeClaims))
-	for _, volumeClaim := range volumeClaims {
-		deps = append(deps, volumeClaim)
 	}
 
 	return v1.PodTemplateSpec{
@@ -61,11 +53,10 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 					},
 				},
 			},
-			Volumes:       volumes,
 			RestartPolicy: v1.RestartPolicyAlways,
 			DNSPolicy:     v1.DNSClusterFirst,
 		},
-	}, deps, nil
+	}, nil
 }
 
 // getContainerPorts returns a list of ports for a role
@@ -115,67 +106,6 @@ func getVolumeMounts(role *model.Role) []v1.VolumeMount {
 	}
 
 	return result
-}
-
-// getVolumes returns the list of volumes and their persistent volume claims
-// from a role
-func getVolumes(role *model.Role) ([]v1.Volume, []*v1.PersistentVolumeClaim) {
-	totalLength := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
-	volumes := make([]v1.Volume, 0, totalLength)
-	claims := make([]*v1.PersistentVolumeClaim, 0, totalLength)
-
-	types := []struct {
-		volumeDefinitions []*model.RoleRunVolume
-		storageClass      string
-		accessMode        v1.PersistentVolumeAccessMode
-	}{
-		{
-			role.Run.PersistentVolumes,
-			"persistent",
-			v1.ReadWriteOnce,
-		},
-		{
-			role.Run.SharedVolumes,
-			"shared",
-			v1.ReadWriteMany,
-		},
-	}
-
-	for _, volumeTypeInfo := range types {
-		for _, volume := range volumeTypeInfo.volumeDefinitions {
-			pvc := &v1.PersistentVolumeClaim{
-				ObjectMeta: v1.ObjectMeta{
-					Name: fmt.Sprintf("%s-%s-%s", role.Name, volumeTypeInfo.storageClass, volume.Tag),
-					Annotations: map[string]string{
-						"volume.beta.kubernetes.io/storage-class": volumeTypeInfo.storageClass,
-					},
-				},
-				Spec: v1.PersistentVolumeClaimSpec{
-					AccessModes: []v1.PersistentVolumeAccessMode{
-						volumeTypeInfo.accessMode,
-					},
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: *resource.NewScaledQuantity(int64(volume.Size), resource.Giga),
-						},
-					},
-				},
-			}
-
-			claims = append(claims, pvc)
-
-			volumes = append(volumes, v1.Volume{
-				Name: volume.Tag,
-				VolumeSource: v1.VolumeSource{
-					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-						ClaimName: pvc.ObjectMeta.Name,
-					},
-				},
-			})
-		}
-	}
-
-	return volumes, claims
 }
 
 func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, error) {
