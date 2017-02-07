@@ -41,6 +41,8 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 		}
 	}
 
+	securityContext := getSecurityContext(role)
+
 	return v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
@@ -51,12 +53,13 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				v1.Container{
-					Name:         role.Name,
-					Image:        imageName,
-					Ports:        getContainerPorts(role),
-					VolumeMounts: getVolumeMounts(role),
-					Env:          vars,
-					Resources:    resources,
+					Name:            role.Name,
+					Image:           imageName,
+					Ports:           getContainerPorts(role),
+					VolumeMounts:    getVolumeMounts(role),
+					Env:             vars,
+					Resources:       resources,
+					SecurityContext: securityContext,
 				},
 			},
 			RestartPolicy: v1.RestartPolicyAlways,
@@ -139,6 +142,20 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	}
 
 	return result, nil
+}
+
+func getSecurityContext(role *model.Role) *v1.SecurityContext {
+	privileged := true
+
+	for _, c := range role.Run.Capabilities {
+		if strings.ToUpper(c) == "ALL" {
+			sc := &v1.SecurityContext{}
+			sc.Privileged = &privileged
+			return sc
+		}
+	}
+
+	return nil
 }
 
 //metadata:
