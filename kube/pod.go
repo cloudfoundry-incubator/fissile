@@ -31,6 +31,16 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
 	}
 
+	var resources v1.ResourceRequirements
+
+	if settings.UseMemoryLimits {
+		resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", role.Run.Memory)),
+			},
+		}
+	}
+
 	return v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
@@ -46,11 +56,7 @@ func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTempl
 					Ports:        getContainerPorts(role),
 					VolumeMounts: getVolumeMounts(role),
 					Env:          vars,
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", role.Run.Memory)),
-						},
-					},
+					Resources:    resources,
 				},
 			},
 			RestartPolicy: v1.RestartPolicyAlways,
@@ -76,8 +82,8 @@ func getContainerPorts(role *model.Role) []v1.ContainerPort {
 		result[i] = v1.ContainerPort{
 			Name:          port.Name,
 			ContainerPort: int32(port.Internal),
-			HostPort:      int32(port.External),
-			Protocol:      protocol,
+			//	HostPort:      int32(port.External),
+			Protocol: protocol,
 		}
 	}
 

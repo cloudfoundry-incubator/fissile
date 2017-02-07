@@ -719,7 +719,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string, useMemoryLimits bool) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -733,10 +733,11 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	settings := &kube.KubeExportSettings{
-		Defaults:     defaults,
-		Registry:     registry,
-		Organization: organization,
-		Repository:   repository,
+		Defaults:        defaults,
+		Registry:        registry,
+		Organization:    organization,
+		Repository:      repository,
+		UseMemoryLimits: useMemoryLimits,
 	}
 
 	for _, role := range rolesManifest.Roles {

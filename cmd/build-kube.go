@@ -10,6 +10,7 @@ var (
 	flagBuildKubeDefaultEnvFiles    []string
 	flagBuildKubeDockerRegistry     string
 	flagBuildKubeDockerOrganization string
+	flagBuildKubeUseMemoryLimits    bool
 )
 
 // buildKubeCmd represents the kube command
@@ -23,6 +24,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
 		flagBuildKubeDockerRegistry = viper.GetString("docker-registry")
 		flagBuildKubeDockerOrganization = viper.GetString("docker-organization")
+		flagBuildKubeUseMemoryLimits = viper.GetBool("use-memory-limits")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -41,6 +43,7 @@ var buildKubeCmd = &cobra.Command{
 			flagBuildKubeDockerRegistry,
 			flagBuildKubeDockerOrganization,
 			flagBuildKubeDefaultEnvFiles,
+			flagBuildKubeUseMemoryLimits,
 		)
 
 	},
@@ -75,6 +78,13 @@ func init() {
 		"",
 		"",
 		"Docker organization used when referencing image names",
+	)
+
+	buildKubeCmd.PersistentFlags().BoolP(
+		"use-memory-limits",
+		"",
+		true,
+		"Include memory limits when generating kube configurations",
 	)
 
 	viper.BindPFlags(buildKubeCmd.PersistentFlags())

@@ -1,8 +1,9 @@
 package kube
 
 type KubeExportSettings struct {
-	Repository   string
-	Defaults     map[string]string
-	Registry     string
-	Organization string
+	Repository      string
+	Defaults        map[string]string
+	Registry        string
+	Organization    string
+	UseMemoryLimits bool
 }
