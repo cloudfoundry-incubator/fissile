@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -15,13 +16,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestWriteOK(t *testing.T) {
-	// Arrange
 	assert := assert.New(t)
 
-	// Act
-	config, err := GetYamlConfig(&apiv1.List{})
+	yamlConfig := bytes.Buffer{}
+	err := WriteYamlConfig(&apiv1.List{}, &yamlConfig)
 
-	// Assert
 	assert.NoError(err)
-	assert.Contains(config, "metadata")
+	assert.Contains(yamlConfig.String(), "metadata")
 }

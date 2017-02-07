@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,13 +50,13 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig, err := GetYamlConfig(job)
-	if !assert.NoError(err) {
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
 		return
 	}
 
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
@@ -90,13 +91,13 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig, err := GetYamlConfig(job)
-	if !assert.NoError(err) {
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
 		return
 	}
 
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---

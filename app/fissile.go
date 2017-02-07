@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -748,6 +747,12 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 			color.CyanString(role.Name),
 		)
 
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+
 		switch role.Type {
 		case model.BoshTaskType:
 			job, err := kube.NewJob(role, settings)
@@ -755,12 +760,10 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-			jobContent, err := kube.GetYamlConfig(job)
-			if err != nil {
+			if err := kube.WriteYamlConfig(job, outputFile); err != nil {
 				return err
 			}
 
-			ioutil.WriteFile(outputPath, []byte(jobContent), 0644)
 		case model.BoshType, "":
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
@@ -770,19 +773,13 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 					return err
 				}
 
-				statefulSetContent, err := kube.GetYamlConfig(statefulSet)
-				if err != nil {
+				if err := kube.WriteYamlConfig(statefulSet, outputFile); err != nil {
 					return err
 				}
 
-				depsContent, err := kube.GetYamlConfig(deps)
-				if err != nil {
+				if err := kube.WriteYamlConfig(deps, outputFile); err != nil {
 					return err
 				}
-
-				content := fmt.Sprintf("%s\n---\n%s", statefulSetContent, depsContent)
-
-				ioutil.WriteFile(outputPath, []byte(content), 0644)
 
 				continue
 			}
@@ -792,32 +789,12 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-			outputFile, err := os.Create(outputPath)
-			if err != nil {
-				return err
-			}
-			defer outputFile.Close()
-
-			content, err := kube.GetYamlConfig(deployment)
-			if err != nil {
-				return err
-			}
-
-			if _, err = outputFile.WriteString(content); err != nil {
+			if err := kube.WriteYamlConfig(deployment, outputFile); err != nil {
 				return err
 			}
 
 			if svc != nil {
-				if _, err := outputFile.WriteString("---\n"); err != nil {
-					return err
-				}
-
-				content, err = kube.GetYamlConfig(svc)
-				if err != nil {
-					return err
-				}
-
-				if _, err = outputFile.WriteString(content); err != nil {
+				if err := kube.WriteYamlConfig(svc, outputFile); err != nil {
 					return err
 				}
 			}
