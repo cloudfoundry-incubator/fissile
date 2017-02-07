@@ -8,12 +8,12 @@ import (
 	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// NewDeployment creates a Deployment for the given role
-func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deployment, error) {
+// NewDeployment creates a Deployment for the given role, and its attached service
+func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deployment, *apiv1.Service, error) {
 
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &extra.Deployment{
@@ -34,7 +34,7 @@ func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deplo
 			},
 			Template: podTemplate,
 		},
-	}, nil
+	}, NewClusterIPService(role, false), nil
 }
 
 //metadata:

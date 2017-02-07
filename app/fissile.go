@@ -741,10 +741,10 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	for _, role := range rolesManifest.Roles {
-		outputFile := filepath.Join(outputDir, fmt.Sprintf("%s.yml", role.Name))
+		outputPath := filepath.Join(outputDir, fmt.Sprintf("%s.yml", role.Name))
 
 		f.UI.Printf("Writing config %s for role %s\n",
-			color.CyanString(outputFile),
+			color.CyanString(outputPath),
 			color.CyanString(role.Name),
 		)
 
@@ -760,7 +760,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-			ioutil.WriteFile(outputFile, []byte(jobContent), 0644)
+			ioutil.WriteFile(outputPath, []byte(jobContent), 0644)
 		case model.BoshType, "":
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
@@ -782,22 +782,43 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 
 				content := fmt.Sprintf("%s\n---\n%s", statefulSetContent, depsContent)
 
-				ioutil.WriteFile(outputFile, []byte(content), 0644)
+				ioutil.WriteFile(outputPath, []byte(content), 0644)
 
 				continue
 			}
 
-			deployment, err := kube.NewDeployment(role, settings)
+			deployment, svc, err := kube.NewDeployment(role, settings)
 			if err != nil {
 				return err
 			}
+
+			outputFile, err := os.Create(outputPath)
+			if err != nil {
+				return err
+			}
+			defer outputFile.Close()
 
 			content, err := kube.GetYamlConfig(deployment)
 			if err != nil {
 				return err
 			}
 
-			ioutil.WriteFile(outputFile, []byte(content), 0644)
+			if _, err = outputFile.WriteString(content); err != nil {
+				return err
+			}
+
+			if _, err := outputFile.WriteString("---\n"); err != nil {
+				return err
+			}
+
+			content, err = kube.GetYamlConfig(svc)
+			if err != nil {
+				return err
+			}
+
+			if _, err = outputFile.WriteString(content); err != nil {
+				return err
+			}
 		}
 	}
 
