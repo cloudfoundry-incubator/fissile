@@ -194,11 +194,9 @@ func TestStatefulSetPorts(t *testing.T) {
 							-
 								name: http
 								containerPort: 8080
-								hostPort: 80
 							-
 								name: https
 								containerPort: 443
-								hostPort: 443
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
