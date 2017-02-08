@@ -15,6 +15,7 @@ import (
 const (
 	BoshTaskType = "bosh-task"
 	BoshType     = "bosh"
+	DockerType   = "docker"
 )
 
 // RoleManifest represents a collection of roles
@@ -144,7 +145,12 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
-		if role.Type != "" && role.Type != BoshTaskType && role.Type != BoshType {
+		switch role.Type {
+		case "":
+			role.Type = BoshType
+		case BoshType, BoshTaskType:
+			continue
+		default:
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
 		}
 	}

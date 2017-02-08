@@ -764,7 +764,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-		case model.BoshType, "":
+		case model.BoshType:
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
