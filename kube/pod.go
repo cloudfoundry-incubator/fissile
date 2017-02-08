@@ -141,6 +141,15 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 		}
 	}
 
+	result = append(result, v1.EnvVar{
+		Name: "KUBERNETES_NAMESPACE",
+		ValueFrom: &v1.EnvVarSource{
+			FieldRef: &v1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	})
+
 	return result, nil
 }
 
