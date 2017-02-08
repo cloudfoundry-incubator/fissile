@@ -156,15 +156,23 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 func getSecurityContext(role *model.Role) *v1.SecurityContext {
 	privileged := true
 
+	sc := &v1.SecurityContext{}
 	for _, c := range role.Run.Capabilities {
-		if strings.ToUpper(c) == "ALL" {
-			sc := &v1.SecurityContext{}
+		c = strings.ToUpper(c)
+		if c == "ALL" {
 			sc.Privileged = &privileged
 			return sc
 		}
+		if sc.Capabilities == nil {
+			sc.Capabilities = &v1.Capabilities{}
+		}
+		sc.Capabilities.Add = append(sc.Capabilities.Add, v1.Capability(c))
 	}
 
-	return nil
+	if sc.Capabilities == nil {
+		return nil
+	}
+	return sc
 }
 
 //metadata:
