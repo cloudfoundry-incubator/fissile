@@ -52,6 +52,9 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 			svcPort.TargetPort = intstr.FromInt(int(portDef.Internal))
 		}
 		service.Spec.Ports = append(service.Spec.Ports, svcPort)
+		if portDef.Public {
+			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
+		}
 	}
 	return service
 }
