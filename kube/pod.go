@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"hash/crc32"
 	"strings"
 
 	"github.com/hpcloud/fissile/builder"
@@ -43,6 +44,11 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 
 	securityContext := getSecurityContext(role)
 
+	ports, err := getContainerPorts(role)
+	if err != nil {
+		return v1.PodTemplateSpec{}, err
+	}
+
 	return v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
@@ -55,7 +61,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 				v1.Container{
 					Name:            role.Name,
 					Image:           imageName,
-					Ports:           getContainerPorts(role),
+					Ports:           ports,
 					VolumeMounts:    getVolumeMounts(role),
 					Env:             vars,
 					Resources:       resources,
@@ -69,7 +75,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 }
 
 // getContainerPorts returns a list of ports for a role
-func getContainerPorts(role *model.Role) []v1.ContainerPort {
+func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
 	result := make([]v1.ContainerPort, len(role.Run.ExposedPorts))
 
 	for i, port := range role.Run.ExposedPorts {
@@ -82,15 +88,54 @@ func getContainerPorts(role *model.Role) []v1.ContainerPort {
 			protocol = v1.ProtocolUDP
 		}
 
+		// We may need to fixup the port name.  It must:
+		// - not be empty
+		// - be no more than 15 characters long
+		// - consist only of letters, digits, or hyphen
+		// - start and end with a letter or a digit
+		// - there can not be consecutive hyphens
+		nameChars := make([]rune, 0, len(port.Name))
+		for _, ch := range port.Name {
+			switch {
+			case ch >= 'A' && ch <= 'Z':
+				nameChars = append(nameChars, ch)
+			case ch >= 'a' && ch <= 'z':
+				nameChars = append(nameChars, ch)
+			case ch >= '0' && ch <= '9':
+				nameChars = append(nameChars, ch)
+			case ch == '-':
+				if len(nameChars) == 0 {
+					// Skip leading hyphens
+					continue
+				}
+				if nameChars[len(nameChars)-1] == '-' {
+					// Skip consecutive hyphens
+					continue
+				}
+				nameChars = append(nameChars, ch)
+			}
+		}
+		// Strip trailing hyphens
+		for len(nameChars) > 0 && nameChars[len(nameChars)-1] == '-' {
+			nameChars = nameChars[:len(nameChars)-1]
+		}
+		name := string(nameChars)
+		if name == "" {
+			return nil, fmt.Errorf("Port name %s does not contain any letters or digits", port.Name)
+		}
+
+		if len(name) > 15 {
+			// Kubernetes doesn't like names that long
+			name = fmt.Sprintf("%s%x", name[:7], crc32.ChecksumIEEE([]byte(name)))
+		}
 		result[i] = v1.ContainerPort{
-			Name:          port.Name,
+			Name:          name,
 			ContainerPort: int32(port.Internal),
-			//	HostPort:      int32(port.External),
-			Protocol: protocol,
+			Protocol:      protocol,
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
