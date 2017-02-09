@@ -60,6 +60,8 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
+	apiVersion: extensions/v1beta1
+	kind: Job
 	metadata:
 		name: pre-role
 	spec:
@@ -101,6 +103,8 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
+	apiVersion: extensions/v1beta1
+	kind: Job
 	metadata:
 		name: post-role
 	spec:
