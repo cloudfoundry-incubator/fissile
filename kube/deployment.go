@@ -9,7 +9,7 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached service
-func NewDeployment(role *model.Role, settings *KubeExportSettings) (*extra.Deployment, *apiv1.Service, error) {
+func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.Service, error) {
 
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {

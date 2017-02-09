@@ -12,10 +12,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// RoleType is the type of the role; see the constants below
+type RoleType string
+
+// These are the types of roles available
 const (
-	BoshTaskType = "bosh-task"
-	BoshType     = "bosh"
-	DockerType   = "docker"
+	BoshTaskType = RoleType("bosh-task") // A role that is a BOSH task
+	BoshType     = RoleType("bosh")      // A role that is a BOSH job
+	DockerType   = RoleType("docker")    // A role that is a raw Docker image
 )
 
 // RoleManifest represents a collection of roles
@@ -34,7 +38,7 @@ type Role struct {
 	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
-	Type              string         `yaml:"type,omitempty"`
+	Type              RoleType       `yaml:"type,omitempty"`
 	JobNameList       []*roleJob     `yaml:"jobs"`
 	Configuration     *Configuration `yaml:"configuration"`
 	Run               *RoleRun       `yaml:"run"`
@@ -43,6 +47,7 @@ type Role struct {
 	rolesManifest *RoleManifest
 }
 
+// RoleRun describes how a role should behave at runtime
 type RoleRun struct {
 	Scaling           *RoleRunScaling       `yaml:"scaling"`
 	Capabilities      []string              `yaml:"capabilities"`
@@ -53,17 +58,20 @@ type RoleRun struct {
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 }
 
+// RoleRunScaling describes how a role should scale out at runtime
 type RoleRunScaling struct {
 	Min int32 `yaml:"min"`
 	Max int32 `yaml:"max"`
 }
 
+// RoleRunVolume describes a volume to be attached at runtime
 type RoleRunVolume struct {
 	Path string `yaml:"path"`
 	Tag  string `yaml:"tag"`
 	Size int    `yaml:"size"`
 }
 
+// RoleRunExposedPort describes a port to be available to other roles, or the outside world
 type RoleRunExposedPort struct {
 	Name     string `yaml:"name"`
 	Protocol string `yaml:"protocol"`
@@ -82,6 +90,7 @@ type Configuration struct {
 	Variables []*ConfigurationVariable `yaml:"variables"`
 }
 
+// ConfigurationVariable is a configuration to be exposed to the IaaS
 type ConfigurationVariable struct {
 	Name        string                          `yaml:"name"`
 	Default     interface{}                     `yaml:"default"`
@@ -89,6 +98,8 @@ type ConfigurationVariable struct {
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 }
 
+// ConfigurationVariableGenerator describes how to automatically generate values
+// for a configuration variable
 type ConfigurationVariableGenerator struct {
 	ID        string `yaml:"id"`
 	Type      string `yaml:"type"`

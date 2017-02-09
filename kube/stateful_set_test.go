@@ -99,7 +99,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	statefulset, deps, err := NewStatefulSet(role, &KubeExportSettings{})
+	statefulset, deps, err := NewStatefulSet(role, &ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
@@ -213,7 +213,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	statefulset, _, err := NewStatefulSet(role, &KubeExportSettings{})
+	statefulset, _, err := NewStatefulSet(role, &ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}

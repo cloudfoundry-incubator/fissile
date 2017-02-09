@@ -731,7 +731,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		return err
 	}
 
-	settings := &kube.KubeExportSettings{
+	settings := &kube.ExportSettings{
 		Defaults:        defaults,
 		Registry:        registry,
 		Organization:    organization,
@@ -740,7 +740,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	for _, role := range rolesManifest.Roles {
-		roleTypeDir := filepath.Join(outputDir, role.Type)
+		roleTypeDir := filepath.Join(outputDir, string(role.Type))
 		if err = os.MkdirAll(roleTypeDir, 0755); err != nil {
 			return err
 		}

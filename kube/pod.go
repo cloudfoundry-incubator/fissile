@@ -13,7 +13,7 @@ import (
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings *KubeExportSettings) (v1.PodTemplateSpec, error) {
+func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
 
 	vars, err := getEnvVars(role, settings.Defaults)
 	if err != nil {
