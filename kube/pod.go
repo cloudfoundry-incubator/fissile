@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"hash/crc32"
 	"strings"
 
 	"github.com/hpcloud/fissile/builder"
@@ -82,11 +83,16 @@ func getContainerPorts(role *model.Role) []v1.ContainerPort {
 			protocol = v1.ProtocolUDP
 		}
 
+		name := port.Name
+		if len(name) > 15 {
+			// Kubernetes doesn't like names that long
+			name = fmt.Sprintf("%s%x", name[:7], crc32.ChecksumIEEE([]byte(name)))
+		}
+
 		result[i] = v1.ContainerPort{
-			Name:          port.Name,
+			Name:          name,
 			ContainerPort: int32(port.Internal),
-			//	HostPort:      int32(port.External),
-			Protocol: protocol,
+			Protocol:      protocol,
 		}
 	}
 

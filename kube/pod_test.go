@@ -124,3 +124,95 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	assert.Equal("/mnt/shared", sharedMount.MountPath)
 	assert.False(sharedMount.ReadOnly)
 }
+
+func TestPodGetContainerPorts(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	samples := []struct {
+		desc     string
+		ports    []*model.RoleRunExposedPort
+		expected []v1.ContainerPort
+	}{
+		{
+			desc:     "Empty role should have no ports",
+			ports:    []*model.RoleRunExposedPort{},
+			expected: []v1.ContainerPort{},
+		},
+		{
+			desc: "TCP port should be TCP",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "tcp-port",
+				Protocol: "TcP",
+				Internal: 1234,
+			}},
+			expected: []v1.ContainerPort{{
+				Name:          "tcp-port",
+				ContainerPort: 1234,
+				Protocol:      v1.ProtocolTCP,
+			}},
+		},
+		{
+			desc: "UDP port should be UDP",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "udp-port",
+				Protocol: "uDp",
+				Internal: 1234,
+			}},
+			expected: []v1.ContainerPort{{
+				Name:          "udp-port",
+				ContainerPort: 1234,
+				Protocol:      v1.ProtocolUDP,
+			}},
+		},
+		{
+			desc: "Long port names should be fixed",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "port-with-a-very-long-name",
+				Protocol: "tcp",
+				Internal: 4321,
+			}},
+			expected: []v1.ContainerPort{{
+				Name:          "port-wi40a84c6a",
+				ContainerPort: 4321,
+				Protocol:      v1.ProtocolTCP,
+			}},
+		},
+		{
+			desc: "Multiple ports should be supported",
+			ports: []*model.RoleRunExposedPort{
+				{
+					Name:     "first-port",
+					Protocol: "tcp",
+					Internal: 1234,
+				},
+				{
+					Name:     "second-port",
+					Protocol: "udp",
+					Internal: 5678,
+				},
+			},
+			expected: []v1.ContainerPort{
+				{
+					Name:          "first-port",
+					ContainerPort: 1234,
+					Protocol:      v1.ProtocolTCP,
+				},
+				{
+					Name:          "second-port",
+					ContainerPort: 5678,
+					Protocol:      v1.ProtocolUDP,
+				},
+			},
+		},
+	}
+
+	// TODO use golang 1.7's subtests
+	for _, sample := range samples {
+		role.Run.ExposedPorts = sample.ports
+		assert.Equal(sample.expected, getContainerPorts(role), sample.desc)
+	}
+}
