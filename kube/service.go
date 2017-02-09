@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hpcloud/fissile/model"
 	meta "k8s.io/client-go/pkg/api/unversioned"
@@ -38,14 +39,22 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 		service.Spec.ClusterIP = apiv1.ClusterIPNone
 	}
 	for _, portDef := range role.Run.ExposedPorts {
+		protocol := apiv1.ProtocolTCP
+		if strings.ToUpper(portDef.Protocol) == "UDP" {
+			protocol = apiv1.ProtocolUDP
+		}
 		svcPort := apiv1.ServicePort{
-			Name: portDef.Name,
-			Port: portDef.External,
+			Name:     portDef.Name,
+			Port:     portDef.External,
+			Protocol: protocol,
 		}
 		if !headless {
 			svcPort.TargetPort = intstr.FromInt(int(portDef.Internal))
 		}
 		service.Spec.Ports = append(service.Spec.Ports, svcPort)
+		if portDef.Public {
+			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
+		}
 	}
 	return service
 }

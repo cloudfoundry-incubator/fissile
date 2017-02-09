@@ -141,21 +141,38 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 		}
 	}
 
+	result = append(result, v1.EnvVar{
+		Name: "KUBERNETES_NAMESPACE",
+		ValueFrom: &v1.EnvVarSource{
+			FieldRef: &v1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	})
+
 	return result, nil
 }
 
 func getSecurityContext(role *model.Role) *v1.SecurityContext {
 	privileged := true
 
+	sc := &v1.SecurityContext{}
 	for _, c := range role.Run.Capabilities {
-		if strings.ToUpper(c) == "ALL" {
-			sc := &v1.SecurityContext{}
+		c = strings.ToUpper(c)
+		if c == "ALL" {
 			sc.Privileged = &privileged
 			return sc
 		}
+		if sc.Capabilities == nil {
+			sc.Capabilities = &v1.Capabilities{}
+		}
+		sc.Capabilities.Add = append(sc.Capabilities.Add, v1.Capability(c))
 	}
 
-	return nil
+	if sc.Capabilities == nil {
+		return nil
+	}
+	return sc
 }
 
 //metadata:

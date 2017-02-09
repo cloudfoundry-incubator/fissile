@@ -740,7 +740,11 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	for _, role := range rolesManifest.Roles {
-		outputPath := filepath.Join(outputDir, fmt.Sprintf("%s.yml", role.Name))
+		roleTypeDir := filepath.Join(outputDir, role.Type)
+		if err = os.MkdirAll(roleTypeDir, 0755); err != nil {
+			return err
+		}
+		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yml", role.Name))
 
 		f.UI.Printf("Writing config %s for role %s\n",
 			color.CyanString(outputPath),
@@ -764,7 +768,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-		case model.BoshType, "":
+		case model.BoshType:
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
