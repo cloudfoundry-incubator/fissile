@@ -44,7 +44,7 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 
-	job, err := NewJob(role, &KubeExportSettings{})
+	job, err := NewJob(role, &ExportSettings{})
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
@@ -85,7 +85,7 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 
-	job, err := NewJob(role, &KubeExportSettings{})
+	job, err := NewJob(role, &ExportSettings{})
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}
