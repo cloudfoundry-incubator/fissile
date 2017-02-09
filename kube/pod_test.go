@@ -136,6 +136,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 		desc     string
 		ports    []*model.RoleRunExposedPort
 		expected []v1.ContainerPort
+		err      string
 	}{
 		{
 			desc:     "Empty role should have no ports",
@@ -182,6 +183,28 @@ func TestPodGetContainerPorts(t *testing.T) {
 			}},
 		},
 		{
+			desc: "Odd port names should be sanitized",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "-!port@NAME$--$here#-%Ｕｎｉｃｏｄｅ*",
+				Protocol: "tcp",
+				Internal: 1234,
+			}},
+			expected: []v1.ContainerPort{{
+				Name:          "portNAME-here",
+				ContainerPort: 1234,
+				Protocol:      v1.ProtocolTCP,
+			}},
+		},
+		{
+			desc: "Invalid port names should be rejected",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "-!-@-#-$-%-^-&-*-(-)-",
+				Protocol: "tcp",
+				Internal: 1234,
+			}},
+			err: "Port name -!-@-#-$-%-^-&-*-(-)- does not contain any letters or digits",
+		},
+		{
 			desc: "Multiple ports should be supported",
 			ports: []*model.RoleRunExposedPort{
 				{
@@ -213,6 +236,11 @@ func TestPodGetContainerPorts(t *testing.T) {
 	// TODO use golang 1.7's subtests
 	for _, sample := range samples {
 		role.Run.ExposedPorts = sample.ports
-		assert.Equal(sample.expected, getContainerPorts(role), sample.desc)
+		actual, err := getContainerPorts(role)
+		if sample.err != "" {
+			assert.EqualError(err, sample.err, sample.desc)
+		} else {
+			assert.Equal(sample.expected, actual, sample.desc)
+		}
 	}
 }
