@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"encoding/base64"
 	"fmt"
 	"hash/crc32"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/util/intstr"
 )
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
@@ -49,7 +51,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 		return v1.PodTemplateSpec{}, err
 	}
 
-	return v1.PodTemplateSpec{
+	podSpec := v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
 			Labels: map[string]string{
@@ -71,7 +73,33 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 			RestartPolicy: v1.RestartPolicyAlways,
 			DNSPolicy:     v1.DNSClusterFirst,
 		},
-	}, nil
+	}
+
+	if role.Type == model.RoleTypeBosh {
+		var monitHeaders []v1.HTTPHeader
+		if monitPassword, ok := settings.Defaults["MONIT_PASSWORD"]; ok {
+			monitLogin := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "admin", monitPassword)))
+			monitHeaders = append(monitHeaders, v1.HTTPHeader{
+				Name:  "Authorization",
+				Value: fmt.Sprintf("Basic %s", monitLogin),
+			})
+		}
+		// We need to refer to the containers by reference here (modify in-place)
+		for i := range podSpec.Spec.Containers {
+			podSpec.Spec.Containers[i].LivenessProbe = &v1.Probe{
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Path:        "/_status",
+						Port:        intstr.FromInt(2289),
+						HTTPHeaders: monitHeaders,
+					},
+				},
+				InitialDelaySeconds: 180,
+			}
+		}
+	}
+
+	return podSpec, nil
 }
 
 // getContainerPorts returns a list of ports for a role
