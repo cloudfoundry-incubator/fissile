@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"fmt"
+
 	"github.com/hpcloud/fissile/model"
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
@@ -13,11 +15,19 @@ func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if role.Run == nil {
+		return nil, fmt.Errorf("Role %s has no run information", role.Name)
+	}
+
 	// Jobs must have a restart policy that isn't "always"
-	if role.Run.FlightStage == model.FlightStageManual {
+	switch role.Run.FlightStage {
+	case model.FlightStageManual:
 		podTemplate.Spec.RestartPolicy = v1.RestartPolicyNever
-	} else {
+	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
 		podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+	default:
+		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
 	return &extra.Job{
