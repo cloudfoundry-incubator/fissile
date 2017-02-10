@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"encoding/base64"
 	"fmt"
 	"hash/crc32"
 	"strings"
@@ -14,6 +13,9 @@ import (
 	"k8s.io/client-go/pkg/util/intstr"
 )
 
+// monitPort is the port monit runs on in the pods
+const monitPort = 2289
+
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
 func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
@@ -21,17 +23,6 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 	vars, err := getEnvVars(role, settings.Defaults)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
-	}
-
-	devImageName := builder.GetRoleDevImageName(settings.Repository, role, role.GetRoleDevVersion())
-	imageName := devImageName
-
-	if settings.Organization != "" && settings.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s/%s", settings.Registry, settings.Organization, devImageName)
-	} else if settings.Organization != "" {
-		imageName = fmt.Sprintf("%s/%s", settings.Organization, devImageName)
-	} else if settings.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
 	}
 
 	var resources v1.ResourceRequirements
@@ -62,7 +53,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 			Containers: []v1.Container{
 				v1.Container{
 					Name:            role.Name,
-					Image:           imageName,
+					Image:           getContainerImageName(role, settings),
 					Ports:           ports,
 					VolumeMounts:    getVolumeMounts(role),
 					Env:             vars,
@@ -75,31 +66,30 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 		},
 	}
 
-	if role.Type == model.RoleTypeBosh {
-		var monitHeaders []v1.HTTPHeader
-		if monitPassword, ok := settings.Defaults["MONIT_PASSWORD"]; ok {
-			monitLogin := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", "admin", monitPassword)))
-			monitHeaders = append(monitHeaders, v1.HTTPHeader{
-				Name:  "Authorization",
-				Value: fmt.Sprintf("Basic %s", monitLogin),
-			})
-		}
-		// We need to refer to the containers by reference here (modify in-place)
+	livenessProbe := getContainerLivenessProbe(role)
+	if livenessProbe != nil {
 		for i := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].LivenessProbe = &v1.Probe{
-				Handler: v1.Handler{
-					HTTPGet: &v1.HTTPGetAction{
-						Path:        "/_status",
-						Port:        intstr.FromInt(2289),
-						HTTPHeaders: monitHeaders,
-					},
-				},
-				InitialDelaySeconds: 180,
-			}
+			podSpec.Spec.Containers[i].LivenessProbe = livenessProbe
 		}
 	}
 
 	return podSpec, nil
+}
+
+// getContainerImageName returns the name of the docker image to use for a role
+func getContainerImageName(role *model.Role, settings *ExportSettings) string {
+	devImageName := builder.GetRoleDevImageName(settings.Repository, role, role.GetRoleDevVersion())
+	imageName := devImageName
+
+	if settings.Organization != "" && settings.Registry != "" {
+		imageName = fmt.Sprintf("%s/%s/%s", settings.Registry, settings.Organization, devImageName)
+	} else if settings.Organization != "" {
+		imageName = fmt.Sprintf("%s/%s", settings.Organization, devImageName)
+	} else if settings.Registry != "" {
+		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
+	}
+
+	return imageName
 }
 
 // getContainerPorts returns a list of ports for a role
@@ -250,6 +240,23 @@ func getSecurityContext(role *model.Role) *v1.SecurityContext {
 		return nil
 	}
 	return sc
+}
+
+func getContainerLivenessProbe(role *model.Role) *v1.Probe {
+	switch role.Type {
+	case model.RoleTypeBosh:
+		return &v1.Probe{
+			Handler: v1.Handler{
+				TCPSocket: &v1.TCPSocketAction{
+					Port: intstr.FromInt(monitPort),
+				},
+			},
+			// TODO: make this configurable (figure out where the knob should live)
+			InitialDelaySeconds: 180,
+		}
+	default:
+		return nil
+	}
 }
 
 //metadata:
