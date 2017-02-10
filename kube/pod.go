@@ -169,9 +169,9 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 		return nil, err
 	}
 
-	result := make([]v1.EnvVar, len(configs))
+	result := make([]v1.EnvVar, 0, len(configs))
 
-	for i, config := range configs {
+	for _, config := range configs {
 		var value interface{}
 
 		value = config.Default
@@ -180,10 +180,14 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 			value = defaultValue
 		}
 
-		result[i] = v1.EnvVar{
+		if value == nil {
+			continue
+		}
+
+		result = append(result, v1.EnvVar{
 			Name:  config.Name,
 			Value: fmt.Sprintf("%v", value),
-		}
+		})
 	}
 
 	result = append(result, v1.EnvVar{
