@@ -14,7 +14,12 @@ func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
 		return nil, err
 	}
 	// Jobs must have a restart policy that isn't "always"
-	podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+	if role.Run.FlightStage == model.FlightStageManual {
+		podTemplate.Spec.RestartPolicy = v1.RestartPolicyNever
+	} else {
+		podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+	}
+
 	return &extra.Job{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "extensions/v1beta1",

@@ -17,9 +17,20 @@ type RoleType string
 
 // These are the types of roles available
 const (
-	BoshTaskType = RoleType("bosh-task") // A role that is a BOSH task
-	BoshType     = RoleType("bosh")      // A role that is a BOSH job
-	DockerType   = RoleType("docker")    // A role that is a raw Docker image
+	RoleTypeBoshTask = RoleType("bosh-task") // A role that is a BOSH task
+	RoleTypeBosh     = RoleType("bosh")      // A role that is a BOSH job
+	RoleTypeDocker   = RoleType("docker")    // A role that is a raw Docker image
+)
+
+// FlightStage describes when a role should be executed
+type FlightStage string
+
+// These are the flight stages available
+const (
+	FlightStagePreFlight  = FlightStage("pre-flight")  // A role that runs before the main jobs start
+	FlightStageFlight     = FlightStage("flight")      // A role that is a main job
+	FlightStagePostFlight = FlightStage("post-flight") // A role that runs after the main jobs are up
+	FlightStageManual     = FlightStage("manual")      // A role that only runs via user intervention
 )
 
 // RoleManifest represents a collection of roles
@@ -56,6 +67,7 @@ type RoleRun struct {
 	Memory            int                   `yaml:"memory"`
 	VirtualCPUs       int                   `yaml:"virtual-cpus"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
+	FlightStage       FlightStage           `yaml:"flight-stage"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -151,18 +163,34 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, err
 	}
 
-	// Remove all roles that are not of the "bosh" or "bosh-task" type
-	// Default type is considered to be "bosh"
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
+		// Normalize flight stage
+		if role.Run != nil {
+			switch role.Run.FlightStage {
+			case "":
+				role.Run.FlightStage = FlightStageFlight
+			case FlightStagePreFlight:
+			case FlightStageFlight:
+			case FlightStagePostFlight:
+			case FlightStageManual:
+			default:
+				return nil, fmt.Errorf("Role %s has an invalid flight stage %s", role.Name, role.Run.FlightStage)
+			}
+		}
+
+		// Remove all roles that are not of the "bosh" or "bosh-task" type
+		// Default type is considered to be "bosh"
 		switch role.Type {
 		case "":
-			role.Type = BoshType
-		case BoshType, BoshTaskType:
+			role.Type = RoleTypeBosh
+		case RoleTypeBosh, RoleTypeBoshTask:
 			continue
-		default:
+		case RoleTypeDocker:
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
+		default:
+			return nil, fmt.Errorf("Role %s has an invalid type %s", role.Name, role.Type)
 		}
 	}
 
