@@ -758,7 +758,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		defer outputFile.Close()
 
 		switch role.Type {
-		case model.BoshTaskType:
+		case model.RoleTypeBoshTask:
 			job, err := kube.NewJob(role, settings)
 			if err != nil {
 				return err
@@ -768,7 +768,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 				return err
 			}
 
-		case model.BoshType:
+		case model.RoleTypeBosh:
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
