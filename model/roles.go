@@ -110,6 +110,24 @@ type ConfigurationVariable struct {
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 }
 
+// ConfigurationVariableSlice is a sortable slice of ConfigurationVariables
+type ConfigurationVariableSlice []*ConfigurationVariable
+
+// Len is the number of ConfigurationVariables in the slice
+func (confVars ConfigurationVariableSlice) Len() int {
+	return len(confVars)
+}
+
+// Less reports whether config variable at index i sort before the one at index j
+func (confVars ConfigurationVariableSlice) Less(i, j int) bool {
+	return strings.Compare(confVars[i].Name, confVars[j].Name) < 0
+}
+
+// Swap exchanges configuration variables at index i and index j
+func (confVars ConfigurationVariableSlice) Swap(i, j int) {
+	confVars[i], confVars[j] = confVars[j], confVars[i]
+}
+
 // ConfigurationVariableGenerator describes how to automatically generate values
 // for a configuration variable
 type ConfigurationVariableGenerator struct {
@@ -128,7 +146,7 @@ func (roles Roles) Len() int {
 	return len(roles)
 }
 
-// Less reports whether role at index i short sort before role at index j
+// Less reports whether role at index i sort before role at index j
 func (roles Roles) Less(i, j int) bool {
 	return strings.Compare(roles[i].Name, roles[j].Name) < 0
 }
