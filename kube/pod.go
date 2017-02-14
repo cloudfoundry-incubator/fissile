@@ -67,9 +67,11 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 	}
 
 	livenessProbe := getContainerLivenessProbe(role)
-	if livenessProbe != nil {
+	readinessProbe := getContainerReadinessProbe(role)
+	if livenessProbe != nil || readinessProbe != nil {
 		for i := range podSpec.Spec.Containers {
 			podSpec.Spec.Containers[i].LivenessProbe = livenessProbe
+			podSpec.Spec.Containers[i].ReadinessProbe = readinessProbe
 		}
 	}
 
@@ -253,6 +255,36 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 			},
 			// TODO: make this configurable (figure out where the knob should live)
 			InitialDelaySeconds: 180,
+		}
+	default:
+		return nil
+	}
+}
+
+func getContainerReadinessProbe(role *model.Role) *v1.Probe {
+	switch role.Type {
+	case model.RoleTypeBosh:
+		if role.Run == nil {
+			return nil
+		}
+		var readinessPort *model.RoleRunExposedPort
+		for _, port := range role.Run.ExposedPorts {
+			if strings.ToUpper(port.Protocol) != "TCP" {
+				continue
+			}
+			if readinessPort == nil {
+				readinessPort = port
+			}
+		}
+		if readinessPort == nil {
+			return nil
+		}
+		return &v1.Probe{
+			Handler: v1.Handler{
+				TCPSocket: &v1.TCPSocketAction{
+					Port: intstr.FromInt(int(readinessPort.Internal)),
+				},
+			},
 		}
 	default:
 		return nil
