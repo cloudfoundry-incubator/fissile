@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/hpcloud/fissile/mustache"
 )
@@ -55,11 +56,13 @@ func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
 		}
 	}
 
-	result := []*ConfigurationVariable{}
+	result := make(ConfigurationVariableSlice, 0, len(configs))
 
 	for _, value := range configs {
 		result = append(result, value)
 	}
+
+	sort.Sort(result)
 
 	return result, nil
 }
