@@ -256,7 +256,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 
 	samples := []struct {
 		desc     string
-		probe    *model.ReadinessProbe
+		probe    *model.HealthCheck
 		expected *v1.Probe
 		err      string
 	}{
@@ -267,7 +267,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Port probe",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				Port: 1234,
 			},
 			expected: &v1.Probe{
@@ -280,7 +280,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Command probe",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
 			},
 			expected: &v1.Probe{
@@ -293,7 +293,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (simple)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "http://example.com/path",
 			},
 			expected: &v1.Probe{
@@ -309,7 +309,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (custom port)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "https://example.com:1234/path",
 			},
 			expected: &v1.Probe{
@@ -325,14 +325,14 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (Invalid scheme)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "file:///etc/shadow",
 			},
-			err: "Readiness probe for myrole has unsupported URI scheme \"file\"",
+			err: "Health check for myrole has unsupported URI scheme \"file\"",
 		},
 		{
 			desc: "URL probe (query)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "http://example.com/path?query#hash",
 			},
 			expected: &v1.Probe{
@@ -348,7 +348,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (auth)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "http://user:pass@example.com/path",
 			},
 			expected: &v1.Probe{
@@ -370,7 +370,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (custom headers)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL:     "http://example.com/path",
 				Headers: map[string]string{"x-header": "some value"},
 			},
@@ -393,22 +393,22 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (invalid URL)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "://",
 			},
-			err: "Invalid URL readiness probe for myrole: parse ://: missing protocol scheme",
+			err: "Invalid URL health check for myrole: parse ://: missing protocol scheme",
 		},
 		{
 			desc: "URL probe (invalid port)",
-			probe: &model.ReadinessProbe{
+			probe: &model.HealthCheck{
 				URL: "http://example.com:port_number/",
 			},
-			err: "Failed to get URL port for readiness probe for myrole: invalid host \"example.com:port_number\"",
+			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
 		},
 		{
 			desc: "URL probe (localhost)",
-			probe: &model.ReadinessProbe{
-				URL: "http://localhost/path",
+			probe: &model.HealthCheck{
+				URL: "http://container-ip/path",
 			},
 			expected: &v1.Probe{
 				Handler: v1.Handler{
@@ -424,7 +424,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 
 	// TODO use golang 1.7's subtests
 	for _, sample := range samples {
-		role.Run.ReadinessProbe = sample.probe
+		role.Run.HealthCheck = sample.probe
 		actual, err := getContainerReadinessProbe(role)
 		if sample.err != "" {
 			assert.EqualError(err, sample.err, sample.desc)

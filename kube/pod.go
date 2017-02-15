@@ -272,24 +272,24 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
-	if role.Run.ReadinessProbe != nil {
-		if role.Run.ReadinessProbe.URL != "" {
+	if role.Run.HealthCheck != nil {
+		if role.Run.HealthCheck.URL != "" {
 			return getContainerURLReadinessProbe(role)
 		}
-		if role.Run.ReadinessProbe.Port != 0 {
+		if role.Run.HealthCheck.Port != 0 {
 			return &v1.Probe{
 				Handler: v1.Handler{
 					TCPSocket: &v1.TCPSocketAction{
-						Port: intstr.FromInt(int(role.Run.ReadinessProbe.Port)),
+						Port: intstr.FromInt(int(role.Run.HealthCheck.Port)),
 					},
 				},
 			}, nil
 		}
-		if len(role.Run.ReadinessProbe.Command) > 0 {
+		if len(role.Run.HealthCheck.Command) > 0 {
 			return &v1.Probe{
 				Handler: v1.Handler{
 					Exec: &v1.ExecAction{
-						Command: role.Run.ReadinessProbe.Command,
+						Command: role.Run.HealthCheck.Command,
 					},
 				},
 			}, nil
@@ -322,9 +322,9 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 }
 
 func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
-	probeURL, err := url.Parse(role.Run.ReadinessProbe.URL)
+	probeURL, err := url.Parse(role.Run.HealthCheck.URL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid URL readiness probe for %s: %s", role.Name, err)
+		return nil, fmt.Errorf("Invalid URL health check for %s: %s", role.Name, err)
 	}
 
 	var scheme v1.URIScheme
@@ -337,19 +337,20 @@ func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
 		scheme = v1.URISchemeHTTPS
 		port = intstr.FromInt(443)
 	default:
-		return nil, fmt.Errorf("Readiness probe for %s has unsupported URI scheme \"%s\"", role.Name, probeURL.Scheme)
+		return nil, fmt.Errorf("Health check for %s has unsupported URI scheme \"%s\"", role.Name, probeURL.Scheme)
 	}
 
 	host := probeURL.Host
+	// url.URL will have a `Host` of `example.com:8080`, but kubernetes takes a separate `Port` field
 	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
 		portNum, err := strconv.Atoi(host[colonIndex+1:])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get URL port for readiness probe for %s: invalid host \"%s\"", role.Name, probeURL.Host)
+			return nil, fmt.Errorf("Failed to get URL port for health check for %s: invalid host \"%s\"", role.Name, probeURL.Host)
 		}
 		port = intstr.FromInt(portNum)
 		host = host[:colonIndex]
 	}
-	if host == "localhost" {
+	if host == "container-ip" {
 		// Special case to use the pod IP instead; this is run from outside the pod
 		host = ""
 	}
@@ -361,7 +362,7 @@ func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
 			Value: base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
 		})
 	}
-	for key, value := range role.Run.ReadinessProbe.Headers {
+	for key, value := range role.Run.HealthCheck.Headers {
 		headers = append(headers, v1.HTTPHeader{
 			Name:  http.CanonicalHeaderKey(key),
 			Value: value,

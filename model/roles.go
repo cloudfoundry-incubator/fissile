@@ -68,7 +68,7 @@ type RoleRun struct {
 	VirtualCPUs       int                   `yaml:"virtual-cpus"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
-	ReadinessProbe    *ReadinessProbe       `yaml:"readiness-probe,omitempty"`
+	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -93,12 +93,12 @@ type RoleRunExposedPort struct {
 	Public   bool   `yaml:"public"`
 }
 
-// ReadinessProbe describes a non-standard readiness probe
-type ReadinessProbe struct {
-	URL     string            `yaml:"url"`     // URL for a HTTP GET to return 200~399. Cannot be used with other probes.
+// HealthCheck describes a non-standard health check endpoint
+type HealthCheck struct {
+	URL     string            `yaml:"url"`     // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
 	Headers map[string]string `yaml:"headers"` // Custom headers; only used for URL.
-	Command []string          `yaml:"command"` // Custom command. Cannot be used with other probes.
-	Port    int32             `yaml:"port"`    // Port for a TCP probe. Cannot be used with other probes.
+	Command []string          `yaml:"command"` // Custom command. Cannot be used with other checks.
+	Port    int32             `yaml:"port"`    // Port for a TCP probe. Cannot be used with other checks.
 }
 
 // Roles is an array of Role*
@@ -220,20 +220,20 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			return nil, fmt.Errorf("Role %s has an invalid type %s", role.Name, role.Type)
 		}
 
-		// Ensure that we don't have conflicting readiness probes
-		if role.Run != nil && role.Run.ReadinessProbe != nil {
-			probes := make([]string, 0, 3)
-			if role.Run.ReadinessProbe.URL != "" {
-				probes = append(probes, "url")
+		// Ensure that we don't have conflicting health checks
+		if role.Run != nil && role.Run.HealthCheck != nil {
+			checks := make([]string, 0, 3)
+			if role.Run.HealthCheck.URL != "" {
+				checks = append(checks, "url")
 			}
-			if len(role.Run.ReadinessProbe.Command) > 0 {
-				probes = append(probes, "command")
+			if len(role.Run.HealthCheck.Command) > 0 {
+				checks = append(checks, "command")
 			}
-			if role.Run.ReadinessProbe.Port != 0 {
-				probes = append(probes, "port")
+			if role.Run.HealthCheck.Port != 0 {
+				checks = append(checks, "port")
 			}
-			if len(probes) != 1 {
-				return nil, fmt.Errorf("Readiness probe for role %s should have exactly one of url, command, or port; got %v", role.Name, probes)
+			if len(checks) != 1 {
+				return nil, fmt.Errorf("Health check for role %s should have exactly one of url, command, or port; got %v", role.Name, checks)
 			}
 		}
 	}
