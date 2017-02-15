@@ -1,8 +1,12 @@
 package kube
 
 import (
+	"encoding/base64"
 	"fmt"
 	"hash/crc32"
+	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hpcloud/fissile/builder"
@@ -67,7 +71,10 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 	}
 
 	livenessProbe := getContainerLivenessProbe(role)
-	readinessProbe := getContainerReadinessProbe(role)
+	readinessProbe, err := getContainerReadinessProbe(role)
+	if err != nil {
+		return v1.PodTemplateSpec{}, err
+	}
 	if livenessProbe != nil || readinessProbe != nil {
 		for i := range podSpec.Spec.Containers {
 			podSpec.Spec.Containers[i].LivenessProbe = livenessProbe
@@ -261,12 +268,35 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 	}
 }
 
-func getContainerReadinessProbe(role *model.Role) *v1.Probe {
+func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
+	if role.Run == nil {
+		return nil, nil
+	}
+	if role.Run.HealthCheck != nil {
+		if role.Run.HealthCheck.URL != "" {
+			return getContainerURLReadinessProbe(role)
+		}
+		if role.Run.HealthCheck.Port != 0 {
+			return &v1.Probe{
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(int(role.Run.HealthCheck.Port)),
+					},
+				},
+			}, nil
+		}
+		if len(role.Run.HealthCheck.Command) > 0 {
+			return &v1.Probe{
+				Handler: v1.Handler{
+					Exec: &v1.ExecAction{
+						Command: role.Run.HealthCheck.Command,
+					},
+				},
+			}, nil
+		}
+	}
 	switch role.Type {
 	case model.RoleTypeBosh:
-		if role.Run == nil {
-			return nil
-		}
 		var readinessPort *model.RoleRunExposedPort
 		for _, port := range role.Run.ExposedPorts {
 			if strings.ToUpper(port.Protocol) != "TCP" {
@@ -277,7 +307,7 @@ func getContainerReadinessProbe(role *model.Role) *v1.Probe {
 			}
 		}
 		if readinessPort == nil {
-			return nil
+			return nil, nil
 		}
 		return &v1.Probe{
 			Handler: v1.Handler{
@@ -285,10 +315,78 @@ func getContainerReadinessProbe(role *model.Role) *v1.Probe {
 					Port: intstr.FromInt(int(readinessPort.Internal)),
 				},
 			},
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
+}
+
+func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
+	probeURL, err := url.Parse(role.Run.HealthCheck.URL)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid URL health check for %s: %s", role.Name, err)
+	}
+
+	var scheme v1.URIScheme
+	var port intstr.IntOrString
+	switch strings.ToUpper(probeURL.Scheme) {
+	case string(v1.URISchemeHTTP):
+		scheme = v1.URISchemeHTTP
+		port = intstr.FromInt(80)
+	case string(v1.URISchemeHTTPS):
+		scheme = v1.URISchemeHTTPS
+		port = intstr.FromInt(443)
+	default:
+		return nil, fmt.Errorf("Health check for %s has unsupported URI scheme \"%s\"", role.Name, probeURL.Scheme)
+	}
+
+	host := probeURL.Host
+	// url.URL will have a `Host` of `example.com:8080`, but kubernetes takes a separate `Port` field
+	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
+		portNum, err := strconv.Atoi(host[colonIndex+1:])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get URL port for health check for %s: invalid host \"%s\"", role.Name, probeURL.Host)
+		}
+		port = intstr.FromInt(portNum)
+		host = host[:colonIndex]
+	}
+	if host == "container-ip" {
+		// Special case to use the pod IP instead; this is run from outside the pod
+		host = ""
+	}
+
+	var headers []v1.HTTPHeader
+	if probeURL.User != nil {
+		headers = append(headers, v1.HTTPHeader{
+			Name:  "Authorization",
+			Value: base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
+		})
+	}
+	for key, value := range role.Run.HealthCheck.Headers {
+		headers = append(headers, v1.HTTPHeader{
+			Name:  http.CanonicalHeaderKey(key),
+			Value: value,
+		})
+	}
+
+	path := probeURL.Path
+
+	if probeURL.RawQuery != "" {
+		path += "?" + probeURL.RawQuery
+	}
+	// probeURL.Fragment should not be sent to the server, so we ignore it here
+
+	return &v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Host:        host,
+				Port:        port,
+				Path:        path,
+				Scheme:      scheme,
+				HTTPHeaders: headers,
+			},
+		},
+	}, nil
 }
 
 //metadata:

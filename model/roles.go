@@ -68,6 +68,7 @@ type RoleRun struct {
 	VirtualCPUs       int                   `yaml:"virtual-cpus"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
+	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -90,6 +91,14 @@ type RoleRunExposedPort struct {
 	External int32  `yaml:"external"`
 	Internal int32  `yaml:"internal"`
 	Public   bool   `yaml:"public"`
+}
+
+// HealthCheck describes a non-standard health check endpoint
+type HealthCheck struct {
+	URL     string            `yaml:"url"`     // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
+	Headers map[string]string `yaml:"headers"` // Custom headers; only used for URL.
+	Command []string          `yaml:"command"` // Custom command. Cannot be used with other checks.
+	Port    int32             `yaml:"port"`    // Port for a TCP probe. Cannot be used with other checks.
 }
 
 // Roles is an array of Role*
@@ -209,6 +218,23 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
 		default:
 			return nil, fmt.Errorf("Role %s has an invalid type %s", role.Name, role.Type)
+		}
+
+		// Ensure that we don't have conflicting health checks
+		if role.Run != nil && role.Run.HealthCheck != nil {
+			checks := make([]string, 0, 3)
+			if role.Run.HealthCheck.URL != "" {
+				checks = append(checks, "url")
+			}
+			if len(role.Run.HealthCheck.Command) > 0 {
+				checks = append(checks, "command")
+			}
+			if role.Run.HealthCheck.Port != 0 {
+				checks = append(checks, "port")
+			}
+			if len(checks) != 1 {
+				return nil, fmt.Errorf("Health check for role %s should have exactly one of url, command, or port; got %v", role.Name, checks)
+			}
 		}
 	}
 
