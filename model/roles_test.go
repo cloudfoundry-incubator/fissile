@@ -234,12 +234,26 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 		},
 	}
 
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+	releasePath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	differentPatch := &Role{
+		Name:    refRole.Name,
+		Jobs:    Jobs{refRole.Jobs[0], refRole.Jobs[1]},
+		Scripts: []string{"myrole.sh"},
+		rolesManifest: &RoleManifest{
+			manifestFilePath: releasePath,
+		},
+	}
+
 	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
-	firstHash := firstManifest.GetRoleManifestDevPackageVersion("")
-	secondHash := (&RoleManifest{Roles: Roles{altRole, refRole}}).GetRoleManifestDevPackageVersion("")
+	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion("")
+	secondHash, _ := (&RoleManifest{Roles: Roles{altRole, refRole}}).GetRoleManifestDevPackageVersion("")
 	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
-	jobOrderHash := (&RoleManifest{Roles: Roles{wrongJobOrder, altRole}}).GetRoleManifestDevPackageVersion("")
+	jobOrderHash, _ := (&RoleManifest{Roles: Roles{wrongJobOrder, altRole}}).GetRoleManifestDevPackageVersion("")
 	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
-	differentExtraHash := firstManifest.GetRoleManifestDevPackageVersion("some string")
+	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion("some string")
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
+	differentPatchHash, _ := (&RoleManifest{Roles: Roles{differentPatch, altRole}}).GetRoleManifestDevPackageVersion("")
+	assert.NotEqual(firstHash, differentPatchHash, "role manifest hash should be dependent on patch string")
 }

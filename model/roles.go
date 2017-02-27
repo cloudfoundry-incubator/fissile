@@ -4,7 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -275,7 +277,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) (string, error) {
 	// Make sure our roles are sorted, to have consistent output
 	roles := append(Roles{}, m.Roles...)
 	sort.Sort(roles)
@@ -284,10 +286,14 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 	hasher.Write([]byte(extra))
 
 	for _, role := range roles {
-		hasher.Write([]byte(role.GetRoleDevVersion()))
+		version, err := role.GetRoleDevVersion()
+		if err != nil {
+			return "", err
+		}
+		hasher.Write([]byte(version))
 	}
 
-	return hex.EncodeToString(hasher.Sum(nil))
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // LookupRole will find the given role in the role manifest
@@ -313,8 +319,38 @@ func (r *Role) GetScriptPaths() map[string]string {
 
 }
 
+// GetScriptSignatures returns the SHA1 of all of the script file names and contents
+func (r *Role) GetScriptSignatures() (string, error) {
+	hasher := sha1.New()
+
+	var scripts []string
+
+	for _, f := range r.GetScriptPaths() {
+		scripts = append(scripts, f)
+	}
+
+	sort.Strings(scripts)
+
+	for _, filename := range scripts {
+		hasher.Write([]byte(filename))
+
+		f, err := os.Open(filename)
+		if err != nil {
+			return "", err
+		}
+
+		if _, err := io.Copy(hasher, f); err != nil {
+			return "", err
+		}
+
+		f.Close()
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
 // GetRoleDevVersion gets the aggregate signature of all jobs and packages
-func (r *Role) GetRoleDevVersion() string {
+func (r *Role) GetRoleDevVersion() (string, error) {
 	roleSignature := ""
 	var packages Packages
 
@@ -330,9 +366,16 @@ func (r *Role) GetRoleDevVersion() string {
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, pkg.SHA1)
 	}
 
+	// Collect signatures for various script sections
+	sig, err := r.GetScriptSignatures()
+	if err != nil {
+		return "", err
+	}
+	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
-	return hex.EncodeToString(hasher.Sum(nil))
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // HasTag returns true if the role has a specific tag

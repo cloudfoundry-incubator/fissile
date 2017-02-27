@@ -367,7 +367,11 @@ func (j roleBuildJob) Run() {
 	}
 
 	j.resultsCh <- func() error {
-		roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
+		devVersion, err := j.role.GetRoleDevVersion()
+		if err != nil {
+			return fmt.Errorf("Error calculating checksum for role %s: %s", j.role.Name, err.Error())
+		}
+		roleImageName := GetRoleDevImageName(j.repository, j.role, devVersion)
 		if !j.force {
 			if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
 				return err
