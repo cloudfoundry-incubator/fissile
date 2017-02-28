@@ -1,6 +1,7 @@
 package model
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -234,13 +235,22 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 		},
 	}
 
-	workDir, err := os.Getwd()
+	workDir, err := ioutil.TempDir("", "fissile-test-")
 	assert.NoError(err)
-	releasePath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	defer os.RemoveAll(workDir)
+	releasePath := filepath.Join(workDir, "role.yml")
+
+	scriptName := "script.sh"
+	scriptPath := filepath.Join(workDir, scriptName)
+	scriptHandle, err := os.Create(scriptPath)
+	_, err = scriptHandle.WriteString("true\n")
+	scriptHandle.Close()
+	assert.NoError(err)
+
 	differentPatch := &Role{
 		Name:    refRole.Name,
 		Jobs:    Jobs{refRole.Jobs[0], refRole.Jobs[1]},
-		Scripts: []string{"myrole.sh"},
+		Scripts: []string{scriptName},
 		rolesManifest: &RoleManifest{
 			manifestFilePath: releasePath,
 		},
@@ -256,4 +266,13 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 	differentPatchHash, _ := (&RoleManifest{Roles: Roles{differentPatch, altRole}}).GetRoleManifestDevPackageVersion("")
 	assert.NotEqual(firstHash, differentPatchHash, "role manifest hash should be dependent on patch string")
+
+	scriptHandle, err = os.Create(scriptPath)
+	assert.NoError(err)
+	_, err = scriptHandle.WriteString("false\n")
+	assert.NoError(err)
+	scriptHandle.Close()
+
+	differentPatchFileHash, _ := (&RoleManifest{Roles: Roles{differentPatch, altRole}}).GetRoleManifestDevPackageVersion("")
+	assert.NotEqual(differentPatchFileHash, differentPatchHash, "role manifest hash should be dependent on patch contents")
 }
