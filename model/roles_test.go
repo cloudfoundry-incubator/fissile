@@ -198,6 +198,88 @@ func TestRolesSort(t *testing.T) {
 	assert.Equal(roles[1].Name, "ddd")
 }
 
+func TestGetScriptSignatures(t *testing.T) {
+	assert := assert.New(t)
+
+	refRole := &Role{
+		Name: "bbb",
+		Jobs: Jobs{
+			{
+				SHA1: "Role 2 Job 1",
+				Packages: Packages{
+					{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
+					{Name: "bbb", SHA1: "Role 2 Job 1 Package 2"},
+				},
+			},
+			{
+				SHA1: "Role 2 Job 2",
+				Packages: Packages{
+					{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},
+				},
+			},
+		},
+	}
+
+	firstHash, _ := refRole.GetScriptSignatures()
+
+	workDir, err := ioutil.TempDir("", "fissile-test-")
+	assert.NoError(err)
+	defer os.RemoveAll(workDir)
+	releasePath := filepath.Join(workDir, "role.yml")
+
+	scriptName := "script.sh"
+	scriptPath := filepath.Join(workDir, scriptName)
+	scriptHandle, err := os.Create(scriptPath)
+	_, err = scriptHandle.WriteString("true\n")
+	scriptHandle.Close()
+	assert.NoError(err)
+
+	differentPatch := &Role{
+		Name:    refRole.Name,
+		Jobs:    Jobs{refRole.Jobs[0], refRole.Jobs[1]},
+		Scripts: []string{scriptName},
+		rolesManifest: &RoleManifest{
+			manifestFilePath: releasePath,
+		},
+	}
+
+	differentPatchHash, _ := differentPatch.GetScriptSignatures()
+	assert.NotEqual(firstHash, differentPatchHash, "role hash should be dependent on patch string")
+
+	scriptHandle, err = os.Create(scriptPath)
+	assert.NoError(err)
+	_, err = scriptHandle.WriteString("false\n")
+	assert.NoError(err)
+	scriptHandle.Close()
+
+	differentPatchFileHash, _ := differentPatch.GetScriptSignatures()
+	assert.NotEqual(differentPatchFileHash, differentPatchHash, "role manifest hash should be dependent on patch contents")
+}
+
+func TestGetTemplateSignatures(t *testing.T) {
+	assert := assert.New(t)
+
+	differentTemplate1 := &Role{
+		Name: "aaa",
+		Jobs: Jobs{},
+		Configuration: &configuration{
+			Templates: map[string]string{"foo": "bar"},
+		},
+	}
+
+	differentTemplate2 := &Role{
+		Name: "aaa",
+		Jobs: Jobs{},
+		Configuration: &configuration{
+			Templates: map[string]string{"bat": "baz"},
+		},
+	}
+
+	differentTemplateHash1, _ := differentTemplate1.GetTemplateSignatures()
+	differentTemplateHash2, _ := differentTemplate2.GetTemplateSignatures()
+	assert.NotEqual(differentTemplateHash1, differentTemplateHash2, "template hash should be dependent on template contents")
+}
+
 func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	assert := assert.New(t)
 
@@ -235,27 +317,6 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 		},
 	}
 
-	workDir, err := ioutil.TempDir("", "fissile-test-")
-	assert.NoError(err)
-	defer os.RemoveAll(workDir)
-	releasePath := filepath.Join(workDir, "role.yml")
-
-	scriptName := "script.sh"
-	scriptPath := filepath.Join(workDir, scriptName)
-	scriptHandle, err := os.Create(scriptPath)
-	_, err = scriptHandle.WriteString("true\n")
-	scriptHandle.Close()
-	assert.NoError(err)
-
-	differentPatch := &Role{
-		Name:    refRole.Name,
-		Jobs:    Jobs{refRole.Jobs[0], refRole.Jobs[1]},
-		Scripts: []string{scriptName},
-		rolesManifest: &RoleManifest{
-			manifestFilePath: releasePath,
-		},
-	}
-
 	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
 	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion("")
 	secondHash, _ := (&RoleManifest{Roles: Roles{altRole, refRole}}).GetRoleManifestDevPackageVersion("")
@@ -264,15 +325,4 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
 	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion("some string")
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
-	differentPatchHash, _ := (&RoleManifest{Roles: Roles{differentPatch, altRole}}).GetRoleManifestDevPackageVersion("")
-	assert.NotEqual(firstHash, differentPatchHash, "role manifest hash should be dependent on patch string")
-
-	scriptHandle, err = os.Create(scriptPath)
-	assert.NoError(err)
-	_, err = scriptHandle.WriteString("false\n")
-	assert.NoError(err)
-	scriptHandle.Close()
-
-	differentPatchFileHash, _ := (&RoleManifest{Roles: Roles{differentPatch, altRole}}).GetRoleManifestDevPackageVersion("")
-	assert.NotEqual(differentPatchFileHash, differentPatchHash, "role manifest hash should be dependent on patch contents")
 }

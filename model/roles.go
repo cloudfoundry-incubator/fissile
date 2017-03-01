@@ -349,6 +349,25 @@ func (r *Role) GetScriptSignatures() (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
+// GetTemplateSignatures returns the SHA1 of all of the templates and contents
+func (r *Role) GetTemplateSignatures() (string, error) {
+	hasher := sha1.New()
+
+	var templates []string
+
+	for k, v := range r.Configuration.Templates {
+		templates = append(templates, fmt.Sprintf("%s: %s", k, v))
+	}
+
+	sort.Strings(templates)
+
+	for _, template := range templates {
+		hasher.Write([]byte(template))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
 // GetRoleDevVersion gets the aggregate signature of all jobs and packages
 func (r *Role) GetRoleDevVersion() (string, error) {
 	roleSignature := ""
@@ -372,6 +391,15 @@ func (r *Role) GetRoleDevVersion() (string, error) {
 		return "", err
 	}
 	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+
+	// If there are templates, generate signature for them
+	if r.Configuration != nil && r.Configuration.Templates != nil {
+		sig, err = r.GetTemplateSignatures()
+		if err != nil {
+			return "", err
+		}
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+	}
 
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
