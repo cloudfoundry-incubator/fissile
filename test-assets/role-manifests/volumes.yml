@@ -1,7 +1,9 @@
 ---
 roles:
 - name: myrole
-  jobs: []
+  jobs:
+  - name: tor
+    release_name: tor
   run:
     scaling:
       min: 1
@@ -14,3 +16,6 @@ roles:
     - path: /mnt/shared
       tag: shared-volume
       size: 40 # cakes
+configuration:
+  variables:
+  - name: SOME_VAR

@@ -211,9 +211,19 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 			continue
 		}
 
+		var stringifiedValue string
+		if valueAsString, ok := value.(string); ok {
+			stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
+			if err != nil {
+				stringifiedValue = valueAsString
+			}
+		} else {
+			stringifiedValue = fmt.Sprintf("%v", value)
+		}
+
 		result = append(result, v1.EnvVar{
 			Name:  config.Name,
-			Value: fmt.Sprintf("%v", value),
+			Value: stringifiedValue,
 		})
 	}
 
