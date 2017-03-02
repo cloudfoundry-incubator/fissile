@@ -113,9 +113,13 @@ done
 
   trap killer SIGTERM
 
-  # monit -v without the -I would fork a child, but then we can't wait on it,
-  # so it's not very useful.
-  monit -vI &
+  if [[ "${LOG_LEVEL}" == "debug" || -n "${LOG_DEBUG}" ]]; then
+    # monit -v without the -I would fork a child, but then we can't wait on it,
+    # so it's not very useful.
+    monit -vI &
+  else
+    monit -I &
+  fi
   child=$!
   wait "$child"
 {{ end }}
