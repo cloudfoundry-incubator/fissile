@@ -323,10 +323,13 @@ func (r *Role) GetScriptPaths() map[string]string {
 func (r *Role) GetScriptSignatures() (string, error) {
 	hasher := sha1.New()
 
-	var scripts []string
+	i := 0
+	paths := r.GetScriptPaths()
+	scripts := make([]string, len(paths))
 
-	for _, f := range r.GetScriptPaths() {
-		scripts = append(scripts, f)
+	for _, f := range paths {
+		scripts[i] = f
+		i += 1
 	}
 
 	sort.Strings(scripts)
@@ -353,10 +356,12 @@ func (r *Role) GetScriptSignatures() (string, error) {
 func (r *Role) GetTemplateSignatures() (string, error) {
 	hasher := sha1.New()
 
-	var templates []string
+	i := 0
+	templates := make([]string, len(r.Configuration.Templates))
 
 	for k, v := range r.Configuration.Templates {
-		templates = append(templates, fmt.Sprintf("%s: %s", k, v))
+		templates[i] = fmt.Sprintf("%s: %s", k, v)
+		i += 1
 	}
 
 	sort.Strings(templates)
