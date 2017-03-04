@@ -329,7 +329,7 @@ func (r *Role) GetScriptSignatures() (string, error) {
 
 	for _, f := range paths {
 		scripts[i] = f
-		i += 1
+		i++
 	}
 
 	sort.Strings(scripts)
@@ -361,7 +361,7 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 
 	for k, v := range r.Configuration.Templates {
 		templates[i] = fmt.Sprintf("%s: %s", k, v)
-		i += 1
+		i++
 	}
 
 	sort.Strings(templates)
