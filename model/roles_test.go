@@ -229,9 +229,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	scriptName := "script.sh"
 	scriptPath := filepath.Join(workDir, scriptName)
-	scriptHandle, err := os.Create(scriptPath)
-	_, err = scriptHandle.WriteString("true\n")
-	scriptHandle.Close()
+	err = ioutil.WriteFile(scriptPath, []byte("true\n"), 0644)
 	assert.NoError(err)
 
 	differentPatch := &Role{
@@ -246,11 +244,8 @@ func TestGetScriptSignatures(t *testing.T) {
 	differentPatchHash, _ := differentPatch.GetScriptSignatures()
 	assert.NotEqual(firstHash, differentPatchHash, "role hash should be dependent on patch string")
 
-	scriptHandle, err = os.Create(scriptPath)
+	err = ioutil.WriteFile(scriptPath, []byte("false\n"), 0644)
 	assert.NoError(err)
-	_, err = scriptHandle.WriteString("false\n")
-	assert.NoError(err)
-	scriptHandle.Close()
 
 	differentPatchFileHash, _ := differentPatch.GetScriptSignatures()
 	assert.NotEqual(differentPatchFileHash, differentPatchHash, "role manifest hash should be dependent on patch contents")
