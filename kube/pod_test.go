@@ -127,6 +127,60 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	assert.False(sharedMount.ReadOnly)
 }
 
+func TestPodGetEnvVars(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	if !assert.Equal(1, role.Jobs.Len(), "Role should have one job") {
+		return
+	}
+
+	role.Jobs[0].Properties = []*model.JobProperty{
+		&model.JobProperty{
+			Name: "some-property",
+		},
+	}
+
+	role.Configuration.Templates["property.some-property"] = "((SOME_VAR))"
+
+	samples := []struct {
+		desc     string
+		input    string
+		expected string
+	}{
+		{
+			desc:     "Simple string",
+			input:    "simple string",
+			expected: "simple string",
+		},
+		{
+			desc:     "string with newline",
+			input:    `hello\nworld`,
+			expected: "hello\nworld",
+		},
+	}
+
+	for _, sample := range samples {
+		defaults := map[string]string{"SOME_VAR": sample.input}
+
+		vars, err := getEnvVars(role, defaults)
+		assert.NoError(err)
+		assert.NotEmpty(vars)
+
+		found := false
+		for _, result := range vars {
+			if result.Name == "SOME_VAR" {
+				found = true
+				assert.Equal(sample.expected, result.Value)
+			}
+		}
+		assert.True(found, "failed to find expected variable")
+	}
+}
+
 func TestPodGetContainerPorts(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert)
