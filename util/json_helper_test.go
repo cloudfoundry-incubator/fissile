@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,7 +59,7 @@ func TestJSONHelperValidInput(t *testing.T) {
 		}
 		result, err := JSONMarshal(unmarshaled)
 		if testData.errMsg != "" {
-			assert.Error(err, "Exepected test sample %s to result in an error", testData.name)
+			assert.Error(err, fmt.Sprintf("Exepected test sample %s to result in an error", testData.name))
 			assert.Contains(err.Error(), testData.errMsg, "Error message did not contain expected string for test sample %s", testData.name)
 		} else {
 			if assert.NoError(err, "Unexpected error for test sample %s", testData.name) {

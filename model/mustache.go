@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/hpcloud/fissile/mustache"
 )
@@ -21,6 +22,7 @@ func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
 	for _, job := range r.Jobs {
 		for _, property := range job.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
+
 			if template, ok := r.rolesManifest.Configuration.Templates[propertyName]; ok {
 
 				varsInTemplate, err := parseTemplate(template)
@@ -38,11 +40,29 @@ func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
 		}
 	}
 
-	result := []*ConfigurationVariable{}
+	// TODO we might want to exclude env vars that are from templates that are
+	// overwritten by per-role configs
+	for _, template := range r.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, envVar := range varsInTemplate {
+			if confVar, ok := configsDictionary[envVar]; ok {
+				configs[confVar.Name] = confVar
+			}
+		}
+	}
+
+	result := make(ConfigurationVariableSlice, 0, len(configs))
 
 	for _, value := range configs {
 		result = append(result, value)
 	}
+
+	sort.Sort(result)
 
 	return result, nil
 }

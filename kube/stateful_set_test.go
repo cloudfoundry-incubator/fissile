@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,8 +13,8 @@ import (
 
 	"github.com/hpcloud/fissile/model"
 	"github.com/stretchr/testify/assert"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 func isYAMLSubset(assert *assert.Assertions, expected, actual interface{}, prefix []string) bool {
@@ -98,7 +99,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	statefulset, deps, err := NewStatefulSet(role)
+	statefulset, deps, err := NewStatefulSet(role, &ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
@@ -127,12 +128,12 @@ func TestStatefulSetPorts(t *testing.T) {
 				Object: statefulset,
 			}),
 	}
-	yamlConfig, err := GetYamlConfig(&objects)
-	if !assert.NoError(err) {
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(&objects, &yamlConfig); !assert.NoError(err) {
 		return
 	}
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
@@ -194,11 +195,9 @@ func TestStatefulSetPorts(t *testing.T) {
 							-
 								name: http
 								containerPort: 8080
-								hostPort: 80
 							-
 								name: https
 								containerPort: 443
-								hostPort: 443
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
@@ -214,18 +213,19 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	statefulset, _, err := NewStatefulSet(role)
+	statefulset, _, err := NewStatefulSet(role, &ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
 
-	yamlConfig, err := GetYamlConfig(statefulset)
+	yamlConfig := bytes.Buffer{}
+	err = WriteYamlConfig(statefulset, &yamlConfig)
 	if !assert.NoError(err) {
 		return
 	}
 
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
@@ -250,21 +250,12 @@ func TestStatefulSetVolumes(t *testing.T) {
 					-
 						name: shared-volume
 						mountPath: /mnt/shared
-				volumes:
-					-
-						name: persistent-volume
-						persistentVolumeClaim:
-							claimName: myrole-persistent-persistent-volume
-					-
-						name: shared-volume
-						persistentVolumeClaim:
-							claimName: myrole-shared-shared-volume
 		volumeClaimTemplates:
 			-
 				metadata:
 					annotations:
 						volume.beta.kubernetes.io/storage-class: persistent
-					name: myrole-persistent-persistent-volume
+					name: persistent-volume
 				spec:
 					accessModes: [ReadWriteOnce]
 					resources:
@@ -274,7 +265,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 				metadata:
 					annotations:
 						volume.beta.kubernetes.io/storage-class: shared
-					name: myrole-shared-shared-volume
+					name: shared-volume
 				spec:
 					accessModes: [ReadWriteMany]
 					resources:

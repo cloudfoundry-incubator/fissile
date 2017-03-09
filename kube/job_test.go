@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,22 +44,24 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 
-	job, _, err := NewJob(role)
+	job, err := NewJob(role, &ExportSettings{})
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
 	assert.NotNil(job)
 
-	yamlConfig, err := GetYamlConfig(job)
-	if !assert.NoError(err) {
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
 		return
 	}
 
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
+	apiVersion: extensions/v1beta1
+	kind: Job
 	metadata:
 		name: pre-role
 	spec:
@@ -69,7 +72,6 @@ func TestJobPreFlight(t *testing.T) {
 				containers:
 				-
 					name: pre-role
-					image: foobar
 				restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
@@ -85,22 +87,24 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 
-	job, _, err := NewJob(role)
+	job, err := NewJob(role, &ExportSettings{})
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}
 	assert.NotNil(job)
 
-	yamlConfig, err := GetYamlConfig(job)
-	if !assert.NoError(err) {
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
 		return
 	}
 
 	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(yamlConfig), &actual)) {
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
+	apiVersion: extensions/v1beta1
+	kind: Job
 	metadata:
 		name: post-role
 	spec:
@@ -111,7 +115,6 @@ func TestJobPostFlight(t *testing.T) {
 				containers:
 				-
 					name: post-role
-					image: foobar
 				restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {

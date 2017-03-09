@@ -12,9 +12,25 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// RoleType is the type of the role; see the constants below
+type RoleType string
+
+// These are the types of roles available
 const (
-	boshTaskType = "bosh-task"
-	boshType     = "bosh"
+	RoleTypeBoshTask = RoleType("bosh-task") // A role that is a BOSH task
+	RoleTypeBosh     = RoleType("bosh")      // A role that is a BOSH job
+	RoleTypeDocker   = RoleType("docker")    // A role that is a raw Docker image
+)
+
+// FlightStage describes when a role should be executed
+type FlightStage string
+
+// These are the flight stages available
+const (
+	FlightStagePreFlight  = FlightStage("pre-flight")  // A role that runs before the main jobs start
+	FlightStageFlight     = FlightStage("flight")      // A role that is a main job
+	FlightStagePostFlight = FlightStage("post-flight") // A role that runs after the main jobs are up
+	FlightStageManual     = FlightStage("manual")      // A role that only runs via user intervention
 )
 
 // RoleManifest represents a collection of roles
@@ -33,14 +49,16 @@ type Role struct {
 	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
-	Type              string         `yaml:"type,omitempty"`
+	Type              RoleType       `yaml:"type,omitempty"`
 	JobNameList       []*roleJob     `yaml:"jobs"`
 	Configuration     *Configuration `yaml:"configuration"`
 	Run               *RoleRun       `yaml:"run"`
+	Tags              []string       `yaml:"tags"`
 
 	rolesManifest *RoleManifest
 }
 
+// RoleRun describes how a role should behave at runtime
 type RoleRun struct {
 	Scaling           *RoleRunScaling       `yaml:"scaling"`
 	Capabilities      []string              `yaml:"capabilities"`
@@ -49,25 +67,38 @@ type RoleRun struct {
 	Memory            int                   `yaml:"memory"`
 	VirtualCPUs       int                   `yaml:"virtual-cpus"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
+	FlightStage       FlightStage           `yaml:"flight-stage"`
+	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
 }
 
+// RoleRunScaling describes how a role should scale out at runtime
 type RoleRunScaling struct {
 	Min int32 `yaml:"min"`
 	Max int32 `yaml:"max"`
 }
 
+// RoleRunVolume describes a volume to be attached at runtime
 type RoleRunVolume struct {
 	Path string `yaml:"path"`
 	Tag  string `yaml:"tag"`
 	Size int    `yaml:"size"`
 }
 
+// RoleRunExposedPort describes a port to be available to other roles, or the outside world
 type RoleRunExposedPort struct {
 	Name     string `yaml:"name"`
 	Protocol string `yaml:"protocol"`
 	External int32  `yaml:"external"`
 	Internal int32  `yaml:"internal"`
 	Public   bool   `yaml:"public"`
+}
+
+// HealthCheck describes a non-standard health check endpoint
+type HealthCheck struct {
+	URL     string            `yaml:"url"`     // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
+	Headers map[string]string `yaml:"headers"` // Custom headers; only used for URL.
+	Command []string          `yaml:"command"` // Custom command. Cannot be used with other checks.
+	Port    int32             `yaml:"port"`    // Port for a TCP probe. Cannot be used with other checks.
 }
 
 // Roles is an array of Role*
@@ -80,6 +111,7 @@ type Configuration struct {
 	Variables []*ConfigurationVariable `yaml:"variables"`
 }
 
+// ConfigurationVariable is a configuration to be exposed to the IaaS
 type ConfigurationVariable struct {
 	Name        string                          `yaml:"name"`
 	Default     interface{}                     `yaml:"default"`
@@ -87,6 +119,26 @@ type ConfigurationVariable struct {
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 }
 
+// ConfigurationVariableSlice is a sortable slice of ConfigurationVariables
+type ConfigurationVariableSlice []*ConfigurationVariable
+
+// Len is the number of ConfigurationVariables in the slice
+func (confVars ConfigurationVariableSlice) Len() int {
+	return len(confVars)
+}
+
+// Less reports whether config variable at index i sort before the one at index j
+func (confVars ConfigurationVariableSlice) Less(i, j int) bool {
+	return strings.Compare(confVars[i].Name, confVars[j].Name) < 0
+}
+
+// Swap exchanges configuration variables at index i and index j
+func (confVars ConfigurationVariableSlice) Swap(i, j int) {
+	confVars[i], confVars[j] = confVars[j], confVars[i]
+}
+
+// ConfigurationVariableGenerator describes how to automatically generate values
+// for a configuration variable
 type ConfigurationVariableGenerator struct {
 	ID        string `yaml:"id"`
 	Type      string `yaml:"type"`
@@ -103,7 +155,7 @@ func (roles Roles) Len() int {
 	return len(roles)
 }
 
-// Less reports whether role at index i short sort before role at index j
+// Less reports whether role at index i sort before role at index j
 func (roles Roles) Less(i, j int) bool {
 	return strings.Compare(roles[i].Name, roles[j].Name) < 0
 }
@@ -138,13 +190,51 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, err
 	}
 
-	// Remove all roles that are not of the "bosh" or "bosh-task" type
-	// Default type is considered to be "bosh"
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
-		if role.Type != "" && role.Type != boshTaskType && role.Type != boshType {
+		// Normalize flight stage
+		if role.Run != nil {
+			switch role.Run.FlightStage {
+			case "":
+				role.Run.FlightStage = FlightStageFlight
+			case FlightStagePreFlight:
+			case FlightStageFlight:
+			case FlightStagePostFlight:
+			case FlightStageManual:
+			default:
+				return nil, fmt.Errorf("Role %s has an invalid flight stage %s", role.Name, role.Run.FlightStage)
+			}
+		}
+
+		// Remove all roles that are not of the "bosh" or "bosh-task" type
+		// Default type is considered to be "bosh"
+		switch role.Type {
+		case "":
+			role.Type = RoleTypeBosh
+		case RoleTypeBosh, RoleTypeBoshTask:
+			continue
+		case RoleTypeDocker:
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
+		default:
+			return nil, fmt.Errorf("Role %s has an invalid type %s", role.Name, role.Type)
+		}
+
+		// Ensure that we don't have conflicting health checks
+		if role.Run != nil && role.Run.HealthCheck != nil {
+			checks := make([]string, 0, 3)
+			if role.Run.HealthCheck.URL != "" {
+				checks = append(checks, "url")
+			}
+			if len(role.Run.HealthCheck.Command) > 0 {
+				checks = append(checks, "command")
+			}
+			if role.Run.HealthCheck.Port != 0 {
+				checks = append(checks, "port")
+			}
+			if len(checks) != 1 {
+				return nil, fmt.Errorf("Health check for role %s should have exactly one of url, command, or port; got %v", role.Name, checks)
+			}
 		}
 	}
 
@@ -243,6 +333,17 @@ func (r *Role) GetRoleDevVersion() string {
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// HasTag returns true if the role has a specific tag
+func (r *Role) HasTag(tag string) bool {
+	for _, t := range r.Tags {
+		if t == tag {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *Role) calculateRoleConfigurationTemplates() {

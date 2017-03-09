@@ -1,26 +1,45 @@
 package kube
 
 import (
+	"fmt"
+
 	"github.com/hpcloud/fissile/model"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	batchv2alpha1 "k8s.io/client-go/1.5/pkg/apis/batch/v2alpha1"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	meta "k8s.io/client-go/pkg/api/unversioned"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on
-func NewJob(role *model.Role) (*batchv2alpha1.Job, []runtime.Object, error) {
-	podTemplate, deps, err := NewPodTemplate(role)
+func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
+	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+
+	if role.Run == nil {
+		return nil, fmt.Errorf("Role %s has no run information", role.Name)
+	}
+
 	// Jobs must have a restart policy that isn't "always"
-	podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyOnFailure
-	return &batchv2alpha1.Job{
+	switch role.Run.FlightStage {
+	case model.FlightStageManual:
+		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyNever
+	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
+		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyOnFailure
+	default:
+		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
+	}
+
+	return &extra.Job{
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "extensions/v1beta1",
+			Kind:       "Job",
+		},
 		ObjectMeta: apiv1.ObjectMeta{
 			Name: role.Name,
 		},
-		Spec: batchv2alpha1.JobSpec{
+		Spec: extra.JobSpec{
 			Template: podTemplate,
 		},
-	}, deps, nil
+	}, nil
 }

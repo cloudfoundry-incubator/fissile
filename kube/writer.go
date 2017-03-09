@@ -1,10 +1,12 @@
 package kube
 
 import (
-	"bytes"
+	"io"
 
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/runtime"
+	"k8s.io/client-go/pkg/runtime"
+	"k8s.io/client-go/pkg/runtime/serializer/json"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/client-go/tools/clientcmd/api/v1"
 )
 
 const (
@@ -14,19 +16,27 @@ const (
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
 
-// GetYamlConfig returns the YAML serialized configuration of a k8s object
-func GetYamlConfig(kubeObject runtime.Object) (string, error) {
-	serializer, ok := api.Codecs.SerializerForFileExtension("yaml")
-	if !ok {
-		// There's a problem with the code, if we can't find the yaml serializer
-		panic("Can't find the kubernetes yaml serializer")
+// WriteYamlConfig writes the YAML serialized configuration of a k8s object to
+// a specified writer
+func WriteYamlConfig(kubeObject runtime.Object, writer io.Writer) error {
+	Scheme := runtime.NewScheme()
+	if err := api.AddToScheme(Scheme); err != nil {
+		// Programmer error, detect immediately
+		panic(err)
+	}
+	if err := v1.AddToScheme(Scheme); err != nil {
+		// Programmer error, detect immediately
+		panic(err)
 	}
 
-	buf := new(bytes.Buffer)
-	err := serializer.Encode(kubeObject, buf)
-	if err != nil {
-		return "", err
+	if _, err := writer.Write([]byte("---\n")); err != nil {
+		return err
 	}
 
-	return buf.String(), nil
+	serializer := json.NewYAMLSerializer(json.DefaultMetaFactory, Scheme, Scheme)
+	if err := serializer.Encode(kubeObject, writer); err != nil {
+		return err
+	}
+
+	return nil
 }

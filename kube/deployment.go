@@ -1,25 +1,19 @@
 package kube
 
 import (
-	"fmt"
-
 	"github.com/hpcloud/fissile/model"
 
-	meta "k8s.io/client-go/1.5/pkg/api/unversioned"
-	apiv1 "k8s.io/client-go/1.5/pkg/api/v1"
-	extra "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	meta "k8s.io/client-go/pkg/api/unversioned"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
+	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// NewDeployment creates a Deployment for the given role
-func NewDeployment(role *model.Role) (*extra.Deployment, error) {
+// NewDeployment creates a Deployment for the given role, and its attached service
+func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.Service, error) {
 
-	podTemplate, podDeps, err := NewPodTemplate(role)
+	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
-		return nil, err
-	}
-
-	if len(podDeps) > 0 {
-		return nil, fmt.Errorf("Unexpected dependent objects for deployment pod template")
+		return nil, nil, err
 	}
 
 	return &extra.Deployment{
@@ -35,12 +29,12 @@ func NewDeployment(role *model.Role) (*extra.Deployment, error) {
 		},
 		Spec: extra.DeploymentSpec{
 			Replicas: &role.Run.Scaling.Min,
-			Selector: &extra.LabelSelector{
+			Selector: &meta.LabelSelector{
 				MatchLabels: map[string]string{RoleNameLabel: role.Name},
 			},
 			Template: podTemplate,
 		},
-	}, nil
+	}, NewClusterIPService(role, false), nil
 }
 
 //metadata:
