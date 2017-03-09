@@ -271,7 +271,7 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 				},
 			},
 			// TODO: make this configurable (figure out where the knob should live)
-			InitialDelaySeconds: 180,
+			InitialDelaySeconds: 600,
 		}
 	default:
 		return nil
