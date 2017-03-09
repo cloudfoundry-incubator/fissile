@@ -5,7 +5,7 @@ import (
 
 	"github.com/hpcloud/fissile/model"
 	meta "k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
+	apiv1 "k8s.io/client-go/pkg/api/v1"
 	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
@@ -23,9 +23,9 @@ func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
 	// Jobs must have a restart policy that isn't "always"
 	switch role.Run.FlightStage {
 	case model.FlightStageManual:
-		podTemplate.Spec.RestartPolicy = v1.RestartPolicyNever
+		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyNever
 	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyOnFailure
 	default:
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
@@ -35,7 +35,7 @@ func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
 			APIVersion: "extensions/v1beta1",
 			Kind:       "Job",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: apiv1.ObjectMeta{
 			Name: role.Name,
 		},
 		Spec: extra.JobSpec{

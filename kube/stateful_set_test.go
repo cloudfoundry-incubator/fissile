@@ -147,11 +147,11 @@ func TestStatefulSetPorts(t *testing.T) {
 				-
 						name: http
 						port: 80
-						targetPort: 8080
+						targetPort: http
 				-
 						name: https
 						port: 443
-						targetPort: 443
+						targetPort: https
 				selector:
 					skiff-role-name: myrole
 				type: ClusterIP

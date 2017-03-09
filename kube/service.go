@@ -49,7 +49,7 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 			Protocol: protocol,
 		}
 		if !headless {
-			svcPort.TargetPort = intstr.FromInt(int(portDef.Internal))
+			svcPort.TargetPort = intstr.FromString(portDef.Name)
 		}
 		service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		if portDef.Public {
