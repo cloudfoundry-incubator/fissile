@@ -11,11 +11,11 @@ import (
 )
 
 // NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
+func NewClusterIPService(role *model.Role, headless bool) (*apiv1.Service, error) {
 	if len(role.Run.ExposedPorts) == 0 {
 		// Kubernetes refuses to create services with no ports, so we should
 		// not return anything at all in this case
-		return nil
+		return nil, nil
 	}
 
 	service := &apiv1.Service{
@@ -43,18 +43,24 @@ func NewClusterIPService(role *model.Role, headless bool) *apiv1.Service {
 		if strings.ToUpper(portDef.Protocol) == "UDP" {
 			protocol = apiv1.ProtocolUDP
 		}
-		svcPort := apiv1.ServicePort{
-			Name:     portDef.Name,
-			Port:     portDef.External,
-			Protocol: protocol,
+		minPort, maxPort, err := parsePortRange(portDef.External, portDef.Name, "external")
+		if err != nil {
+			return nil, err
 		}
-		if !headless {
-			svcPort.TargetPort = intstr.FromString(portDef.Name)
+		for portNum := minPort; portNum <= maxPort; portNum++ {
+			svcPort := apiv1.ServicePort{
+				Name:     portDef.Name,
+				Port:     portNum,
+				Protocol: protocol,
+			}
+			if !headless {
+				svcPort.TargetPort = intstr.FromString(portDef.Name)
+			}
+			service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		}
-		service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		if portDef.Public {
 			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
 		}
 	}
-	return service
+	return service, nil
 }

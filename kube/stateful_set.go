@@ -27,6 +27,15 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 
 	volumeClaimTemplates := getVolumeClaims(role)
 
+	headedService, err := NewClusterIPService(role, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	headlessService, err := NewClusterIPService(role, true)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &v1beta1.StatefulSet{
 			TypeMeta: meta.TypeMeta{
 				APIVersion: "apps/v1beta1",
@@ -51,10 +60,10 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 			},
 			Items: []runtime.RawExtension{
 				runtime.RawExtension{
-					Object: NewClusterIPService(role, false),
+					Object: headedService,
 				},
 				runtime.RawExtension{
-					Object: NewClusterIPService(role, true),
+					Object: headlessService,
 				},
 			},
 		}, nil

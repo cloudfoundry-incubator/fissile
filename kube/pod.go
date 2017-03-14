@@ -103,9 +103,9 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) string {
 
 // getContainerPorts returns a list of ports for a role
 func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
-	result := make([]v1.ContainerPort, len(role.Run.ExposedPorts))
+	result := make([]v1.ContainerPort, 0, len(role.Run.ExposedPorts))
 
-	for i, port := range role.Run.ExposedPorts {
+	for _, port := range role.Run.ExposedPorts {
 		var protocol v1.Protocol
 
 		switch strings.ToLower(port.Protocol) {
@@ -151,14 +151,45 @@ func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
 			return nil, fmt.Errorf("Port name %s does not contain any letters or digits", port.Name)
 		}
 
-		if len(name) > 15 {
-			// Kubernetes doesn't like names that long
-			name = fmt.Sprintf("%s%x", name[:7], crc32.ChecksumIEEE([]byte(name)))
+		// Convert port range specifications to port numbers
+		minInternalPort, maxInternalPort, err := parsePortRange(port.Internal, port.Name, "internal")
+		if err != nil {
+			return nil, err
 		}
-		result[i] = v1.ContainerPort{
-			Name:          name,
-			ContainerPort: int32(port.Internal),
-			Protocol:      protocol,
+		// The external port is optional here; we only need it if it's public
+		var minExternalPort, maxExternalPort int32
+		if port.External != "" {
+			minExternalPort, maxExternalPort, err = parsePortRange(port.External, port.Name, "external")
+			if err != nil {
+				return nil, err
+			}
+		}
+		if port.External != "" && maxInternalPort-minInternalPort != maxExternalPort-minExternalPort {
+			return nil, fmt.Errorf("Port %s has mismatched internal and external port ranges %s and %s",
+				port.Name, port.Internal, port.External)
+		}
+
+		rangeSize := maxInternalPort - minInternalPort
+		suffixLength := 0
+		if rangeSize > 1 {
+			suffixLength = len(fmt.Sprintf("-%d", rangeSize))
+		}
+		if len(name)+suffixLength > 15 {
+			// Kubernetes doesn't like names that long
+			availableLength := 7 - suffixLength
+			name = fmt.Sprintf("%s%x", name[:availableLength], crc32.ChecksumIEEE([]byte(name)))
+		}
+
+		for i := int32(0); i <= rangeSize; i++ {
+			singleName := name
+			if suffixLength > 0 {
+				singleName = fmt.Sprintf("%s-%d", name, i)
+			}
+			result = append(result, v1.ContainerPort{
+				Name:          singleName,
+				ContainerPort: minInternalPort + i,
+				Protocol:      protocol,
+			})
 		}
 	}
 
@@ -319,10 +350,14 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 		if readinessPort == nil {
 			return nil, nil
 		}
+		probePort, _, err := parsePortRange(readinessPort.Internal, readinessPort.Name, "internal")
+		if err != nil {
+			return nil, err
+		}
 		return &v1.Probe{
 			Handler: v1.Handler{
 				TCPSocket: &v1.TCPSocketAction{
-					Port: intstr.FromInt(int(readinessPort.Internal)),
+					Port: intstr.FromInt(int(probePort)),
 				},
 			},
 		}, nil

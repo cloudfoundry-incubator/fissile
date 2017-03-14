@@ -204,7 +204,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "tcp-port",
 				Protocol: "TcP",
-				Internal: 1234,
+				Internal: "1234",
 			}},
 			expected: []v1.ContainerPort{{
 				Name:          "tcp-port",
@@ -217,7 +217,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "udp-port",
 				Protocol: "uDp",
-				Internal: 1234,
+				Internal: "1234",
 			}},
 			expected: []v1.ContainerPort{{
 				Name:          "udp-port",
@@ -230,7 +230,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "port-with-a-very-long-name",
 				Protocol: "tcp",
-				Internal: 4321,
+				Internal: "4321",
 			}},
 			expected: []v1.ContainerPort{{
 				Name:          "port-wi40a84c6a",
@@ -243,7 +243,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "-!port@NAME$--$here#-%Ｕｎｉｃｏｄｅ*",
 				Protocol: "tcp",
-				Internal: 1234,
+				Internal: "1234",
 			}},
 			expected: []v1.ContainerPort{{
 				Name:          "portNAME-here",
@@ -256,7 +256,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "-!-@-#-$-%-^-&-*-(-)-",
 				Protocol: "tcp",
-				Internal: 1234,
+				Internal: "1234",
 			}},
 			err: "Port name -!-@-#-$-%-^-&-*-(-)- does not contain any letters or digits",
 		},
@@ -266,12 +266,12 @@ func TestPodGetContainerPorts(t *testing.T) {
 				{
 					Name:     "first-port",
 					Protocol: "tcp",
-					Internal: 1234,
+					Internal: "1234",
 				},
 				{
 					Name:     "second-port",
 					Protocol: "udp",
-					Internal: 5678,
+					Internal: "5678",
 				},
 			},
 			expected: []v1.ContainerPort{
@@ -287,6 +287,31 @@ func TestPodGetContainerPorts(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "Port range should be supported",
+			ports: []*model.RoleRunExposedPort{{
+				Name:     "port-range",
+				Protocol: "tcp",
+				Internal: "1234-1236",
+			}},
+			expected: []v1.ContainerPort{
+				{
+					Name:          "port-range-0",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 1234,
+				},
+				{
+					Name:          "port-range-1",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 1235,
+				},
+				{
+					Name:          "port-range-2",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 1236,
+				},
+			},
+		},
 	}
 
 	// TODO use golang 1.7's subtests
@@ -295,7 +320,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 		actual, err := getContainerPorts(role)
 		if sample.err != "" {
 			assert.EqualError(err, sample.err, sample.desc)
-		} else {
+		} else if assert.NoError(err, sample.desc) {
 			assert.Equal(sample.expected, actual, sample.desc)
 		}
 	}

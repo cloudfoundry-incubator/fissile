@@ -16,6 +16,11 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deploymen
 		return nil, nil, err
 	}
 
+	svc, err := NewClusterIPService(role, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &extra.Deployment{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "extensions/v1beta1",
@@ -34,7 +39,7 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deploymen
 			},
 			Template: podTemplate,
 		},
-	}, NewClusterIPService(role, false), nil
+	}, svc, nil
 }
 
 //metadata:
