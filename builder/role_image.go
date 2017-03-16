@@ -366,57 +366,54 @@ func (j roleBuildJob) Run() {
 	default:
 	}
 
-	roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
-	if !j.force {
-		if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
-			j.resultsCh <- err
-			return
-		} else if hasImage {
-			j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
-			j.resultsCh <- nil
-			return
+	j.resultsCh <- func() error {
+		roleImageName := GetRoleDevImageName(j.repository, j.role, j.role.GetRoleDevVersion())
+		if !j.force {
+			if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
+				return err
+			} else if hasImage {
+				j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
+				return nil
+			}
 		}
-	}
 
-	if j.builder.metricsPath != "" {
-		seriesName := fmt.Sprintf("create-role-images::%s", roleImageName)
+		if j.builder.metricsPath != "" {
+			seriesName := fmt.Sprintf("create-role-images::%s", roleImageName)
 
-		stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
-		defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
-	}
+			stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
+			defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
+		}
 
-	j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
-	dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.baseImageName)
-	if err != nil {
-		j.resultsCh <- fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
-		return
-	}
+		j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
+		dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.baseImageName)
+		if err != nil {
+			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
+		}
 
-	if j.noBuild {
-		j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
-		j.resultsCh <- nil
-		return
-	}
+		if j.noBuild {
+			j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
+			return nil
+		}
 
-	if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
-		dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
-	}
+		if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
+			dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
+		}
 
-	j.ui.Printf("Building docker image of %s in %s ...\n", color.YellowString(j.role.Name), color.YellowString(dockerfileDir))
+		j.ui.Printf("Building docker image of %s in %s ...\n", color.YellowString(j.role.Name), color.YellowString(dockerfileDir))
 
-	log := new(bytes.Buffer)
-	stdoutWriter := docker.NewFormattingWriter(
-		log,
-		docker.ColoredBuildStringFunc(roleImageName),
-	)
+		log := new(bytes.Buffer)
+		stdoutWriter := docker.NewFormattingWriter(
+			log,
+			docker.ColoredBuildStringFunc(roleImageName),
+		)
 
-	err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
-	if err != nil {
-		log.WriteTo(j.ui)
-		j.resultsCh <- fmt.Errorf("Error building image: %s", err.Error())
-		return
-	}
-	j.resultsCh <- nil
+		err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
+		if err != nil {
+			log.WriteTo(j.ui)
+			return fmt.Errorf("Error building image: %s", err.Error())
+		}
+		return nil
+	}()
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel

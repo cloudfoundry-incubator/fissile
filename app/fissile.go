@@ -11,14 +11,15 @@ import (
 	"github.com/hpcloud/fissile/builder"
 	"github.com/hpcloud/fissile/compilator"
 	"github.com/hpcloud/fissile/docker"
+	"github.com/hpcloud/fissile/kube"
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
-	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
+	"github.com/hpcloud/stampy"
 	"github.com/hpcloud/termui"
-
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -713,4 +714,96 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 		}
 	}
 	return &HashDiffs{AddedKeys: added, DeletedKeys: deleted, ChangedValues: changed}
+}
+
+// GenerateKube will create a set of configuration files suitable for deployment
+// on Kubernetes
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string, useMemoryLimits bool) error {
+
+	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	f.UI.Println("Loading defaults from env files")
+	defaults, err := godotenv.Read(defaultFiles...)
+	if err != nil {
+		return err
+	}
+
+	settings := &kube.ExportSettings{
+		Defaults:        defaults,
+		Registry:        registry,
+		Organization:    organization,
+		Repository:      repository,
+		UseMemoryLimits: useMemoryLimits,
+	}
+
+	for _, role := range rolesManifest.Roles {
+		roleTypeDir := filepath.Join(outputDir, string(role.Type))
+		if err = os.MkdirAll(roleTypeDir, 0755); err != nil {
+			return err
+		}
+		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yml", role.Name))
+
+		f.UI.Printf("Writing config %s for role %s\n",
+			color.CyanString(outputPath),
+			color.CyanString(role.Name),
+		)
+
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+
+		switch role.Type {
+		case model.RoleTypeBoshTask:
+			job, err := kube.NewJob(role, settings)
+			if err != nil {
+				return err
+			}
+
+			if err := kube.WriteYamlConfig(job, outputFile); err != nil {
+				return err
+			}
+
+		case model.RoleTypeBosh:
+			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
+
+			if role.HasTag("clustered") || needsStorage {
+				statefulSet, deps, err := kube.NewStatefulSet(role, settings)
+				if err != nil {
+					return err
+				}
+
+				if err := kube.WriteYamlConfig(statefulSet, outputFile); err != nil {
+					return err
+				}
+
+				if err := kube.WriteYamlConfig(deps, outputFile); err != nil {
+					return err
+				}
+
+				continue
+			}
+
+			deployment, svc, err := kube.NewDeployment(role, settings)
+			if err != nil {
+				return err
+			}
+
+			if err := kube.WriteYamlConfig(deployment, outputFile); err != nil {
+				return err
+			}
+
+			if svc != nil {
+				if err := kube.WriteYamlConfig(svc, outputFile); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }

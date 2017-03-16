@@ -20,3 +20,12 @@ roles:
   jobs:
   - name: tor
     release_name: tor
+configuration:
+  variables:
+  - name: FOO
+  - name: BAR
+  - name: PELERINUL
+  templates:
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
