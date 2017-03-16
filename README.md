@@ -14,10 +14,10 @@ You can find detailed usage documentation [here](./docs/fissile.md).
 
 ### TODO
 
-[ ] Implement extension of the role manifest in the fissile model
-[ ] Implement the conversion of role manifest information to kube objects in fissile
-[ ] Alter the role manifest so we no longer use HCP constructs (for service discovery)
-[ ] Deploy & test
+- [ ] Implement extension of the role manifest in the fissile model
+- [ ] Implement the conversion of role manifest information to kube objects in fissile
+- [ ] Alter the role manifest so we no longer use HCP constructs (for service discovery)
+- [ ] Deploy & test
 
 ### Generated objects
 
