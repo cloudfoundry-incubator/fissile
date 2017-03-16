@@ -7,6 +7,7 @@ import (
 )
 
 // parsePortRange converts a port range string to a starting and an ending port number
+// port ranges can be single integers (e.g. 8080) or they can be ranges (e.g. 10001-10010)
 func parsePortRange(portRange, name, description string) (int32, int32, error) {
 	// Note that we do ParseInt with bitSize=16 because the max port number is 65535
 
