@@ -107,8 +107,8 @@ type Roles []*Role
 // Configuration contains information about how to configure the
 // resulting images
 type Configuration struct {
-	Templates map[string]string        `yaml:"templates"`
-	Variables []*ConfigurationVariable `yaml:"variables"`
+	Templates map[string]string          `yaml:"templates"`
+	Variables ConfigurationVariableSlice `yaml:"variables"`
 }
 
 // ConfigurationVariable is a configuration to be exposed to the IaaS

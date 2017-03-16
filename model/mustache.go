@@ -9,7 +9,7 @@ import (
 
 // GetVariablesForRole returns all the environment variables required for
 // calculating all the templates for the role
-func (r *Role) GetVariablesForRole() ([]*ConfigurationVariable, error) {
+func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
 	configsDictionary := map[string]*ConfigurationVariable{}
 
