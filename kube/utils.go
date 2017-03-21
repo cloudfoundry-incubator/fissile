@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"hash/crc32"
 	"strconv"
 	"strings"
 )
@@ -32,4 +33,73 @@ func parsePortRange(portRange, name, description string) (int32, int32, error) {
 		return 0, 0, fmt.Errorf("Port %s has invalid %s port range %s", name, description, portRange)
 	}
 	return int32(minPort), int32(maxPort), nil
+}
+
+type portInfo struct {
+	name string
+	port int32
+}
+
+func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
+
+	// We may need to fixup the port name.  It must:
+	// - not be empty
+	// - be no more than 15 characters long
+	// - consist only of letters, digits, or hyphen
+	// - start and end with a letter or a digit
+	// - there can not be consecutive hyphens
+	nameChars := make([]rune, 0, len(name))
+	for _, ch := range name {
+		switch {
+		case ch >= 'A' && ch <= 'Z':
+			nameChars = append(nameChars, ch)
+		case ch >= 'a' && ch <= 'z':
+			nameChars = append(nameChars, ch)
+		case ch >= '0' && ch <= '9':
+			nameChars = append(nameChars, ch)
+		case ch == '-':
+			if len(nameChars) == 0 {
+				// Skip leading hyphens
+				continue
+			}
+			if nameChars[len(nameChars)-1] == '-' {
+				// Skip consecutive hyphens
+				continue
+			}
+			nameChars = append(nameChars, ch)
+		}
+	}
+	// Strip trailing hyphens
+	for len(nameChars) > 0 && nameChars[len(nameChars)-1] == '-' {
+		nameChars = nameChars[:len(nameChars)-1]
+	}
+	fixedName := string(nameChars)
+	if fixedName == "" {
+		return nil, fmt.Errorf("Port name %s does not contain any letters or digits", name)
+	}
+
+	rangeSize := maxPort - minPort
+	suffixLength := 0
+	if rangeSize > 0 {
+		suffixLength = len(fmt.Sprintf("-%d", rangeSize))
+	}
+	if len(fixedName)+suffixLength > 15 {
+		// Kubernetes doesn't like names that long
+		availableLength := 7 - suffixLength
+		fixedName = fmt.Sprintf("%s%x", fixedName[:availableLength], crc32.ChecksumIEEE([]byte(fixedName)))
+	}
+
+	results := make([]portInfo, 0, maxPort-minPort+1)
+	for i := int32(0); i <= rangeSize; i++ {
+		singleName := fixedName
+		if suffixLength > 0 {
+			singleName = fmt.Sprintf("%s-%d", fixedName, i)
+		}
+		results = append(results, portInfo{
+			name: singleName,
+			port: minPort + i,
+		})
+	}
+
+	return results, nil
 }

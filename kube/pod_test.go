@@ -226,32 +226,6 @@ func TestPodGetContainerPorts(t *testing.T) {
 			}},
 		},
 		{
-			desc: "Long port names should be fixed",
-			ports: []*model.RoleRunExposedPort{{
-				Name:     "port-with-a-very-long-name",
-				Protocol: "tcp",
-				Internal: "4321",
-			}},
-			expected: []v1.ContainerPort{{
-				Name:          "port-wi40a84c6a",
-				ContainerPort: 4321,
-				Protocol:      v1.ProtocolTCP,
-			}},
-		},
-		{
-			desc: "Odd port names should be sanitized",
-			ports: []*model.RoleRunExposedPort{{
-				Name:     "-!port@NAME$--$here#-%Ｕｎｉｃｏｄｅ*",
-				Protocol: "tcp",
-				Internal: "1234",
-			}},
-			expected: []v1.ContainerPort{{
-				Name:          "portNAME-here",
-				ContainerPort: 1234,
-				Protocol:      v1.ProtocolTCP,
-			}},
-		},
-		{
 			desc: "Invalid port names should be rejected",
 			ports: []*model.RoleRunExposedPort{{
 				Name:     "-!-@-#-$-%-^-&-*-(-)-",
@@ -288,27 +262,22 @@ func TestPodGetContainerPorts(t *testing.T) {
 			},
 		},
 		{
-			desc: "Port range should be supported",
+			desc: "Port range with long name should be renamed",
 			ports: []*model.RoleRunExposedPort{{
-				Name:     "port-range",
-				Protocol: "tcp",
-				Internal: "1234-1236",
+				Name:     "long-port-range-name",
+				Protocol: "udp",
+				Internal: "5678-5679",
 			}},
 			expected: []v1.ContainerPort{
 				{
-					Name:          "port-range-0",
-					Protocol:      v1.ProtocolTCP,
-					ContainerPort: 1234,
+					Name:          "long-28321630-0",
+					Protocol:      v1.ProtocolUDP,
+					ContainerPort: 5678,
 				},
 				{
-					Name:          "port-range-1",
-					Protocol:      v1.ProtocolTCP,
-					ContainerPort: 1235,
-				},
-				{
-					Name:          "port-range-2",
-					Protocol:      v1.ProtocolTCP,
-					ContainerPort: 1236,
+					Name:          "long-28321630-1",
+					Protocol:      v1.ProtocolUDP,
+					ContainerPort: 5679,
 				},
 			},
 		},
