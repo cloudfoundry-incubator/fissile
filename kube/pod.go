@@ -3,7 +3,6 @@ package kube
 import (
 	"encoding/base64"
 	"fmt"
-	"hash/crc32"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -115,42 +114,6 @@ func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
 			protocol = v1.ProtocolUDP
 		}
 
-		// We may need to fixup the port name.  It must:
-		// - not be empty
-		// - be no more than 15 characters long
-		// - consist only of letters, digits, or hyphen
-		// - start and end with a letter or a digit
-		// - there can not be consecutive hyphens
-		nameChars := make([]rune, 0, len(port.Name))
-		for _, ch := range port.Name {
-			switch {
-			case ch >= 'A' && ch <= 'Z':
-				nameChars = append(nameChars, ch)
-			case ch >= 'a' && ch <= 'z':
-				nameChars = append(nameChars, ch)
-			case ch >= '0' && ch <= '9':
-				nameChars = append(nameChars, ch)
-			case ch == '-':
-				if len(nameChars) == 0 {
-					// Skip leading hyphens
-					continue
-				}
-				if nameChars[len(nameChars)-1] == '-' {
-					// Skip consecutive hyphens
-					continue
-				}
-				nameChars = append(nameChars, ch)
-			}
-		}
-		// Strip trailing hyphens
-		for len(nameChars) > 0 && nameChars[len(nameChars)-1] == '-' {
-			nameChars = nameChars[:len(nameChars)-1]
-		}
-		name := string(nameChars)
-		if name == "" {
-			return nil, fmt.Errorf("Port name %s does not contain any letters or digits", port.Name)
-		}
-
 		// Convert port range specifications to port numbers
 		minInternalPort, maxInternalPort, err := parsePortRange(port.Internal, port.Name, "internal")
 		if err != nil {
@@ -169,25 +132,14 @@ func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
 				port.Name, port.Internal, port.External)
 		}
 
-		rangeSize := maxInternalPort - minInternalPort
-		suffixLength := 0
-		if rangeSize > 1 {
-			suffixLength = len(fmt.Sprintf("-%d", rangeSize))
+		portInfos, err := getPortInfo(port.Name, minInternalPort, maxInternalPort)
+		if err != nil {
+			return nil, err
 		}
-		if len(name)+suffixLength > 15 {
-			// Kubernetes doesn't like names that long
-			availableLength := 7 - suffixLength
-			name = fmt.Sprintf("%s%x", name[:availableLength], crc32.ChecksumIEEE([]byte(name)))
-		}
-
-		for i := int32(0); i <= rangeSize; i++ {
-			singleName := name
-			if suffixLength > 0 {
-				singleName = fmt.Sprintf("%s-%d", name, i)
-			}
+		for _, portInfo := range portInfos {
 			result = append(result, v1.ContainerPort{
-				Name:          singleName,
-				ContainerPort: minInternalPort + i,
+				Name:          portInfo.name,
+				ContainerPort: portInfo.port,
 				Protocol:      protocol,
 			})
 		}

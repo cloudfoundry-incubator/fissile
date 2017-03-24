@@ -40,21 +40,30 @@ func NewClusterIPService(role *model.Role, headless bool) (*apiv1.Service, error
 	}
 	for _, portDef := range role.Run.ExposedPorts {
 		protocol := apiv1.ProtocolTCP
-		if strings.ToUpper(portDef.Protocol) == "UDP" {
+		switch strings.ToLower(portDef.Protocol) {
+		case "tcp":
+			protocol = apiv1.ProtocolTCP
+		case "udp":
 			protocol = apiv1.ProtocolUDP
 		}
+
 		minPort, maxPort, err := parsePortRange(portDef.External, portDef.Name, "external")
 		if err != nil {
 			return nil, err
 		}
-		for portNum := minPort; portNum <= maxPort; portNum++ {
+		portInfos, err := getPortInfo(portDef.Name, minPort, maxPort)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, portInfoEntry := range portInfos {
 			svcPort := apiv1.ServicePort{
-				Name:     portDef.Name,
-				Port:     portNum,
+				Name:     portInfoEntry.name,
+				Port:     portInfoEntry.port,
 				Protocol: protocol,
 			}
 			if !headless {
-				svcPort.TargetPort = intstr.FromString(portDef.Name)
+				svcPort.TargetPort = intstr.FromString(portInfoEntry.name)
 			}
 			service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		}
