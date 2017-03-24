@@ -15,6 +15,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/fissile/validation"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/stampy"
@@ -777,6 +778,11 @@ roleLoop:
 			}
 
 		case model.RoleTypeBosh:
+
+			if errs := validation.ValidateRoleRun(role.Run); len(errs) != 0 {
+				return fmt.Errorf(errs.Errors())
+			}
+
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
