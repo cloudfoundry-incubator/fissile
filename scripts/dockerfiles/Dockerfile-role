@@ -1,7 +1,7 @@
 FROM {{ index . "base_image" }}
 
 {{ if not .dev }}
-MAINTAINER hcf@hpe.com
+MAINTAINER cloudfoundry@suse.example
 {{ end }}
 
 LABEL "role"="{{ .role.Name }}" "version"="{{ .image_version }}"

@@ -29,4 +29,4 @@ apt-get update
 apt-get install -o Dpkg::Options::="--force-confnew" -f -y --force-yes --no-install-recommends $debs
 
 # Add the vcap:vcap user to match CF
-useradd -m --comment 'hcf user' vcap
+useradd -m --comment 'fissile user' vcap

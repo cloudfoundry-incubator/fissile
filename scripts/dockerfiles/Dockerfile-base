@@ -1,6 +1,6 @@
 FROM {{ .BaseImage }}
 
-MAINTAINER hcf@hpe.com
+MAINTAINER cloudfoundry@suse.example
 
 # Install prerequisites
 # Install monit and other dependencies
@@ -8,7 +8,7 @@ MAINTAINER hcf@hpe.com
 # Enable resolvconf updates
 # Setup default locale and timezone
 
-RUN useradd -m --comment 'hcf user' vcap && \
+RUN useradd -m --comment 'fissile user' vcap && \
     groupadd --system admin && \
     usermod -G admin,adm,audio,cdrom,dialout,floppy,video,dip,plugdev vcap && \
     apt-get update && \
