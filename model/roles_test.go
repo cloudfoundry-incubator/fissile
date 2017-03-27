@@ -257,7 +257,7 @@ func TestGetTemplateSignatures(t *testing.T) {
 	differentTemplate1 := &Role{
 		Name: "aaa",
 		Jobs: Jobs{},
-		Configuration: &configuration{
+		Configuration: &Configuration{
 			Templates: map[string]string{"foo": "bar"},
 		},
 	}
@@ -265,7 +265,7 @@ func TestGetTemplateSignatures(t *testing.T) {
 	differentTemplate2 := &Role{
 		Name: "aaa",
 		Jobs: Jobs{},
-		Configuration: &configuration{
+		Configuration: &Configuration{
 			Templates: map[string]string{"bat": "baz"},
 		},
 	}
