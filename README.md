@@ -6,6 +6,34 @@ Fissile converts existing BOSH dev releases into docker images.
 It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH
 agent.
 
+## Build and Install
+Building fissile needs Go 1.4 or higher. You can download it from the [Golang website](https://golang.org/doc/install)
+   
+### Build procedure
+Execute the following commands to compile fissile
+   
+```
+$ cd $GOPATH
+$ mkdir -p src/github.com/hpcloud
+$ cd src/github.com/hpcloud
+$ git clone https://github.com/hpcloud/fissile.git
+$ cd fissile
+$ git submodule sync --recursive
+$ git submodule update --init  --recursive
+$ make all
+```
+
+Depending on your architecture you can use the fissile binary files from those directories:
+`fissile/build/darwin-amd64` or `fissile/build/linux-amd64`.
+
+## Install procedure
+
+The fissile is also a go-gettable package:
+
+```
+go get github.com/hpcloud/fissile
+```
+
 ## Usage
 
 You can find detailed usage documentation [here](./docs/fissile.md).
