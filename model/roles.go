@@ -275,9 +275,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra string) string {
 	// Make sure our roles are sorted, to have consistent output
-	roles := append(Roles{}, m.Roles...)
+	roles = append(Roles{}, roles...)
 	sort.Sort(roles)
 
 	hasher := sha1.New()

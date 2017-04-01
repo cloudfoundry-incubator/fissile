@@ -177,3 +177,60 @@ func TestDevDiffConfigurations(t *testing.T) {
 	v, ok = hashDiffs.ChangedValues["cf.bogus.key"]
 	assert.False(ok)
 }
+
+func TestFisileSelectRolesToBuild(t *testing.T) {
+	assert := assert.New(t)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	// Set up the test params
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+
+	f := NewFissileApplication(",", ui)
+	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	if !assert.NoError(err) {
+		return
+	}
+
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	if !assert.NoError(err, "Failed to load role manifest") {
+		return
+	}
+
+	testSamples := []struct {
+		roleNames     []string
+		expectedNames []string
+		err           string
+	}{
+		{
+			roleNames:     []string{"myrole", "foorole"},
+			expectedNames: []string{"foorole", "myrole"},
+		},
+		{
+			roleNames:     []string{"myrole"},
+			expectedNames: []string{"myrole"},
+		},
+		{
+			roleNames: []string{"missing_role"},
+			err:       "Some roles are unknown: [missing_role]",
+		},
+	}
+
+	for _, sample := range testSamples {
+		results, err := f.selectRolesToBuild(roleManifest.Roles, sample.roleNames)
+		if sample.err != "" {
+			assert.EqualError(err, sample.err, "while testing %v", sample.roleNames)
+		} else {
+			assert.NoError(err, "while testing %v", sample.roleNames)
+			var actualNames []string
+			for _, role := range results {
+				actualNames = append(actualNames, role.Name)
+			}
+			sort.Strings(actualNames)
+			assert.Equal(sample.expectedNames, actualNames, "while testing %v", sample.roleNames)
+		}
+	}
+}

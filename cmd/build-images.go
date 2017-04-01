@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -8,6 +10,7 @@ import (
 var (
 	flagBuildImagesNoBuild       bool
 	flagBuildImagesForce         bool
+	flagBuildImagesRoles         string
 	flagPatchPropertiesDirective string
 )
 
@@ -40,6 +43,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 
 		flagBuildImagesNoBuild = viper.GetBool("no-build")
 		flagBuildImagesForce = viper.GetBool("force")
+		flagBuildImagesRoles = viper.GetString("roles")
 		flagPatchPropertiesDirective = viper.GetString("patch-properties-release")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
@@ -62,6 +66,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			flagMetrics,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
+			strings.Split(flagBuildImagesRoles, ","),
 			flagWorkers,
 			flagRoleManifest,
 			workPathCompilationDir,
@@ -93,6 +98,14 @@ func init() {
 		"P",
 		"",
 		"Used to designate a \"patch-properties\" psuedo-job in a particular release.  Format: RELEASE/JOB.",
+	)
+
+	// viper is busted w/ string slice, https://github.com/spf13/viper/issues/200
+	buildImagesCmd.PersistentFlags().StringP(
+		"roles",
+		"",
+		"",
+		"Build only images with the given role name; comma separated.",
 	)
 
 	viper.BindPFlags(buildImagesCmd.PersistentFlags())
