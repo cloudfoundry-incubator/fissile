@@ -298,7 +298,7 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, workerCount int) error {
+func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -328,7 +328,12 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, f.releases, roleManifest); err != nil {
+	roles, err := f.selectRolesToBuild(roleManifest.Roles, roleNames)
+	if err != nil {
+		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
+	}
+
+	if err := comp.Compile(workerCount, f.releases, roles); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 

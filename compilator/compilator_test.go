@@ -216,7 +216,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	waitCh := make(chan struct{})
 	errCh := make(chan error)
 	go func() {
-		errCh <- c.Compile(1, []*model.Release{release}, roleManifest)
+		errCh <- c.Compile(1, []*model.Release{release}, roleManifest.Roles)
 	}()
 	go func() {
 		// `libevent` is a dependency of `tor` and will be compiled first

@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // buildPackagesCmd represents the packages command
@@ -25,6 +28,8 @@ compiled once.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		flagBuildPackagesRoles := viper.GetString("roles")
+
 		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
@@ -40,6 +45,7 @@ compiled once.
 			workPathCompilationDir,
 			flagRoleManifest,
 			flagMetrics,
+			strings.Split(flagBuildPackagesRoles, ","),
 			flagWorkers,
 		)
 	},
@@ -47,4 +53,14 @@ compiled once.
 
 func init() {
 	buildCmd.AddCommand(buildPackagesCmd)
+
+	// viper is busted w/ string slice, https://github.com/spf13/viper/issues/200
+	buildPackagesCmd.PersistentFlags().StringP(
+		"roles",
+		"",
+		"",
+		"Build only packages for the given role names; comma separated.",
+	)
+
+	viper.BindPFlags(buildPackagesCmd.PersistentFlags())
 }

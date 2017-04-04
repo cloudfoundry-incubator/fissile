@@ -135,8 +135,8 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleManifest *model.RoleManifest) error {
-	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roleManifest))
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles) error {
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles))
 
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
@@ -211,15 +211,15 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roleMan
 	return err
 }
 
-func (c *Compilator) gatherPackages(releases []*model.Release, roleManifest *model.RoleManifest) model.Packages {
+func (c *Compilator) gatherPackages(releases []*model.Release, roles model.Roles) model.Packages {
 	var packages []*model.Package
 
 	for _, release := range releases {
 		var releasePackages []*model.Package
 
 		// Get the packages of the release ...
-		if roleManifest != nil { // Conditional for easier testing
-			releasePackages = c.gatherPackagesFromManifest(release, roleManifest)
+		if roles != nil { // Conditional for easier testing
+			releasePackages = c.gatherPackagesFromRoles(release, roles)
 		} else {
 			releasePackages = release.Packages
 		}
@@ -805,15 +805,15 @@ func (c *Compilator) removeCompiledPackages(packages model.Packages) (model.Pack
 	return culledPackages, nil
 }
 
-// gatherPackagesFromManifest gathers the list of packages of the release, from the role manifest, as well as all needed dependencies
+// gatherPackagesFromRoles gathers the list of packages of the release, from a list of roles, as well as all needed dependencies
 // This happens to be a subset of release.Packages, which helps avoid compiling unneeded packages
-func (c *Compilator) gatherPackagesFromManifest(release *model.Release, rolesManifest *model.RoleManifest) []*model.Package {
+func (c *Compilator) gatherPackagesFromRoles(release *model.Release, roles model.Roles) []*model.Package {
 	var resultPackages []*model.Package
 	listedPackages := make(map[string]bool)
 	pendingPackages := list.New()
 
 	// Find the initial list of packages to examine (all packages of the release in the manifest)
-	for _, role := range rolesManifest.Roles {
+	for _, role := range roles {
 		for _, job := range role.Jobs {
 			for _, pkg := range job.Packages {
 				if pkg.Release.Name == release.Name {
