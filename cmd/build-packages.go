@@ -52,6 +52,9 @@ compiled once.
 }
 
 func init() {
+	v := viper.New()
+	initViper(v)
+
 	buildCmd.AddCommand(buildPackagesCmd)
 
 	// viper is busted w/ string slice, https://github.com/spf13/viper/issues/200
@@ -62,5 +65,5 @@ func init() {
 		"Build only packages for the given role names; comma separated.",
 	)
 
-	viper.BindPFlags(buildPackagesCmd.PersistentFlags())
+	v.BindPFlags(buildPackagesCmd.PersistentFlags())
 }

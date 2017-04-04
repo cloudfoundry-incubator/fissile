@@ -77,6 +77,9 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 }
 
 func init() {
+	v := viper.New()
+	initViper(v)
+
 	buildCmd.AddCommand(buildImagesCmd)
 
 	buildImagesCmd.PersistentFlags().BoolP(
@@ -108,5 +111,5 @@ func init() {
 		"Build only images with the given role name; comma separated.",
 	)
 
-	viper.BindPFlags(buildImagesCmd.PersistentFlags())
+	v.BindPFlags(buildImagesCmd.PersistentFlags())
 }
