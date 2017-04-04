@@ -45,7 +45,7 @@ compiled once.
 			workPathCompilationDir,
 			flagRoleManifest,
 			flagMetrics,
-			strings.Split(flagBuildPackagesRoles, ","),
+			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
 		)
 	},
