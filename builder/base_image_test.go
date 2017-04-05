@@ -57,7 +57,7 @@ func TestBaseImageNewDockerPopulator(t *testing.T) {
 			assert.Contains(string(rawContents), "BUNDLE_GEMFILE")
 		},
 		"monitrc.erb": func(rawContents []byte) {
-			assert.Contains(string(rawContents), "hcf.monit.password")
+			assert.Contains(string(rawContents), "fissile.monit.password")
 		},
 	}
 

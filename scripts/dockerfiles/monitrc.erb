@@ -6,9 +6,9 @@ set logfile /var/vcap/monit/monit.log
 # remote access is read-only and accessible using the "knowable" credentials 
 # provided by the user. We're afraid of exposing writable access to remote clients
 # using a non-TLS enabled connection.
-set httpd port <%= p("hcf.monit.port") %> and use address 0.0.0.0
+set httpd port <%= p("fissile.monit.port") %> and use address 0.0.0.0
   allow "<%= SecureRandom.hex %>":"<%= SecureRandom.hex %>"
-  allow "<%= p("hcf.monit.user") %>":"<%= p("hcf.monit.password") %>" read-only
+  allow "<%= p("fissile.monit.user") %>":"<%= p("fissile.monit.password") %>" read-only
 
 include /etc/monit/monitrc.d/cron
 include /etc/monit/monitrc.d/rsyslog
