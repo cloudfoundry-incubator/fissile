@@ -22,6 +22,8 @@ fi
 
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
+export MONIT_ADMIN_USER=$(cat /proc/sys/kernel/random/uuid)
+export MONIT_ADMIN_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}
