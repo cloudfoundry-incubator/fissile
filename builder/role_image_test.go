@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,10 +11,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hpcloud/fissile/model"
-	"github.com/hpcloud/fissile/util"
 
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
@@ -210,94 +211,125 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
 	assert.NoError(err)
 
-	dockerfileDir, err := roleImageBuilder.CreateDockerfileDir(
-		rolesManifest.Roles[0],
-		releasePathConfigSpec,
-	)
-	assert.NoError(err)
-	defer os.RemoveAll(dockerfileDir)
+	torPkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
 
-	assert.Equal(targetPath, filepath.Dir(dockerfileDir), "Docker file %s not created in directory %s", dockerfileDir, targetPath)
-
-	for _, info := range []struct {
-		path  string
-		isDir bool
-		desc  string
+	const TypeMissing byte = tar.TypeCont // flag to indicate an expected missing file
+	expected := map[string]struct {
+		desc     string
+		typeflag byte // default to TypeRegA
+		keep     bool // Hold for extra examination aftare
 	}{
-		{path: ".", isDir: true, desc: "role dir"},
-		{path: "Dockerfile", isDir: false, desc: "Dockerfile"},
-		{path: "root", isDir: true, desc: "image root"},
-		{path: "root/opt/hcf/share/doc/tor/LICENSE", isDir: false, desc: "release license file"},
-		{path: "root/opt/hcf/run.sh", isDir: false, desc: "run script"},
-		{path: "root/opt/hcf/startup/", isDir: true, desc: "role startup scripts dir"},
-		{path: "root/opt/hcf/startup/myrole.sh", isDir: false, desc: "role specific startup script"},
-		{path: "root/var/vcap/jobs-src/tor/monit", isDir: false, desc: "job monit file"},
-		{path: "root/var/vcap/jobs-src/tor/templates/bin/monit_debugger", isDir: false, desc: "job template file"},
-		{path: "root/var/vcap/jobs-src/tor/config_spec.json", isDir: false, desc: "tor config spec"},
-		{path: "root/var/vcap/jobs-src/new_hostname", isDir: true, desc: "new_hostname spec dir"},
-		{path: "root/var/vcap/jobs-src/new_hostname/config_spec.json", isDir: false, desc: "new_hostname config spec"},
-		{path: "root/var/vcap/packages/tor", isDir: false, desc: "package symlink"},
-	} {
-		path := filepath.ToSlash(filepath.Join(dockerfileDir, info.path))
-		assert.NoError(util.ValidatePath(path, info.isDir, info.desc))
+		"Dockerfile":                                              {desc: "Dockerfile"},
+		"root/opt/hcf/share/doc/tor/LICENSE":                      {desc: "release license file"},
+		"root/opt/hcf/run.sh":                                     {desc: "run script"},
+		"root/opt/hcf/startup/myrole.sh":                          {desc: "role specific startup script"},
+		"root/var/vcap/jobs-src/tor/monit":                        {desc: "job monit file"},
+		"root/var/vcap/jobs-src/tor/templates/bin/monit_debugger": {desc: "job template file"},
+		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true},
+		"root/var/vcap/jobs-src/new_hostname/config_spec.json":    {desc: "new_hostname config spec", keep: true},
+		"root/var/vcap/packages/tor":                              {desc: "package symlink", typeflag: tar.TypeSymlink, keep: true},
+		"root/var/vcap/jobs-src/tor/job.MF":                       {desc: "job manifest file", typeflag: TypeMissing},
 	}
+	actual := make(map[string][]byte)
 
-	symlinkPath := filepath.Join(dockerfileDir, "root/var/vcap/packages/tor")
-	if pathInfo, err := os.Lstat(symlinkPath); assert.NoError(err) {
-		assert.Equal(os.ModeSymlink, pathInfo.Mode()&os.ModeSymlink)
-		if target, err := os.Readlink(symlinkPath); assert.NoError(err) {
-			pkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
-			if assert.NotNil(pkg, "Failed to find package") {
-				expectedTarget := filepath.Join("..", "packages-src", pkg.Fingerprint)
-				assert.Equal(expectedTarget, target)
+	populator := roleImageBuilder.NewDockerPopulator(rolesManifest.Roles[0], releasePathConfigSpec)
+
+	pipeR, pipeW, err := os.Pipe()
+	assert.NoError(err, "Failed to create a pipe")
+
+	tarWriter := tar.NewWriter(pipeW)
+	tarReader := tar.NewReader(pipeR)
+	var asyncError error
+	mutex := sync.Mutex{}
+	go func() {
+		mutex.Lock()
+		defer mutex.Unlock()
+		defer tarWriter.Close()
+		asyncError = populator(tarWriter)
+	}()
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if !assert.NoError(err, "Error reading tar file") {
+			break
+		}
+		if info, ok := expected[header.Name]; ok {
+			delete(expected, header.Name)
+			if info.typeflag == tar.TypeRegA {
+				info.typeflag = tar.TypeReg
+			}
+			if header.Typeflag == tar.TypeRegA {
+				header.Typeflag = tar.TypeReg
+			}
+			if info.typeflag == TypeMissing {
+				assert.Fail("File %s should not exist", header.Name)
+				continue
+			}
+			assert.Equal(info.typeflag, header.Typeflag, "Unexpected type for item %s", header.Name)
+			if info.keep {
+				if header.Typeflag == tar.TypeSymlink || header.Typeflag == tar.TypeLink {
+					actual[header.Name] = []byte(header.Linkname)
+				} else {
+					buf := &bytes.Buffer{}
+					_, err = io.Copy(buf, tarReader)
+					assert.NoError(err, "Error reading contents of %s", header.Name)
+					actual[header.Name] = buf.Bytes()
+				}
 			}
 		}
 	}
+	// Synchronize with the gofunc to make sure it's done
+	mutex.Lock()
+	mutex.Unlock()
+	for name, info := range expected {
+		assert.Equal(TypeMissing, info.typeflag, "File %s was not found", name)
+	}
 
-	// job.MF should not be there
-	assert.Error(util.ValidatePath(filepath.ToSlash(filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/job.MF")), false, "job manifest file"))
+	if assert.Contains(actual, "root/var/vcap/packages/tor", "tor package missing") {
+		expectedTarget := filepath.Join("..", "packages-src", torPkg.Fingerprint)
+		assert.Equal(string(actual["root/var/vcap/packages/tor"]), expectedTarget)
+	}
 
 	// And verify the config specs are as expected
-	jsonPath := filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/new_hostname/config_spec.json")
-	buf, err := ioutil.ReadFile(jsonPath)
-	if !assert.NoError(err, "Failed to read new_hostname/config_spec.json %s\n", jsonPath) {
-		return
-	}
-	var result map[string]interface{}
-	err = json.Unmarshal(buf, &result)
-	if !assert.NoError(err, "Error unmarshalling output") {
-		return
-	}
-	assert.Empty(result["properties"].(map[string]interface{}))
-
-	jsonPath = filepath.Join(dockerfileDir, "root/var/vcap/jobs-src/tor/config_spec.json")
-	buf, err = ioutil.ReadFile(jsonPath)
-	if !assert.NoError(err, "Failed to read tor/config_spec.json %s\n", jsonPath) {
-		return
-	}
-
-	expectedString := `{
-		"job": {
-			"name": "myrole",
-			"templates": [
-				{"name":"new_hostname"},
-				{"name":"tor"}
-			]
-		},
-		"networks":{
-			"default":{}
-		},
-		"parameters":{},
-		"properties": {
-			"tor": {
-				"hashed_control_password":null,
-				"hostname":"localhost",
-				"private_key": null,
-				"client_keys":null
-			}
+	if assert.Contains(actual, "root/var/vcap/jobs-src/new_hostname/config_spec.json") {
+		buf := actual["root/var/vcap/jobs-src/new_hostname/config_spec.json"]
+		var result map[string]interface{}
+		err = json.Unmarshal(buf, &result)
+		if !assert.NoError(err, "Error unmarshalling output") {
+			return
 		}
-	}`
-	assert.JSONEq(expectedString, string(buf))
+		assert.Empty(result["properties"].(map[string]interface{}))
+	}
+
+	if assert.Contains(actual, "root/var/vcap/jobs-src/tor/config_spec.json") {
+		buf := actual["root/var/vcap/jobs-src/tor/config_spec.json"]
+
+		expectedString := `{
+			"job": {
+				"name": "myrole",
+				"templates": [
+					{"name":"new_hostname"},
+					{"name":"tor"}
+				]
+			},
+			"networks":{
+				"default":{}
+			},
+			"parameters":{},
+			"properties": {
+				"tor": {
+					"hashed_control_password":null,
+					"hostname":"localhost",
+					"private_key": null,
+					"client_keys":null
+				}
+			}
+		}`
+		assert.JSONEq(expectedString, string(buf))
+	}
 }
 
 // getPackage is a helper to get a package from a list of roles
@@ -325,10 +357,29 @@ type buildImageCallback func(name string) error
 type mockDockerImageBuilder struct {
 	callback buildImageCallback
 	hasImage bool
+	tarBytes map[string]*bytes.Buffer
+	mutex    sync.Mutex
 }
 
 func (m *mockDockerImageBuilder) BuildImage(dockerDirPath, name string, stdoutProcessor io.WriteCloser) error {
 	return m.callback(name)
+}
+
+func (m *mockDockerImageBuilder) BuildImageFromCallback(name string, stdoutProcessor io.Writer, populator func(*tar.Writer) error) error {
+	if err := m.callback(name); err != nil {
+		return err
+	}
+	buf := &bytes.Buffer{}
+	(func() {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		if m.tarBytes == nil {
+			m.tarBytes = make(map[string]*bytes.Buffer)
+		}
+		m.tarBytes[name] = buf
+	})()
+	tarWriter := tar.NewWriter(buf)
+	return populator(tarWriter)
 }
 
 func (m *mockDockerImageBuilder) HasImage(imageName string) (bool, error) {
@@ -341,9 +392,6 @@ func TestBuildRoleImages(t *testing.T) {
 	defer func() {
 		newDockerImageBuilder = origNewDockerImageBuilder
 	}()
-
-	type dockerBuilderMock struct {
-	}
 
 	mockBuilder := mockDockerImageBuilder{}
 	newDockerImageBuilder = func() (dockerImageBuilder, error) {
@@ -459,13 +507,18 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		1,
 	)
-	assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
+	if assert.Error(err) {
+		assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
+	}
 	assert.False(hasRunSecondJob, "Second job should not have run")
 
 	// Check that we do not attempt to rebuild images
 	mockBuilder.hasImage = true
 	var buildersRan []string
+	mutex := sync.Mutex{}
 	mockBuilder.callback = func(name string) error {
+		mutex.Lock()
+		defer mutex.Unlock()
 		buildersRan = append(buildersRan, name)
 		return nil
 	}
