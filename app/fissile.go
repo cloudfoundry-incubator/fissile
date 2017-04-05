@@ -298,7 +298,7 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, workerCount int) error {
+func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -328,7 +328,12 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, f.releases, roleManifest); err != nil {
+	roles, err := roleManifest.SelectRoles(roleNames)
+	if err != nil {
+		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
+	}
+
+	if err := comp.Compile(workerCount, f.releases, roles); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
@@ -395,7 +400,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -405,7 +410,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest)
+	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
 	if !force {
 		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(packagesLayerImageName))
@@ -433,7 +438,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -445,7 +450,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -471,12 +476,17 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, packagesImageBuilder)
+	roles, err := roleManifest.SelectRoles(roleNames)
 	if err != nil {
 		return err
 	}
 
-	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest)
+	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+	if err != nil {
+		return err
+	}
+
+	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
 
 	roleBuilder, err := builder.NewRoleImageBuilder(
 		repository,
@@ -493,7 +503,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roleManifest.Roles, repository, packagesLayerImageName, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, force, noBuild, workerCount); err != nil {
 		return err
 	}
 

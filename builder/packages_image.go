@@ -136,17 +136,17 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) NewDockerPopulator(roleManifest *model.RoleManifest, forceBuildAll bool) func(*tar.Writer) error {
+func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		var err error
-		if len(roleManifest.Roles) == 0 {
+		if len(roles) == 0 {
 			return fmt.Errorf("No roles to build")
 		}
 
 		// Collect compiled packages
 		foundFingerprints := make(map[string]struct{})
 		var packages model.Packages
-		for _, role := range roleManifest.Roles {
+		for _, role := range roles {
 			for _, job := range role.Jobs {
 				for _, pkg := range job.Packages {
 					if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
@@ -229,9 +229,9 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 }
 
 // GetRolePackageImageName generates a docker image name for the amalgamation for a role image
-func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest) string {
+func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
 		p.repository,
-		roleManifest.GetRoleManifestDevPackageVersion(p.fissileVersion),
+		roleManifest.GetRoleManifestDevPackageVersion(roles, p.fissileVersion),
 	))
 }

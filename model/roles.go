@@ -275,9 +275,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra string) string {
 	// Make sure our roles are sorted, to have consistent output
-	roles := append(Roles{}, m.Roles...)
+	roles = append(Roles{}, roles...)
 	sort.Sort(roles)
 
 	hasher := sha1.New()
@@ -293,6 +293,30 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(extra string) string {
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
 	return m.rolesByName[roleName]
+}
+
+// SelectRoles will find only the given roles in the role manifest
+func (m *RoleManifest) SelectRoles(roleNames []string) (Roles, error) {
+	if len(roleNames) == 0 {
+		// No role names specified, assume all roles
+		return m.Roles, nil
+	}
+
+	var results Roles
+	var missingRoles []string
+
+	for _, roleName := range roleNames {
+		if role, ok := m.rolesByName[roleName]; ok {
+			results = append(results, role)
+		} else {
+			missingRoles = append(missingRoles, roleName)
+		}
+	}
+	if len(missingRoles) > 0 {
+		return nil, fmt.Errorf("Some roles are unknown: %v", missingRoles)
+	}
+
+	return results, nil
 }
 
 // GetScriptPaths returns the paths to the startup / post configgin scripts for a role

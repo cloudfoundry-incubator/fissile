@@ -97,7 +97,7 @@ func TestNewDockerPopulator(t *testing.T) {
 
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(rolesManifest, false)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(rolesManifest.Roles, false)
 	tarWriter := tar.NewWriter(tarFile)
 	assert.NoError(tarPopulator(tarWriter))
 	assert.NoError(tarWriter.Close())

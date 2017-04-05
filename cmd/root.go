@@ -170,20 +170,25 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	initViper(viper.GetViper())
+}
+func initViper(v *viper.Viper) {
 	if cfgFile != "" { // enable ability to specify config file via flag
-		viper.SetConfigFile(cfgFile)
+		v.SetConfigFile(cfgFile)
 	}
 
-	viper.SetEnvPrefix("FISSILE")
+	v.SetEnvPrefix("FISSILE")
 
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	viper.SetConfigName(".fissile") // name of config file (without extension)
-	viper.AddConfigPath("$HOME")    // adding home directory as first search path
-	viper.AutomaticEnv()            // read in environment variables that match
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	v.SetConfigName(".fissile") // name of config file (without extension)
+	v.AddConfigPath("$HOME")    // adding home directory as first search path
+	v.AutomaticEnv()            // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := v.ReadInConfig(); err == nil {
+		if v == viper.GetViper() {
+			fmt.Println("Using config file:", viper.ConfigFileUsed())
+		}
 	}
 }
 
