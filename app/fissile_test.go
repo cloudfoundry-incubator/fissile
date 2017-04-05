@@ -178,7 +178,7 @@ func TestDevDiffConfigurations(t *testing.T) {
 	assert.False(ok)
 }
 
-func TestFisileSelectRolesToBuild(t *testing.T) {
+func TestFissileSelectRolesToBuild(t *testing.T) {
 	assert := assert.New(t)
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	workDir, err := os.Getwd()
@@ -220,7 +220,7 @@ func TestFisileSelectRolesToBuild(t *testing.T) {
 	}
 
 	for _, sample := range testSamples {
-		results, err := f.selectRolesToBuild(roleManifest.Roles, sample.roleNames)
+		results, err := roleManifest.SelectRoles(sample.roleNames)
 		if sample.err != "" {
 			assert.EqualError(err, sample.err, "while testing %v", sample.roleNames)
 		} else {

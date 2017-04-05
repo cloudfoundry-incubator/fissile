@@ -328,7 +328,7 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
 
-	roles, err := f.selectRolesToBuild(roleManifest.Roles, roleNames)
+	roles, err := roleManifest.SelectRoles(roleNames)
 	if err != nil {
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
@@ -449,33 +449,6 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	return nil
 }
 
-func (f *Fissile) selectRolesToBuild(roles model.Roles, roleNames []string) (model.Roles, error) {
-	var results model.Roles
-
-	if len(roleNames) == 0 {
-		// No role names specified, assume all roles
-		return roles, nil
-	}
-
-	var missingRoles []string
-	roleMap := make(map[string]*model.Role, len(roles))
-	for _, role := range roles {
-		roleMap[strings.ToLower(role.Name)] = role
-	}
-	for _, roleName := range roleNames {
-		if role, ok := roleMap[strings.ToLower(roleName)]; ok {
-			results = append(results, role)
-		} else {
-			missingRoles = append(missingRoles, roleName)
-		}
-	}
-	if len(missingRoles) > 0 {
-		return nil, fmt.Errorf("Some roles are unknown: %v", missingRoles)
-	}
-
-	return results, nil
-}
-
 // GenerateRoleImages generates all role images using dev releases
 func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
 	if len(f.releases) == 0 {
@@ -503,7 +476,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	roles, err := f.selectRolesToBuild(roleManifest.Roles, roleNames)
+	roles, err := roleManifest.SelectRoles(roleNames)
 	if err != nil {
 		return err
 	}
