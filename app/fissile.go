@@ -410,7 +410,10 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	if err != nil {
+		return fmt.Errorf("Error finding role's package name: %s", err.Error())
+	}
 	if !force {
 		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(packagesLayerImageName))
@@ -486,7 +489,10 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	if err != nil {
+		return err
+	}
 
 	roleBuilder, err := builder.NewRoleImageBuilder(
 		repository,
@@ -536,7 +542,12 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 	}
 
 	for _, role := range rolesManifest.Roles {
-		imageName := builder.GetRoleDevImageName(repository, role, role.GetRoleDevVersion())
+		devVersion, err := role.GetRoleDevVersion()
+		if err != nil {
+			return fmt.Errorf("Error creating role checksum: %s", err.Error())
+		}
+
+		imageName := builder.GetRoleDevImageName(repository, role, devVersion)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)

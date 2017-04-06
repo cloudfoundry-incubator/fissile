@@ -229,9 +229,14 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 }
 
 // GetRolePackageImageName generates a docker image name for the amalgamation for a role image
-func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) string {
+func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
+	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, p.fissileVersion)
+	if err != nil {
+		return "", err
+	}
+
 	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
 		p.repository,
-		roleManifest.GetRoleManifestDevPackageVersion(roles, p.fissileVersion),
-	))
+		rmVersion,
+	)), nil
 }

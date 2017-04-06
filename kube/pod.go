@@ -45,6 +45,11 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 		return v1.PodTemplateSpec{}, err
 	}
 
+	image, err := getContainerImageName(role, settings)
+	if err != nil {
+		return v1.PodTemplateSpec{}, err
+	}
+
 	podSpec := v1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Name: role.Name,
@@ -56,7 +61,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 			Containers: []v1.Container{
 				v1.Container{
 					Name:            role.Name,
-					Image:           getContainerImageName(role, settings),
+					Image:           image,
 					Ports:           ports,
 					VolumeMounts:    getVolumeMounts(role),
 					Env:             vars,
@@ -85,8 +90,14 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
-func getContainerImageName(role *model.Role, settings *ExportSettings) string {
-	devImageName := builder.GetRoleDevImageName(settings.Repository, role, role.GetRoleDevVersion())
+func getContainerImageName(role *model.Role, settings *ExportSettings) (string, error) {
+
+	devVersion, err := role.GetRoleDevVersion()
+	if err != nil {
+		return "", err
+	}
+
+	devImageName := builder.GetRoleDevImageName(settings.Repository, role, devVersion)
 	imageName := devImageName
 
 	if settings.Organization != "" && settings.Registry != "" {
@@ -97,7 +108,7 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) string {
 		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
 	}
 
-	return imageName
+	return imageName, nil
 }
 
 // getContainerPorts returns a list of ports for a role

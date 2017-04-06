@@ -4,7 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -275,7 +277,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra string) string {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra string) (string, error) {
 	// Make sure our roles are sorted, to have consistent output
 	roles = append(Roles{}, roles...)
 	sort.Sort(roles)
@@ -284,10 +286,14 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra strin
 	hasher.Write([]byte(extra))
 
 	for _, role := range roles {
-		hasher.Write([]byte(role.GetRoleDevVersion()))
+		version, err := role.GetRoleDevVersion()
+		if err != nil {
+			return "", err
+		}
+		hasher.Write([]byte(version))
 	}
 
-	return hex.EncodeToString(hasher.Sum(nil))
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // LookupRole will find the given role in the role manifest
@@ -337,8 +343,62 @@ func (r *Role) GetScriptPaths() map[string]string {
 
 }
 
+// GetScriptSignatures returns the SHA1 of all of the script file names and contents
+func (r *Role) GetScriptSignatures() (string, error) {
+	hasher := sha1.New()
+
+	i := 0
+	paths := r.GetScriptPaths()
+	scripts := make([]string, len(paths))
+
+	for _, f := range paths {
+		scripts[i] = f
+		i++
+	}
+
+	sort.Strings(scripts)
+
+	for _, filename := range scripts {
+		hasher.Write([]byte(filename))
+
+		f, err := os.Open(filename)
+		if err != nil {
+			return "", err
+		}
+
+		if _, err := io.Copy(hasher, f); err != nil {
+			return "", err
+		}
+
+		f.Close()
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// GetTemplateSignatures returns the SHA1 of all of the templates and contents
+func (r *Role) GetTemplateSignatures() (string, error) {
+	hasher := sha1.New()
+
+	i := 0
+	templates := make([]string, len(r.Configuration.Templates))
+
+	for k, v := range r.Configuration.Templates {
+		templates[i] = fmt.Sprintf("%s: %s", k, v)
+		i++
+	}
+
+	sort.Strings(templates)
+
+	for _, template := range templates {
+		hasher.Write([]byte(template))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
 // GetRoleDevVersion gets the aggregate signature of all jobs and packages
-func (r *Role) GetRoleDevVersion() string {
+func (r *Role) GetRoleDevVersion() (string, error) {
 	roleSignature := ""
 	var packages Packages
 
@@ -354,9 +414,25 @@ func (r *Role) GetRoleDevVersion() string {
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, pkg.SHA1)
 	}
 
+	// Collect signatures for various script sections
+	sig, err := r.GetScriptSignatures()
+	if err != nil {
+		return "", err
+	}
+	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+
+	// If there are templates, generate signature for them
+	if r.Configuration != nil && r.Configuration.Templates != nil {
+		sig, err = r.GetTemplateSignatures()
+		if err != nil {
+			return "", err
+		}
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+	}
+
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
-	return hex.EncodeToString(hasher.Sum(nil))
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // HasTag returns true if the role has a specific tag
