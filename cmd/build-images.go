@@ -42,11 +42,11 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildImagesNoBuild = viper.GetBool("no-build")
-		flagBuildImagesForce = viper.GetBool("force")
-		flagBuildImagesRoles = viper.GetString("roles")
-		flagPatchPropertiesDirective = viper.GetString("patch-properties-release")
-		flagOutputDirectory = viper.GetString("output-directory")
+		flagBuildImagesNoBuild = buildImagesViper.GetBool("no-build")
+		flagBuildImagesForce = buildImagesViper.GetBool("force")
+		flagBuildImagesRoles = buildImagesViper.GetString("roles")
+		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
+		flagOutputDirectory = buildImagesViper.GetString("output-directory")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
 		if err != nil {
@@ -78,10 +78,10 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		)
 	},
 }
+var buildImagesViper = viper.New()
 
 func init() {
-	v := viper.New()
-	initViper(v)
+	initViper(buildImagesViper)
 
 	buildCmd.AddCommand(buildImagesCmd)
 
@@ -121,5 +121,5 @@ func init() {
 		"Output the result as tar files in the given directory rather than building with docker",
 	)
 
-	v.BindPFlags(buildImagesCmd.PersistentFlags())
+	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
 }

@@ -28,7 +28,7 @@ compiled once.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildPackagesRoles := viper.GetString("roles")
+		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -51,9 +51,10 @@ compiled once.
 	},
 }
 
+var buildPackagesViper = viper.New()
+
 func init() {
-	v := viper.New()
-	initViper(v)
+	initViper(buildPackagesViper)
 
 	buildCmd.AddCommand(buildPackagesCmd)
 
@@ -65,5 +66,5 @@ func init() {
 		"Build only packages for the given role names; comma separated.",
 	)
 
-	v.BindPFlags(buildPackagesCmd.PersistentFlags())
+	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())
 }
