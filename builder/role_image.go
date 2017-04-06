@@ -328,16 +328,17 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 }
 
 type roleBuildJob struct {
-	role          *model.Role
-	builder       *RoleImageBuilder
-	ui            *termui.UI
-	force         bool
-	noBuild       bool
-	dockerManager dockerImageBuilder
-	resultsCh     chan<- error
-	abort         <-chan struct{}
-	repository    string
-	baseImageName string
+	role            *model.Role
+	builder         *RoleImageBuilder
+	ui              *termui.UI
+	force           bool
+	noBuild         bool
+	dockerManager   dockerImageBuilder
+	outputDirectory string
+	resultsCh       chan<- error
+	abort           <-chan struct{}
+	repository      string
+	baseImageName   string
 }
 
 func (j roleBuildJob) Run() {
@@ -354,12 +355,27 @@ func (j roleBuildJob) Run() {
 			return fmt.Errorf("Error calculating checksum for role %s: %s", j.role.Name, err.Error())
 		}
 		roleImageName := GetRoleDevImageName(j.repository, j.role, devVersion)
+		outputPath := filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		if !j.force {
-			if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
-				return err
-			} else if hasImage {
-				j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
-				return nil
+			if j.outputDirectory == "" {
+				if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
+					return err
+				} else if hasImage {
+					j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
+					return nil
+				}
+			} else {
+				info, err := os.Stat(outputPath)
+				if err == nil {
+					if info.IsDir() {
+						return fmt.Errorf("Output path %s exists but is a directory", outputPath)
+					}
+					j.ui.Printf("Skipping build of role tarball %s because it exists\n", color.YellowString(outputPath))
+					return nil
+				}
+				if !os.IsNotExist(err) {
+					return err
+				}
 			}
 		}
 
@@ -378,25 +394,45 @@ func (j roleBuildJob) Run() {
 			return nil
 		}
 
-		j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.role.Name))
+		if j.outputDirectory == "" {
+			j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.role.Name))
 
-		log := new(bytes.Buffer)
-		stdoutWriter := docker.NewFormattingWriter(
-			log,
-			docker.ColoredBuildStringFunc(roleImageName),
-		)
+			log := new(bytes.Buffer)
+			stdoutWriter := docker.NewFormattingWriter(
+				log,
+				docker.ColoredBuildStringFunc(roleImageName),
+			)
 
-		err := j.dockerManager.BuildImageFromCallback(roleImageName, stdoutWriter, dockerPopulator)
-		if err != nil {
-			log.WriteTo(j.ui)
-			return fmt.Errorf("Error building image: %s", err.Error())
+			err := j.dockerManager.BuildImageFromCallback(roleImageName, stdoutWriter, dockerPopulator)
+			if err != nil {
+				log.WriteTo(j.ui)
+				return fmt.Errorf("Error building image: %s", err.Error())
+			}
+		} else {
+			j.ui.Printf("Building tarball of %s...\n", color.YellowString(j.role.Name))
+
+			tarFile, err := os.Create(outputPath)
+			if err != nil {
+				return fmt.Errorf("Failed to create tar file %s: %s", outputPath, err)
+			}
+			tarWriter := tar.NewWriter(tarFile)
+
+			err = dockerPopulator(tarWriter)
+			if err != nil {
+				return fmt.Errorf("Failed to populate tar file %s: %s", outputPath, err)
+			}
+
+			err = tarWriter.Close()
+			if err != nil {
+				return fmt.Errorf("Failed to close tar file %s: %s", outputPath, err)
+			}
 		}
 		return nil
 	}()
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName string, force, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -406,6 +442,12 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
+	if outputDirectory != "" {
+		if err = os.MkdirAll(outputDirectory, 0755); err != nil {
+			return fmt.Errorf("Error creating output directory: %s", err)
+		}
+	}
+
 	workerLib.MaxJobs = workerCount
 	worker := workerLib.NewWorker()
 
@@ -413,16 +455,17 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 	abort := make(chan struct{})
 	for _, role := range roles {
 		worker.Add(roleBuildJob{
-			role:          role,
-			builder:       r,
-			ui:            r.ui,
-			force:         force,
-			noBuild:       noBuild,
-			dockerManager: dockerManager,
-			resultsCh:     resultsCh,
-			abort:         abort,
-			repository:    repository,
-			baseImageName: baseImageName,
+			role:            role,
+			builder:         r,
+			ui:              r.ui,
+			force:           force,
+			noBuild:         noBuild,
+			dockerManager:   dockerManager,
+			outputDirectory: outputDirectory,
+			resultsCh:       resultsCh,
+			abort:           abort,
+			repository:      repository,
+			baseImageName:   baseImageName,
 		})
 	}
 

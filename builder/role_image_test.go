@@ -459,6 +459,7 @@ func TestBuildRoleImages(t *testing.T) {
 		rolesManifest.Roles,
 		"test-repository",
 		"",
+		"",
 		false,
 		false,
 		2,
@@ -477,6 +478,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		"",
 		"",
 		false,
 		false,
@@ -503,6 +505,7 @@ func TestBuildRoleImages(t *testing.T) {
 		rolesManifest.Roles,
 		"test-repository",
 		"",
+		"",
 		false,
 		false,
 		1,
@@ -525,6 +528,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		"",
 		"",
 		false,
 		false,
@@ -556,6 +560,7 @@ func TestBuildRoleImages(t *testing.T) {
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
 		"test-repository",
+		"",
 		"",
 		false,
 		false,

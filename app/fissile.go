@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
 	"os"
@@ -452,8 +453,54 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	return nil
 }
 
+// GeneratePackagesRoleTarball builds a tarball snapshot of the build context
+// for the docker image for the packages layer where all packages are included
+func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	packagesLayerImageName := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	outputPath := filepath.Join(outputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
+
+	if !force {
+		file, err := os.Open(outputPath)
+		if err == nil {
+			file.Close()
+			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(outputPath))
+			return nil
+		}
+	}
+
+	if noBuild {
+		f.UI.Println("Skipping packages layer tarball build because of --no-build flag.")
+		return nil
+	}
+
+	f.UI.Printf("Building packages layer tarball %s ...\n", color.YellowString(outputPath))
+
+	tarFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("Failed to create tar file %s: %s", outputPath, err)
+	}
+	tarWriter := tar.NewWriter(tarFile)
+
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, force)
+	err = tarPopulator(tarWriter)
+	if err != nil {
+		return fmt.Errorf("Error writing tar file: %s", err)
+	}
+	err = tarWriter.Close()
+	if err != nil {
+		return fmt.Errorf("Error closing tar file: %s", err)
+	}
+	f.UI.Println(color.GreenString("Done."))
+
+	return nil
+}
+
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -466,6 +513,27 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	if outputDirectory != "" {
+		err = os.MkdirAll(outputDirectory, 0755)
+		if err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("Error creating directory %s: %s", outputDirectory, err)
+			}
+			dir, err := os.Open(outputDirectory)
+			if err != nil {
+				return fmt.Errorf("Error opening directory %s: %s", outputDirectory, err)
+			}
+			defer dir.Close()
+			info, err := dir.Stat()
+			if err != nil {
+				return fmt.Errorf("Error stat()ing directory %s: %s", outputDirectory, err)
+			}
+			if !info.Mode().IsDir() {
+				return fmt.Errorf("Output directory %s exists and is not a directory", outputDirectory)
+			}
+		}
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
@@ -484,7 +552,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+	if outputDirectory == "" {
+		err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+	} else {
+		err = f.GeneratePackagesRoleTarball(repository, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
+	}
 	if err != nil {
 		return err
 	}
@@ -509,7 +581,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 

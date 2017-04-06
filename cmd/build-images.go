@@ -12,6 +12,7 @@ var (
 	flagBuildImagesForce         bool
 	flagBuildImagesRoles         string
 	flagPatchPropertiesDirective string
+	flagOutputDirectory          string
 )
 
 // buildImagesCmd represents the images command
@@ -45,6 +46,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		flagBuildImagesForce = viper.GetBool("force")
 		flagBuildImagesRoles = viper.GetString("roles")
 		flagPatchPropertiesDirective = viper.GetString("patch-properties-release")
+		flagOutputDirectory = viper.GetString("output-directory")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
 		if err != nil {
@@ -72,6 +74,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			workPathCompilationDir,
 			flagLightOpinions,
 			flagDarkOpinions,
+			flagOutputDirectory,
 		)
 	},
 }
@@ -109,6 +112,13 @@ func init() {
 		"",
 		"",
 		"Build only images with the given role name; comma separated.",
+	)
+
+	buildImagesCmd.PersistentFlags().StringP(
+		"output-directory",
+		"O",
+		"",
+		"Output the result as tar files in the given directory rather than building with docker",
 	)
 
 	v.BindPFlags(buildImagesCmd.PersistentFlags())

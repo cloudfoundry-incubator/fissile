@@ -72,8 +72,8 @@ func TargzIterate(filename string, targz io.Reader, fn func(*tar.Reader, *tar.He
 	}
 }
 
-// WriteHeaderToTarStream writes a tar header with default values as appropriate
-func WriteHeaderToTarStream(stream *tar.Writer, header tar.Header) error {
+// writeHeaderToTarStream writes a tar header with default values as appropriate
+func writeHeaderToTarStream(stream *tar.Writer, header tar.Header) error {
 	if header.Mode == 0 {
 		header.Mode = 0644
 	}
@@ -91,7 +91,7 @@ func WriteToTarStream(stream *tar.Writer, data []byte, header tar.Header) error 
 	if header.Size == 0 {
 		header.Size = int64(len(data))
 	}
-	if err := WriteHeaderToTarStream(stream, header); err != nil {
+	if err := writeHeaderToTarStream(stream, header); err != nil {
 		return err
 	}
 	if _, err := stream.Write(data); err != nil {
@@ -115,7 +115,7 @@ func CopyFileToTarStream(stream *tar.Writer, path string, header *tar.Header) er
 		}
 		hdr.Size = info.Size()
 	}
-	if err := WriteHeaderToTarStream(stream, hdr); err != nil {
+	if err := writeHeaderToTarStream(stream, hdr); err != nil {
 		return err
 	}
 	if _, err := io.Copy(stream, file); err != nil {
