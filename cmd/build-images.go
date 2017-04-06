@@ -62,6 +62,11 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			return err
 		}
 
+		if flagOutputDirectory != "" && !flagBuildImagesForce {
+			fissile.UI.Printf("--force required when --output-directory is set\n")
+			flagBuildImagesForce = true
+		}
+
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagRepository,
