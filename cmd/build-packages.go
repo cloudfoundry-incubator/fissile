@@ -29,6 +29,7 @@ compiled once.
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
+		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -47,6 +48,7 @@ compiled once.
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
+			flagBuildPackagesWithoutDocker,
 		)
 	},
 }
@@ -64,6 +66,13 @@ func init() {
 		"",
 		"",
 		"Build only packages for the given role names; comma separated.",
+	)
+
+	buildPackagesCmd.PersistentFlags().BoolP(
+		"without-docker",
+		"",
+		false,
+		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires root privileges.",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())
