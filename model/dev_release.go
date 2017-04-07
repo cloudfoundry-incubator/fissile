@@ -97,10 +97,14 @@ func (r *Release) getDefaultDevReleaseName() (ver string, err error) {
 		return "", err
 	}
 
-	if value, ok := releaseConfig["final_name"]; !ok {
-		return "", fmt.Errorf("final_name key did not exist in configuration file for release: %s", r.Path)
+	if value, ok := releaseConfig["name"]; !ok {
+		if value, ok := releaseConfig["final_name"]; !ok {
+			return "", fmt.Errorf("name or final_name key did not exist in configuration file for release: %s", r.Path)
+		} else if name, ok = value.(string); !ok {
+			return "", fmt.Errorf("final_name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
+		}
 	} else if name, ok = value.(string); !ok {
-		return "", fmt.Errorf("final_name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
+		return "", fmt.Errorf("name was not a string in release: %s, type: %T, value: %v", r.Path, value, value)
 	}
 
 	return name, nil
