@@ -116,7 +116,7 @@ func TestDevReleaseValidationBadConfigNoDevNameKeyNoFinalName(t *testing.T) {
 	_, err = NewDevRelease(emptyDevReleasePath, "", "", emptyDevReleaseCachePath)
 
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "final_name key did not exist in configuration file for release")
+	assert.Contains(err.Error(), "neither name nor final_name key exists in the configuration file for release")
 }
 
 func TestDevReleaseValidationBadConfigWrongFinalNameType(t *testing.T) {
