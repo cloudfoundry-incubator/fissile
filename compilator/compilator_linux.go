@@ -17,24 +17,24 @@ import (
 func (c *Compilator) compilePackageInChroot(pkg *model.Package) (err error) {
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
-		return err
+		return fmt.Errorf("failed to create directory: %s", err)
 	}
 
 	if err := c.copyDependencies(pkg); err != nil {
-		return err
+		return fmt.Errorf("failed to copy dependencies: %s", err)
 	}
 
 	// Generate a compilation script
 	targetScriptName := "compile.sh"
 	hostScriptPath := filepath.Join(pkg.GetTargetPackageSourcesDir(c.hostWorkDir), targetScriptName)
 	if err := compilation.SaveScript(c.baseType, compilation.CompilationScript, hostScriptPath); err != nil {
-		return err
+		return fmt.Errorf("failed to copy compilation script: %s", err)
 	}
 
 	// Extract package
 	extractDir := c.getSourcePackageDir(pkg)
 	if _, err := pkg.Extract(extractDir); err != nil {
-		return err
+		return fmt.Errorf("faile to extract package: %s", err)
 	}
 
 	// in-memory buffer of the log
