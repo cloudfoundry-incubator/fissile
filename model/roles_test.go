@@ -377,3 +377,21 @@ func TestValidateRoleRun(t *testing.T) {
 	}
 }
 
+func TestLoadRoleManifestVariablesSortedBAD(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-badly-sorted.yml")
+	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.Equal(err.Error(),
+		`configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'
+configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	assert.Nil(rolesManifest)
+}

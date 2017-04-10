@@ -279,6 +279,10 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.rolesByName[role.Name] = role
 	}
 
+	if errs := validateVariableSorting(rolesManifest.Configuration.Variables); len(errs) != 0 {
+		return nil, fmt.Errorf(errs.Errors())
+	}
+
 	return &rolesManifest, nil
 }
 
@@ -470,6 +474,23 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	}
 
 	r.Configuration.Templates = roleConfigs
+}
+
+// validateVariableSorting tests whether the parameters are properly sorted or not
+func validateVariableSorting(variables ConfigurationVariableSlice) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	previousName := ""
+	for _, cv := range variables {
+		if cv.Name < previousName {
+			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+				previousName,
+				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+		}
+		previousName = cv.Name
+	}
+
+	return allErrs
 }
 
 // validateRoleRun tests whether required fields in the RoleRun are

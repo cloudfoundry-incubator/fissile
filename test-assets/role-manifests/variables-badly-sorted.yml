@@ -24,10 +24,11 @@ roles:
     release_name: tor
 configuration:
   variables:
-  - name: BAR
   - name: FOO
+  - name: BAR
   - name: PELERINUL
+  - name: ALPHA
   templates:
-    properties.tor.hostname: '((FOO))'
+    properties.tor.hostname: '((FOO))((ALPHA))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
