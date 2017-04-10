@@ -34,6 +34,10 @@ The fissile is also a go-gettable package:
 go get github.com/hpcloud/fissile
 ```
 
+## Prepare Environment
+
+To prepare the computer on which you plan to build docker images follow this documentation [here](./docs/fissile-environment.md).
+
 ## Usage
 
 You can find detailed usage documentation [here](./docs/fissile.md).
