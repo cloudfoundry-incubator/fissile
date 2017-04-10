@@ -323,3 +323,57 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, "some string")
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }
+
+func TestValidateRoleRun(t *testing.T) {
+	newRun := func(memory int, cpu int, name string, externalPort string, internalPort string, protocol string) *RoleRun {
+		return &RoleRun{
+			VirtualCPUs: cpu,
+			Memory:      memory,
+			ExposedPorts: []*RoleRunExposedPort{{Name: name, External: externalPort,
+				Internal: internalPort, Protocol: protocol,
+			}},
+		}
+	}
+
+	var (
+		validRun      = newRun(10, 2, "test", "1", "2", "UDP")
+		wrongProtocol = newRun(10, 2, "test", "1", "2", "AA")
+		wrongPorts    = newRun(10, 2, "test", "0", "-1", "UDP")
+		wrongParse    = newRun(10, 2, "test", "0", "qq", "UDP")
+		negativeField = newRun(-10, 2, "test", "1", "2", "UDP")
+	)
+
+	tests := map[string]struct {
+		run            *RoleRun
+		isValid        bool
+		expectedErrors string
+	}{
+		"nil":            {nil, false,
+			"Role 'nil': run: Required value"},
+		"valid":          {validRun, true, ``},
+		"wrong protocol": {wrongProtocol, false,
+			"Role 'wrong protocol': run.exposed-ports[test].protocol: Unsupported value: \"AA\": supported values: TCP, UDP"},
+		"wrong ports": {wrongPorts, false,
+			"Role 'wrong ports': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
+			"Role 'wrong ports': run.exposed-ports[test].internal: Invalid value: -1: must be between 1 and 65535, inclusive"},
+		"wrong parse": {wrongParse, false,
+			"Role 'wrong parse': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
+			"Role 'wrong parse': run.exposed-ports[test].internal: Invalid value: \"qq\": invalid syntax"},
+		"negative field": {negativeField, false,
+			`Role 'negative field': run.memory: Invalid value: -10: must be greater than or equal to 0`},
+	}
+
+	for name, tc := range tests {
+		errs := validateRoleRun(tc.run, name)
+		if tc.isValid && len(errs) > 0 {
+			t.Errorf("%v: unexpected error: %v", name, errs)
+		}
+		if !tc.isValid && len(errs) == 0 {
+			t.Errorf("%v: unexpected non-error", name)
+		}
+		if !tc.isValid && len(errs) > 0 {
+			assert.Equal(t, tc.expectedErrors, errs.Errors())
+		}
+	}
+}
+

@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hpcloud/fissile/validation"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -238,6 +240,10 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 				return nil, fmt.Errorf("Health check for role %s should have exactly one of url, command, or port; got %v", role.Name, checks)
 			}
 		}
+
+		if errs := validateRoleRun(role.Run, role.Name); len(errs) != 0 {
+			return nil, fmt.Errorf(errs.Errors())
+		}
 	}
 
 	if rolesManifest.Configuration == nil {
@@ -464,4 +470,38 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	}
 
 	r.Configuration.Templates = roleConfigs
+}
+
+// validateRoleRun tests whether required fields in the RoleRun are
+// set. The second argument taken is the name of the role the run is
+// for, to make the generated error messages more specific.
+func validateRoleRun(run *RoleRun, name string) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	if run == nil {
+		return append(allErrs, validation.Required(
+			fmt.Sprintf("Role '%s': run", name), ""))
+	}
+
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(run.Memory),
+		fmt.Sprintf("Role '%s': run.memory", name))...)
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(run.VirtualCPUs),
+		fmt.Sprintf("Role '%s': run.virtual-cpus", name))...)
+
+	for i := range run.ExposedPorts {
+		if run.ExposedPorts[i].Name == "" {
+			allErrs = append(allErrs, validation.Required(
+				fmt.Sprintf("Role '%s': run.exposed-ports.name", name), ""))
+		}
+
+		allErrs = append(allErrs, validation.ValidatePort(run.ExposedPorts[i].External,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].external", name, run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, validation.ValidatePort(run.ExposedPorts[i].Internal,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].internal", name, run.ExposedPorts[i].Name))...)
+
+		allErrs = append(allErrs, validation.ValidateProtocol(run.ExposedPorts[i].Protocol,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].protocol", name, run.ExposedPorts[i].Name))...)
+	}
+
+	return allErrs
 }

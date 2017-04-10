@@ -13,6 +13,7 @@ roles:
         internal: 8080
         public: true
       - name: https
+        protocol: TCP
         external: 443
         internal: 443
         public: true

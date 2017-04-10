@@ -254,7 +254,7 @@ Check for roles of type `docker` with a key `run.env` whose elements
 reference unknown parameters. We ignore the parameters provided by
 HCP, and the proxy parts, these are ok.
 
-The `we ignore ...` actually refers to all the parameters mentoned in
+The `we ignore ...` actually refers to all the parameters mentioned in
 the note in section __All role manifest templates must use only declared
 parameters___
 

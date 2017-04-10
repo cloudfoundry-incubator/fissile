@@ -10,6 +10,8 @@ roles:
   post_config_scripts:
   - post_config_script.sh
   - /var/vcap/jobs/myrole/pre-start
+  run:
+    foo: x
   jobs:
   - name: new_hostname
     release_name: tor

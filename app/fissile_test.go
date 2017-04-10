@@ -196,7 +196,7 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 	}
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
-	if !assert.NoError(err, "Failed to load role manifest") {
+	if !assert.NoError(err, "Failed to load role manifest: "+roleManifestPath) {
 		return
 	}
 
