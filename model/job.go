@@ -253,7 +253,7 @@ func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinio
 	}
 	config["job"].(map[string]interface{})["templates"] = templates
 
-	opinions, err := newOpinions(lightOpinionsPath, darkOpinionsPath)
+	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinio
 }
 
 // getPropertiesForJob returns the parameters for the given job, using its specs and opinions
-func (j *Job) getPropertiesForJob(opinions *opinions) (map[string]interface{}, error) {
+func (j *Job) getPropertiesForJob(opinions *Opinions) (map[string]interface{}, error) {
 	props := make(map[string]interface{})
 	lightOpinions, ok := opinions.Light["properties"]
 	if !ok {

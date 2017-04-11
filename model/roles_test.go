@@ -415,7 +415,6 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 	assert.Nil(rolesManifest)
 }
 
-
 func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	assert := assert.New(t)
 
@@ -430,7 +429,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	tests := []struct {
 		manifest string
 		message  string
-	} {
+	}{
 		{
 			"bosh-run-missing.yml",
 			`Role 'myrole': run: Required value`,

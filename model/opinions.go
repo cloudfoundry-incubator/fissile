@@ -6,14 +6,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type opinions struct {
+// Opinions holds the light and dark opinions given to fissile
+type Opinions struct {
 	Light map[string]interface{}
 	Dark  map[string]interface{}
 }
 
-// newOpinions returns the json opinions for the light and dark opinion files
-func newOpinions(lightFile, darkFile string) (*opinions, error) {
-	result := &opinions{}
+// NewOpinions returns the json opinions for the light and dark opinion files
+func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
+	result := &Opinions{}
 
 	manifestContents, err := ioutil.ReadFile(lightFile)
 	if err != nil {
@@ -38,7 +39,8 @@ func newOpinions(lightFile, darkFile string) (*opinions, error) {
 	return result, nil
 }
 
-func (o *opinions) GetOpinionForKey(opinions map[string]interface{}, keyPieces []string) (result interface{}) {
+// GetOpinionForKey pulls an opinion out of the holding container.
+func (o *Opinions) GetOpinionForKey(opinions map[string]interface{}, keyPieces []string) (result interface{}) {
 	return getDeepValueFromManifest(opinions, keyPieces)
 }
 

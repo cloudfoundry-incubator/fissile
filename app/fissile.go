@@ -15,6 +15,7 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
+	"github.com/hpcloud/fissile/validation"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/stampy"
@@ -467,6 +468,14 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+	if errs := validate(roleManifest, f.releases, opinions); len(errs) != 0 {
+		return fmt.Errorf(errs.Errors())
+	}
+
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
 		repository,
 		compiledPackagesPath,
@@ -835,4 +844,13 @@ roleLoop:
 	}
 
 	return nil
+}
+
+func validate(roleManifest *model.RoleManifest, releases []*model.Release, opinions *model.Opinions) validation.ErrorList {
+
+	allErrs := validation.ErrorList{}
+
+	// 	allErrs = append(allErrs, XXX()...)
+
+	return allErrs
 }
