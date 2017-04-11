@@ -348,17 +348,17 @@ func TestValidateRoleRun(t *testing.T) {
 		isValid        bool
 		expectedErrors string
 	}{
-		"nil":            {nil, false,
+		"nil": {nil, false,
 			"Role 'nil': run: Required value"},
-		"valid":          {validRun, true, ``},
+		"valid": {validRun, true, ``},
 		"wrong protocol": {wrongProtocol, false,
 			"Role 'wrong protocol': run.exposed-ports[test].protocol: Unsupported value: \"AA\": supported values: TCP, UDP"},
 		"wrong ports": {wrongPorts, false,
 			"Role 'wrong ports': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-			"Role 'wrong ports': run.exposed-ports[test].internal: Invalid value: -1: must be between 1 and 65535, inclusive"},
+				"Role 'wrong ports': run.exposed-ports[test].internal: Invalid value: -1: must be between 1 and 65535, inclusive"},
 		"wrong parse": {wrongParse, false,
 			"Role 'wrong parse': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-			"Role 'wrong parse': run.exposed-ports[test].internal: Invalid value: \"qq\": invalid syntax"},
+				"Role 'wrong parse': run.exposed-ports[test].internal: Invalid value: \"qq\": invalid syntax"},
 		"negative field": {negativeField, false,
 			`Role 'negative field': run.memory: Invalid value: -10: must be greater than or equal to 0`},
 	}
@@ -393,5 +393,23 @@ func TestLoadRoleManifestVariablesSortedBAD(t *testing.T) {
 	assert.Equal(err.Error(),
 		`configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'
 configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	assert.Nil(rolesManifest)
+}
+
+func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-without-usage.yml")
+	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.Equal(err.Error(),
+		`configuration.variables: Not found: "No templates using 'SOME_VAR'"`)
 	assert.Nil(rolesManifest)
 }

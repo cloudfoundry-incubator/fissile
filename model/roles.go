@@ -279,7 +279,13 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.rolesByName[role.Name] = role
 	}
 
+	// NOTE: Consider merging the error lists into a larger one.
+
 	if errs := validateVariableSorting(rolesManifest.Configuration.Variables); len(errs) != 0 {
+		return nil, fmt.Errorf(errs.Errors())
+	}
+
+	if errs := validateVariableUsage(&rolesManifest); len(errs) != 0 {
 		return nil, fmt.Errorf(errs.Errors())
 	}
 
@@ -476,7 +482,8 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	r.Configuration.Templates = roleConfigs
 }
 
-// validateVariableSorting tests whether the parameters are properly sorted or not
+// validateVariableSorting tests whether the parameters are properly sorted or not.
+// It reports all variables which are out of order.
 func validateVariableSorting(variables ConfigurationVariableSlice) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
@@ -488,6 +495,83 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
 		}
 		previousName = cv.Name
+	}
+
+	return allErrs
+}
+
+// validateVariableUsage tests whether all parameters are used in a template or not.
+// It reports all variables which are not used by at least one template.
+//
+// ATTENTION: This will mis-report any variables which are used only
+// in scripts, but not in templates.
+
+func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// See also 'GetVariablesForRole' (mustache.go).
+
+	unusedConfigs := MakeMapOfVariables(roleManifest)
+	if len(unusedConfigs) == 0 {
+		return allErrs
+	}
+
+	// Iterate over all roles, jobs, templates, extract the used
+	// variables. Remove each found from the set of unused
+	// configs.
+
+	for _, role := range roleManifest.Roles {
+		for _, job := range role.Jobs {
+			for _, property := range job.Properties {
+				propertyName := fmt.Sprintf("properties.%s", property.Name)
+
+				if template, ok := role.Configuration.Templates[propertyName]; ok {
+					varsInTemplate, err := parseTemplate(template)
+					if err != nil {
+						// We ignore bad templates here
+						continue
+					}
+					for _, envVar := range varsInTemplate {
+						if _, ok := unusedConfigs[envVar]; ok {
+							delete(unusedConfigs, envVar)
+						}
+						if len(unusedConfigs) == 0 {
+							// Everything got used, stop now.
+							return allErrs
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Iterate over the global templates, extract the used
+	// variables. Remove each found from the set of unused
+	// configs.
+
+	for _, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			// We ignore bad templates here
+			continue
+		}
+		for _, envVar := range varsInTemplate {
+			if _, ok := unusedConfigs[envVar]; ok {
+				delete(unusedConfigs, envVar)
+			}
+			if len(unusedConfigs) == 0 {
+				// Everything got used, stop now.
+				return allErrs
+			}
+		}
+	}
+
+	// We have only the unused variables left in the set. Report
+	// them.
+
+	for cv := range unusedConfigs {
+		allErrs = append(allErrs, validation.NotFound("configuration.variables",
+			fmt.Sprintf("No templates using '%s'", cv)))
 	}
 
 	return allErrs
