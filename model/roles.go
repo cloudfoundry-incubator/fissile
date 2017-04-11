@@ -293,6 +293,10 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, fmt.Errorf(errs.Errors())
 	}
 
+	if errs := validateNonTemplates(&rolesManifest); len(errs) != 0 {
+		return nil, fmt.Errorf(errs.Errors())
+	}
+
 	return &rolesManifest, nil
 }
 
@@ -678,6 +682,33 @@ func validateRoleRun(run *RoleRun, name string) validation.ErrorList {
 
 		allErrs = append(allErrs, validation.ValidateProtocol(run.ExposedPorts[i].Protocol,
 			fmt.Sprintf("Role '%s': run.exposed-ports[%s].protocol", name, run.ExposedPorts[i].Name))...)
+	}
+
+	return allErrs
+}
+
+// validateNonTemplates tests whether the global templates are
+// constant or not. It reports the contant templates as errors (They
+// should be opinions).
+
+func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// Iterate over the global templates, extract the used
+	// variables. Report all templates not using any variable.
+
+	for property, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			// We ignore bad templates here
+			continue
+		}
+
+		if len(varsInTemplate) == 0 {
+			allErrs = append(allErrs, validation.Invalid("configuration.templates",
+				template,
+				fmt.Sprintf("Using '%s' as a constant", property)))
+		}
 	}
 
 	return allErrs

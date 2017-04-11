@@ -431,3 +431,21 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 		`configuration.templates: Not found: "No variable declaration of 'HOME'"`)
 	assert.Nil(rolesManifest)
 }
+
+func TestLoadRoleManifestNonTemplates(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/templates-non.yml")
+	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.Equal(err.Error(),
+		`configuration.templates: Invalid value: "": Using 'properties.tor.hostname' as a constant`)
+	assert.Nil(rolesManifest)
+}
