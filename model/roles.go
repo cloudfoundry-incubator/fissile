@@ -289,6 +289,10 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, fmt.Errorf(errs.Errors())
 	}
 
+	if errs := validateTemplateUsage(&rolesManifest); len(errs) != 0 {
+		return nil, fmt.Errorf(errs.Errors())
+	}
+
 	return &rolesManifest, nil
 }
 
@@ -572,6 +576,74 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	for cv := range unusedConfigs {
 		allErrs = append(allErrs, validation.NotFound("configuration.variables",
 			fmt.Sprintf("No templates using '%s'", cv)))
+	}
+
+	return allErrs
+}
+
+// validateTemplateUsage tests whether all templates use only declared variables or not.
+// It reports all undeclared variables.
+
+func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// See also 'GetVariablesForRole' (mustache.go).
+
+	declaredConfigs := MakeMapOfVariables(roleManifest)
+
+	// Iterate over all roles, jobs, templates, extract the used
+	// variables. Report all without a declaration.
+
+	for _, role := range roleManifest.Roles {
+		for _, job := range role.Jobs {
+			for _, property := range job.Properties {
+				propertyName := fmt.Sprintf("properties.%s", property.Name)
+
+				if template, ok := role.Configuration.Templates[propertyName]; ok {
+					varsInTemplate, err := parseTemplate(template)
+					if err != nil {
+						// We ignore bad templates here
+						continue
+					}
+					for _, envVar := range varsInTemplate {
+						if _, ok := declaredConfigs[envVar]; ok {
+							continue
+						}
+
+						allErrs = append(allErrs, validation.NotFound("configuration.templates",
+							fmt.Sprintf("No variable declaration of '%s'", envVar)))
+
+						// Add a placeholder so that this variable is not reported again.
+						// One report is good enough.
+						declaredConfigs[envVar] = nil
+					}
+				}
+			}
+		}
+	}
+
+	// Iterate over the global templates, extract the used
+	// variables. Report all without a declaration.
+
+	for _, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			// We ignore bad templates here
+			continue
+		}
+		for _, envVar := range varsInTemplate {
+			if _, ok := declaredConfigs[envVar]; ok {
+				continue
+			}
+
+			allErrs = append(allErrs, validation.NotFound("configuration.templates",
+				fmt.Sprintf("No variable declaration of '%s'", envVar)))
+
+			// Add a placeholder so that this variable is
+			// not reported again.  One report is good
+			// enough.
+			declaredConfigs[envVar] = nil
+		}
 	}
 
 	return allErrs

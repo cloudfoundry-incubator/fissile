@@ -26,7 +26,6 @@ configuration:
   variables:
   - name: BAR
   - name: FOO
-  - name: HOME
   - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
