@@ -1,0 +1,23 @@
+---
+roles:
+- name: myrole
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
+- name: foorole
+  type: bosh-task
+  jobs:
+  - name: tor
+    release_name: tor
+configuration:
+  variables:
+  - name: BAR
+  - name: FOO
+  - name: HOME
+  - name: PELERINUL
+  templates:
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

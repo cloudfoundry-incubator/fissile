@@ -1,0 +1,11 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    exposed-ports:
+      - name: https
+        protocol: TCP
+        external: aa
+        internal: qq
+        public: true

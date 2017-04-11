@@ -324,59 +324,6 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }
 
-func TestValidateRoleRun(t *testing.T) {
-	newRun := func(memory int, cpu int, name string, externalPort string, internalPort string, protocol string) *RoleRun {
-		return &RoleRun{
-			VirtualCPUs: cpu,
-			Memory:      memory,
-			ExposedPorts: []*RoleRunExposedPort{{Name: name, External: externalPort,
-				Internal: internalPort, Protocol: protocol,
-			}},
-		}
-	}
-
-	var (
-		validRun      = newRun(10, 2, "test", "1", "2", "UDP")
-		wrongProtocol = newRun(10, 2, "test", "1", "2", "AA")
-		wrongPorts    = newRun(10, 2, "test", "0", "-1", "UDP")
-		wrongParse    = newRun(10, 2, "test", "0", "qq", "UDP")
-		negativeField = newRun(-10, 2, "test", "1", "2", "UDP")
-	)
-
-	tests := map[string]struct {
-		run            *RoleRun
-		isValid        bool
-		expectedErrors string
-	}{
-		"nil": {nil, false,
-			"Role 'nil': run: Required value"},
-		"valid": {validRun, true, ``},
-		"wrong protocol": {wrongProtocol, false,
-			"Role 'wrong protocol': run.exposed-ports[test].protocol: Unsupported value: \"AA\": supported values: TCP, UDP"},
-		"wrong ports": {wrongPorts, false,
-			"Role 'wrong ports': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-				"Role 'wrong ports': run.exposed-ports[test].internal: Invalid value: -1: must be between 1 and 65535, inclusive"},
-		"wrong parse": {wrongParse, false,
-			"Role 'wrong parse': run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-				"Role 'wrong parse': run.exposed-ports[test].internal: Invalid value: \"qq\": invalid syntax"},
-		"negative field": {negativeField, false,
-			`Role 'negative field': run.memory: Invalid value: -10: must be greater than or equal to 0`},
-	}
-
-	for name, tc := range tests {
-		errs := validateRoleRun(tc.run, name)
-		if tc.isValid && len(errs) > 0 {
-			t.Errorf("%v: unexpected error: %v", name, errs)
-		}
-		if !tc.isValid && len(errs) == 0 {
-			t.Errorf("%v: unexpected non-error", name)
-		}
-		if !tc.isValid && len(errs) > 0 {
-			assert.Equal(t, tc.expectedErrors, errs.Errors())
-		}
-	}
-}
-
 func TestLoadRoleManifestVariablesSortedBAD(t *testing.T) {
 	assert := assert.New(t)
 
@@ -448,4 +395,74 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	assert.Equal(err.Error(),
 		`configuration.templates: Invalid value: "": Using 'properties.tor.hostname' as a constant`)
 	assert.Nil(rolesManifest)
+}
+
+func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/docker-run-env.yml")
+	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.Equal(err.Error(),
+		`Role 'dockerrole': run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
+	assert.Nil(rolesManifest)
+}
+
+
+func TestLoadRoleManifestRunGeneral(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	tests := []struct {
+		manifest string
+		message  string
+	} {
+		{
+			"bosh-run-missing.yml",
+			`Role 'myrole': run: Required value`,
+		},
+		{
+			"bosh-run-bad-proto.yml",
+			`Role 'myrole': run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
+		},
+		{
+			"bosh-run-bad-ports.yml",
+			`Role 'myrole': run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive
+Role 'myrole': run.exposed-ports[https].internal: Invalid value: -1: must be between 1 and 65535, inclusive`,
+		},
+		{
+			"bosh-run-bad-parse.yml",
+			`Role 'myrole': run.exposed-ports[https].external: Invalid value: "aa": invalid syntax
+Role 'myrole': run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
+		},
+		{
+			"bosh-run-bad-memory.yml",
+			`Role 'myrole': run.memory: Invalid value: -10: must be greater than or equal to 0`,
+		},
+		{
+			"bosh-run-bad-cpu.yml",
+			`Role 'myrole': run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
+		},
+	}
+
+	for _, tc := range tests {
+		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
+		rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+		assert.Equal(err.Error(), tc.message)
+		assert.Nil(rolesManifest)
+	}
 }

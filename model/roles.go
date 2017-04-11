@@ -73,6 +73,7 @@ type RoleRun struct {
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
+	Environment       []string              `yaml:"env"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -122,6 +123,10 @@ type ConfigurationVariable struct {
 	Description string                          `yaml:"description"`
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 }
+
+// CVMap is a map from variable name to ConfigurationVariable, for
+// various places which require quick access/search/existence check.
+type CVMap map[string]*ConfigurationVariable
 
 // ConfigurationVariableSlice is a sortable slice of ConfigurationVariables
 type ConfigurationVariableSlice []*ConfigurationVariable
@@ -194,6 +199,16 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, err
 	}
 
+	if rolesManifest.Configuration == nil {
+		rolesManifest.Configuration = &Configuration{}
+	}
+	if rolesManifest.Configuration.Templates == nil {
+		rolesManifest.Configuration.Templates = map[string]string{}
+	}
+
+	// See also 'GetVariablesForRole' (mustache.go).
+	declaredConfigs := MakeMapOfVariables(&rolesManifest)
+
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
@@ -241,16 +256,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			}
 		}
 
-		if errs := validateRoleRun(role.Run, role.Name); len(errs) != 0 {
+		if errs := validateRoleRun(role, &rolesManifest, declaredConfigs); len(errs) != 0 {
 			return nil, fmt.Errorf(errs.Errors())
 		}
-	}
-
-	if rolesManifest.Configuration == nil {
-		rolesManifest.Configuration = &Configuration{}
-	}
-	if rolesManifest.Configuration.Templates == nil {
-		rolesManifest.Configuration.Templates = map[string]string{}
 	}
 
 	rolesManifest.rolesByName = make(map[string]*Role, len(rolesManifest.Roles))
@@ -513,7 +521,6 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 //
 // ATTENTION: This will mis-report any variables which are used only
 // in scripts, but not in templates.
-
 func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
@@ -587,12 +594,10 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 
 // validateTemplateUsage tests whether all templates use only declared variables or not.
 // It reports all undeclared variables.
-
 func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	// See also 'GetVariablesForRole' (mustache.go).
-
+	// See also 'GetVariablesForRole' (mustache.go), and LoadManifest (caller, this file)
 	declaredConfigs := MakeMapOfVariables(roleManifest)
 
 	// Iterate over all roles, jobs, templates, extract the used
@@ -654,34 +659,48 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 }
 
 // validateRoleRun tests whether required fields in the RoleRun are
-// set. The second argument taken is the name of the role the run is
-// for, to make the generated error messages more specific.
-func validateRoleRun(run *RoleRun, name string) validation.ErrorList {
+// set. Note, some of the fields have type-dependent checks.
+func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	if run == nil {
+	if role.Run == nil {
 		return append(allErrs, validation.Required(
-			fmt.Sprintf("Role '%s': run", name), ""))
+			fmt.Sprintf("Role '%s': run", role.Name), ""))
 	}
 
-	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(run.Memory),
-		fmt.Sprintf("Role '%s': run.memory", name))...)
-	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(run.VirtualCPUs),
-		fmt.Sprintf("Role '%s': run.virtual-cpus", name))...)
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.Memory),
+		fmt.Sprintf("Role '%s': run.memory", role.Name))...)
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.VirtualCPUs),
+		fmt.Sprintf("Role '%s': run.virtual-cpus", role.Name))...)
 
-	for i := range run.ExposedPorts {
-		if run.ExposedPorts[i].Name == "" {
+	for i := range role.Run.ExposedPorts {
+		if role.Run.ExposedPorts[i].Name == "" {
 			allErrs = append(allErrs, validation.Required(
-				fmt.Sprintf("Role '%s': run.exposed-ports.name", name), ""))
+				fmt.Sprintf("Role '%s': role.Run.exposed-ports.name", role.Name), ""))
 		}
 
-		allErrs = append(allErrs, validation.ValidatePort(run.ExposedPorts[i].External,
-			fmt.Sprintf("Role '%s': run.exposed-ports[%s].external", name, run.ExposedPorts[i].Name))...)
-		allErrs = append(allErrs, validation.ValidatePort(run.ExposedPorts[i].Internal,
-			fmt.Sprintf("Role '%s': run.exposed-ports[%s].internal", name, run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, validation.ValidatePort(role.Run.ExposedPorts[i].External,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].external", role.Name, role.Run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, validation.ValidatePort(role.Run.ExposedPorts[i].Internal,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].internal", role.Name, role.Run.ExposedPorts[i].Name))...)
 
-		allErrs = append(allErrs, validation.ValidateProtocol(run.ExposedPorts[i].Protocol,
-			fmt.Sprintf("Role '%s': run.exposed-ports[%s].protocol", name, run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, validation.ValidateProtocol(role.Run.ExposedPorts[i].Protocol,
+			fmt.Sprintf("Role '%s': run.exposed-ports[%s].protocol", role.Name, role.Run.ExposedPorts[i].Name))...)
+	}
+
+	if (role.Type == RoleTypeDocker) && (len(role.Run.Environment) > 0) {
+		// Check that all the environment variables are
+		// declared and report those which are not.
+
+		for _, envVar := range role.Run.Environment {
+			if _, ok := declared[envVar]; ok {
+				continue
+			}
+
+			allErrs = append(allErrs, validation.NotFound(
+				fmt.Sprintf("Role '%s': run.env", role.Name),
+				fmt.Sprintf("No variable declaration of '%s'", envVar)))
+		}
 	}
 
 	return allErrs
@@ -690,7 +709,6 @@ func validateRoleRun(run *RoleRun, name string) validation.ErrorList {
 // validateNonTemplates tests whether the global templates are
 // constant or not. It reports the contant templates as errors (They
 // should be opinions).
-
 func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
