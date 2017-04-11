@@ -688,9 +688,13 @@ func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) va
 			fmt.Sprintf("Role '%s': run.exposed-ports[%s].protocol", role.Name, role.Run.ExposedPorts[i].Name))...)
 	}
 
-	if (role.Type == RoleTypeDocker) && (len(role.Run.Environment) > 0) {
-		// Check that all the environment variables are
-		// declared and report those which are not.
+	if len(role.Run.Environment) == 0 {
+		return allErrs
+	}
+
+	if role.Type == RoleTypeDocker {
+		// The environment variables used by docker roles must
+		// all be declared, report those which are not.
 
 		for _, envVar := range role.Run.Environment {
 			if _, ok := declared[envVar]; ok {
@@ -701,6 +705,12 @@ func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) va
 				fmt.Sprintf("Role '%s': run.env", role.Name),
 				fmt.Sprintf("No variable declaration of '%s'", envVar)))
 		}
+	} else {
+		// Bosh roles must not provide environment variables.
+
+		allErrs = append(allErrs, validation.Forbidden(
+			fmt.Sprintf("Role '%s': run.env", role.Name),
+			"Non-docker role declares bogus parameters"))
 	}
 
 	return allErrs

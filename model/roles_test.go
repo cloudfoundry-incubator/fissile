@@ -457,6 +457,10 @@ Role 'myrole': run.exposed-ports[https].internal: Invalid value: "qq": invalid s
 			"bosh-run-bad-cpu.yml",
 			`Role 'myrole': run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
 		},
+		{
+			"bosh-run-env.yml",
+			`Role 'xrole': run.env: Forbidden: Non-docker role declares bogus parameters`,
+		},
 	}
 
 	for _, tc := range tests {

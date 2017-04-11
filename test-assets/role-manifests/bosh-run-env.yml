@@ -1,0 +1,14 @@
+---
+roles:
+- name: xrole
+  scripts: ["myrole.sh"]
+  run:
+    memory: 1
+    virtual-cpus: 1
+    env:
+    - FOO
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
