@@ -881,20 +881,20 @@ roleLoop:
 func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opinions) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	// ruby/bosh_properties --> fissile show properties --> ListProperties --> f.collectProperties
-	// Generate a triple map (release -> job -> property -> default value)
-	// which is easy to convert and dump to JSON or YAML.
-
 	bosh := f.collectPropertyDefaults()
 	// map: property.name -> (default.string -> [*job...]
 
 	// All properties must be defined in a BOSH release
+	allErrs = append(allErrs, validateBosh("role-manifest",
+		manifestProperties(roleManifest), bosh)...)
 
 	// All light opinions must exists in a bosh release
-	allErrs = append(allErrs, validateBosh("light opinion", model.Flatten(opinions.Light), bosh)...)
+	allErrs = append(allErrs, validateBosh("light opinion",
+		model.Flatten(opinions.Light), bosh)...)
 
 	// All dark opinions must exists in a bosh release
-	allErrs = append(allErrs, validateBosh("dark opinion", model.Flatten(opinions.Dark), bosh)...)
+	allErrs = append(allErrs, validateBosh("dark opinion",
+		model.Flatten(opinions.Dark), bosh)...)
 
 	// 	allErrs = append(allErrs, XXX()...)
 
@@ -912,4 +912,42 @@ func validateBosh(label string, properties []string, bosh propertyDefaults) vali
 	}
 
 	return allErrs
+}
+
+func manifestProperties(roleManifest *model.RoleManifest) []string {
+	properties := make([]string, 0, 50)
+
+	// Remember which properties were already added, to keep the
+	// list elements unique. This is needed because
+	// "calculateRoleConfigurationTemplates" run by
+	// "LoadRoleManifest" copies the global templates into each
+	// role, causing us to see each here #Role times. And we do
+	// not that many repeated errors for a bad one. We also cannot
+	// skip going over the roles because they can have their
+	// properties to overide opinions.
+	have := make(map[string]struct{})
+
+	// Per-role properties
+	for _, role := range roleManifest.Roles {
+		for property := range role.Configuration.Templates {
+			p := strings.TrimPrefix(property, "properties.")
+			if _, ok := have[p]; ok {
+				continue
+			}
+			properties = append(properties, p)
+			have[p] = struct{}{}
+		}
+	}
+
+	// And the global properties
+	for property := range roleManifest.Configuration.Templates {
+		p := strings.TrimPrefix(property, "properties.")
+		if _, ok := have[p]; ok {
+			continue
+		}
+		properties = append(properties, p)
+		have[p] = struct{}{}
+	}
+
+	return properties
 }

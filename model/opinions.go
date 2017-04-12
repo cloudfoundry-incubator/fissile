@@ -1,8 +1,8 @@
 package model
 
 import (
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
 )
@@ -86,9 +86,9 @@ func flatCollectRecurse(result []string, prefix, ks string, value interface{}, s
 
 	if skip > 0 {
 		cprefix = prefix
-		cskip = skip-1
+		cskip = skip - 1
 	} else {
-		cprefix = prefix+ks+"."
+		cprefix = prefix + ks + "."
 		cskip = skip
 	}
 

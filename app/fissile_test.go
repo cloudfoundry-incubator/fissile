@@ -244,7 +244,7 @@ func TestValidation(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-issues.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 	f := NewFissileApplication(".", ui)
@@ -266,6 +266,7 @@ func TestValidation(t *testing.T) {
 	assert.Contains(actual, `light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `role-manifest 'fox': Not found: "In any BOSH release"`)
 }
 
 func TestValidationOK(t *testing.T) {
