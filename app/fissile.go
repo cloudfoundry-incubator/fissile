@@ -884,17 +884,32 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 	bosh := f.collectPropertyDefaults()
 	// map: property.name -> (default.string -> [*job...]
 
+	dark := model.Flatten(opinions.Dark)
+	light := model.Flatten(opinions.Light)
+	// []string
+
+	properties := manifestProperties(roleManifest)
+	// []string
+
 	// All properties must be defined in a BOSH release
 	allErrs = append(allErrs, validateBosh("role-manifest",
-		manifestProperties(roleManifest), bosh)...)
+		properties, bosh)...)
 
 	// All light opinions must exists in a bosh release
 	allErrs = append(allErrs, validateBosh("light opinion",
-		model.Flatten(opinions.Light), bosh)...)
+		light, bosh)...)
 
 	// All dark opinions must exists in a bosh release
 	allErrs = append(allErrs, validateBosh("dark opinion",
-		model.Flatten(opinions.Dark), bosh)...)
+		dark, bosh)...)
+
+	// All dark opinions must be configured as templates
+	allErrs = append(allErrs, darkExposed(dark, asMap(properties))...)
+
+	// No dark opinions must have defaults in light opinions
+	allErrs = append(allErrs, darkUnexposed(dark, asMap(light))...)
+
+	// No duplicates must exist between role manifest and light opinions
 
 	// 	allErrs = append(allErrs, XXX()...)
 
@@ -902,6 +917,7 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 }
 
 func validateBosh(label string, properties []string, bosh propertyDefaults) validation.ErrorList {
+	// All provided properties must be defined in a BOSH release
 	allErrs := validation.ErrorList{}
 
 	for _, property := range properties {
@@ -950,4 +966,45 @@ func manifestProperties(roleManifest *model.RoleManifest) []string {
 	}
 
 	return properties
+}
+
+func darkExposed(dark []string, properties map[string]struct{}) validation.ErrorList {
+	// All dark opinions must be configured as templates
+	allErrs := validation.ErrorList{}
+
+	for _, property := range dark {
+		if _, ok := properties[property]; ok {
+			continue
+		}
+		allErrs = append(allErrs, validation.NotFound(
+			property, "Dark opinion is missing template in role-manifest"))
+	}
+
+	return allErrs
+}
+
+func darkUnexposed(dark []string, light map[string]struct{}) validation.ErrorList {
+	// No dark opinions must have defaults in light opinions
+	allErrs := validation.ErrorList{}
+
+	for _, property := range dark {
+		if _, ok := light[property]; !ok {
+			continue
+		}
+		allErrs = append(allErrs, validation.Forbidden(
+			property, "Dark opinion found in light opinions"))
+	}
+
+	return allErrs
+}
+
+func asMap(words []string) map[string]struct{} {
+	have := make(map[string]struct{})
+	for _, w := range words {
+		if _, ok := have[w]; ok {
+			continue
+		}
+		have[w] = struct{}{}
+	}
+	return have
 }

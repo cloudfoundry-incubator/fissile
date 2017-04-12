@@ -261,12 +261,23 @@ func TestValidation(t *testing.T) {
 	errs := f.validate(roleManifest, opinions)
 
 	actual := errs.Errors()
+	// validateBosh light
 	assert.Contains(actual, `light opinion 'tor.opinion': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `light opinion 'tor.int_opinion': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
+	// validateBosh dark
 	assert.Contains(actual, `dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
+	// validateBosh manifest
 	assert.Contains(actual, `role-manifest 'fox': Not found: "In any BOSH release"`)
+	// darkExposed
+	assert.Contains(actual, `tor.dark-opinion: Not found: "Dark opinion is missing template in role-manifest"`)
+	assert.Contains(actual, `tor.masked_opinion: Not found: "Dark opinion is missing template in role-manifest"`)
+	// darkUnexposed
+	assert.Contains(actual, `tor.masked_opinion: Forbidden: Dark opinion found in light opinions`)
+
+	// assert.Contains(actual, `XXX`) // Trigger a fail which shows the contents of `actual`.
+	assert.Equal(9, len(errs))
 }
 
 func TestValidationOK(t *testing.T) {
