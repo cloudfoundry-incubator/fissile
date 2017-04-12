@@ -884,12 +884,12 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 	bosh := f.collectPropertyDefaults()
 	// map: property.name -> (default.string -> [*job...]
 
-	dark := model.Flatten(opinions.Dark)
-	light := model.Flatten(opinions.Light)
-	// []string
+	dark := model.FlatMap(opinions.Dark)
+	light := model.FlatMap(opinions.Light)
+	// map[string]string
 
 	properties := manifestProperties(roleManifest)
-	// []string
+	// map[string]string
 
 	// All properties must be defined in a BOSH release
 	allErrs = append(allErrs, validateBosh("role-manifest",
@@ -904,23 +904,24 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 		dark, bosh)...)
 
 	// All dark opinions must be configured as templates
-	allErrs = append(allErrs, darkExposed(dark, asMap(properties))...)
+	allErrs = append(allErrs, darkExposed(dark, properties)...)
 
 	// No dark opinions must have defaults in light opinions
-	allErrs = append(allErrs, darkUnexposed(dark, asMap(light))...)
+	allErrs = append(allErrs, darkUnexposed(dark, light)...)
 
 	// No duplicates must exist between role manifest and light opinions
+	allErrs = append(allErrs, checkOverrides(light, roleManifest)...)
 
 	// 	allErrs = append(allErrs, XXX()...)
 
 	return allErrs
 }
 
-func validateBosh(label string, properties []string, bosh propertyDefaults) validation.ErrorList {
+func validateBosh(label string, properties map[string]string, bosh propertyDefaults) validation.ErrorList {
 	// All provided properties must be defined in a BOSH release
 	allErrs := validation.ErrorList{}
 
-	for _, property := range properties {
+	for property := range properties {
 		if _, ok := bosh[property]; !ok {
 			allErrs = append(allErrs, validation.NotFound(
 				fmt.Sprintf("%s '%s'", label, property), "In any BOSH release"))
@@ -930,49 +931,37 @@ func validateBosh(label string, properties []string, bosh propertyDefaults) vali
 	return allErrs
 }
 
-func manifestProperties(roleManifest *model.RoleManifest) []string {
-	properties := make([]string, 0, 50)
-
-	// Remember which properties were already added, to keep the
-	// list elements unique. This is needed because
-	// "calculateRoleConfigurationTemplates" run by
-	// "LoadRoleManifest" copies the global templates into each
-	// role, causing us to see each here #Role times. And we do
-	// not that many repeated errors for a bad one. We also cannot
-	// skip going over the roles because they can have their
-	// properties to overide opinions.
-	have := make(map[string]struct{})
+func manifestProperties(roleManifest *model.RoleManifest) map[string]string {
+	properties := make(map[string]string)
 
 	// Per-role properties
 	for _, role := range roleManifest.Roles {
-		for property := range role.Configuration.Templates {
+		for property, template := range role.Configuration.Templates {
 			p := strings.TrimPrefix(property, "properties.")
-			if _, ok := have[p]; ok {
+			if _, ok := properties[p]; ok {
 				continue
 			}
-			properties = append(properties, p)
-			have[p] = struct{}{}
+			properties[p] = template
 		}
 	}
 
 	// And the global properties
-	for property := range roleManifest.Configuration.Templates {
+	for property, template := range roleManifest.Configuration.Templates {
 		p := strings.TrimPrefix(property, "properties.")
-		if _, ok := have[p]; ok {
+		if _, ok := properties[p]; ok {
 			continue
 		}
-		properties = append(properties, p)
-		have[p] = struct{}{}
+		properties[p] = template
 	}
 
 	return properties
 }
 
-func darkExposed(dark []string, properties map[string]struct{}) validation.ErrorList {
+func darkExposed(dark map[string]string, properties map[string]string) validation.ErrorList {
 	// All dark opinions must be configured as templates
 	allErrs := validation.ErrorList{}
 
-	for _, property := range dark {
+	for property := range dark {
 		if _, ok := properties[property]; ok {
 			continue
 		}
@@ -983,11 +972,11 @@ func darkExposed(dark []string, properties map[string]struct{}) validation.Error
 	return allErrs
 }
 
-func darkUnexposed(dark []string, light map[string]struct{}) validation.ErrorList {
+func darkUnexposed(dark map[string]string, light map[string]string) validation.ErrorList {
 	// No dark opinions must have defaults in light opinions
 	allErrs := validation.ErrorList{}
 
-	for _, property := range dark {
+	for property := range dark {
 		if _, ok := light[property]; !ok {
 			continue
 		}
@@ -998,13 +987,44 @@ func darkUnexposed(dark []string, light map[string]struct{}) validation.ErrorLis
 	return allErrs
 }
 
-func asMap(words []string) map[string]struct{} {
-	have := make(map[string]struct{})
-	for _, w := range words {
-		if _, ok := have[w]; ok {
-			continue
+func checkOverrides(light map[string]string, roleManifest *model.RoleManifest) validation.ErrorList {
+	// No duplicates must exist between role manifest and light opinions
+	allErrs := validation.ErrorList{}
+
+	// Per-role properties
+	for _, role := range roleManifest.Roles {
+		for property, template := range role.Configuration.Templates {
+			p := strings.TrimPrefix(property, "properties.")
+			allErrs = append(allErrs, checkOverrideProperty(p, template, light, false)...)
 		}
-		have[w] = struct{}{}
 	}
-	return have
+
+	// And the global properties
+	for property, template := range roleManifest.Configuration.Templates {
+		p := strings.TrimPrefix(property, "properties.")
+		allErrs = append(allErrs, checkOverrideProperty(p, template, light, true)...)
+	}
+
+	return allErrs
+}
+
+func checkOverrideProperty(property, value string, light map[string]string, conflicts bool) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	lightvalue, ok := light[property]
+	if !ok {
+		return allErrs
+	}
+
+	if lightvalue == value {
+		return append(allErrs, validation.Forbidden(property,
+			"Role-manifest duplicates opinion, remove from manifest"))
+	}
+
+	if conflicts {
+		return append(allErrs, validation.Forbidden(property,
+			"Role-manifest overrides opinion, remove opinion"))
+	}
+
+	return allErrs
 }

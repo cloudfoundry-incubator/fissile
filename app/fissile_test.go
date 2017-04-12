@@ -275,9 +275,15 @@ func TestValidation(t *testing.T) {
 	assert.Contains(actual, `tor.masked_opinion: Not found: "Dark opinion is missing template in role-manifest"`)
 	// darkUnexposed
 	assert.Contains(actual, `tor.masked_opinion: Forbidden: Dark opinion found in light opinions`)
+	// checkOverridden
+	assert.Contains(actual, `tor.hostname: Forbidden: Role-manifest overrides opinion, remove opinion`)
+	assert.Contains(actual, `tor.bogus: Forbidden: Role-manifest duplicates opinion, remove from manifest`)
+	// validateBosh light, manifest - For the bogus property used above for checkOverridden
+	assert.Contains(actual, `role-manifest 'tor.bogus': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `light opinion 'tor.bogus': Not found: "In any BOSH release"`)
 
-	// assert.Contains(actual, `XXX`) // Trigger a fail which shows the contents of `actual`.
-	assert.Equal(9, len(errs))
+	// assert.Contains(actual, `XXX`) // Trigger a fail which shows the contents of `actual`. Also template for new assertion.
+	assert.Equal(13, len(errs))
 }
 
 func TestValidationOK(t *testing.T) {
@@ -289,7 +295,7 @@ func TestValidationOK(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-ok.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
 
@@ -305,5 +311,7 @@ func TestValidationOK(t *testing.T) {
 	assert.NoError(err)
 
 	errs := f.validate(roleManifest, opinions)
-	assert.Equal(len(errs), 0)
+
+	// assert.Contains(actual, `XXX`) // Trigger a fail which shows the contents of `actual`.
+	assert.Equal(0, len(errs))
 }

@@ -17,9 +17,6 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
-  configuration:
-    templates:
-      properties.tor.bogus: BOGUS
 - name: foorole
   type: bosh-task
   jobs:
@@ -35,4 +32,3 @@ configuration:
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
-    properties.fox: '((FOO): Not specified in any release'
