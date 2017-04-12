@@ -1,0 +1,4 @@
+---
+properties:
+  tor:
+    private_key: masked

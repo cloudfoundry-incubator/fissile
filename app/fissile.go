@@ -297,6 +297,38 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 	return result
 }
 
+// propertyDefaults is a double map
+//
+//	(property.name -> (default.string -> [*job...])
+//
+// which maps a property (name) to all its default values
+// (stringified) and them in turn to the array of jobs where this
+// default occurs.
+type propertyDefaults map[string]map[string][]*model.Job
+
+func (f *Fissile) collectPropertyDefaults() propertyDefaults {
+	result := make(propertyDefaults)
+
+	for _, release := range f.releases {
+		for _, job := range release.Jobs {
+			for _, property := range job.Properties {
+				defaultAsString := fmt.Sprintf("%v", property.Default)
+
+				if _, ok := result[property.Name]; !ok {
+					result[property.Name] = make(map[string][]*model.Job)
+				}
+				if _, ok := result[property.Name][defaultAsString]; !ok {
+					result[property.Name][defaultAsString] = make([]*model.Job, 1)
+				}
+				result[property.Name][defaultAsString] =
+					append(result[property.Name][defaultAsString], job)
+			}
+		}
+	}
+
+	return result
+}
+
 // Compile will compile a list of dev BOSH releases
 func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int) error {
 	if len(f.releases) == 0 {
@@ -472,7 +504,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	if err != nil {
 		return err
 	}
-	if errs := validate(roleManifest, f.releases, opinions); len(errs) != 0 {
+	if errs := f.validate(roleManifest, opinions); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
@@ -846,11 +878,38 @@ roleLoop:
 	return nil
 }
 
-func validate(roleManifest *model.RoleManifest, releases []*model.Release, opinions *model.Opinions) validation.ErrorList {
-
+func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opinions) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
+	// ruby/bosh_properties --> fissile show properties --> ListProperties --> f.collectProperties
+	// Generate a triple map (release -> job -> property -> default value)
+	// which is easy to convert and dump to JSON or YAML.
+
+	bosh := f.collectPropertyDefaults()
+	// map: property.name -> (default.string -> [*job...]
+
+	// All properties must be defined in a BOSH release
+
+	// All light opinions must exists in a bosh release
+	allErrs = append(allErrs, validateBosh("light opinion", model.Flatten(opinions.Light), bosh)...)
+
+	// All dark opinions must exists in a bosh release
+	allErrs = append(allErrs, validateBosh("dark opinion", model.Flatten(opinions.Dark), bosh)...)
+
 	// 	allErrs = append(allErrs, XXX()...)
+
+	return allErrs
+}
+
+func validateBosh(label string, properties []string, bosh propertyDefaults) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, property := range properties {
+		if _, ok := bosh[property]; !ok {
+			allErrs = append(allErrs, validation.NotFound(
+				fmt.Sprintf("%s '%s'", label, property), "In any BOSH release"))
+		}
+	}
 
 	return allErrs
 }

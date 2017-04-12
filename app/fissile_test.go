@@ -234,3 +234,64 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 		}
 	}
 }
+
+func TestValidation(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
+	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	assert.NoError(err)
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	assert.NoError(err)
+
+	errs := f.validate(roleManifest, opinions)
+
+	actual := errs.Errors()
+	assert.Contains(actual, `light opinion 'tor.opinion': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `light opinion 'tor.int_opinion': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`)
+	assert.Contains(actual, `dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
+}
+
+func TestValidationOK(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
+	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
+
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	assert.NoError(err)
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	assert.NoError(err)
+
+	errs := f.validate(roleManifest, opinions)
+	assert.Equal(len(errs), 0)
+}
