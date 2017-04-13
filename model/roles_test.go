@@ -441,7 +441,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		{
 			"bosh-run-bad-ports.yml",
 			`Role 'myrole': run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive
-Role 'myrole': run.exposed-ports[https].internal: Invalid value: -1: must be between 1 and 65535, inclusive`,
+Role 'myrole': run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
 		},
 		{
 			"bosh-run-bad-parse.yml",
@@ -465,7 +465,18 @@ Role 'myrole': run.exposed-ports[https].internal: Invalid value: "qq": invalid s
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
 		rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-		assert.Equal(err.Error(), tc.message)
+		assert.Equal(tc.message, err.Error())
 		assert.Nil(rolesManifest)
+	}
+
+	testsOk := []string{
+		"exposed-ports.yml",
+		"exposed-port-range.yml",
+	}
+
+	for _, manifest := range testsOk {
+		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifest)
+		_, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+		assert.Nil(err)
 	}
 }

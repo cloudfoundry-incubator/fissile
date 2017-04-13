@@ -679,9 +679,9 @@ func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) va
 				fmt.Sprintf("Role '%s': role.Run.exposed-ports.name", role.Name), ""))
 		}
 
-		allErrs = append(allErrs, validation.ValidatePort(role.Run.ExposedPorts[i].External,
+		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].External,
 			fmt.Sprintf("Role '%s': run.exposed-ports[%s].external", role.Name, role.Run.ExposedPorts[i].Name))...)
-		allErrs = append(allErrs, validation.ValidatePort(role.Run.ExposedPorts[i].Internal,
+		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].Internal,
 			fmt.Sprintf("Role '%s': run.exposed-ports[%s].internal", role.Name, role.Run.ExposedPorts[i].Name))...)
 
 		allErrs = append(allErrs, validation.ValidateProtocol(role.Run.ExposedPorts[i].Protocol,
