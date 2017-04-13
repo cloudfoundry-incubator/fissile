@@ -913,10 +913,13 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 	// opinions
 	allErrs = append(allErrs, checkOverrides(light, roleManifest)...)
 
+	// All bosh properties in a release should have the same
+	// default across jobs -- WARNING only, not error
+	f.checkBoshDefaults(bosh)
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
-	allErrs = append(allErrs, checkLightDefaults(light, bosh)...)
+	allErrs = append(allErrs, f.checkLightDefaults(light, bosh)...)
 
 	// 	allErrs = append(allErrs, XXX()...)
 
@@ -1037,7 +1040,55 @@ func checkOverrideProperty(property, value string, light map[string]string, conf
 	return allErrs
 }
 
-func checkLightDefaults(light map[string]string, pd propertyDefaults) validation.ErrorList {
+func (f *Fissile) checkBoshDefaults(pd propertyDefaults) {
+	// All bosh properties in a release should have the same
+	// default across jobs
+
+	// Ignore properties with a single default across all definitions.
+	for property, defaults := range pd {
+		if len(defaults) == 1 {
+			continue
+		}
+
+		f.UI.Printf("%s: Property %s has %s defaults:\n",
+			color.YellowString("Warning"),
+			color.YellowString(property),
+			color.YellowString(fmt.Sprintf("%d", len(defaults))))
+
+		maxlen := 0
+		for defaultv := range defaults {
+			ds := fmt.Sprintf("%v", defaultv)
+			if len(ds) > maxlen {
+				maxlen = len(ds)
+			}
+		}
+
+		leftjustified := fmt.Sprintf("%%-%ds", maxlen)
+
+		for defaultv, jobs := range defaults {
+			ds := fmt.Sprintf("%v", defaultv)
+			if len(jobs) == 1 {
+				job := jobs[0]
+				f.UI.Printf("- Default %s: Release %s, job %s\n",
+					color.CyanString(fmt.Sprintf(leftjustified, ds)),
+					color.CyanString(job.Release.Name),
+					color.CyanString(job.Name))
+			} else {
+				f.UI.Printf("- Default %s:\n", color.CyanString(ds))
+				for _, job := range jobs {
+					f.UI.Printf("  - Release %s, job %s\n",
+						color.CyanString(job.Release.Name),
+						color.CyanString(job.Name))
+				}
+			}
+		}
+	}
+}
+
+func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefaults) validation.ErrorList {
+	// All light opinions should differ from their defaults in the
+	// BOSH releases
+
 	// light :: (property.name -> value-of-opinion)
 	// pd    :: (property.name -> (default.string -> [*job...])
 	allErrs := validation.ErrorList{}
@@ -1055,10 +1106,11 @@ func checkLightDefaults(light map[string]string, pd propertyDefaults) validation
 			continue
 		}
 
-		// Ignore properties with ambigous defaults
+		// Ignore properties with ambigous defaults. Warn however.
 		if len(defaults) > 1 {
-			// TODO: Write warning
-			// STDOUT.puts "light opinion #{prop.yellow} ignored, #{"ambiguous default".yellow}"
+			f.UI.Printf("light opinion %s ignored, %s\n",
+				color.YellowString(p),
+				color.YellowString("ambiguous default"))
 			continue
 		}
 
