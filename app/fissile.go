@@ -909,8 +909,14 @@ func (f *Fissile) validate(roleManifest *model.RoleManifest, opinions *model.Opi
 	// No dark opinions must have defaults in light opinions
 	allErrs = append(allErrs, darkUnexposed(dark, light)...)
 
-	// No duplicates must exist between role manifest and light opinions
+	// No duplicates must exist between role manifest and light
+	// opinions
 	allErrs = append(allErrs, checkOverrides(light, roleManifest)...)
+
+
+	// All light opinions should differ from their defaults in the
+	// BOSH releases
+	allErrs = append(allErrs, checkLightDefaults(light, bosh)...)
 
 	// 	allErrs = append(allErrs, XXX()...)
 
@@ -922,9 +928,15 @@ func validateBosh(label string, properties map[string]string, bosh propertyDefau
 	allErrs := validation.ErrorList{}
 
 	for property := range properties {
-		if _, ok := bosh[property]; !ok {
+		// Ignore specials (without the "properties." prefix)
+		if !strings.HasPrefix(property, "properties.") {
+			continue
+		}
+		p := strings.TrimPrefix(property, "properties.")
+
+		if _, ok := bosh[p]; !ok {
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("%s '%s'", label, property), "In any BOSH release"))
+				fmt.Sprintf("%s '%s'", label, p), "In any BOSH release"))
 		}
 	}
 
@@ -937,21 +949,19 @@ func manifestProperties(roleManifest *model.RoleManifest) map[string]string {
 	// Per-role properties
 	for _, role := range roleManifest.Roles {
 		for property, template := range role.Configuration.Templates {
-			p := strings.TrimPrefix(property, "properties.")
-			if _, ok := properties[p]; ok {
+			if _, ok := properties[property]; ok {
 				continue
 			}
-			properties[p] = template
+			properties[property] = template
 		}
 	}
 
 	// And the global properties
 	for property, template := range roleManifest.Configuration.Templates {
-		p := strings.TrimPrefix(property, "properties.")
-		if _, ok := properties[p]; ok {
+		if _, ok := properties[property]; ok {
 			continue
 		}
-		properties[p] = template
+		properties[property] = template
 	}
 
 	return properties
@@ -994,15 +1004,13 @@ func checkOverrides(light map[string]string, roleManifest *model.RoleManifest) v
 	// Per-role properties
 	for _, role := range roleManifest.Roles {
 		for property, template := range role.Configuration.Templates {
-			p := strings.TrimPrefix(property, "properties.")
-			allErrs = append(allErrs, checkOverrideProperty(p, template, light, false)...)
+			allErrs = append(allErrs, checkOverrideProperty(property, template, light, false)...)
 		}
 	}
 
 	// And the global properties
 	for property, template := range roleManifest.Configuration.Templates {
-		p := strings.TrimPrefix(property, "properties.")
-		allErrs = append(allErrs, checkOverrideProperty(p, template, light, true)...)
+		allErrs = append(allErrs, checkOverrideProperty(property, template, light, true)...)
 	}
 
 	return allErrs
@@ -1024,6 +1032,47 @@ func checkOverrideProperty(property, value string, light map[string]string, conf
 	if conflicts {
 		return append(allErrs, validation.Forbidden(property,
 			"Role-manifest overrides opinion, remove opinion"))
+	}
+
+	return allErrs
+}
+
+func checkLightDefaults(light map[string]string, pd propertyDefaults) validation.ErrorList {
+	// light :: (property.name -> value-of-opinion)
+	// pd    :: (property.name -> (default.string -> [*job...])
+	allErrs := validation.ErrorList{}
+
+	for property, opinion := range light {
+		// Ignore specials (without the "properties." prefix)
+		if !strings.HasPrefix(property, "properties.") {
+			continue
+		}
+		p := strings.TrimPrefix(property, "properties.")
+
+		// Ignore unknown/undefined property
+		defaults, ok := pd[p]
+		if !ok {
+			continue
+		}
+
+		// Ignore properties with ambigous defaults
+		if len(defaults) > 1 {
+			// TODO: Write warning
+			// STDOUT.puts "light opinion #{prop.yellow} ignored, #{"ambiguous default".yellow}"
+			continue
+		}
+
+		// len(defaults) == 1 --> This loop will run only once
+		// Is there a better (more direct?) way to get the
+		// single key, i.e. default from the map ?
+		for thedefault := range defaults {
+			if opinion != thedefault {
+				continue
+			}
+			allErrs = append(allErrs, validation.Forbidden(property,
+				fmt.Sprintf("Light opinion matches default of '%v'",
+					thedefault)))
+		}
 	}
 
 	return allErrs

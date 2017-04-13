@@ -41,11 +41,9 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 }
 
 // FlatMap converts the incoming nested map of opinions into a flat
-// map of properties to values (strings).  Things of note: The
-// toplevel map of "properties" has to be skipped.  This common prefix
-// is NOT part of the property key / namespace.
+// map of properties to values (strings).
 func FlatMap(opinions map[string]interface{}) map[string]string {
-	return flatMapString(make(map[string]string), "", opinions, 1)
+	return flatMapString(make(map[string]string), "", opinions)
 }
 
 // The following pair of functions differs (only) in the type of the
@@ -59,49 +57,39 @@ func FlatMap(opinions map[string]interface{}) map[string]string {
 // how to get rid of it either, as a "map[string]interface{}" value
 // cannot be given to a "map[interface{}]interface{}" argument.
 
-func flatMapString(result map[string]string, prefix string, opinions map[string]interface{}, skip int) map[string]string {
+func flatMapString(result map[string]string, prefix string, opinions map[string]interface{}) map[string]string {
 	for ks, value := range opinions {
 		// Here the `ks` iteration variable is already a
 		// string, contrary to flatMapI below.
 
-		result = flatMapRecurse(result, prefix, ks, value, skip)
+		result = flatMapRecurse(result, prefix, ks, value)
 	}
 	return result
 }
 
-func flatMapInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}, skip int) map[string]string {
+func flatMapInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) map[string]string {
 	for key, value := range opinions {
 		ks := fmt.Sprintf("%v", key)
 		// Generate string iteration variable from general
 		// key, compare flatMapS above.
 
-		result = flatMapRecurse(result, prefix, ks, value, skip)
+		result = flatMapRecurse(result, prefix, ks, value)
 	}
 	return result
 }
 
-func flatMapRecurse(result map[string]string, prefix, ks string, value interface{}, skip int) map[string]string {
+func flatMapRecurse(result map[string]string, prefix, ks string, value interface{}) map[string]string {
 	// 'c' for child
-	var cprefix string
-	var cskip int
-
-	if skip > 0 {
-		cprefix = prefix
-		cskip = skip - 1
-	} else {
-		cprefix = prefix + ks + "."
-		cskip = skip
-	}
+	cprefix := prefix + ks + "."
 
 	if vmap, ok := value.(map[string]interface{}); ok {
-		return flatMapString(result, cprefix, vmap, cskip)
+		return flatMapString(result, cprefix, vmap)
 	}
 	if vmap, ok := value.(map[interface{}]interface{}); ok {
-		return flatMapInterface(result, cprefix, vmap, cskip)
+		return flatMapInterface(result, cprefix, vmap)
 	}
-	if skip == 0 {
-		result[prefix+ks] = fmt.Sprintf("%v", value)
-	}
+
+	result[prefix+ks] = fmt.Sprintf("%v", value)
 	return result
 }
 
