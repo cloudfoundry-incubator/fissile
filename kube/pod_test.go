@@ -144,7 +144,7 @@ func TestPodGetEnvVars(t *testing.T) {
 		},
 	}
 
-	role.Configuration.Templates["property.some-property"] = "((SOME_VAR))"
+	role.Configuration.Templates["properties.some-property"] = "((SOME_VAR))"
 
 	samples := []struct {
 		desc     string
