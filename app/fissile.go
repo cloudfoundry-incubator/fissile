@@ -797,13 +797,9 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		UseMemoryLimits: useMemoryLimits,
 	}
 
-roleLoop:
 	for _, role := range rolesManifest.Roles {
-		for _, tag := range role.Tags {
-			switch tag {
-			case "dev-only":
-				continue roleLoop
-			}
+		if isDevRole(role) {
+			continue
 		}
 
 		roleTypeDir := filepath.Join(outputDir, string(role.Type))
@@ -872,4 +868,14 @@ roleLoop:
 	}
 
 	return nil
+}
+
+func isDevRole(role *model.Role) bool {
+	for _, tag := range role.Tags {
+		switch tag {
+		case "dev-only":
+			return true
+		}
+	}
+	return false
 }
