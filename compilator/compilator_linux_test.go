@@ -2,16 +2,33 @@ package compilator
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
-
-	"io/ioutil"
 
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )
+
+type LockedBuffer struct {
+	mutex sync.Mutex
+	buf   bytes.Buffer
+}
+
+func (b *LockedBuffer) Write(p []byte) (n int, err error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *LockedBuffer) String() string {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buf.String()
+}
 
 func TestCompilePackageInChroot(t *testing.T) {
 	assert := assert.New(t)
@@ -20,7 +37,7 @@ func TestCompilePackageInChroot(t *testing.T) {
 		t.Skip("building without docker requires root permissions")
 	}
 
-	stderr := &bytes.Buffer{}
+	stderr := &LockedBuffer{}
 	ui := termui.New(&bytes.Buffer{}, stderr, nil)
 
 	workDir, err := os.Getwd()
