@@ -40,53 +40,53 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 	return result, nil
 }
 
-// FlatMap converts the incoming nested map of opinions into a flat
+// FlattenOpinions converts the incoming nested map of opinions into a flat
 // map of properties to values (strings).
-func FlatMap(opinions map[string]interface{}) map[string]string {
-	return flatMapString(make(map[string]string), "", opinions)
+func FlattenOpinions(opinions map[string]interface{}) map[string]string {
+	return flattenOpinionsString(make(map[string]string), "", opinions)
 }
 
 // The following pair of functions differs (only) in the type of the
 // incoming "opinions". The treatment is 99% the same, with the only
 // difference of the Interface variant using Sprintf to convert the
 // key to a string, which it already is for String. The identical
-// parts of both are factored into "flatMapRecurse".
+// parts of both are factored into "flattenOpinionsRecurse".
 //
 // And while we seem to need the String variant only for the toplevel
 // map, as everything below looks to be Interface only, I don't see
 // how to get rid of it either, as a "map[string]interface{}" value
 // cannot be given to a "map[interface{}]interface{}" argument.
 
-func flatMapString(result map[string]string, prefix string, opinions map[string]interface{}) map[string]string {
+func flattenOpinionsString(result map[string]string, prefix string, opinions map[string]interface{}) map[string]string {
 	for ks, value := range opinions {
 		// Here the `ks` iteration variable is already a
-		// string, contrary to flatMapI below.
+		// string, contrary to flattenOpinionsInterface below.
 
-		result = flatMapRecurse(result, prefix, ks, value)
+		result = flattenOpinionsRecurse(result, prefix, ks, value)
 	}
 	return result
 }
 
-func flatMapInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) map[string]string {
+func flattenOpinionsInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) map[string]string {
 	for key, value := range opinions {
 		ks := fmt.Sprintf("%v", key)
 		// Generate string iteration variable from general
-		// key, compare flatMapS above.
+		// key, compare flattenOpinionsString above.
 
-		result = flatMapRecurse(result, prefix, ks, value)
+		result = flattenOpinionsRecurse(result, prefix, ks, value)
 	}
 	return result
 }
 
-func flatMapRecurse(result map[string]string, prefix, ks string, value interface{}) map[string]string {
+func flattenOpinionsRecurse(result map[string]string, prefix, ks string, value interface{}) map[string]string {
 	// 'c' for child
 	cprefix := prefix + ks + "."
 
 	if vmap, ok := value.(map[string]interface{}); ok {
-		return flatMapString(result, cprefix, vmap)
+		return flattenOpinionsString(result, cprefix, vmap)
 	}
 	if vmap, ok := value.(map[interface{}]interface{}); ok {
-		return flatMapInterface(result, cprefix, vmap)
+		return flattenOpinionsInterface(result, cprefix, vmap)
 	}
 
 	result[prefix+ks] = fmt.Sprintf("%v", value)

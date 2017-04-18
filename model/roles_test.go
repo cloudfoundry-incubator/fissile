@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -155,7 +156,8 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	_, err = LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
 
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "release foo has not been loaded and is referenced by job ntpd in role foorole")
+	assert.Contains(err.Error(),
+		`roles[foorole].jobs[ntpd]: Invalid value: "foo": Referenced release is not loaded`)
 }
 
 func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
@@ -324,7 +326,7 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }
 
-func TestLoadRoleManifestVariablesSortedBAD(t *testing.T) {
+func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
@@ -337,9 +339,10 @@ func TestLoadRoleManifestVariablesSortedBAD(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-badly-sorted.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-	assert.Equal(err.Error(),
-		`configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'
-configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'`)
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(rolesManifest)
 }
 
@@ -411,7 +414,7 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/docker-run-env.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
 	assert.Equal(err.Error(),
-		`Role 'dockerrole': run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
+		`roles[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
 	assert.Nil(rolesManifest)
 }
 
@@ -428,44 +431,51 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 
 	tests := []struct {
 		manifest string
-		message  string
+		message  []string
 	}{
 		{
-			"bosh-run-missing.yml",
-			`Role 'myrole': run: Required value`,
+			"bosh-run-missing.yml", []string{
+				`roles[myrole].run: Required value`,
+			},
 		},
 		{
-			"bosh-run-bad-proto.yml",
-			`Role 'myrole': run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
+			"bosh-run-bad-proto.yml", []string{
+				`roles[myrole].run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
+			},
 		},
 		{
-			"bosh-run-bad-ports.yml",
-			`Role 'myrole': run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive
-Role 'myrole': run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
+			"bosh-run-bad-ports.yml", []string{
+				`roles[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
+				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
+			},
 		},
 		{
-			"bosh-run-bad-parse.yml",
-			`Role 'myrole': run.exposed-ports[https].external: Invalid value: "aa": invalid syntax
-Role 'myrole': run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
+			"bosh-run-bad-parse.yml", []string{
+				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
+				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
+			},
 		},
 		{
-			"bosh-run-bad-memory.yml",
-			`Role 'myrole': run.memory: Invalid value: -10: must be greater than or equal to 0`,
+			"bosh-run-bad-memory.yml", []string{
+				`roles[myrole].run.memory: Invalid value: -10: must be greater than or equal to 0`,
+			},
 		},
 		{
-			"bosh-run-bad-cpu.yml",
-			`Role 'myrole': run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
+			"bosh-run-bad-cpu.yml", []string{
+				`roles[myrole].run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
+			},
 		},
 		{
-			"bosh-run-env.yml",
-			`Role 'xrole': run.env: Forbidden: Non-docker role declares bogus parameters`,
+			"bosh-run-env.yml", []string{
+				`roles[xrole].run.env: Forbidden: Non-docker role declares bogus parameters`,
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
 		rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-		assert.Equal(tc.message, err.Error())
+		assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
 		assert.Nil(rolesManifest)
 	}
 
