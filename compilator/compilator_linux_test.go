@@ -17,7 +17,7 @@ func TestCompilePackageInChroot(t *testing.T) {
 	assert := assert.New(t)
 
 	if os.Geteuid() != 0 {
-		//t.Skip("building without docker requires root permissions")
+		t.Skip("building without docker requires root permissions")
 	}
 
 	stderr := &bytes.Buffer{}

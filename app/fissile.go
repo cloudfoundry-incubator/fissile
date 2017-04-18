@@ -470,14 +470,13 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 
 	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
 	if err != nil {
-		return fmt.Errorf("Error finding role's package name: %s", err.Error())
+		return fmt.Errorf("Error finding role's package name: %v", err)
 	}
 	outputPath := filepath.Join(outputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
 
 	if !force {
-		file, err := os.Open(outputPath)
-		if err == nil {
-			file.Close()
+		info, err := os.Stat(outputPath)
+		if err == nil && !info.IsDir() {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(outputPath))
 			return nil
 		}
@@ -529,20 +528,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	if outputDirectory != "" {
 		err = os.MkdirAll(outputDirectory, 0755)
 		if err != nil {
-			if !os.IsExist(err) {
-				return fmt.Errorf("Error creating directory %s: %s", outputDirectory, err)
-			}
-			dir, err := os.Open(outputDirectory)
-			if err != nil {
-				return fmt.Errorf("Error opening directory %s: %s", outputDirectory, err)
-			}
-			defer dir.Close()
-			info, err := dir.Stat()
-			if err != nil {
-				return fmt.Errorf("Error stat()ing directory %s: %s", outputDirectory, err)
-			}
-			if !info.Mode().IsDir() {
+			if os.IsExist(err) {
 				return fmt.Errorf("Output directory %s exists and is not a directory", outputDirectory)
+			}
+			if err != nil {
+				return fmt.Errorf("Error creating directory %s: %s", outputDirectory, err)
 			}
 		}
 	}

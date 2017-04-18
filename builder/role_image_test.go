@@ -217,7 +217,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	expected := map[string]struct {
 		desc     string
 		typeflag byte // default to TypeRegA
-		keep     bool // Hold for extra examination aftare
+		keep     bool // Hold for extra examination after
 	}{
 		"Dockerfile":                                              {desc: "Dockerfile"},
 		"root/opt/hcf/share/doc/tor/LICENSE":                      {desc: "release license file"},
@@ -240,10 +240,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	tarWriter := tar.NewWriter(pipeW)
 	tarReader := tar.NewReader(pipeR)
 	var asyncError error
-	mutex := sync.Mutex{}
+	latch := make(chan struct{})
 	go func() {
-		mutex.Lock()
-		defer mutex.Unlock()
+		defer close(latch)
 		defer tarWriter.Close()
 		asyncError = populator(tarWriter)
 	}()
@@ -282,8 +281,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		}
 	}
 	// Synchronize with the gofunc to make sure it's done
-	mutex.Lock()
-	mutex.Unlock()
+	<-latch
 	for name, info := range expected {
 		assert.Equal(TypeMissing, info.typeflag, "File %s was not found", name)
 	}
