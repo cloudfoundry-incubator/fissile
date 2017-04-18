@@ -597,8 +597,8 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 							continue
 						}
 
-						allErrs = append(allErrs, validation.NotFound("configuration.templates",
-							fmt.Sprintf("No variable declaration of '%s'", envVar)))
+						allErrs = append(allErrs, validation.NotFound("configuration.variables",
+							fmt.Sprintf("No declaration of '%s'", envVar)))
 
 						// Add a placeholder so that this variable is not reported again.
 						// One report is good enough.

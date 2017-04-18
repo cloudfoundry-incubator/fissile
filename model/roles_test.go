@@ -378,7 +378,7 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-without-decl.yml")
 	rolesManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
 	assert.Equal(err.Error(),
-		`configuration.templates: Not found: "No variable declaration of 'HOME'"`)
+		`configuration.variables: Not found: "No declaration of 'HOME'"`)
 	assert.Nil(rolesManifest)
 }
 
