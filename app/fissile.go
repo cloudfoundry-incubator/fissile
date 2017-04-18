@@ -798,7 +798,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	for _, role := range rolesManifest.Roles {
-		if isDevRole(role) {
+		if role.IsDevRole() {
 			continue
 		}
 
@@ -868,14 +868,4 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	return nil
-}
-
-func isDevRole(role *model.Role) bool {
-	for _, tag := range role.Tags {
-		switch tag {
-		case "dev-only":
-			return true
-		}
-	}
-	return false
 }

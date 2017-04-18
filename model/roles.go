@@ -774,3 +774,15 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 
 	return allErrs
 }
+
+// IsDevRole tests if the role is tagged for development, or not. It
+// returns true for development-roles, and false otherwise.
+func (r *Role) IsDevRole() bool {
+	for _, tag := range r.Tags {
+		switch tag {
+		case "dev-only":
+			return true
+		}
+	}
+	return false
+}
