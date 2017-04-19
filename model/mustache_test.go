@@ -51,9 +51,10 @@ func TestRoleVariables(t *testing.T) {
 
 	assert.NoError(err)
 	assert.NotNil(vars)
-	assert.Len(vars, 4)
-	assert.Contains([]string{"HOME", "FOO", "BAR", "PELERINUL"}, vars[0].Name)
-	assert.Contains([]string{"HOME", "FOO", "BAR", "PELERINUL"}, vars[1].Name)
-	assert.Contains([]string{"HOME", "FOO", "BAR", "PELERINUL"}, vars[2].Name)
-	assert.Contains([]string{"HOME", "FOO", "BAR", "PELERINUL"}, vars[3].Name)
+
+	expected := []string{"HOME", "FOO", "BAR", "PELERINUL"}
+	assert.Len(vars, len(expected))
+	for i, variable := range vars {
+		assert.Contains(expected, variable.Name, "variable %d not expected", i)
+	}
 }

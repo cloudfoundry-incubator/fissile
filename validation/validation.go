@@ -50,7 +50,7 @@ func ValidatePortRange(portrange string, field string) ErrorList {
 	}
 	// Note: matches[0] is the fist/left-most match. Here this is
 	// entire string, if it matched, due to the ^...$ bracketing.
-	// The captures, we only part we are interested in, start at
+	// The captures, the only part we are interested in, start at
 	// index __1__.
 
 	for _, port := range matches[1:] {

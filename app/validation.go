@@ -189,8 +189,8 @@ func checkForDuplicateProperty(prefix, property, value string, light map[string]
 // checkBOSHDefaults reports all properties which were given differing
 // defaults across BOSH releases and the jobs inside.
 func (f *Fissile) checkBOSHDefaults(pd propertyDefaults) {
-	// Ignore properties with a single default across all definitions.
 	for property, defaults := range pd {
+		// Ignore properties with a single default across all definitions.
 		if len(defaults) == 1 {
 			continue
 		}

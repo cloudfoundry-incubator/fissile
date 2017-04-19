@@ -38,30 +38,35 @@ func TestValidation(t *testing.T) {
 	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
 	actual := errs.Errors()
-	// checkForUndefinedBOSHProperties light
-	assert.Contains(actual, `light opinion 'tor.opinion': Not found: "In any BOSH release"`)
-	assert.Contains(actual, `light opinion 'tor.int_opinion': Not found: "In any BOSH release"`)
-	assert.Contains(actual, `light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
-	// checkForUndefinedBOSHProperties dark
-	assert.Contains(actual, `dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`)
-	assert.Contains(actual, `dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`)
-	// checkForUndefinedBOSHProperties manifest
-	assert.Contains(actual, `role-manifest 'fox': Not found: "In any BOSH release"`)
-	// checkForUntemplatedDarkOpinions
-	assert.Contains(actual, `properties.tor.dark-opinion: Not found: "Dark opinion is missing template in role-manifest"`)
-	assert.Contains(actual, `properties.tor.masked_opinion: Not found: "Dark opinion is missing template in role-manifest"`)
-	// checkForDarkInTheLight
-	assert.Contains(actual, `properties.tor.masked_opinion: Forbidden: Dark opinion found in light opinions`)
-	// checkForDuplicatesBetweenManifestAndLight
-	assert.Contains(actual, `configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion`)
-	assert.Contains(actual, `roles[myrole].configuration.templates[properties.tor.bogus]: Forbidden: Role-manifest duplicates opinion, remove from manifest`)
-	// checkForUndefinedBOSHProperties light, manifest - For the bogus property used above for checkOverridden
-	assert.Contains(actual, `role-manifest 'tor.bogus': Not found: "In any BOSH release"`)
-	assert.Contains(actual, `light opinion 'tor.bogus': Not found: "In any BOSH release"`)
-	assert.Contains(actual, `properties.tor.hostname: Forbidden: Light opinion matches default of 'localhost'`)
+	allExpected := []string{
+		// checkForUndefinedBOSHProperties light
+		`light opinion 'tor.opinion': Not found: "In any BOSH release"`,
+		`light opinion 'tor.int_opinion': Not found: "In any BOSH release"`,
+		`light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`,
+		// checkForUndefinedBOSHProperties dark
+		`dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`,
+		`dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`,
+		// checkForUndefinedBOSHProperties manifest
+		`role-manifest 'fox': Not found: "In any BOSH release"`,
+		// checkForUntemplatedDarkOpinions
+		`properties.tor.dark-opinion: Not found: "Dark opinion is missing template in role-manifest"`,
+		`properties.tor.masked_opinion: Not found: "Dark opinion is missing template in role-manifest"`,
+		// checkForDarkInTheLight
+		`properties.tor.masked_opinion: Forbidden: Dark opinion found in light opinions`,
+		// checkForDuplicatesBetweenManifestAndLight
+		`configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion`,
+		`roles[myrole].configuration.templates[properties.tor.bogus]: Forbidden: Role-manifest duplicates opinion, remove from manifest`,
+		// checkForUndefinedBOSHProperties light, manifest - For the bogus property used above for checkOverridden
+		`role-manifest 'tor.bogus': Not found: "In any BOSH release"`,
+		`light opinion 'tor.bogus': Not found: "In any BOSH release"`,
+		`properties.tor.hostname: Forbidden: Light opinion matches default of 'localhost'`,
 
-	// assert.Contains(actual, `XXX`) // Trigger a fail which shows the contents of `actual`. Also template for new assertion.
-	assert.Len(errs, 14)
+		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
+	}
+	for _, expected := range allExpected {
+		assert.Contains(actual, expected)
+	}
+	assert.Len(errs, len(allExpected))
 }
 
 func TestValidationOk(t *testing.T) {

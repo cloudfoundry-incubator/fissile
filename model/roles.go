@@ -533,10 +533,8 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	// variables. Remove each found from the set of unused
 	// configs.
 
-	// Note, we cannot use GetVariablesForRole here because it
-	// will abort on bad templates. Here we have to ignore them
-	// (no sensible variable references) and continue to check
-	// everything else.
+	// Note, we have to ignore bad templates (no sensible variable
+	// references) and continue to check everything else.
 
 	for _, template := range roleManifest.Configuration.Templates {
 		varsInTemplate, err := parseTemplate(template)
@@ -643,14 +641,13 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	allErrs = append(allErrs, normalizeFlightStage(role)...)
-	allErrs = append(allErrs, validateHealthCheck(role)...)
-
 	if role.Run == nil {
 		return append(allErrs, validation.Required(
 			fmt.Sprintf("roles[%s].run", role.Name), ""))
 	}
 
+	allErrs = append(allErrs, normalizeFlightStage(role)...)
+	allErrs = append(allErrs, validateHealthCheck(role)...)
 	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.Memory),
 		fmt.Sprintf("roles[%s].run.memory", role.Name))...)
 	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.VirtualCPUs),
@@ -705,7 +702,7 @@ func validateHealthCheck(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	// Ensure that we don't have conflicting health checks
-	if role.Run != nil && role.Run.HealthCheck != nil {
+	if role.Run.HealthCheck != nil {
 		checks := make([]string, 0, 3)
 
 		if role.Run.HealthCheck.URL != "" {
@@ -734,20 +731,18 @@ func normalizeFlightStage(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	// Normalize flight stage
-	if role.Run != nil {
-		switch role.Run.FlightStage {
-		case "":
-			role.Run.FlightStage = FlightStageFlight
-		case FlightStagePreFlight:
-		case FlightStageFlight:
-		case FlightStagePostFlight:
-		case FlightStageManual:
-		default:
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.flight-stage", role.Name),
-				role.Run.FlightStage,
-				"Expected one of flight, manual, post-flight, or pre-flight"))
-		}
+	switch role.Run.FlightStage {
+	case "":
+		role.Run.FlightStage = FlightStageFlight
+	case FlightStagePreFlight:
+	case FlightStageFlight:
+	case FlightStagePostFlight:
+	case FlightStageManual:
+	default:
+		allErrs = append(allErrs, validation.Invalid(
+			fmt.Sprintf("roles[%s].run.flight-stage", role.Name),
+			role.Run.FlightStage,
+			"Expected one of flight, manual, post-flight, or pre-flight"))
 	}
 
 	return allErrs
