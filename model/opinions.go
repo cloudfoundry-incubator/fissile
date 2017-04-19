@@ -1,19 +1,21 @@
 package model
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
 )
 
-type opinions struct {
+// Opinions holds the light and dark opinions given to fissile
+type Opinions struct {
 	Light map[string]interface{}
 	Dark  map[string]interface{}
 }
 
-// newOpinions returns the json opinions for the light and dark opinion files
-func newOpinions(lightFile, darkFile string) (*opinions, error) {
-	result := &opinions{}
+// NewOpinions returns the json opinions for the light and dark opinion files
+func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
+	result := &Opinions{}
 
 	manifestContents, err := ioutil.ReadFile(lightFile)
 	if err != nil {
@@ -38,7 +40,46 @@ func newOpinions(lightFile, darkFile string) (*opinions, error) {
 	return result, nil
 }
 
-func (o *opinions) GetOpinionForKey(opinions map[string]interface{}, keyPieces []string) (result interface{}) {
+// FlattenOpinions converts the incoming nested map of opinions into a flat
+// map of properties to values (strings).
+func FlattenOpinions(opinions map[string]interface{}) map[string]string {
+	result := make(map[string]string)
+	flattenOpinionsRecurse(result, "", opinions)
+	return result
+}
+
+func flattenOpinionsRecurse(result map[string]string, prefix string, value interface{}) {
+
+	var cprefix string
+	if prefix == "" {
+		cprefix = prefix
+	} else {
+		cprefix = prefix + "."
+	}
+
+	if vmap, ok := value.(map[string]interface{}); ok {
+		for ks, value := range vmap {
+			// Here the `ks` iteration variable is already a
+			// string, contrary to the Interface loop below.
+			flattenOpinionsRecurse(result, cprefix+ks, value)
+		}
+		return
+	}
+	if vmap, ok := value.(map[interface{}]interface{}); ok {
+		for key, value := range vmap {
+			ks := fmt.Sprintf("%v", key)
+			// Generate string iteration variable from general
+			// key, compare String loop above.
+			flattenOpinionsRecurse(result, cprefix+ks, value)
+		}
+		return
+	}
+
+	result[prefix] = fmt.Sprintf("%v", value)
+}
+
+// GetOpinionForKey pulls an opinion out of the holding container.
+func (o *Opinions) GetOpinionForKey(opinions map[string]interface{}, keyPieces []string) (result interface{}) {
 	return getDeepValueFromManifest(opinions, keyPieces)
 }
 

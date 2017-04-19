@@ -2,6 +2,8 @@
 roles:
 - name: myrole
   scripts: ["myrole.sh"]
+  run:
+    memory: 1
   jobs:
   - name: new_hostname
     release_name: tor

@@ -1,56 +1,127 @@
 package validation
 
 import (
+	"fmt"
 	"testing"
 
-	roles "github.com/hpcloud/fissile/model"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateRoleRun(t *testing.T) {
-	newRun := func(memory int, cpu int, name string, externalPort string, internalPort string, protocol string) *roles.RoleRun {
-		return &roles.RoleRun{
-			VirtualCPUs: cpu,
-			Memory:      memory,
-			ExposedPorts: []*roles.RoleRunExposedPort{{Name: name, External: externalPort,
-				Internal: internalPort, Protocol: protocol,
-			}},
-		}
+func TestValidatePortOk(t *testing.T) {
+	assert := assert.New(t)
+
+	errs := ValidatePort("1", "")
+
+	assert.NotNil(errs)
+	assert.Empty(errs)
+}
+
+func TestValidatePortOutOfRange(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []string{
+		"-1", "0", "65536", "70000",
 	}
+	for _, port := range cases {
+		errs := ValidatePort(port, "field")
+		assert.NotNil(errs)
+		assert.Len(errs, 1)
+		assert.Contains(errs.Errors(), `must be between 1 and 65535, inclusive`)
+		assert.Contains(errs.Errors(), fmt.Sprintf("field: Invalid value: %s:", port))
+	}
+}
 
-	var (
-		validRun      = newRun(10, 2, "test", "1", "2", "UDP")
-		wrongProtocol = newRun(10, 2, "test", "1", "2", "AA")
-		wrongPorts    = newRun(10, 2, "test", "0", "-1", "UDP")
-		wrongParse    = newRun(10, 2, "test", "0", "qq", "UDP")
-		negativeField = newRun(-10, 2, "test", "1", "2", "UDP")
-	)
+func TestValidatePortBadSyntax(t *testing.T) {
+	assert := assert.New(t)
 
-	tests := map[string]struct {
-		run            *roles.RoleRun
-		isValid        bool
-		expectedErrors string
+	cases := []string{
+		"0-1", "q", "1.5",
+	}
+	for _, port := range cases {
+		errs := ValidatePort(port, "field")
+		assert.NotNil(errs)
+		assert.Len(errs, 1)
+		assert.Contains(errs.Errors(), `invalid syntax`)
+	}
+}
+
+func TestValidateProtocolOk(t *testing.T) {
+	assert := assert.New(t)
+
+	errs := ValidateProtocol("TCP", "")
+	assert.NotNil(errs)
+	assert.Empty(errs)
+
+	errs = ValidateProtocol("UDP", "")
+	assert.NotNil(errs)
+	assert.Empty(errs)
+}
+
+func TestValidateProtocolOutOfRange(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []string{
+		"tcp", "udp", "-1", "whatever",
+	}
+	for _, proto := range cases {
+		errs := ValidateProtocol(proto, "field")
+		assert.NotNil(errs)
+		assert.Len(errs, 1)
+		assert.Equal(
+			fmt.Sprintf(`field: Unsupported value: "%s": supported values: TCP, UDP`,
+				proto),
+			errs.Errors())
+	}
+}
+
+func TestValidatePortRangeOk(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []string{
+		"1", "1-2",
+	}
+	for _, arange := range cases {
+		errs := ValidatePortRange(arange, "")
+		assert.NotNil(errs)
+		assert.Empty(errs)
+	}
+}
+
+func TestValidatePortRangeOutOfRange(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []struct {
+		therange string
+		badvalue []string
 	}{
-		"nil":            {nil, false, "run: Required value"},
-		"valid":          {validRun, true, ``},
-		"wrong protocol": {wrongProtocol, false, "run.exposed-ports[test].protocol: Unsupported value: \"AA\": supported values: TCP, UDP"},
-		"wrong ports": {wrongPorts, false, "run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-			"run.exposed-ports[test].internal: Invalid value: -1: must be between 1 and 65535, inclusive"},
-		"wrong parse": {wrongParse, false, "run.exposed-ports[test].external: Invalid value: 0: must be between 1 and 65535, inclusive\n" +
-			"run.exposed-ports[test].internal: Invalid value: \"qq\": invalid syntax"},
-		"negative field": {negativeField, false, `run.memory: Invalid value: -10: must be greater than or equal to 0`},
+		{"0", []string{"0"}},
+		{"65536", []string{"65536"}},
+		{"70000", []string{"70000"}},
+		{"1-65536", []string{"65536"}},
+		{"1-70000", []string{"70000"}},
+		{"65600-70000", []string{"65600", "70000"}},
 	}
+	for _, acase := range cases {
+		errs := ValidatePortRange(acase.therange, "field")
+		assert.NotNil(errs)
+		assert.Len(errs, len(acase.badvalue))
+		assert.Contains(errs.Errors(), `must be between 1 and 65535, inclusive`)
+		for _, bad := range acase.badvalue {
+			assert.Contains(errs.Errors(), fmt.Sprintf("field: Invalid value: %s:", bad))
+		}
+	}
+}
 
-	for name, tc := range tests {
-		errs := ValidateRoleRun(tc.run)
-		if tc.isValid && len(errs) > 0 {
-			t.Errorf("%v: unexpected error: %v", name, errs)
-		}
-		if !tc.isValid && len(errs) == 0 {
-			t.Errorf("%v: unexpected non-error", name)
-		}
-		if !tc.isValid && len(errs) > 0 {
-			assert.Equal(t, tc.expectedErrors, errs.Errors())
-		}
+func TestValidatePortRangeBadSyntax(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []string{
+		"-1", "q", "1.5", "1-",
+	}
+	for _, arange := range cases {
+		errs := ValidatePortRange(arange, "field")
+		assert.NotNil(errs)
+		assert.Len(errs, 1)
+		assert.Contains(errs.Errors(), `invalid syntax`)
 	}
 }

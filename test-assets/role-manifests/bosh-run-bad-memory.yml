@@ -1,0 +1,7 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    memory: -10
+    cpu: -2

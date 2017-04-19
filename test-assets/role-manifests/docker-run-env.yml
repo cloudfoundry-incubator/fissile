@@ -9,10 +9,15 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
-  - name: ntpd
-    release_name: ntp
 - name: foorole
   type: bosh-task
   jobs:
   - name: tor
     release_name: tor
+- name: dockerrole
+  type: docker
+  fookey: somevalue
+  run:
+    memory: 1
+    env:
+    - UNKNOWN

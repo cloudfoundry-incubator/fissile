@@ -1,10 +1,8 @@
 package validation
 
 import (
-	"fmt"
+	"regexp"
 	"strconv"
-
-	roles "github.com/hpcloud/fissile/model"
 )
 
 // ValidateNonnegativeField validates that given value is not negative.
@@ -33,6 +31,49 @@ func ValidatePort(port string, field string) ErrorList {
 	return allErrs
 }
 
+// ValidatePortRange validates that the given value is a valid port
+// range, with its elements in range 0 - 65535.  It accepts singular
+// ports P, and port ranges of the form N-M.
+func ValidatePortRange(portrange string, field string) ErrorList {
+	allErrs := ErrorList{}
+
+	// Syntax:
+	// % int
+	// % int-int
+
+	matches := patternPortSingular.FindStringSubmatch(portrange)
+	if len(matches) == 0 {
+		matches = patternPortRange.FindStringSubmatch(portrange)
+		if len(matches) == 0 {
+			return append(allErrs, Invalid(field, portrange, `invalid syntax`))
+		}
+	}
+	// Note: matches[0] is the fist/left-most match. Here this is
+	// entire string, if it matched, due to the ^...$ bracketing.
+	// The captures, the only part we are interested in, start at
+	// index __1__.
+
+	for _, port := range matches[1:] {
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			// Note, this should not happen, given the regexes used.
+			allErrs = append(allErrs, Invalid(field, port, `invalid number syntax`))
+			continue
+		}
+		if msg := IsValidPortNum(portInt); msg != nil {
+			allErrs = append(allErrs, Invalid(field, portInt, msg.Error()))
+		}
+	}
+
+	return allErrs
+}
+
+// These are the two regular expressions to detect plain ports, and port ranges.
+var (
+	patternPortSingular = regexp.MustCompile(`^(\d+)$`)
+	patternPortRange    = regexp.MustCompile(`^(\d+)-(\d+)$`)
+)
+
 // ValidateProtocol validates that given value belongs to supported protocols
 func ValidateProtocol(protocol string, field string) ErrorList {
 	allErrs := ErrorList{}
@@ -40,32 +81,6 @@ func ValidateProtocol(protocol string, field string) ErrorList {
 	if err := IsValidProtocol(protocol); err != nil {
 		allErrs = append(allErrs, NotSupported(field, protocol, []string{TCP, UDP}))
 
-	}
-
-	return allErrs
-}
-
-// ValidateRoleRun tests whether required fields in the RoleRun are set.
-func ValidateRoleRun(run *roles.RoleRun) ErrorList {
-	allErrs := ErrorList{}
-
-	if run == nil {
-		return append(allErrs, Required("run", ""))
-	}
-
-	allErrs = append(allErrs, ValidateNonnegativeField(int64(run.Memory), `run.memory`)...)
-	allErrs = append(allErrs, ValidateNonnegativeField(int64(run.VirtualCPUs), `run.virtual-cpus`)...)
-
-	for i := range run.ExposedPorts {
-
-		if run.ExposedPorts[i].Name == "" {
-			allErrs = append(allErrs, Required(`run.exposed-ports.name`, ""))
-		}
-
-		allErrs = append(allErrs, ValidatePort(run.ExposedPorts[i].External, fmt.Sprintf(`run.exposed-ports[%s].external`, run.ExposedPorts[i].Name))...)
-		allErrs = append(allErrs, ValidatePort(run.ExposedPorts[i].Internal, fmt.Sprintf(`run.exposed-ports[%s].internal`, run.ExposedPorts[i].Name))...)
-
-		allErrs = append(allErrs, ValidateProtocol(run.ExposedPorts[i].Protocol, fmt.Sprintf(`run.exposed-ports[%s].protocol`, run.ExposedPorts[i].Name))...)
 	}
 
 	return allErrs

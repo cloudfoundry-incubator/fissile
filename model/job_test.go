@@ -239,7 +239,7 @@ func TestJobsProperties(t *testing.T) {
 
 	lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
 	darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
-	opinions, err := newOpinions(lightOpinionsPath, darkOpinionsPath)
+	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	assert.NoError(err)
 
 	properties, err := release.Jobs[0].getPropertiesForJob(opinions)

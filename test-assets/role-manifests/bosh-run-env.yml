@@ -1,18 +1,14 @@
 ---
 roles:
-- name: myrole
+- name: xrole
   scripts: ["myrole.sh"]
   run:
     memory: 1
+    virtual-cpus: 1
+    env:
+    - FOO
   jobs:
   - name: new_hostname
     release_name: tor
-  - name: tor
-    release_name: tor
-  - name: ntpd
-    release_name: ntp
-- name: foorole
-  type: bosh-task
-  jobs:
   - name: tor
     release_name: tor

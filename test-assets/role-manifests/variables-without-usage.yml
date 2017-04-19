@@ -17,7 +17,5 @@ roles:
       tag: shared-volume
       size: 40 # cakes
 configuration:
-  templates:
-    fox: ((SOME_VAR))
   variables:
   - name: SOME_VAR

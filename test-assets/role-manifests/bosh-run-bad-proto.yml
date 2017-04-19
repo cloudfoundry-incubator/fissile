@@ -1,0 +1,11 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    exposed-ports:
+      - name: https
+        protocol: AA
+        external: 443
+        internal: 443
+        public: true

@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hpcloud/fissile/validation"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -71,6 +73,7 @@ type RoleRun struct {
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
+	Environment       []string              `yaml:"env"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -120,6 +123,10 @@ type ConfigurationVariable struct {
 	Description string                          `yaml:"description"`
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 }
+
+// CVMap is a map from variable name to ConfigurationVariable, for
+// various places which require quick access/search/existence check.
+type CVMap map[string]*ConfigurationVariable
 
 // ConfigurationVariableSlice is a sortable slice of ConfigurationVariables
 type ConfigurationVariableSlice []*ConfigurationVariable
@@ -192,25 +199,23 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		return nil, err
 	}
 
+	if rolesManifest.Configuration == nil {
+		rolesManifest.Configuration = &Configuration{}
+	}
+	if rolesManifest.Configuration.Templates == nil {
+		rolesManifest.Configuration.Templates = map[string]string{}
+	}
+
+	// See also 'GetVariablesForRole' (mustache.go).
+	declaredConfigs := MakeMapOfVariables(&rolesManifest)
+
+	allErrs := validation.ErrorList{}
+
 	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
 		role := rolesManifest.Roles[i]
 
-		// Normalize flight stage
-		if role.Run != nil {
-			switch role.Run.FlightStage {
-			case "":
-				role.Run.FlightStage = FlightStageFlight
-			case FlightStagePreFlight:
-			case FlightStageFlight:
-			case FlightStagePostFlight:
-			case FlightStageManual:
-			default:
-				return nil, fmt.Errorf("Role %s has an invalid flight stage %s", role.Name, role.Run.FlightStage)
-			}
-		}
-
 		// Remove all roles that are not of the "bosh" or "bosh-task" type
-		// Default type is considered to be "bosh"
+		// Default type is considered to be "bosh".
 		switch role.Type {
 		case "":
 			role.Type = RoleTypeBosh
@@ -219,32 +224,12 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		case RoleTypeDocker:
 			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
 		default:
-			return nil, fmt.Errorf("Role %s has an invalid type %s", role.Name, role.Type)
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].type", role.Name),
+				role.Type, "Excpected one of bosh, bosh-task, or docker"))
 		}
 
-		// Ensure that we don't have conflicting health checks
-		if role.Run != nil && role.Run.HealthCheck != nil {
-			checks := make([]string, 0, 3)
-			if role.Run.HealthCheck.URL != "" {
-				checks = append(checks, "url")
-			}
-			if len(role.Run.HealthCheck.Command) > 0 {
-				checks = append(checks, "command")
-			}
-			if role.Run.HealthCheck.Port != 0 {
-				checks = append(checks, "port")
-			}
-			if len(checks) != 1 {
-				return nil, fmt.Errorf("Health check for role %s should have exactly one of url, command, or port; got %v", role.Name, checks)
-			}
-		}
-	}
-
-	if rolesManifest.Configuration == nil {
-		rolesManifest.Configuration = &Configuration{}
-	}
-	if rolesManifest.Configuration.Templates == nil {
-		rolesManifest.Configuration.Templates = map[string]string{}
+		allErrs = append(allErrs, validateRoleRun(role, &rolesManifest, declaredConfigs)...)
 	}
 
 	rolesManifest.rolesByName = make(map[string]*Role, len(rolesManifest.Roles))
@@ -257,13 +242,19 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
 			if !ok {
-				return nil, fmt.Errorf("Error - release %s has not been loaded and is referenced by job %s in role %s",
-					roleJob.ReleaseName, roleJob.Name, role.Name)
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].jobs[%s]", role.Name, roleJob.Name),
+					roleJob.ReleaseName,
+					"Referenced release is not loaded"))
+				continue
 			}
 
 			job, err := release.LookupJob(roleJob.Name)
 			if err != nil {
-				return nil, err
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].jobs[%s]", role.Name, roleJob.Name),
+					roleJob.ReleaseName, err.Error()))
+				continue
 			}
 
 			role.Jobs = append(role.Jobs, job)
@@ -271,6 +262,15 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 		role.calculateRoleConfigurationTemplates()
 		rolesManifest.rolesByName[role.Name] = role
+	}
+
+	allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
+	allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
+	allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
+	allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
+
+	if len(allErrs) != 0 {
+		return nil, fmt.Errorf(allErrs.Errors())
 	}
 
 	return &rolesManifest, nil
@@ -464,4 +464,313 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	}
 
 	r.Configuration.Templates = roleConfigs
+}
+
+// validateVariableSorting tests whether the parameters are properly sorted or not.
+// It reports all variables which are out of order.
+func validateVariableSorting(variables ConfigurationVariableSlice) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	previousName := ""
+	for _, cv := range variables {
+		if cv.Name < previousName {
+			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+				previousName,
+				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+		}
+		previousName = cv.Name
+	}
+
+	return allErrs
+}
+
+// validateVariableUsage tests whether all parameters are used in a template or not.
+// It reports all variables which are not used by at least one template.
+//
+// ATTENTION: This will mis-report any variables which are used only
+// in scripts, but not in templates.
+func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// See also 'GetVariablesForRole' (mustache.go).
+
+	unusedConfigs := MakeMapOfVariables(roleManifest)
+	if len(unusedConfigs) == 0 {
+		return allErrs
+	}
+
+	// Iterate over all roles, jobs, templates, extract the used
+	// variables. Remove each found from the set of unused
+	// configs.
+
+	for _, role := range roleManifest.Roles {
+		for _, job := range role.Jobs {
+			for _, property := range job.Properties {
+				propertyName := fmt.Sprintf("properties.%s", property.Name)
+
+				if template, ok := role.Configuration.Templates[propertyName]; ok {
+					varsInTemplate, err := parseTemplate(template)
+					if err != nil {
+						// Ignore bad template, cannot have sensible
+						// variable references
+						continue
+					}
+					for _, envVar := range varsInTemplate {
+						if _, ok := unusedConfigs[envVar]; ok {
+							delete(unusedConfigs, envVar)
+						}
+						if len(unusedConfigs) == 0 {
+							// Everything got used, stop now.
+							return allErrs
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Iterate over the global templates, extract the used
+	// variables. Remove each found from the set of unused
+	// configs.
+
+	// Note, we have to ignore bad templates (no sensible variable
+	// references) and continue to check everything else.
+
+	for _, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			continue
+		}
+		for _, envVar := range varsInTemplate {
+			if _, ok := unusedConfigs[envVar]; ok {
+				delete(unusedConfigs, envVar)
+			}
+			if len(unusedConfigs) == 0 {
+				// Everything got used, stop now.
+				return allErrs
+			}
+		}
+	}
+
+	// We have only the unused variables left in the set. Report
+	// them.
+
+	for cv := range unusedConfigs {
+		allErrs = append(allErrs, validation.NotFound("configuration.variables",
+			fmt.Sprintf("No templates using '%s'", cv)))
+	}
+
+	return allErrs
+}
+
+// validateTemplateUsage tests whether all templates use only declared variables or not.
+// It reports all undeclared variables.
+func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// See also 'GetVariablesForRole' (mustache.go), and LoadManifest (caller, this file)
+	declaredConfigs := MakeMapOfVariables(roleManifest)
+
+	// Iterate over all roles, jobs, templates, extract the used
+	// variables. Report all without a declaration.
+
+	for _, role := range roleManifest.Roles {
+
+		// Note, we cannot use GetVariablesForRole here
+		// because it will abort on bad templates. Here we
+		// have to ignore them (no sensible variable
+		// references) and continue to check everything else.
+
+		for _, job := range role.Jobs {
+			for _, property := range job.Properties {
+				propertyName := fmt.Sprintf("properties.%s", property.Name)
+
+				if template, ok := role.Configuration.Templates[propertyName]; ok {
+					varsInTemplate, err := parseTemplate(template)
+					if err != nil {
+						continue
+					}
+					for _, envVar := range varsInTemplate {
+						if _, ok := declaredConfigs[envVar]; ok {
+							continue
+						}
+
+						allErrs = append(allErrs, validation.NotFound("configuration.variables",
+							fmt.Sprintf("No declaration of '%s'", envVar)))
+
+						// Add a placeholder so that this variable is not reported again.
+						// One report is good enough.
+						declaredConfigs[envVar] = nil
+					}
+				}
+			}
+		}
+	}
+
+	// Iterate over the global templates, extract the used
+	// variables. Report all without a declaration.
+
+	for _, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			// Ignore bad template, cannot have sensible
+			// variable references
+			continue
+		}
+		for _, envVar := range varsInTemplate {
+			if _, ok := declaredConfigs[envVar]; ok {
+				continue
+			}
+
+			allErrs = append(allErrs, validation.NotFound("configuration.templates",
+				fmt.Sprintf("No variable declaration of '%s'", envVar)))
+
+			// Add a placeholder so that this variable is
+			// not reported again.  One report is good
+			// enough.
+			declaredConfigs[envVar] = nil
+		}
+	}
+
+	return allErrs
+}
+
+// validateRoleRun tests whether required fields in the RoleRun are
+// set. Note, some of the fields have type-dependent checks. Some
+// issues are fixed silently.
+func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	if role.Run == nil {
+		return append(allErrs, validation.Required(
+			fmt.Sprintf("roles[%s].run", role.Name), ""))
+	}
+
+	allErrs = append(allErrs, normalizeFlightStage(role)...)
+	allErrs = append(allErrs, validateHealthCheck(role)...)
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.Memory),
+		fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.VirtualCPUs),
+		fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+
+	for i := range role.Run.ExposedPorts {
+		if role.Run.ExposedPorts[i].Name == "" {
+			allErrs = append(allErrs, validation.Required(
+				fmt.Sprintf("roles[%s].run.exposed-ports.name", role.Name), ""))
+		}
+
+		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].External,
+			fmt.Sprintf("roles[%s].run.exposed-ports[%s].external", role.Name, role.Run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].Internal,
+			fmt.Sprintf("roles[%s].run.exposed-ports[%s].internal", role.Name, role.Run.ExposedPorts[i].Name))...)
+
+		allErrs = append(allErrs, validation.ValidateProtocol(role.Run.ExposedPorts[i].Protocol,
+			fmt.Sprintf("roles[%s].run.exposed-ports[%s].protocol", role.Name, role.Run.ExposedPorts[i].Name))...)
+	}
+
+	if len(role.Run.Environment) == 0 {
+		return allErrs
+	}
+
+	if role.Type == RoleTypeDocker {
+		// The environment variables used by docker roles must
+		// all be declared, report those which are not.
+
+		for _, envVar := range role.Run.Environment {
+			if _, ok := declared[envVar]; ok {
+				continue
+			}
+
+			allErrs = append(allErrs, validation.NotFound(
+				fmt.Sprintf("roles[%s].run.env", role.Name),
+				fmt.Sprintf("No variable declaration of '%s'", envVar)))
+		}
+	} else {
+		// Bosh roles must not provide environment variables.
+
+		allErrs = append(allErrs, validation.Forbidden(
+			fmt.Sprintf("roles[%s].run.env", role.Name),
+			"Non-docker role declares bogus parameters"))
+	}
+
+	return allErrs
+}
+
+// validateHealthCheck reports all roles with conflicting health
+// checks.
+func validateHealthCheck(role *Role) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// Ensure that we don't have conflicting health checks
+	if role.Run.HealthCheck != nil {
+		checks := make([]string, 0, 3)
+
+		if role.Run.HealthCheck.URL != "" {
+			checks = append(checks, "url")
+		}
+		if len(role.Run.HealthCheck.Command) > 0 {
+			checks = append(checks, "command")
+		}
+		if role.Run.HealthCheck.Port != 0 {
+			checks = append(checks, "port")
+		}
+		if len(checks) != 1 {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.healthcheck", role.Name),
+				checks, "Expected exactly one of url, command, or port"))
+		}
+	}
+
+	return allErrs
+}
+
+// normalizeFlightStage reports roles with a bad flightstage, and
+// fixes all roles without a flight stage to use the default
+// ('flight').
+func normalizeFlightStage(role *Role) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// Normalize flight stage
+	switch role.Run.FlightStage {
+	case "":
+		role.Run.FlightStage = FlightStageFlight
+	case FlightStagePreFlight:
+	case FlightStageFlight:
+	case FlightStagePostFlight:
+	case FlightStageManual:
+	default:
+		allErrs = append(allErrs, validation.Invalid(
+			fmt.Sprintf("roles[%s].run.flight-stage", role.Name),
+			role.Run.FlightStage,
+			"Expected one of flight, manual, post-flight, or pre-flight"))
+	}
+
+	return allErrs
+}
+
+// validateNonTemplates tests whether the global templates are
+// constant or not. It reports the contant templates as errors (They
+// should be opinions).
+func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	// Iterate over the global templates, extract the used
+	// variables. Report all templates not using any variable.
+
+	for property, template := range roleManifest.Configuration.Templates {
+		varsInTemplate, err := parseTemplate(template)
+		if err != nil {
+			// Ignore bad template, cannot have sensible
+			// variable references
+			continue
+		}
+
+		if len(varsInTemplate) == 0 {
+			allErrs = append(allErrs, validation.Invalid("configuration.templates",
+				template,
+				fmt.Sprintf("Using '%s' as a constant", property)))
+		}
+	}
+
+	return allErrs
 }

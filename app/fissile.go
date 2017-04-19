@@ -15,7 +15,6 @@ import (
 	"github.com/hpcloud/fissile/model"
 	"github.com/hpcloud/fissile/scripts/compilation"
 	"github.com/hpcloud/fissile/util"
-	"github.com/hpcloud/fissile/validation"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/stampy"
@@ -297,6 +296,35 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 	return result
 }
 
+// propertyDefaults is a double map
+//
+//	(property.name -> (default.string -> [*job...])
+//
+// which maps a property (name) to all its default values
+// (stringified) and them in turn to the array of jobs where this
+// default occurs.
+type propertyDefaults map[string]map[string][]*model.Job
+
+func (f *Fissile) collectPropertyDefaults() propertyDefaults {
+	result := make(propertyDefaults)
+
+	for _, release := range f.releases {
+		for _, job := range release.Jobs {
+			for _, property := range job.Properties {
+				defaultAsString := fmt.Sprintf("%v", property.Default)
+
+				if _, ok := result[property.Name]; !ok {
+					result[property.Name] = make(map[string][]*model.Job)
+				}
+				result[property.Name][defaultAsString] =
+					append(result[property.Name][defaultAsString], job)
+			}
+		}
+	}
+
+	return result
+}
+
 // Compile will compile a list of dev BOSH releases
 func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int) error {
 	if len(f.releases) == 0 {
@@ -466,6 +494,14 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+	if errs := f.validateManifestAndOpinions(roleManifest, opinions); len(errs) != 0 {
+		return fmt.Errorf(errs.Errors())
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
@@ -799,11 +835,6 @@ roleLoop:
 			}
 
 		case model.RoleTypeBosh:
-
-			if errs := validation.ValidateRoleRun(role.Run); len(errs) != 0 {
-				return fmt.Errorf(errs.Errors())
-			}
-
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {

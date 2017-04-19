@@ -1,13 +1,16 @@
 ---
 roles:
   - name: myrole
+    run:
+      memory: 1
     jobs:
       - name: new_hostname
         release_name: tor
       - name: tor
         release_name: tor
   - name: foorole
+    run:
+      memory: 1
     jobs:
       - name: foo
         release_name: tor	
- 

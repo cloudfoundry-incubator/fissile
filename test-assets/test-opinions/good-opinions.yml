@@ -1,0 +1,3 @@
+properties:
+  tor:
+    client_keys: foo

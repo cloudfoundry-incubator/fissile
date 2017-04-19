@@ -25,10 +25,9 @@ roles:
 configuration:
   variables:
   - name: BAR
-  - name: FOO
   - name: HOME
   - name: PELERINUL
   templates:
-    properties.tor.hostname: '((FOO))'
+    properties.tor.hostname: ''
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

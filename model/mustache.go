@@ -7,17 +7,25 @@ import (
 	"github.com/hpcloud/fissile/mustache"
 )
 
+// MakeMapOfVariables converts the sequence of configuration variables
+// into a map we can manipulate more directly by name.
+func MakeMapOfVariables(rolesManifest *RoleManifest) CVMap {
+	configsDictionary := CVMap{}
+
+	for _, config := range rolesManifest.Configuration.Variables {
+		configsDictionary[config.Name] = config
+	}
+
+	return configsDictionary
+}
+
 // GetVariablesForRole returns all the environment variables required for
 // calculating all the templates for the role
 func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
-	configsDictionary := map[string]*ConfigurationVariable{}
+	configsDictionary := MakeMapOfVariables(r.rolesManifest)
 
-	for _, config := range r.rolesManifest.Configuration.Variables {
-		configsDictionary[config.Name] = config
-	}
-
-	configs := map[string]*ConfigurationVariable{}
+	configs := CVMap{}
 
 	for _, job := range r.Jobs {
 		for _, property := range job.Properties {
@@ -26,7 +34,6 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 			if template, ok := r.rolesManifest.Configuration.Templates[propertyName]; ok {
 
 				varsInTemplate, err := parseTemplate(template)
-
 				if err != nil {
 					return nil, err
 				}

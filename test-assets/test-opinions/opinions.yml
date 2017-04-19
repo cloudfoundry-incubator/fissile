@@ -3,3 +3,5 @@ properties:
     opinion: this is an opinion
     int_opinion: 31
     masked_opinion: 'some value'
+    hostname: localhost
+    bogus: BOGUS
