@@ -43,7 +43,9 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 // FlattenOpinions converts the incoming nested map of opinions into a flat
 // map of properties to values (strings).
 func FlattenOpinions(opinions map[string]interface{}) map[string]string {
-	return flattenOpinionsString(make(map[string]string), "", opinions)
+	result := make(map[string]string)
+	flattenOpinionsString(result, "", opinions)
+	return result
 }
 
 // The following pair of functions differs (only) in the type of the
@@ -57,40 +59,37 @@ func FlattenOpinions(opinions map[string]interface{}) map[string]string {
 // how to get rid of it either, as a "map[string]interface{}" value
 // cannot be given to a "map[interface{}]interface{}" argument.
 
-func flattenOpinionsString(result map[string]string, prefix string, opinions map[string]interface{}) map[string]string {
+func flattenOpinionsString(result map[string]string, prefix string, opinions map[string]interface{}) {
 	for ks, value := range opinions {
 		// Here the `ks` iteration variable is already a
 		// string, contrary to flattenOpinionsInterface below.
-
-		result = flattenOpinionsRecurse(result, prefix, ks, value)
+		flattenOpinionsRecurse(result, prefix, ks, value)
 	}
-	return result
 }
 
-func flattenOpinionsInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) map[string]string {
+func flattenOpinionsInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) {
 	for key, value := range opinions {
 		ks := fmt.Sprintf("%v", key)
 		// Generate string iteration variable from general
 		// key, compare flattenOpinionsString above.
-
-		result = flattenOpinionsRecurse(result, prefix, ks, value)
+		flattenOpinionsRecurse(result, prefix, ks, value)
 	}
-	return result
 }
 
-func flattenOpinionsRecurse(result map[string]string, prefix, ks string, value interface{}) map[string]string {
+func flattenOpinionsRecurse(result map[string]string, prefix, ks string, value interface{}) {
 	// 'c' for child
 	cprefix := prefix + ks + "."
 
 	if vmap, ok := value.(map[string]interface{}); ok {
-		return flattenOpinionsString(result, cprefix, vmap)
+		flattenOpinionsString(result, cprefix, vmap)
+		return
 	}
 	if vmap, ok := value.(map[interface{}]interface{}); ok {
-		return flattenOpinionsInterface(result, cprefix, vmap)
+		flattenOpinionsInterface(result, cprefix, vmap)
+		return
 	}
 
 	result[prefix+ks] = fmt.Sprintf("%v", value)
-	return result
 }
 
 // GetOpinionForKey pulls an opinion out of the holding container.
