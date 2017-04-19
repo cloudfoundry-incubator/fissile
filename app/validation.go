@@ -87,18 +87,12 @@ func collectManifestProperties(roleManifest *model.RoleManifest) map[string]stri
 	// Per-role properties
 	for _, role := range roleManifest.Roles {
 		for property, template := range role.Configuration.Templates {
-			if _, ok := properties[property]; ok {
-				continue
-			}
 			properties[property] = template
 		}
 	}
 
 	// And the global properties
 	for property, template := range roleManifest.Configuration.Templates {
-		if _, ok := properties[property]; ok {
-			continue
-		}
 		properties[property] = template
 	}
 
@@ -106,7 +100,7 @@ func collectManifestProperties(roleManifest *model.RoleManifest) map[string]stri
 }
 
 // checkForUntemplatedDarkOpinions reports all dark opinions which are
-// configured as templates in the manifest.
+// not configured as templates in the manifest.
 func checkForUntemplatedDarkOpinions(dark map[string]string, properties map[string]string) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
@@ -143,16 +137,27 @@ func checkForDarkInTheLight(dark map[string]string, light map[string]string) val
 func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleManifest *model.RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	// Per-role properties
-	for _, role := range roleManifest.Roles {
-		for property, template := range role.Configuration.Templates {
-			allErrs = append(allErrs, checkForDuplicateProperty(property, template, light, false)...)
-		}
+	check := make(map[string]struct{})
+
+	// The global properties, ...
+	for property, template := range roleManifest.Configuration.Templates {
+		allErrs = append(allErrs, checkForDuplicateProperty("configuration.templates", property, template, light, true)...)
+		check[property] = struct{}{}
 	}
 
-	// And the global properties
-	for property, template := range roleManifest.Configuration.Templates {
-		allErrs = append(allErrs, checkForDuplicateProperty(property, template, light, true)...)
+	// ... then the per-role properties
+	for _, role := range roleManifest.Roles {
+		prefix := fmt.Sprintf("roles[%s].configuration.templates", role.Name)
+
+		for property, template := range role.Configuration.Templates {
+			// Skip over duplicates of the global
+			// properties in the per-role data, we already
+			// checked them, see above.
+			if _, ok := check[property]; ok {
+				continue
+			}
+			allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, template, light, false)...)
+		}
 	}
 
 	return allErrs
@@ -160,7 +165,7 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 
 // checkForDuplicateProperty performs the check for a property (of the
 // manifest) duplicated in the light opinions.
-func checkForDuplicateProperty(property, value string, light map[string]string, conflicts bool) validation.ErrorList {
+func checkForDuplicateProperty(prefix, property, value string, light map[string]string, conflicts bool) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	lightvalue, ok := light[property]
@@ -169,12 +174,12 @@ func checkForDuplicateProperty(property, value string, light map[string]string, 
 	}
 
 	if lightvalue == value {
-		return append(allErrs, validation.Forbidden(property,
+		return append(allErrs, validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
 			"Role-manifest duplicates opinion, remove from manifest"))
 	}
 
 	if conflicts {
-		return append(allErrs, validation.Forbidden(property,
+		return append(allErrs, validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
 			"Role-manifest overrides opinion, remove opinion"))
 	}
 

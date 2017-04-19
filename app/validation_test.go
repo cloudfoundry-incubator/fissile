@@ -53,8 +53,8 @@ func TestValidation(t *testing.T) {
 	// checkForDarkInTheLight
 	assert.Contains(actual, `properties.tor.masked_opinion: Forbidden: Dark opinion found in light opinions`)
 	// checkForDuplicatesBetweenManifestAndLight
-	assert.Contains(actual, `properties.tor.hostname: Forbidden: Role-manifest overrides opinion, remove opinion`)
-	assert.Contains(actual, `properties.tor.bogus: Forbidden: Role-manifest duplicates opinion, remove from manifest`)
+	assert.Contains(actual, `configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion`)
+	assert.Contains(actual, `roles[myrole].configuration.templates[properties.tor.bogus]: Forbidden: Role-manifest duplicates opinion, remove from manifest`)
 	// checkForUndefinedBOSHProperties light, manifest - For the bogus property used above for checkOverridden
 	assert.Contains(actual, `role-manifest 'tor.bogus': Not found: "In any BOSH release"`)
 	assert.Contains(actual, `light opinion 'tor.bogus': Not found: "In any BOSH release"`)
