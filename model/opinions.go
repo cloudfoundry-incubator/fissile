@@ -44,52 +44,38 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 // map of properties to values (strings).
 func FlattenOpinions(opinions map[string]interface{}) map[string]string {
 	result := make(map[string]string)
-	flattenOpinionsString(result, "", opinions)
+	flattenOpinionsRecurse(result, "", opinions)
 	return result
 }
 
-// The following pair of functions differs (only) in the type of the
-// incoming "opinions". The treatment is 99% the same, with the only
-// difference of the Interface variant using Sprintf to convert the
-// key to a string, which it already is for String. The identical
-// parts of both are factored into "flattenOpinionsRecurse".
-//
-// And while we seem to need the String variant only for the toplevel
-// map, as everything below looks to be Interface only, I don't see
-// how to get rid of it either, as a "map[string]interface{}" value
-// cannot be given to a "map[interface{}]interface{}" argument.
+func flattenOpinionsRecurse(result map[string]string, prefix string, value interface{}) {
 
-func flattenOpinionsString(result map[string]string, prefix string, opinions map[string]interface{}) {
-	for ks, value := range opinions {
-		// Here the `ks` iteration variable is already a
-		// string, contrary to flattenOpinionsInterface below.
-		flattenOpinionsRecurse(result, prefix, ks, value)
+	var cprefix string
+	if prefix == "" {
+		cprefix = prefix
+	} else {
+		cprefix = prefix + "."
 	}
-}
-
-func flattenOpinionsInterface(result map[string]string, prefix string, opinions map[interface{}]interface{}) {
-	for key, value := range opinions {
-		ks := fmt.Sprintf("%v", key)
-		// Generate string iteration variable from general
-		// key, compare flattenOpinionsString above.
-		flattenOpinionsRecurse(result, prefix, ks, value)
-	}
-}
-
-func flattenOpinionsRecurse(result map[string]string, prefix, ks string, value interface{}) {
-	// 'c' for child
-	cprefix := prefix + ks + "."
 
 	if vmap, ok := value.(map[string]interface{}); ok {
-		flattenOpinionsString(result, cprefix, vmap)
+		for ks, value := range vmap {
+			// Here the `ks` iteration variable is already a
+			// string, contrary to the Interface loop below.
+			flattenOpinionsRecurse(result, cprefix+ks, value)
+		}
 		return
 	}
 	if vmap, ok := value.(map[interface{}]interface{}); ok {
-		flattenOpinionsInterface(result, cprefix, vmap)
+		for key, value := range vmap {
+			ks := fmt.Sprintf("%v", key)
+			// Generate string iteration variable from general
+			// key, compare String loop above.
+			flattenOpinionsRecurse(result, cprefix+ks, value)
+		}
 		return
 	}
 
-	result[prefix+ks] = fmt.Sprintf("%v", value)
+	result[prefix] = fmt.Sprintf("%v", value)
 }
 
 // GetOpinionForKey pulls an opinion out of the holding container.
