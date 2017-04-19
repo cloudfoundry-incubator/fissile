@@ -79,3 +79,29 @@ func TestGetOpinionForKeyInvalid(t *testing.T) {
 	value = confOpinions.GetOpinionForKey(confOpinions.Light, []string{"cc", "app_events", "cutoff_age_in_days", "foo"})
 	assert.Nil(value)
 }
+
+func TestOpinionsFlattenOpinions(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.Nil(err)
+
+	opinionsFile := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
+	opinionsFileDark := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
+	confOpinions, err := NewOpinions(opinionsFile, opinionsFileDark)
+	assert.Nil(err)
+	assert.NotNil(confOpinions)
+
+	light := FlattenOpinions(confOpinions.Light)
+	assert.NotNil(light)
+	assert.Len(light, 5)
+	for _, property := range []string{
+		"properties.tor.bogus",
+		"properties.tor.hostname",
+		"properties.tor.int_opinion",
+		"properties.tor.masked_opinion",
+		"properties.tor.opinion",
+	} {
+		assert.Contains(light, property)
+	}
+}
