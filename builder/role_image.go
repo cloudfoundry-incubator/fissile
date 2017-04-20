@@ -1,11 +1,11 @@
 package builder
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +20,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
-	"github.com/termie/go-shutil"
 	"gopkg.in/yaml.v2"
 )
 
@@ -38,6 +37,7 @@ var (
 type dockerImageBuilder interface {
 	HasImage(imageName string) (bool, error)
 	BuildImage(dockerfileDirPath, name string, stdoutProcessor io.WriteCloser) error
+	BuildImageFromCallback(name string, stdoutWriter io.Writer, callback func(*tar.Writer) error) error
 }
 
 // RoleImageBuilder represents a builder of docker role images
@@ -71,180 +71,162 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 	}, nil
 }
 
-// CreateDockerfileDir generates a Dockerfile and assets in the targetDir and returns a path to the dir
-func (r *RoleImageBuilder) CreateDockerfileDir(role *model.Role, baseImageName string) (string, error) {
-	if len(role.Jobs) == 0 {
-		return "", fmt.Errorf("Error - role %s has 0 jobs", role.Name)
-	}
-
-	succeeded := false
-	roleDir, err := ioutil.TempDir(r.targetPath, fmt.Sprintf("role-%s", role.Name))
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if !succeeded {
-			os.RemoveAll(roleDir)
+// NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
+func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName string) func(*tar.Writer) error {
+	return func(tarWriter *tar.Writer) error {
+		if len(role.Jobs) == 0 {
+			return fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 		}
-	}()
 
-	// Create a dir for the role
-	rootDir := filepath.Join(roleDir, "root")
-	if err := os.MkdirAll(roleDir, 0755); err != nil {
-		return "", err
-	}
+		// Write out release license files
+		releaseLicensesWritten := map[string]struct{}{}
+		for _, job := range role.Jobs {
+			if _, ok := releaseLicensesWritten[job.Release.Name]; !ok {
+				if len(job.Release.License.Files) == 0 {
+					continue
+				}
 
-	// Write out release license files
-	releaseLicensesWritten := map[string]struct{}{}
-	for _, job := range role.Jobs {
-		docDir := filepath.Join(rootDir, "opt/hcf/share/doc")
+				releaseDir := filepath.Join("root/opt/hcf/share/doc", job.Release.Name)
 
-		if _, ok := releaseLicensesWritten[job.Release.Name]; !ok {
-			if len(job.Release.License.Files) == 0 {
-				continue
+				for filename, contents := range job.Release.License.Files {
+					err := util.WriteToTarStream(tarWriter, contents, tar.Header{
+						Name: filepath.Join(releaseDir, filename),
+					})
+					if err != nil {
+						return fmt.Errorf("failed to write out release license file %s: %v", filename, err)
+					}
+				}
+				releaseLicensesWritten[job.Release.Name] = struct{}{}
 			}
+		}
 
-			releaseDir := filepath.Join(docDir, job.Release.Name)
-			if err := os.MkdirAll(releaseDir, 0755); err != nil {
-				return "", err
-			}
-
-			for filename, contents := range job.Release.License.Files {
-				err := ioutil.WriteFile(filepath.Join(releaseDir, filename), contents, 0644)
-				if err != nil {
-					return "", fmt.Errorf("failed to write out release license file %s: %v", filename, err)
+		// Symlink compiled packages
+		packageSet := map[string]string{}
+		for _, job := range role.Jobs {
+			for _, pkg := range job.Packages {
+				if _, ok := packageSet[pkg.Name]; !ok {
+					err := util.WriteToTarStream(tarWriter, nil, tar.Header{
+						Name:     filepath.Join("root/var/vcap/packages", pkg.Name),
+						Typeflag: tar.TypeSymlink,
+						Linkname: filepath.Join("..", "packages-src", pkg.Fingerprint),
+					})
+					if err != nil {
+						return fmt.Errorf("failed to write package symlink for %s: %s", pkg.Name, err)
+					}
+					packageSet[pkg.Name] = pkg.Fingerprint
+				} else {
+					if pkg.Fingerprint != packageSet[pkg.Name] {
+						r.ui.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
+							color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
+					}
 				}
 			}
 		}
-	}
 
-	// Symlink compiled packages
-	packagesDir := filepath.Join(rootDir, "var/vcap/packages")
-	if err := os.MkdirAll(packagesDir, 0755); err != nil {
-		return "", err
-	}
-	packageSet := map[string]string{}
-	for _, job := range role.Jobs {
-		for _, pkg := range job.Packages {
-			if _, ok := packageSet[pkg.Name]; !ok {
-				sourceDir := filepath.Join("..", "packages-src", pkg.Fingerprint)
-				packageDir := filepath.Join(packagesDir, pkg.Name)
-				err := os.Symlink(sourceDir, packageDir)
-				if err != nil {
-					return "", err
+		// Copy jobs templates, spec configs and monit
+		for _, job := range role.Jobs {
+			templates := make(map[string]*model.JobTemplate)
+			for _, template := range job.Templates {
+				sourcePath := filepath.Clean(filepath.Join("templates", template.SourcePath))
+				templates[filepath.ToSlash(sourcePath)] = template
+			}
+
+			sourceTgz, err := os.Open(job.Path)
+			if err != nil {
+				return fmt.Errorf("Error reading archive for job %s (%s): %s", job.Name, job.Path, err)
+			}
+			defer sourceTgz.Close()
+			err = util.TargzIterate(job.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
+				filePath := filepath.ToSlash(filepath.Clean(header.Name))
+				if filePath == "job.MF" {
+					return nil
 				}
-				packageSet[pkg.Name] = pkg.Fingerprint
-			} else {
-				if pkg.Fingerprint != packageSet[pkg.Name] {
-					r.ui.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
-						color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
+				header.Name = filepath.Join("root/var/vcap/jobs-src", job.Name, header.Name)
+				if template, ok := templates[filePath]; ok {
+					if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
+						header.Mode = 0755
+					} else {
+						header.Mode = 0644
+					}
 				}
+				if err = tarWriter.WriteHeader(header); err != nil {
+					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, job.Name, err)
+				}
+				if _, err = io.Copy(tarWriter, reader); err != nil {
+					return fmt.Errorf("Error writing %s for job %s: %s", filePath, job.Name, err)
+				}
+				return nil
+			})
+
+			// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
+			configJSON, err := job.WriteConfigs(role, r.lightOpinionsPath, r.darkOpinionsPath)
+			if err != nil {
+				return err
+			}
+			util.WriteToTarStream(tarWriter, configJSON, tar.Header{
+				Name: filepath.Join("root/var/vcap/jobs-src", job.Name, jobConfigSpecFilename),
+			})
+		}
+
+		// Copy role startup scripts
+		for script, sourceScriptPath := range role.GetScriptPaths() {
+			err := util.CopyFileToTarStream(tarWriter, sourceScriptPath, &tar.Header{
+				Name: filepath.Join("root/opt/hcf/startup", script),
+			})
+			if err != nil {
+				return fmt.Errorf("Error writing script %s: %s", script, err)
 			}
 		}
-	}
 
-	// Copy jobs templates, spec configs and monit
-	jobsDir := filepath.Join(rootDir, "var/vcap/jobs-src")
-	if err := os.MkdirAll(jobsDir, 0755); err != nil {
-		return "", err
-	}
-	for _, job := range role.Jobs {
-		jobDir, err := job.Extract(jobsDir)
+		// Generate run script
+		runScriptContents, err := r.generateRunScript(role)
 		if err != nil {
-			return "", err
+			return err
 		}
-
-		jobManifestFile := filepath.Join(jobDir, "job.MF")
-		if err := os.Remove(jobManifestFile); err != nil {
-			return "", err
-		}
-
-		for _, template := range job.Templates {
-			templatePath := filepath.Join(jobDir, "templates", template.SourcePath)
-			if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
-				os.Chmod(templatePath, 0755)
-			} else {
-				os.Chmod(templatePath, 0644)
-			}
-		}
-
-		// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-		specConfigDestination := filepath.Join(jobDir, jobConfigSpecFilename)
-		err = job.WriteConfigs(role, specConfigDestination, r.lightOpinionsPath, r.darkOpinionsPath)
+		err = util.WriteToTarStream(tarWriter, runScriptContents, tar.Header{
+			Name: "root/opt/hcf/run.sh",
+		})
 		if err != nil {
-			return "", err
+			return err
 		}
-	}
 
-	// Copy role startup scripts
-	startupDir := filepath.Join(rootDir, "opt/hcf/startup")
-	if err := os.MkdirAll(startupDir, 0755); err != nil {
-		return "", err
-	}
-	for script, sourceScriptPath := range role.GetScriptPaths() {
-		destScriptPath := filepath.Join(startupDir, script)
-		destDir := filepath.Dir(destScriptPath)
-		if err := os.MkdirAll(destDir, 0755); err != nil {
-			return "", err
-
+		jobsConfigContents, err := r.generateJobsConfig(role)
+		if err != nil {
+			return err
 		}
-		if err := shutil.CopyFile(sourceScriptPath, destScriptPath, true); err != nil {
-			return "", err
+		err = util.WriteToTarStream(tarWriter, jobsConfigContents, tar.Header{
+			Name: "root/opt/hcf/job_config.json",
+		})
+		if err != nil {
+			return err
 		}
-	}
 
-	// Generate run script
-	runScriptContents, err := r.generateRunScript(role)
-	if err != nil {
-		return "", err
-	}
-	runScriptPath := filepath.Join(rootDir, "opt/hcf/run.sh")
-	if err := ioutil.WriteFile(runScriptPath, runScriptContents, 0744); err != nil {
-		return "", err
-	}
+		// Create env2conf templates file in /opt/hcf/env2conf.yml
+		configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, configTemplatesBytes, tar.Header{
+			Name: "root/opt/hcf/env2conf.yml",
+		})
+		if err != nil {
+			return err
+		}
 
-	jobsConfigFile, err := os.Create(filepath.Join(rootDir, "opt/hcf/job_config.json"))
-	if err != nil {
-		return "", err
-	}
+		// Generate Dockerfile
+		buf := &bytes.Buffer{}
+		if err := r.generateDockerfile(role, baseImageName, buf); err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, buf.Bytes(), tar.Header{
+			Name: "Dockerfile",
+		})
+		if err != nil {
+			return err
+		}
 
-	jobsConfigContents, err := r.generateJobsConfig(role)
-	if err != nil {
-		return "", err
+		return nil
 	}
-
-	_, err = jobsConfigFile.Write(jobsConfigContents)
-	if err != nil {
-		return "", err
-	}
-
-	err = jobsConfigFile.Chmod(0644)
-	if err != nil {
-		return "", err
-	}
-
-	// Create env2conf templates file in /opt/hcf/env2conf.yml
-	configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
-	if err != nil {
-		return "", err
-	}
-	configTemplatesFilePath := filepath.Join(rootDir, "opt/hcf/env2conf.yml")
-	if err := ioutil.WriteFile(configTemplatesFilePath, configTemplatesBytes, 0644); err != nil {
-		return "", err
-	}
-
-	// Generate Dockerfile
-	dockerfile, err := os.Create(filepath.Join(roleDir, "Dockerfile"))
-	if err != nil {
-		return "", err
-	}
-	defer dockerfile.Close()
-	if err := r.generateDockerfile(role, baseImageName, dockerfile); err != nil {
-		return "", err
-	}
-
-	succeeded = true
-	return roleDir, nil
 }
 
 func isPreStart(s string) bool {
@@ -346,16 +328,17 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 }
 
 type roleBuildJob struct {
-	role          *model.Role
-	builder       *RoleImageBuilder
-	ui            *termui.UI
-	force         bool
-	noBuild       bool
-	dockerManager dockerImageBuilder
-	resultsCh     chan<- error
-	abort         <-chan struct{}
-	repository    string
-	baseImageName string
+	role            *model.Role
+	builder         *RoleImageBuilder
+	ui              *termui.UI
+	force           bool
+	noBuild         bool
+	dockerManager   dockerImageBuilder
+	outputDirectory string
+	resultsCh       chan<- error
+	abort           <-chan struct{}
+	repository      string
+	baseImageName   string
 }
 
 func (j roleBuildJob) Run() {
@@ -372,12 +355,27 @@ func (j roleBuildJob) Run() {
 			return fmt.Errorf("Error calculating checksum for role %s: %s", j.role.Name, err.Error())
 		}
 		roleImageName := GetRoleDevImageName(j.repository, j.role, devVersion)
+		outputPath := filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		if !j.force {
-			if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
-				return err
-			} else if hasImage {
-				j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
-				return nil
+			if j.outputDirectory == "" {
+				if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
+					return err
+				} else if hasImage {
+					j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
+					return nil
+				}
+			} else {
+				info, err := os.Stat(outputPath)
+				if err == nil {
+					if info.IsDir() {
+						return fmt.Errorf("Output path %s exists but is a directory", outputPath)
+					}
+					j.ui.Printf("Skipping build of role tarball %s because it exists\n", color.YellowString(outputPath))
+					return nil
+				}
+				if !os.IsNotExist(err) {
+					return err
+				}
 			}
 		}
 
@@ -389,39 +387,52 @@ func (j roleBuildJob) Run() {
 		}
 
 		j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
-		dockerfileDir, err := j.builder.CreateDockerfileDir(j.role, j.baseImageName)
-		if err != nil {
-			return fmt.Errorf("Error creating Dockerfile and/or assets for role %s: %s", j.role.Name, err.Error())
-		}
+		dockerPopulator := j.builder.NewDockerPopulator(j.role, j.baseImageName)
 
 		if j.noBuild {
 			j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
 			return nil
 		}
 
-		if !strings.HasSuffix(dockerfileDir, string(os.PathSeparator)) {
-			dockerfileDir = fmt.Sprintf("%s%c", dockerfileDir, os.PathSeparator)
-		}
+		if j.outputDirectory == "" {
+			j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.role.Name))
 
-		j.ui.Printf("Building docker image of %s in %s ...\n", color.YellowString(j.role.Name), color.YellowString(dockerfileDir))
+			log := new(bytes.Buffer)
+			stdoutWriter := docker.NewFormattingWriter(
+				log,
+				docker.ColoredBuildStringFunc(roleImageName),
+			)
 
-		log := new(bytes.Buffer)
-		stdoutWriter := docker.NewFormattingWriter(
-			log,
-			docker.ColoredBuildStringFunc(roleImageName),
-		)
+			err := j.dockerManager.BuildImageFromCallback(roleImageName, stdoutWriter, dockerPopulator)
+			if err != nil {
+				log.WriteTo(j.ui)
+				return fmt.Errorf("Error building image: %s", err.Error())
+			}
+		} else {
+			j.ui.Printf("Building tarball of %s...\n", color.YellowString(j.role.Name))
 
-		err = j.dockerManager.BuildImage(dockerfileDir, roleImageName, stdoutWriter)
-		if err != nil {
-			log.WriteTo(j.ui)
-			return fmt.Errorf("Error building image: %s", err.Error())
+			tarFile, err := os.Create(outputPath)
+			if err != nil {
+				return fmt.Errorf("Failed to create tar file %s: %s", outputPath, err)
+			}
+			tarWriter := tar.NewWriter(tarFile)
+
+			err = dockerPopulator(tarWriter)
+			if err != nil {
+				return fmt.Errorf("Failed to populate tar file %s: %s", outputPath, err)
+			}
+
+			err = tarWriter.Close()
+			if err != nil {
+				return fmt.Errorf("Failed to close tar file %s: %s", outputPath, err)
+			}
 		}
 		return nil
 	}()
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName string, force, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -431,6 +442,12 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
+	if outputDirectory != "" {
+		if err = os.MkdirAll(outputDirectory, 0755); err != nil {
+			return fmt.Errorf("Error creating output directory: %s", err)
+		}
+	}
+
 	workerLib.MaxJobs = workerCount
 	worker := workerLib.NewWorker()
 
@@ -438,16 +455,17 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 	abort := make(chan struct{})
 	for _, role := range roles {
 		worker.Add(roleBuildJob{
-			role:          role,
-			builder:       r,
-			ui:            r.ui,
-			force:         force,
-			noBuild:       noBuild,
-			dockerManager: dockerManager,
-			resultsCh:     resultsCh,
-			abort:         abort,
-			repository:    repository,
-			baseImageName: baseImageName,
+			role:            role,
+			builder:         r,
+			ui:              r.ui,
+			force:           force,
+			noBuild:         noBuild,
+			dockerManager:   dockerManager,
+			outputDirectory: outputDirectory,
+			resultsCh:       resultsCh,
+			abort:           abort,
+			repository:      repository,
+			baseImageName:   baseImageName,
 		})
 	}
 

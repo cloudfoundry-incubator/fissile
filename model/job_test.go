@@ -10,6 +10,8 @@ import (
 
 	"github.com/hpcloud/fissile/util"
 
+	"strings"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -255,4 +257,54 @@ func TestJobsProperties(t *testing.T) {
 			}
 		}`, string(actualJSON), "Unexpected properties")
 	}
+}
+
+func TestWriteConfigs(t *testing.T) {
+	assert := assert.New(t)
+
+	job := &Job{
+		Name: "silly job",
+		Properties: []*JobProperty{
+			&JobProperty{
+				Name:    "prop",
+				Default: "bar",
+			},
+		},
+	}
+
+	role := &Role{
+		Name: "dummy role",
+		Jobs: Jobs{job},
+	}
+
+	tempFile, err := ioutil.TempFile("", "fissile-job-test")
+	assert.NoError(err)
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString(strings.Replace(`---
+	properties:
+		foo: 3
+	`, "\t", "    ", -1))
+	assert.NoError(err)
+	assert.NoError(tempFile.Close())
+
+	json, err := job.WriteConfigs(role, tempFile.Name(), tempFile.Name())
+	assert.NoError(err)
+
+	assert.JSONEq(`
+	{
+		"job": {
+			"name": "dummy role",
+			"templates": [{
+				"name": "silly job"
+			}]
+		},
+		"parameters": {},
+		"properties": {
+			"prop": "bar"
+		},
+		"networks": {
+			"default": {}
+		}
+	}`, string(json))
 }

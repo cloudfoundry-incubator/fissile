@@ -12,6 +12,7 @@ var (
 	flagBuildImagesForce         bool
 	flagBuildImagesRoles         string
 	flagPatchPropertiesDirective string
+	flagOutputDirectory          string
 )
 
 // buildImagesCmd represents the images command
@@ -41,10 +42,11 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildImagesNoBuild = viper.GetBool("no-build")
-		flagBuildImagesForce = viper.GetBool("force")
-		flagBuildImagesRoles = viper.GetString("roles")
-		flagPatchPropertiesDirective = viper.GetString("patch-properties-release")
+		flagBuildImagesNoBuild = buildImagesViper.GetBool("no-build")
+		flagBuildImagesForce = buildImagesViper.GetBool("force")
+		flagBuildImagesRoles = buildImagesViper.GetString("roles")
+		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
+		flagOutputDirectory = buildImagesViper.GetString("output-directory")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
 		if err != nil {
@@ -60,6 +62,11 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			return err
 		}
 
+		if flagOutputDirectory != "" && !flagBuildImagesForce {
+			fissile.UI.Printf("--force required when --output-directory is set\n")
+			flagBuildImagesForce = true
+		}
+
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagRepository,
@@ -72,13 +79,14 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			workPathCompilationDir,
 			flagLightOpinions,
 			flagDarkOpinions,
+			flagOutputDirectory,
 		)
 	},
 }
+var buildImagesViper = viper.New()
 
 func init() {
-	v := viper.New()
-	initViper(v)
+	initViper(buildImagesViper)
 
 	buildCmd.AddCommand(buildImagesCmd)
 
@@ -111,5 +119,12 @@ func init() {
 		"Build only images with the given role name; comma separated.",
 	)
 
-	v.BindPFlags(buildImagesCmd.PersistentFlags())
+	buildImagesCmd.PersistentFlags().StringP(
+		"output-directory",
+		"O",
+		"",
+		"Output the result as tar files in the given directory rather than building with docker",
+	)
+
+	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
 	"os"
@@ -69,7 +70,7 @@ func (f *Fissile) ShowBaseImage(repository string) error {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
+	comp, err := compilator.NewDockerCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -111,7 +112,7 @@ func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository, metricsP
 
 	f.UI.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
 
-	comp, err := compilator.NewCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
+	comp, err := compilator.NewDockerCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
 	if err != nil {
 		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 	}
@@ -326,7 +327,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int) error {
+func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -351,9 +352,17 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
-	comp, err := compilator.NewCompilator(dockerManager, targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
-	if err != nil {
-		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+	var comp *compilator.Compilator
+	if withoutDocker {
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, f.UI)
+		if err != nil {
+			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+		}
+	} else {
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
+		if err != nil {
+			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+		}
 	}
 
 	roles, err := roleManifest.SelectRoles(roleNames)
@@ -480,8 +489,56 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 	return nil
 }
 
+// GeneratePackagesRoleTarball builds a tarball snapshot of the build context
+// for the docker image for the packages layer where all packages are included
+func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder) error {
+	if len(f.releases) == 0 {
+		return fmt.Errorf("Releases not loaded")
+	}
+
+	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	if err != nil {
+		return fmt.Errorf("Error finding role's package name: %v", err)
+	}
+	outputPath := filepath.Join(outputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
+
+	if !force {
+		info, err := os.Stat(outputPath)
+		if err == nil && !info.IsDir() {
+			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(outputPath))
+			return nil
+		}
+	}
+
+	if noBuild {
+		f.UI.Println("Skipping packages layer tarball build because of --no-build flag.")
+		return nil
+	}
+
+	f.UI.Printf("Building packages layer tarball %s ...\n", color.YellowString(outputPath))
+
+	tarFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("Failed to create tar file %s: %s", outputPath, err)
+	}
+	tarWriter := tar.NewWriter(tarFile)
+
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, force)
+	err = tarPopulator(tarWriter)
+	if err != nil {
+		return fmt.Errorf("Error writing tar file: %s", err)
+	}
+	err = tarWriter.Close()
+	if err != nil {
+		return fmt.Errorf("Error closing tar file: %s", err)
+	}
+	f.UI.Println(color.GreenString("Done."))
+
+	return nil
+}
+
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -504,6 +561,18 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return fmt.Errorf(errs.Errors())
 	}
 
+	if outputDirectory != "" {
+		err = os.MkdirAll(outputDirectory, 0755)
+		if err != nil {
+			if os.IsExist(err) {
+				return fmt.Errorf("Output directory %s exists and is not a directory", outputDirectory)
+			}
+			if err != nil {
+				return fmt.Errorf("Error creating directory %s: %s", outputDirectory, err)
+			}
+		}
+	}
+
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
 		repository,
 		compiledPackagesPath,
@@ -520,7 +589,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+	if outputDirectory == "" {
+		err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+	} else {
+		err = f.GeneratePackagesRoleTarball(repository, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
+	}
 	if err != nil {
 		return err
 	}
@@ -545,7 +618,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 

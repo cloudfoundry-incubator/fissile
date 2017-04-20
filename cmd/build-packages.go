@@ -28,7 +28,8 @@ compiled once.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildPackagesRoles := viper.GetString("roles")
+		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
+		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -47,13 +48,15 @@ compiled once.
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
+			flagBuildPackagesWithoutDocker,
 		)
 	},
 }
 
+var buildPackagesViper = viper.New()
+
 func init() {
-	v := viper.New()
-	initViper(v)
+	initViper(buildPackagesViper)
 
 	buildCmd.AddCommand(buildPackagesCmd)
 
@@ -65,5 +68,12 @@ func init() {
 		"Build only packages for the given role names; comma separated.",
 	)
 
-	v.BindPFlags(buildPackagesCmd.PersistentFlags())
+	buildPackagesCmd.PersistentFlags().BoolP(
+		"without-docker",
+		"",
+		false,
+		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.",
+	)
+
+	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())
 }

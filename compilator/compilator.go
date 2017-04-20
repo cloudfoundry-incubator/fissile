@@ -37,7 +37,6 @@ const (
 
 // mocked out in tests
 var (
-	compilePackageHarness    = (*Compilator).compilePackage
 	isPackageCompiledHarness = (*Compilator).isPackageCompiled
 )
 
@@ -49,6 +48,7 @@ type Compilator struct {
 	repositoryPrefix string
 	baseType         string
 	fissileVersion   string
+	compilePackage   func(*Compilator, *model.Package) error
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -75,8 +75,8 @@ type compileJob struct {
 	killCh        <-chan struct{}
 }
 
-// NewCompilator will create an instance of the Compilator
-func NewCompilator(
+// NewDockerCompilator will create an instance of the Compilator using docker
+func NewDockerCompilator(
 	dockerManager *docker.ImageManager,
 	hostWorkDir string,
 	metricsPath string,
@@ -94,7 +94,34 @@ func NewCompilator(
 		repositoryPrefix: repositoryPrefix,
 		baseType:         baseType,
 		fissileVersion:   fissileVersion,
+		compilePackage:   (*Compilator).compilePackageInDocker,
 		keepContainer:    keepContainer,
+		ui:               ui,
+
+		signalDependencies: make(map[string]chan struct{}),
+	}
+
+	return compilator, nil
+}
+
+// NewMountNSCompilator will create an instance of the Compilator using a mount
+// namespace (Linux only)
+func NewMountNSCompilator(
+	hostWorkDir string,
+	metricsPath string,
+	repositoryPrefix string,
+	baseType string,
+	fissileVersion string,
+	ui *termui.UI,
+) (*Compilator, error) {
+
+	compilator := &Compilator{
+		hostWorkDir:      hostWorkDir,
+		metricsPath:      metricsPath,
+		repositoryPrefix: repositoryPrefix,
+		baseType:         baseType,
+		fissileVersion:   fissileVersion,
+		compilePackage:   (*Compilator).compilePackageInMountNS,
 		ui:               ui,
 
 		signalDependencies: make(map[string]chan struct{}),
@@ -302,7 +329,7 @@ func (j compileJob) Run() {
 		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "start")
 	}
 
-	workerErr := compilePackageHarness(c, j.pkg)
+	workerErr := c.compilePackage(c, j.pkg)
 
 	if c.metricsPath != "" {
 		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
@@ -535,7 +562,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 	return image, nil
 }
 
-func (c *Compilator) compilePackage(pkg *model.Package) (err error) {
+func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
 		return err

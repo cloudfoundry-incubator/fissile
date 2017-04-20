@@ -238,11 +238,11 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
-// WriteConfigs merges the job's spec with the opinions and writes out the result as JSON to the specified path.
-func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinionsPath string) (err error) {
+// WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
+func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
 	config, err := initializeConfigJSON()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	config["job"].(map[string]interface{})["name"] = role.Name
@@ -255,28 +255,21 @@ func (j *Job) WriteConfigs(role *Role, outputPath, lightOpinionsPath, darkOpinio
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	properties, err := j.getPropertiesForJob(opinions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	config["properties"] = properties
 
 	// Write out the configuration
-	err = os.MkdirAll(filepath.Dir(outputPath), 0755)
-	if err != nil {
-		return err
-	}
-
 	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err = ioutil.WriteFile(outputPath, jobJSON, 0644); err != nil {
-		return err
-	}
-	return nil
+
+	return jobJSON, nil
 }
 
 // getPropertiesForJob returns the parameters for the given job, using its specs and opinions
