@@ -326,7 +326,7 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 
 	var comp *compilator.Compilator
 	if withoutDocker {
-		comp, err = compilator.NewChrootCompilator(targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, f.UI)
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}

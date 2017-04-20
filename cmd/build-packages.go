@@ -72,7 +72,7 @@ func init() {
 		"without-docker",
 		"",
 		false,
-		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires root privileges.",
+		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())

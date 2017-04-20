@@ -104,8 +104,9 @@ func NewDockerCompilator(
 	return compilator, nil
 }
 
-// NewChrootCompilator will create an instance of the Compilator using chroot
-func NewChrootCompilator(
+// NewMountNSCompilator will create an instance of the Compilator using a mount
+// namespace (Linux only)
+func NewMountNSCompilator(
 	hostWorkDir string,
 	metricsPath string,
 	repositoryPrefix string,
@@ -120,7 +121,7 @@ func NewChrootCompilator(
 		repositoryPrefix: repositoryPrefix,
 		baseType:         baseType,
 		fissileVersion:   fissileVersion,
-		compilePackage:   (*Compilator).compilePackageInChroot,
+		compilePackage:   (*Compilator).compilePackageInMountNS,
 		ui:               ui,
 
 		signalDependencies: make(map[string]chan struct{}),

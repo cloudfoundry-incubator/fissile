@@ -8,6 +8,6 @@ import (
 	"github.com/hpcloud/fissile/model"
 )
 
-func (c *Compilator) compilePackageInChroot(pkg *model.Package) (err error) {
+func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {
 	return fmt.Errorf("Compilation without docker is not supported outside Linux")
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/hpcloud/fissile/scripts/compilation"
 )
 
-func (c *Compilator) compilePackageInChroot(pkg *model.Package) (err error) {
+func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {
 	// Prepare input dir (package plus deps)
 	if err := c.createCompilationDirStructure(pkg); err != nil {
 		return fmt.Errorf("failed to create directory: %s", err)

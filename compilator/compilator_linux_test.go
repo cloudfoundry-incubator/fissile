@@ -30,7 +30,7 @@ func (b *LockedBuffer) String() string {
 	return b.buf.String()
 }
 
-func TestCompilePackageInChroot(t *testing.T) {
+func TestCompilePackageInMountNS(t *testing.T) {
 	assert := assert.New(t)
 
 	if os.Geteuid() != 0 {
@@ -50,13 +50,13 @@ func TestCompilePackageInChroot(t *testing.T) {
 		return
 	}
 
-	tempDir, err := ioutil.TempDir("", "fissile-test-compile-chroot")
+	tempDir, err := ioutil.TempDir("", "fissile-test-compile-mount-ns")
 	if !assert.NoError(err) {
 		return
 	}
 	defer os.RemoveAll(tempDir)
 
-	c, err := NewChrootCompilator(tempDir, "", "repo", "ubuntu", "0", ui)
+	c, err := NewMountNSCompilator(tempDir, "", "repo", "ubuntu", "0", ui)
 	assert.NoError(err)
 
 	err = c.Compile(2, []*model.Release{release}, nil)
