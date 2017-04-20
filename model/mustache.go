@@ -31,8 +31,7 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 		for _, property := range job.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
-			if template, ok := r.rolesManifest.Configuration.Templates[propertyName]; ok {
-
+			if template, ok := r.Configuration.Templates[propertyName]; ok {
 				varsInTemplate, err := parseTemplate(template)
 				if err != nil {
 					return nil, err
@@ -43,22 +42,6 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 						configs[confVar.Name] = confVar
 					}
 				}
-			}
-		}
-	}
-
-	// TODO we might want to exclude env vars that are from templates that are
-	// overwritten by per-role configs
-	for _, template := range r.Configuration.Templates {
-		varsInTemplate, err := parseTemplate(template)
-
-		if err != nil {
-			return nil, err
-		}
-
-		for _, envVar := range varsInTemplate {
-			if confVar, ok := configsDictionary[envVar]; ok {
-				configs[confVar.Name] = confVar
 			}
 		}
 	}
