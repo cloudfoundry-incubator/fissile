@@ -8,10 +8,10 @@ agent.
 
 ## Build and Install
 Building fissile needs Go 1.4 or higher. You can download it from the [Golang website](https://golang.org/doc/install)
-   
+
 ### Build procedure
 Execute the following commands to compile fissile
-   
+
 ```
 $ cd $GOPATH
 $ mkdir -p src/github.com/hpcloud
@@ -33,6 +33,10 @@ The fissile is also a go-gettable package:
 ```
 go get github.com/hpcloud/fissile
 ```
+
+## Prepare Environment
+
+To prepare the computer on which you plan to build docker images follow the documentation [here](./docs/fissile-environment.md).
 
 ## Usage
 
