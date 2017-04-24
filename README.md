@@ -7,7 +7,15 @@ It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH
 agent.
 
 ## Build and Install
-Building fissile needs Go 1.4 or higher. You can download it from the [Golang website](https://golang.org/doc/install)
+Building fissile needs Go 1.4 or higher and Docker. 
+You can download go from the [Golang website](https://golang.org/doc/install) and
+Docker from the [Docker website](https://www.docker.com)
+
+To run the tests you need to have the Ubuntu 14.04 docker image pulled and available in your local docker instance.
+
+```
+$ docker pull ubuntu:14.04
+```
 
 ### Build procedure
 Execute the following commands to compile fissile
@@ -20,6 +28,7 @@ $ git clone https://github.com/hpcloud/fissile.git
 $ cd fissile
 $ git submodule sync --recursive
 $ git submodule update --init  --recursive
+$ make tools ## optional step, only required to install dependencies
 $ make all
 ```
 
