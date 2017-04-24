@@ -104,8 +104,16 @@ func checkParentsOfUndefined(p string, bosh propertyDefaults) bool {
 		tail := p[at:]
 		parent := strings.TrimSuffix(p, tail)
 
-		if _, ok := bosh[parent]; ok {
-			return true
+		if pInfo, ok := bosh[parent]; ok {
+			// We have a possible parent. Look if that
+			// candidate may be a hash. If not our
+			// property cannot be valid.
+
+			if pInfo.maybeHash {
+				return true
+			}
+
+			return false
 		}
 
 		p = parent
@@ -225,19 +233,19 @@ func checkForDuplicateProperty(prefix, property, value string, light map[string]
 // checkBOSHDefaults reports all properties which were given differing
 // defaults across BOSH releases and the jobs inside.
 func (f *Fissile) checkBOSHDefaults(pd propertyDefaults) {
-	for property, defaults := range pd {
+	for property, pInfo := range pd {
 		// Ignore properties with a single default across all definitions.
-		if len(defaults) == 1 {
+		if len(pInfo.defaults) == 1 {
 			continue
 		}
 
 		f.UI.Printf("%s: Property %s has %s defaults:\n",
 			color.YellowString("Warning"),
 			color.YellowString(property),
-			color.YellowString(fmt.Sprintf("%d", len(defaults))))
+			color.YellowString(fmt.Sprintf("%d", len(pInfo.defaults))))
 
 		maxlen := 0
-		for defaultv := range defaults {
+		for defaultv := range pInfo.defaults {
 			ds := fmt.Sprintf("%v", defaultv)
 			if len(ds) > maxlen {
 				maxlen = len(ds)
@@ -246,7 +254,7 @@ func (f *Fissile) checkBOSHDefaults(pd propertyDefaults) {
 
 		leftjustified := fmt.Sprintf("%%-%ds", maxlen)
 
-		for defaultv, jobs := range defaults {
+		for defaultv, jobs := range pInfo.defaults {
 			ds := fmt.Sprintf("%v", defaultv)
 			if len(jobs) == 1 {
 				job := jobs[0]
@@ -282,23 +290,23 @@ func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefault
 		p := strings.TrimPrefix(property, "properties.")
 
 		// Ignore unknown/undefined property
-		defaults, ok := pd[p]
+		pInfo, ok := pd[p]
 		if !ok {
 			continue
 		}
 
 		// Ignore properties with ambigous defaults. Warn however.
-		if len(defaults) > 1 {
+		if len(pInfo.defaults) > 1 {
 			f.UI.Printf("light opinion %s ignored, %s\n",
 				color.YellowString(p),
 				color.YellowString("ambiguous default"))
 			continue
 		}
 
-		// len(defaults) == 1 --> This loop will run only once
+		// len(pInfo.defaults) == 1 --> This loop will run only once
 		// Is there a better (more direct?) way to get the
 		// single key, i.e. default from the map ?
-		for thedefault := range defaults {
+		for thedefault := range pInfo.defaults {
 			if opinion != thedefault {
 				continue
 			}

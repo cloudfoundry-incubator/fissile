@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -297,14 +298,18 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 	return result
 }
 
-// propertyDefaults is a double map
-//
-//	(property.name -> (default.string -> [*job...])
-//
-// which maps a property (name) to all its default values
-// (stringified) and them in turn to the array of jobs where this
-// default occurs.
-type propertyDefaults map[string]map[string][]*model.Job
+// propertyDefaults is a map from property names to information about
+// it needed for validation.
+type propertyDefaults map[string]*propertyInfo
+
+// propertyInfo is a structure listing the (stringified) defaults and
+// the associated jobs for a property, plus other aggregated
+// information (whether it is a hash, or not)
+
+type propertyInfo struct {
+	maybeHash bool
+	defaults  map[string][]*model.Job
+}
 
 func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	result := make(propertyDefaults)
@@ -312,18 +317,44 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	for _, release := range f.releases {
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				defaultAsString := fmt.Sprintf("%v", property.Default)
 
+				// Extend map for newly seen properties
 				if _, ok := result[property.Name]; !ok {
-					result[property.Name] = make(map[string][]*model.Job)
+					result[property.Name] = newPropertyInfo(false)
 				}
-				result[property.Name][defaultAsString] =
-					append(result[property.Name][defaultAsString], job)
+
+				// Extend the map of defaults to job lists.
+				defaultAsString := fmt.Sprintf("%v", property.Default)
+				result[property.Name].defaults[defaultAsString] =
+					append(result[property.Name].defaults[defaultAsString], job)
+
+				// Handle the property's hash flag,
+				// based on the current default for
+				// it. Note that if the default is
+				// <nil> we assume that it can be a
+				// hash. This works arounds problems
+				// in the CF spec files where the two
+				// hash-valued properties we are
+				// interested in do not have defaults.
+				// (uaa.clients, cc.quota_definitions)
+
+				if property.Default == nil ||
+					reflect.TypeOf(property.Default).Kind() == reflect.Map {
+					result[property.Name].maybeHash = true
+				}
 			}
 		}
 	}
 
 	return result
+}
+
+// newPropertyInfo creates a new information block for a property.
+func newPropertyInfo(maybeHash bool) *propertyInfo {
+	return &propertyInfo{
+		defaults:  make(map[string][]*model.Job),
+		maybeHash: maybeHash,
+	}
 }
 
 // Compile will compile a list of dev BOSH releases
