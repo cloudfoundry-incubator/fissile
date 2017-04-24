@@ -71,12 +71,48 @@ func checkForUndefinedBOSHProperties(label string, properties map[string]string,
 		p := strings.TrimPrefix(property, "properties.")
 
 		if _, ok := bosh[p]; !ok {
+			// The property as is was not found. This is
+			// not necessarily an error. The "property"
+			// may actually part of the value for a
+			// structured (hash) property. To determine
+			// this we walk the chain of parents to see if
+			// any of them exist, and report an error only
+			// if none of them do.
+
+			if checkParentsOfUndefined(p, bosh) {
+				continue
+			}
+
 			allErrs = append(allErrs, validation.NotFound(
 				fmt.Sprintf("%s '%s'", label, p), "In any BOSH release"))
 		}
 	}
 
 	return allErrs
+}
+
+// checkParentsOfUndefined walks the chain of parents for `p` from the
+// bottom up and checks if any of them exist. The elements of the
+// chain are separated by dots.
+func checkParentsOfUndefined(p string, bosh propertyDefaults) bool {
+	at := strings.LastIndex(p, ".")
+
+	for at >= 0 {
+		// While there is a dot in the property name we have a
+		// parent to check the existence of
+
+		tail := p[at:]
+		parent := strings.TrimSuffix(p, tail)
+
+		if _, ok := bosh[parent]; ok {
+			return true
+		}
+
+		p = parent
+		at = strings.LastIndex(p, ".")
+	}
+
+	return false
 }
 
 // collectManifestProperties returns a map merging the global and
