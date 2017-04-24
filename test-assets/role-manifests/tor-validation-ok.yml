@@ -27,6 +27,8 @@ configuration:
   - name: BAR
   - name: FOO
   - name: HOME
+  - name: KUPRIES
+    internal: true
   - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
