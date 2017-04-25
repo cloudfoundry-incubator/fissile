@@ -328,14 +328,10 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 				result[property.Name].defaults[defaultAsString] =
 					append(result[property.Name].defaults[defaultAsString], job)
 
-				// Handle the property's hash flag,
-				// based on the current default for
-				// it. Note that if the default is
-				// <nil> we assume that it can be a
-				// hash. This works arounds problems
-				// in the CF spec files where the two
-				// hash-valued properties we are
-				// interested in do not have defaults.
+				// Handle the property's hash flag, based on the current default for
+				// it. Note that if the default is <nil> we assume that it can be a
+				// hash. This works arounds problems in the CF spec files where the two
+				// hash-valued properties we are interested in do not have defaults.
 				// (uaa.clients, cc.quota_definitions)
 
 				if property.Default == nil ||

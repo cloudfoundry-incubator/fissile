@@ -329,5 +329,5 @@ func TestGetDeploymentConfig(t *testing.T) {
 	for _, expected := range allExpected {
 		assert.Contains(configs, expected)
 	}
-	assert.Len(configs, 7)
+	assert.Len(configs, len(allExpected))
 }
