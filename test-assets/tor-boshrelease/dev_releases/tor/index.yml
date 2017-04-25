@@ -8,4 +8,6 @@ builds:
     version: 0.3.5+dev.3
   c902b94c-f64d-455a-958d-ec034a3298ec:
     version: 0.3.5+dev.4
+  97eeff6c-bb8d-45fa-a696-f3e597a2c814:
+    version: 0.3.5+dev.5
 format-version: '2'
