@@ -317,5 +317,17 @@ func TestGetDeploymentConfig(t *testing.T) {
 	configs := release.GetUniqueConfigs()
 
 	assert.NotNil(configs)
-	assert.Len(configs, 4)
+	allExpected := []string{
+		`is.a.hash`,
+		`its.a.hash`,
+		`not.a.hash`,
+		`tor.client_keys`,
+		`tor.hashed_control_password`,
+		`tor.hostname`,
+		`tor.private_key`,
+	}
+	for _, expected := range allExpected {
+		assert.Contains(configs, expected)
+	}
+	assert.Len(configs, len(allExpected))
 }

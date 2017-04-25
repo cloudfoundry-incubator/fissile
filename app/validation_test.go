@@ -97,3 +97,39 @@ func TestValidationOk(t *testing.T) {
 
 	assert.Empty(errs)
 }
+
+func TestValidationHash(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/hashmat.yml")
+	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-light.yml")
+	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-dark.yml")
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	assert.NoError(err)
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	assert.NoError(err)
+
+	errs := f.validateManifestAndOpinions(roleManifest, opinions)
+
+	actual := errs.Errors()
+	allExpected := []string{
+		`role-manifest 'not.a.hash.foo': Not found: "In any BOSH release"`,
+		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
+	}
+	for _, expected := range allExpected {
+		assert.Contains(actual, expected)
+	}
+	assert.Len(errs, len(allExpected))
+}

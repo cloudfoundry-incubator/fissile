@@ -1,0 +1,34 @@
+---
+packages:
+- name: tor
+  version: 59523b1cc4042dff1217ab5b79ff885cdd2de032
+  fingerprint: 59523b1cc4042dff1217ab5b79ff885cdd2de032
+  sha1: b81b16d8913b527a1af6cb5c421d625e5d087b27
+  dependencies:
+  - libevent
+- name: libevent
+  version: e3fb8ab976aca9b9ea2a6b28b76506f0130ba296
+  fingerprint: e3fb8ab976aca9b9ea2a6b28b76506f0130ba296
+  sha1: da4e7d5276d127200f18478191f78bb697e8e09d
+  dependencies: []
+jobs:
+- name: tor
+  version: caa1778bc5cd6ad695e9da778635af63d0369b55
+  fingerprint: caa1778bc5cd6ad695e9da778635af63d0369b55
+  sha1: 84d62aa3f6ea5949eac1f36b2f3ae81e3e591d89
+- name: hashmat
+  version: 9c47e14b421fce30cdd5338fc671fecdcc9275fd
+  fingerprint: 9c47e14b421fce30cdd5338fc671fecdcc9275fd
+  sha1: e0defb93e5fcb82533157c693ab15928598c8cd0
+- name: new_hostname
+  version: 3bf6a767f05ccb9aab2066a9c3341c6bd200cc9d
+  fingerprint: 3bf6a767f05ccb9aab2066a9c3341c6bd200cc9d
+  sha1: a44049fbf59ccffdf05e9706d5ad10f7e73ede36
+license:
+  version: 6f117d851b14e93179674e12aacdaad2839ba5c8
+  fingerprint: 6f117d851b14e93179674e12aacdaad2839ba5c8
+  sha1: e7268291d993ae5ef1c1442fcf2ffa2ab9d145f3
+commit_hash: 83fb93dd
+uncommitted_changes: true
+name: tor
+version: 0.3.5+dev.5

@@ -1,0 +1,17 @@
+---
+name: hashmat
+packages:
+- libevent
+- tor
+templates:
+  bin/tor_ctl: bin/tor_ctl
+
+properties:
+  not.a.hash:
+    description: A scalar value which is definitely not a hash.
+    default: localhost
+  is.a.hash:
+    description: A hash-valued property, empty initially
+    default: {}
+  its.a.hash:
+    description: Without a default value we assume hash.

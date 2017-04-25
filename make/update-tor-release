@@ -1,0 +1,5 @@
+#!/bin/bash
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+bosh create release --force --name tor --dir ${GIT_ROOT}/test-assets/tor-boshrelease
