@@ -264,10 +264,10 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.rolesByName[role.Name] = role
 	}
 
-	allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
-	allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
-	allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
-	allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
+	// allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
+	// allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
+	// allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
+	// allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
 
 	if len(allErrs) != 0 {
 		return nil, fmt.Errorf(allErrs.Errors())
