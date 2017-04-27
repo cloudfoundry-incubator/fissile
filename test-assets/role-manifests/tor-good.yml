@@ -30,5 +30,5 @@ configuration:
   - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
-    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+    properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

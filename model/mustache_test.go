@@ -3,6 +3,7 @@ package model
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,8 +54,11 @@ func TestRoleVariables(t *testing.T) {
 	assert.NotNil(vars)
 
 	expected := []string{"HOME", "FOO", "BAR", "PELERINUL"}
-	assert.Len(vars, len(expected))
-	for i, variable := range vars {
-		assert.Contains(expected, variable.Name, "variable %d not expected", i)
+	sort.Strings(expected)
+	var actual []string
+	for _, variable := range vars {
+		actual = append(actual, variable.Name)
 	}
+	sort.Strings(actual)
+	assert.Equal(expected, actual)
 }
