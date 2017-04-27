@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hpcloud/fissile/mustache"
 )
@@ -31,7 +32,14 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 		for _, property := range job.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
-			if template, ok := r.Configuration.Templates[propertyName]; ok {
+			for templatePropName, template := range r.Configuration.Templates {
+				switch true {
+				case templatePropName == propertyName:
+				case strings.HasPrefix(templatePropName, propertyName+"."):
+				default:
+					// Not a matching property
+					continue
+				}
 				varsInTemplate, err := parseTemplate(template)
 				if err != nil {
 					return nil, err
