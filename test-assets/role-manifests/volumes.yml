@@ -20,4 +20,6 @@ configuration:
   templates:
     fox: ((SOME_VAR))
   variables:
+  - name: ALL_VAR
+    internal: true
   - name: SOME_VAR

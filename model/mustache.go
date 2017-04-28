@@ -17,6 +17,10 @@ func MakeMapOfVariables(rolesManifest *RoleManifest) CVMap {
 		configsDictionary[config.Name] = config
 	}
 
+	for _, config := range builtins() {
+		configsDictionary[config.Name] = config
+	}
+
 	return configsDictionary
 }
 
@@ -27,6 +31,8 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 	configsDictionary := MakeMapOfVariables(r.rolesManifest)
 
 	configs := CVMap{}
+
+	// First, render all referenced variables of type user.
 
 	for _, job := range r.Jobs {
 		for _, property := range job.Properties {
@@ -47,10 +53,24 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
 				for _, envVar := range varsInTemplate {
 					if confVar, ok := configsDictionary[envVar]; ok {
-						configs[confVar.Name] = confVar
+						if confVar.Type == CVTypeUser {
+							configs[confVar.Name] = confVar
+						}
 					}
 				}
 			}
+		}
+	}
+
+	// Second, render all user-variables which are marked as
+	// internal. The reasoning: Being internal, i.e. used by
+	// scripts, but not templates, we cannot know for sure that
+	// they are not used, so we err on the side of caution and
+	// assume usage, therefore render.
+
+	for _, confVar := range configsDictionary {
+		if confVar.Type == CVTypeUser && confVar.Internal {
+			configs[confVar.Name] = confVar
 		}
 	}
 
@@ -74,4 +94,34 @@ func parseTemplate(template string) ([]string, error) {
 	}
 
 	return parsed.GetTemplateVariables(), nil
+}
+
+func builtins() ConfigurationVariableSlice {
+	// Fissile provides some configuration variables by itself,
+	// see --> scripts/dockerfiles/run.sh, add them to prevent
+	// them from being reported as errors.  The code here has to
+	// match the list of variables there.
+
+	// Notes:
+	// - Type `environment` because they are supplied by the
+	//   runtime code, not the user.
+	// - Internal, because while a user can reference them in
+	//   the templates of a role manifest it does not have to.
+	// - As they are added to the data structures after the loaded
+	//   RM is validated this does __not__ mean that a user can
+	//   specify variables as environment/internal. That is still
+	//   forbidden/impossible.
+
+	return ConfigurationVariableSlice{
+		&ConfigurationVariable{
+			Name:     "IP_ADDRESS",
+			Type:     CVTypeEnv,
+			Internal: true,
+		},
+		&ConfigurationVariable{
+			Name:     "DNS_RECORD_NAME",
+			Type:     CVTypeEnv,
+			Internal: true,
+		},
+	}
 }

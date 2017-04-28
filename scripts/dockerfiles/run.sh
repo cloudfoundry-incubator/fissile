@@ -20,6 +20,8 @@ if [ -d /var/vcap/sys/run ]; then
     find /var/vcap/sys/run -name "*.pid" -delete
 fi
 
+# Note, any changes to this list of variables have to be replicated in
+# --> model/mustache.go, func builtins
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
 

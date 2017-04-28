@@ -117,12 +117,39 @@ type Configuration struct {
 }
 
 // ConfigurationVariable is a configuration to be exposed to the IaaS
+//
+// Notes on the fields Type and Internal.
+// 1. Type's legal values are `user` and `environment`.
+//    `user` is default.
+//
+//    A `user` CV is rendered into k8s yml config files, etc. to make it available to roles who need it.
+//    - An internal CV is rendered to all roles.
+//    - A public CV is rendered only to the roles whose templates refer to the CV.
+//
+//    An `environment` CV comes from a script, not the user. Being
+//    internal this way it is not rendered to any configuration files.
+//
+// 2. Internal's legal values are all YAML boolean values.
+//    A public CV is used in templates
+//    An internal CV is not, consumed in a script instead.
 type ConfigurationVariable struct {
 	Name        string                          `yaml:"name"`
 	Default     interface{}                     `yaml:"default"`
 	Description string                          `yaml:"description"`
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
+	Type        CVType                          `yaml:"type"`
+	Internal    bool                            `yaml:"internal,omitempty"`
 }
+
+// CVType is the type of the configuration variable; see the constants below
+type CVType string
+
+const (
+	// CVTypeUser is for user-specified variables (default)
+	CVTypeUser = CVType("user")
+	// CVTypeEnv is for script-specified variables
+	CVTypeEnv = CVType("environment")
+)
 
 // CVMap is a map from variable name to ConfigurationVariable, for
 // various places which require quick access/search/existence check.
@@ -264,10 +291,11 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		rolesManifest.rolesByName[role.Name] = role
 	}
 
-	// allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
-	// allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
-	// allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
-	// allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
+	allErrs = append(allErrs, validateVariableType(rolesManifest.Configuration.Variables)...)
+	allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
+	allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
+	allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
+	allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
 
 	if len(allErrs) != 0 {
 		return nil, fmt.Errorf(allErrs.Errors())
@@ -466,6 +494,33 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	r.Configuration.Templates = roleConfigs
 }
 
+// validateVariableType checks that only legal values are used for
+// the type field of variables, and resolves missing information to
+// defaults. It reports all variables which are badly typed.
+func validateVariableType(variables ConfigurationVariableSlice) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, cv := range variables {
+		switch cv.Type {
+		case "":
+			cv.Type = CVTypeUser
+		case CVTypeUser:
+		case CVTypeEnv:
+			if cv.Internal {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("configuration.variables[%s].type", cv.Name),
+					cv.Type, `type conflicts with flag "internal"`))
+			}
+		default:
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("configuration.variables[%s].type", cv.Name),
+				cv.Type, "Expected one of user, or environment"))
+		}
+	}
+
+	return allErrs
+}
+
 // validateVariableSorting tests whether the parameters are properly sorted or not.
 // It reports all variables which are out of order.
 func validateVariableSorting(variables ConfigurationVariableSlice) validation.ErrorList {
@@ -484,11 +539,12 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 	return allErrs
 }
 
-// validateVariableUsage tests whether all parameters are used in a template or not.
-// It reports all variables which are not used by at least one template.
-//
-// ATTENTION: This will mis-report any variables which are used only
-// in scripts, but not in templates.
+// validateVariableUsage tests whether all parameters are used in a
+// template or not.  It reports all variables which are not used by at
+// least one template.  An exception are the variables marked with
+// `internal: true`. These are not reported.  Use this to declare
+// variables used only in the various scripts and not in templates.
+// See also the notes on type `ConfigurationVariable` in this file.
 func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
@@ -553,9 +609,13 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	}
 
 	// We have only the unused variables left in the set. Report
-	// them.
+	// those which are not internal.
 
-	for cv := range unusedConfigs {
+	for cv, cvar := range unusedConfigs {
+		if cvar.Internal {
+			continue
+		}
+
 		allErrs = append(allErrs, validation.NotFound("configuration.variables",
 			fmt.Sprintf("No templates using '%s'", cv)))
 	}

@@ -164,20 +164,28 @@ func TestPodGetEnvVars(t *testing.T) {
 	}
 
 	for _, sample := range samples {
-		defaults := map[string]string{"SOME_VAR": sample.input}
+		defaults := map[string]string{
+			"SOME_VAR": sample.input,
+			"ALL_VAR":  "placeholder",
+		}
 
 		vars, err := getEnvVars(role, defaults)
 		assert.NoError(err)
 		assert.NotEmpty(vars)
 
-		found := false
+		founda := false
+		foundb := false
 		for _, result := range vars {
 			if result.Name == "SOME_VAR" {
-				found = true
+				founda = true
 				assert.Equal(sample.expected, result.Value)
 			}
+			if result.Name == "ALL_VAR" {
+				foundb = true
+			}
 		}
-		assert.True(found, "failed to find expected variable")
+		assert.True(founda, "failed to find expected variable SOME_VAR")
+		assert.True(foundb, "failed to find expected variable ALL_VAR")
 	}
 }
 
