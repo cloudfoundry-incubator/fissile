@@ -48,4 +48,5 @@ fi
 cd "${BOSH_COMPILE_TARGET}"
 bash ./packaging
 
-chown -R "${HOST_USERID}:${HOST_USERGID}" "${BOSH_INSTALL_TARGET}" 2>/dev/null || echo "Warning - could not change ownership of compiled artifacts" 1>&2
+chown -R "${HOST_USERID}:${HOST_USERGID}" "$(readlink --canonicalize "${BOSH_INSTALL_TARGET}")" 2>/dev/null \
+  || echo "Warning - could not change ownership of compiled artifacts" 1>&2
