@@ -16,9 +16,9 @@ Execute the following commands to compile fissile
 
 ```
 $ cd $GOPATH
-$ mkdir -p src/github.com/hpcloud
-$ cd src/github.com/hpcloud
-$ git clone https://github.com/hpcloud/fissile.git
+$ mkdir -p src/github.com/SUSE
+$ cd src/github.com/SUSE
+$ git clone https://github.com/SUSE/fissile.git
 $ cd fissile
 $ git submodule sync --recursive
 $ git submodule update --init  --recursive
@@ -35,7 +35,7 @@ Depending on your architecture you can use the fissile binary files from those d
 The fissile is also a go-gettable package:
 
 ```
-go get github.com/hpcloud/fissile
+go get github.com/SUSE/fissile
 ```
 
 ## Prepare Environment
