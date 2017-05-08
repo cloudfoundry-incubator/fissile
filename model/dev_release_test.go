@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/util"
 
 	"github.com/stretchr/testify/assert"
 )

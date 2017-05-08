@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/hpcloud/fissile/scripts/configgin"
-	"github.com/hpcloud/fissile/scripts/dockerfiles"
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/scripts/configgin"
+	"github.com/SUSE/fissile/scripts/dockerfiles"
+	"github.com/SUSE/fissile/util"
 )
 
 // BaseImageBuilder represents a builder of docker base images

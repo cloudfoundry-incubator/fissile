@@ -11,7 +11,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"

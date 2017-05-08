@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hpcloud/fissile/builder"
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/builder"
+	"github.com/SUSE/fissile/model"
 
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"

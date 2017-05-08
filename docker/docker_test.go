@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/util"
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/golang/mock/gomock"
-	"github.com/hpcloud/fissile/util"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )

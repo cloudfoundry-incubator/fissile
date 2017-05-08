@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hpcloud/fissile/validation"
+	"github.com/SUSE/fissile/validation"
 
 	"gopkg.in/yaml.v2"
 )

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hpcloud/fissile/model"
-	"github.com/hpcloud/fissile/validation"
+	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/validation"
 
 	"github.com/fatih/color"
 )

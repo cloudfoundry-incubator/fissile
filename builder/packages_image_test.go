@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hpcloud/fissile/docker"
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/docker"
+	"github.com/SUSE/fissile/model"
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )

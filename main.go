@@ -4,8 +4,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/hpcloud/fissile/app"
-	"github.com/hpcloud/fissile/cmd"
+	"github.com/SUSE/fissile/app"
+	"github.com/SUSE/fissile/cmd"
 
 	"github.com/fatih/color"
 	"github.com/hpcloud/termui"

@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/hpcloud/fissile",
+    "ImportPath": "github.com/SUSE/fissile",
 	"GoVersion": "go1.7",
 	"GodepVersion": "v79",
 	"Packages": [

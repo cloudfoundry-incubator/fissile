@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/util"
 
 	"github.com/cppforlife/go-semi-semantic/version"
 	"gopkg.in/yaml.v2"

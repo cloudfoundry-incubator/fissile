@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/hpcloud/fissile/app"
+	"github.com/SUSE/fissile/app"
 )
 
 var (

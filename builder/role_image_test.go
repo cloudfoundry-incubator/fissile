@@ -14,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 
 	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
