@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -53,7 +54,26 @@ compiled once.
 	},
 }
 
-var buildPackagesViper = viper.New()
+var (
+	flagBuildPackagesStemcell string
+	buildPackagesViper        = viper.New()
+)
+
+// buildPackages2Cmd represents the packages command
+var buildPackages2Cmd = &cobra.Command{
+	Use:   "packages2",
+	Short: "Builds BOSH packages in a Docker container (WIP).",
+	Long: `
+TODO: WRITE ME!""
+`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flagBuildPackagesStemcell = buildPackages2Viper.GetString("stemcell")
+		fmt.Printf("stemcellname:%q\n", flagBuildPackagesStemcell)
+		return nil
+	},
+}
+
+var buildPackages2Viper = viper.New()
 
 func init() {
 	initViper(buildPackagesViper)
@@ -76,4 +96,16 @@ func init() {
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())
+
+	initViper(buildPackages2Viper)
+
+	buildCmd.AddCommand(buildPackages2Cmd)
+
+	buildPackages2Cmd.PersistentFlags().String(
+		"stemcell",
+		"",
+		"The source stemcell",
+	)
+
+	buildPackages2Viper.BindPFlags(buildPackages2Cmd.PersistentFlags())
 }

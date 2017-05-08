@@ -3,4 +3,4 @@
 set -o errexit
 
 go generate ./docker/ # for mocks
-go test -race -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')
+go test -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')

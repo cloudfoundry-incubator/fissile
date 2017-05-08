@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -13,6 +14,8 @@ var (
 	flagBuildImagesRoles         string
 	flagPatchPropertiesDirective string
 	flagOutputDirectory          string
+
+	flagBuildImagesStemcell string
 )
 
 // buildImagesCmd represents the images command
@@ -85,6 +88,21 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 }
 var buildImagesViper = viper.New()
 
+// buildImages2Cmd represents the images2 command
+var buildImages2Cmd = &cobra.Command{
+	Use:   "images2",
+	Short: "Builds Fissile Docker images from your existing docker stemmcells (WIP).",
+	Long: `
+TODO: this needs to be written
+	`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flagBuildImagesStemcell = buildImages2Viper.GetString("stemcell")
+		fmt.Printf("stemcellname:%q\n", flagBuildImagesStemcell)
+		return nil
+	},
+}
+var buildImages2Viper = viper.New()
+
 func init() {
 	initViper(buildImagesViper)
 
@@ -127,4 +145,14 @@ func init() {
 	)
 
 	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
+
+	initViper(buildImages2Viper)
+	buildCmd.AddCommand(buildImages2Cmd)
+	buildImages2Cmd.PersistentFlags().StringP(
+		"stemcell",
+		"",
+		"",
+		"The source stemcell",
+	)
+	buildImages2Viper.BindPFlags(buildImages2Cmd.PersistentFlags())
 }
