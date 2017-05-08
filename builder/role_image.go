@@ -11,10 +11,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/hpcloud/fissile/docker"
-	"github.com/hpcloud/fissile/model"
-	"github.com/hpcloud/fissile/scripts/dockerfiles"
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/docker"
+	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/scripts/dockerfiles"
+	"github.com/SUSE/fissile/util"
 	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"

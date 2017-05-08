@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"

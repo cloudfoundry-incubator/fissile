@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hpcloud/fissile/docker"
-	"github.com/hpcloud/fissile/model"
-	"github.com/hpcloud/fissile/scripts/compilation"
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/docker"
+	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/scripts/compilation"
+	"github.com/SUSE/fissile/util"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"

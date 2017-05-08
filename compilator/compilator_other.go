@@ -5,7 +5,7 @@ package compilator
 import (
 	"fmt"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 )
 
 func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {

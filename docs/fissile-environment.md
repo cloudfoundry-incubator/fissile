@@ -14,8 +14,8 @@ components.
 #### fissile
 
 Make sure you have `fissile` in your path. You can build it yourself from
-[source](https://github.com/hpcloud/fissile) or grab a binary from the releases
-page [here](https://github.com/hpcloud/fissile/releases).
+[source](https://github.com/SUSE/fissile) or grab a binary from the releases
+page [here](https://github.com/SUSE/fissile/releases).
 
 #### yaml to json converter
 

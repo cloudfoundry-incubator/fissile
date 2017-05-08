@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )

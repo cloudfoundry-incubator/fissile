@@ -3,7 +3,7 @@ package kube
 import (
 	"fmt"
 
-	"github.com/hpcloud/fissile/model"
+	"github.com/SUSE/fissile/model"
 	"k8s.io/client-go/pkg/api/resource"
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"

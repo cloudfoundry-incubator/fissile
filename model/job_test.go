@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hpcloud/fissile/util"
+	"github.com/SUSE/fissile/util"
 
 	"strings"
 

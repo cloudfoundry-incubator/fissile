@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/SUSE/fissile/docker"
+	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/scripts/compilation"
 	"github.com/fatih/color"
-	"github.com/hpcloud/fissile/docker"
-	"github.com/hpcloud/fissile/model"
-	"github.com/hpcloud/fissile/scripts/compilation"
 )
 
 func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {
