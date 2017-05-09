@@ -88,15 +88,15 @@ func NewDockerCompilator(
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		dockerManager:    dockerManager,
-		hostWorkDir:      hostWorkDir,
-		metricsPath:      metricsPath,
+		dockerManager:     dockerManager,
+		hostWorkDir:       hostWorkDir,
+		metricsPath:       metricsPath,
 		stemcellImageName: stemcellImageName,
-		baseType:         baseType,
-		fissileVersion:   fissileVersion,
-		compilePackage:   (*Compilator).compilePackageInDocker,
-		keepContainer:    keepContainer,
-		ui:               ui,
+		baseType:          baseType,
+		fissileVersion:    fissileVersion,
+		compilePackage:    (*Compilator).compilePackageInDocker,
+		keepContainer:     keepContainer,
+		ui:                ui,
 
 		signalDependencies: make(map[string]chan struct{}),
 	}
@@ -116,13 +116,13 @@ func NewMountNSCompilator(
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		hostWorkDir:      hostWorkDir,
-		metricsPath:      metricsPath,
+		hostWorkDir:       hostWorkDir,
+		metricsPath:       metricsPath,
 		stemcellImageName: stemcellImageName,
-		baseType:         baseType,
-		fissileVersion:   fissileVersion,
-		compilePackage:   (*Compilator).compilePackageInMountNS,
-		ui:               ui,
+		baseType:          baseType,
+		fissileVersion:    fissileVersion,
+		compilePackage:    (*Compilator).compilePackageInMountNS,
+		ui:                ui,
 
 		signalDependencies: make(map[string]chan struct{}),
 	}
@@ -459,7 +459,7 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 
 // CreateCompilationBase will create the compiler container
 func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
-	imageTag := c.baseCompilationImageTag()
+	imageTag := c.stemcellImageName
 	imageName := c.BaseImageName()
 	c.ui.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
 
@@ -544,7 +544,7 @@ func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerC
 
 	image, err = c.dockerManager.CreateImage(
 		container.ID,
-		c.baseCompilationImageRepository(),
+		c.stemcellImageName,
 		imageTag,
 		"",
 		[]string{},
