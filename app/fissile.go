@@ -617,9 +617,9 @@ func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath 
 	}
 
 	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, roles, packagesImageBuilder)
 	} else {
-		err = f.GeneratePackagesRoleTarball(repository, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
+		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
 	}
 	if err != nil {
 		return err
@@ -631,7 +631,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath 
 	}
 
 	roleBuilder, err := builder.NewRoleImageBuilder(
-		repository,
+		stemcellImageName,
 		compiledPackagesPath,
 		targetPath,
 		lightManifestPath,
@@ -645,7 +645,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath 
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, stemcellImageName, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 

@@ -236,7 +236,7 @@ func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleM
 	}
 
 	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
-		p.repository,
+		p.stemcellImageName,
 		rmVersion,
 	)), nil
 }
