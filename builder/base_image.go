@@ -110,6 +110,6 @@ func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
 }
 
 // GetBaseImageName generates a docker image name to be used as a role image base
-func GetBaseImageName(repository, fissileVersion string) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-role-base:%s", repository, fissileVersion))
+func GetBaseImageName(stemcellImageName string, fissileVersion string) string {
+	return util.SanitizeDockerName(fmt.Sprintf("%s-role-base:%s", stemcellImageName, fissileVersion))
 }
