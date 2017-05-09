@@ -19,7 +19,6 @@ import (
 	"github.com/hpcloud/stampy"
 
 	"github.com/fatih/color"
-	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
@@ -455,111 +454,6 @@ func createDepBuckets(packages []*model.Package) []*model.Package {
 	buckets = append(rubies, buckets...)
 
 	return buckets
-}
-
-// CreateCompilationBase will create the compiler container
-func (c *Compilator) CreateCompilationBase(baseImageName string) (image *dockerClient.Image, err error) {
-	imageTag := c.stemcellImageName
-	imageName := c.BaseImageName()
-	c.ui.Println(color.GreenString("Using %s as a compilation image name", color.YellowString(imageName)))
-
-	containerName := c.baseCompilationContainerName()
-	c.ui.Println(color.GreenString("Using %s as a compilation container name", color.YellowString(containerName)))
-
-	image, err = c.dockerManager.FindImage(imageName)
-	if err != nil {
-		c.ui.Println("Image doesn't exist, it will be created ...")
-	} else {
-		c.ui.Println(color.GreenString(
-			"Compilation image %s with ID %s already exists. Doing nothing.",
-			color.YellowString(imageName),
-			color.YellowString(image.ID),
-		))
-		return image, nil
-	}
-
-	tempScriptDir, err := util.TempDir("", "fissile-compilation")
-	if err != nil {
-		return nil, fmt.Errorf("Could not create temp dir %s: %s", tempScriptDir, err.Error())
-	}
-	defer os.RemoveAll(tempScriptDir)
-
-	targetScriptName := "compilation-prerequisites.sh"
-	containerScriptPath := filepath.Join(docker.ContainerInPath, targetScriptName)
-	hostScriptPath := filepath.Join(tempScriptDir, targetScriptName)
-	if err = compilation.SaveScript(c.baseType, compilation.PrerequisitesScript, hostScriptPath); err != nil {
-		return nil, fmt.Errorf("Error saving script asset: %s", err.Error())
-	}
-
-	// in-memory buffer of the log
-	log := new(bytes.Buffer)
-
-	stdoutWriter := docker.NewFormattingWriter(
-		log,
-		func(line string) string {
-			return color.GreenString("compilation-container > %s", color.WhiteString("%s", line))
-		},
-	)
-	stderrWriter := docker.NewFormattingWriter(
-		log,
-		func(line string) string {
-			return color.GreenString("compilation-container > %s", color.RedString("%s", line))
-		},
-	)
-	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
-		ContainerName: containerName,
-		ImageName:     baseImageName,
-		Cmd:           []string{"bash", "-c", containerScriptPath},
-		Mounts:        map[string]string{tempScriptDir: docker.ContainerInPath},
-		KeepContainer: false, // There is never a need to keep this container on failure
-		StdoutWriter:  stdoutWriter,
-		StderrWriter:  stderrWriter,
-	})
-	if container != nil {
-		defer func() {
-			removeErr := c.dockerManager.RemoveContainer(container.ID)
-			if removeErr != nil {
-				if err == nil {
-					err = removeErr
-				} else {
-					err = fmt.Errorf(
-						"Image creation error: %s. Image removal error: %s",
-						err,
-						removeErr,
-					)
-				}
-			}
-		}()
-	}
-
-	if err != nil {
-		log.WriteTo(c.ui)
-		return nil, fmt.Errorf("Error running script: %s", err.Error())
-	}
-
-	if exitCode != 0 {
-		log.WriteTo(c.ui)
-		return nil, fmt.Errorf("Error - script script exited with code %d", exitCode)
-	}
-
-	image, err = c.dockerManager.CreateImage(
-		container.ID,
-		c.stemcellImageName,
-		imageTag,
-		"",
-		[]string{},
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("Error creating image %s", err.Error())
-	}
-
-	c.ui.Println(color.GreenString(
-		"Image %s with ID %s created successfully.",
-		color.YellowString(c.BaseImageName()),
-		color.YellowString(image.ID)))
-
-	return image, nil
 }
 
 func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
