@@ -42,13 +42,13 @@ var (
 
 // Compilator represents the BOSH compiler
 type Compilator struct {
-	dockerManager    *docker.ImageManager
-	hostWorkDir      string
-	metricsPath      string
-	repositoryPrefix string
-	baseType         string
-	fissileVersion   string
-	compilePackage   func(*Compilator, *model.Package) error
+	dockerManager     *docker.ImageManager
+	hostWorkDir       string
+	metricsPath       string
+	stemcellImageName string
+	baseType          string
+	fissileVersion    string
+	compilePackage    func(*Compilator, *model.Package) error
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -80,7 +80,7 @@ func NewDockerCompilator(
 	dockerManager *docker.ImageManager,
 	hostWorkDir string,
 	metricsPath string,
-	repositoryPrefix string,
+	stemcellImageName string,
 	baseType string,
 	fissileVersion string,
 	keepContainer bool,
@@ -91,7 +91,7 @@ func NewDockerCompilator(
 		dockerManager:    dockerManager,
 		hostWorkDir:      hostWorkDir,
 		metricsPath:      metricsPath,
-		repositoryPrefix: repositoryPrefix,
+		stemcellImageName: stemcellImageName,
 		baseType:         baseType,
 		fissileVersion:   fissileVersion,
 		compilePackage:   (*Compilator).compilePackageInDocker,
@@ -109,7 +109,7 @@ func NewDockerCompilator(
 func NewMountNSCompilator(
 	hostWorkDir string,
 	metricsPath string,
-	repositoryPrefix string,
+	stemcellImageName string,
 	baseType string,
 	fissileVersion string,
 	ui *termui.UI,
@@ -118,7 +118,7 @@ func NewMountNSCompilator(
 	compilator := &Compilator{
 		hostWorkDir:      hostWorkDir,
 		metricsPath:      metricsPath,
-		repositoryPrefix: repositoryPrefix,
+		stemcellImageName: stemcellImageName,
 		baseType:         baseType,
 		fissileVersion:   fissileVersion,
 		compilePackage:   (*Compilator).compilePackageInMountNS,
@@ -784,7 +784,7 @@ func (c *Compilator) copyDependencies(pkg *model.Package) error {
 
 // baseCompilationContainerName will return the compilation container's name
 func (c *Compilator) baseCompilationContainerName() string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-%s", c.baseCompilationImageRepository(), c.fissileVersion))
+	return util.SanitizeDockerName(fmt.Sprintf("%s-%s", c.stemcellImageName, c.fissileVersion))
 }
 
 func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
@@ -797,19 +797,9 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s-gkp", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
 }
 
-// BaseCompilationImageTag will return the compilation image tag
-func (c *Compilator) baseCompilationImageTag() string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s", c.fissileVersion))
-}
-
-// baseCompilationImageRepository will return the compilation image repository
-func (c *Compilator) baseCompilationImageRepository() string {
-	return fmt.Sprintf("%s-cbase", c.repositoryPrefix)
-}
-
 // BaseImageName returns the name of the compilation base image
 func (c *Compilator) BaseImageName() string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s:%s", c.baseCompilationImageRepository(), c.baseCompilationImageTag()))
+	return c.stemcellImageName
 }
 
 // removeCompiledPackages must be called after initPackageMaps as it closes

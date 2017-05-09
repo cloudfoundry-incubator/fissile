@@ -26,9 +26,9 @@ var buildImagesCmd = &cobra.Command{
 This command goes through all the role definitions in the role manifest creating a
 Dockerfile for each of them and building it.
 
-Each role gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find 
+Each role gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find
 a Dockerfile and a directory structure that gets ADDed to the docker image. The
-directory structure contains jobs, packages and all other necessary scripts and 
+directory structure contains jobs, packages and all other necessary scripts and
 templates.
 
 The images will have a 'role' label useful for filtering.
@@ -50,6 +50,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		flagBuildImagesRoles = buildImagesViper.GetString("roles")
 		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
 		flagOutputDirectory = buildImagesViper.GetString("output-directory")
+		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
 		if err != nil {
@@ -70,6 +71,10 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			flagBuildImagesForce = true
 		}
 
+		if flagBuildImagesStemcell == "" {
+			return fmt.Errorf("--stemcell parameter required")
+		}
+
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagRepository,
@@ -87,21 +92,6 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 	},
 }
 var buildImagesViper = viper.New()
-
-// buildImages2Cmd represents the images2 command
-var buildImages2Cmd = &cobra.Command{
-	Use:   "images2",
-	Short: "Builds Fissile Docker images from your existing docker stemmcells (WIP).",
-	Long: `
-TODO: this needs to be written
-	`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		flagBuildImagesStemcell = buildImages2Viper.GetString("stemcell")
-		fmt.Printf("stemcellname:%q\n", flagBuildImagesStemcell)
-		return nil
-	},
-}
-var buildImages2Viper = viper.New()
 
 func init() {
 	initViper(buildImagesViper)
@@ -144,15 +134,12 @@ func init() {
 		"Output the result as tar files in the given directory rather than building with docker",
 	)
 
-	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
-
-	initViper(buildImages2Viper)
-	buildCmd.AddCommand(buildImages2Cmd)
-	buildImages2Cmd.PersistentFlags().StringP(
+	buildImagesCmd.PersistentFlags().StringP(
 		"stemcell",
 		"",
 		"",
 		"The source stemcell",
 	)
-	buildImages2Viper.BindPFlags(buildImages2Cmd.PersistentFlags())
+
+	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
 }
