@@ -60,7 +60,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	dockerfileString := dockerfileContents.String()
-	assert.Contains(dockerfileString, "foo-role-base:6.28.30")
+	assert.Contains(dockerfileString, "foo")
 	assert.Contains(dockerfileString, "MAINTAINER", "release images should contain maintainer information")
 	assert.Contains(
 		dockerfileString,

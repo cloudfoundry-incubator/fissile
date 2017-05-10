@@ -3,7 +3,6 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -111,5 +110,5 @@ func (b *BaseImageBuilder) generateDockerfile() ([]byte, error) {
 
 // GetBaseImageName generates a docker image name to be used as a role image base
 func GetBaseImageName(stemcellImageName string, fissileVersion string) string {
-	return util.SanitizeDockerName(fmt.Sprintf("%s-role-base:%s", stemcellImageName, fissileVersion))
+	return stemcellImageName
 }
