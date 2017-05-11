@@ -55,7 +55,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
-	baseImage := GetBaseImageName(roleImageBuilder.repository, roleImageBuilder.fissileVersion)
+	baseImage := roleImageBuilder.repository
 	err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0], baseImage, &dockerfileContents)
 	assert.NoError(err)
 

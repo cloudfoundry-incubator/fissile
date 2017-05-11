@@ -96,7 +96,7 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 // packages layer image.  Given a list of packages, it returns the base image
 // name to use, as well as the set of packages that still need to be inserted.
 func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Packages) (string, model.Packages, error) {
-	baseImageName := GetBaseImageName(p.stemcellImageName, p.fissileVersion)
+	baseImageName := p.stemcellImageName
 	if baseImageOverride != "" {
 		baseImageName = baseImageOverride
 	}
@@ -161,7 +161,7 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 
 		// Generate dockerfile
 		dockerfile := bytes.Buffer{}
-		baseImageName := GetBaseImageName(p.stemcellImageName, p.fissileVersion)
+		baseImageName := p.stemcellImageName
 		if !forceBuildAll {
 			baseImageName, packages, err = p.determinePackagesLayerBaseImage(packages)
 			if err != nil {

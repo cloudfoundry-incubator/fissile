@@ -64,36 +64,6 @@ func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) e
 	return nil
 }
 
-// ShowBaseImage will show details about the base BOSH images
-func (f *Fissile) ShowBaseImage(repository string) error {
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
-	comp, err := compilator.NewDockerCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
-	if err != nil {
-		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
-	}
-
-	image, err := dockerManager.FindImage(comp.BaseImageName())
-	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", comp.BaseImageName(), err.Error())
-	}
-
-	f.UI.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
-	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
-
-	baseImageName := builder.GetBaseImageName(repository, f.Version)
-	image, err = dockerManager.FindImage(baseImageName)
-	f.UI.Printf("\nStemcell Layer: %s\n", color.GreenString(baseImageName))
-	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
-
-	return nil
-}
-
 // ListPackages will list all BOSH packages within a list of dev releases
 func (f *Fissile) ListPackages() error {
 	if len(f.releases) == 0 {
@@ -397,7 +367,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		}
 	}
 
-	baseImageName := builder.GetBaseImageName(stemcellImageName, f.Version)
+	baseImageName := stemcellImageName
 	if hasImage, err := dockerManager.HasImage(baseImageName); err != nil {
 		return fmt.Errorf("Error getting base image: %s", err)
 	} else if !hasImage {
