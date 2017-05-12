@@ -441,11 +441,11 @@ func TestBuildRoleImages(t *testing.T) {
 	// Check that making the first wait for the second job works
 	secondJobReady := make(chan struct{})
 	mockBuilder.callback = func(name string) error {
-		if strings.Contains(name, "-myrole:") {
+		if strings.Contains(name, "-myrole-") {
 			<-secondJobReady
 			return nil
 		}
-		if strings.Contains(name, "-foorole:") {
+		if strings.Contains(name, "-foorole-") {
 			close(secondJobReady)
 			return nil
 		}
@@ -488,10 +488,10 @@ func TestBuildRoleImages(t *testing.T) {
 	// Check that failing the first job will not run the second job
 	hasRunSecondJob := false
 	mockBuilder.callback = func(name string) error {
-		if strings.Contains(name, "-myrole:") {
+		if strings.Contains(name, "-myrole-") {
 			return fmt.Errorf("Deliberate failure")
 		}
-		if strings.Contains(name, "-foorole:") {
+		if strings.Contains(name, "-foorole-") {
 			assert.False(hasRunSecondJob, "Second job should not run if first job failed")
 			hasRunSecondJob = true
 		}
@@ -566,10 +566,10 @@ func TestBuildRoleImages(t *testing.T) {
 	)
 	assert.NoError(err)
 
-	expected := `.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},start
-.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},done
-.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},start
-.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},done`
+	expected := `.*,fissile,create-role-images::test-repository-myrole-[a-z0-9]{40},start
+.*,fissile,create-role-images::test-repository-myrole-[a-z0-9]{40},done
+.*,fissile,create-role-images::test-repository-foorole-[a-z0-9]{40},start
+.*,fissile,create-role-images::test-repository-foorole-[a-z0-9]{40},done`
 
 	contents, err := ioutil.ReadFile(metrics)
 	assert.NoError(err)

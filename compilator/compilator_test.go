@@ -520,7 +520,7 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	testRepository := fmt.Sprintf("splatform/fissile-stemcell-opensuse")
+	testRepository := fmt.Sprintf("splatform/fissile-stemcell-opensuse:42.2")
 
 	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.NoError(err)

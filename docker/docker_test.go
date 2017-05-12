@@ -21,7 +21,7 @@ import (
 
 const (
 	dockerImageEnvVar      = "FISSILE_TEST_DOCKER_IMAGE"
-	defaultDockerTestImage = "ubuntu:14.04"
+	defaultDockerTestImage = "splatform/fissile-stemcell-opensuse:42.2"
 )
 
 var dockerImageName string
