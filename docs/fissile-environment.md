@@ -170,15 +170,11 @@ docker run \
 Finally, use fissile to build the image and Kubernetes configs
 
 ```
-# Create the needed Docker layers
-fissile build layer compilation
-fissile build layer stemcell
-
 # Compile packages from the nats release
-fissile build packages
+fissile build packages --stemcell <docker stemmcell image>
 
 # Build the nats docker image
-fissile build images
+fissile build images --stemcell <docker stemmcell image>
 
 # (optional) tag it to something more human readable
 docker tag $(fissile show image) fissile-nats:latest

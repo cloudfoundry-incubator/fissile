@@ -30,6 +30,7 @@ fissile build packages
 ```
       --roles string     Build only packages for the given role names; comma separated.
       --without-docker   Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.
+      --stemell          Docker base stemcell (e.g. fissile-stemcell-opensuse:42.2)
 ```
 
 ### Options inherited from parent commands

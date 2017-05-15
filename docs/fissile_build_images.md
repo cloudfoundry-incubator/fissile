@@ -39,6 +39,7 @@ fissile build images
   -O, --output-directory string           Output the result as tar files in the given directory rather than building with docker
   -P, --patch-properties-release string   Used to designate a "patch-properties" psuedo-job in a particular release.  Format: RELEASE/JOB.
       --roles string                      Build only images with the given role name; comma separated.
+      --stemell                           Docker base stemcell (e.g. fissile-stemcell-opensuse:42.2
 ```
 
 ### Options inherited from parent commands
