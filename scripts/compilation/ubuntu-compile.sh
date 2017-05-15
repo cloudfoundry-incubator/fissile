@@ -16,9 +16,9 @@ if test -z "${packageVersion}" ; then
   usage version
 fi
 
-if test -d "/fissile-in" ; then
+if test -d "/fissile-in/var/vcap" ; then
   mkdir -p "/var/vcap"
-  cp -r /fissile-in/var/vcap/* /var/vcap
+  cp -r "/fissile-in/var/vcap/"* /var/vcap
 else
   # Running new in new mount ns
   buildroot="${3:-}"
