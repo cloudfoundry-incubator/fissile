@@ -12,21 +12,21 @@ set -u # report the usage of uninitialized variables
 # or it should be a package of its own; here we install 0.1.4, 
 # upstream installs 0.1.6
 
-debs="build-essential libssl-dev lsof strace bind9-host \
-dnsutils tcpdump iputils-arping \
-curl wget libcurl3 libcurl3-dev bison libreadline6-dev \
-libxml2 libxml2-dev libxslt1.1 libxslt1-dev zip unzip \
-nfs-common flex psmisc apparmor-utils iptables sysstat \
-rsync openssh-server traceroute libncurses5-dev quota \
-libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
-cmake uuid-dev libgcrypt-dev ca-certificates \
-scsitools mg htop module-assistant debhelper runit parted \
-anacron software-properties-common libyaml-dev gettext git"
+#debs="build-essential libssl-dev lsof strace bind9-host \
+#dnsutils tcpdump iputils-arping \
+#curl wget libcurl3 libcurl3-dev bison libreadline6-dev \
+#libxml2 libxml2-dev libxslt1.1 libxslt1-dev zip unzip \
+#nfs-common flex psmisc apparmor-utils iptables sysstat \
+#rsync openssh-server traceroute libncurses5-dev quota \
+#libaio1 gdb libcap2-bin libcap2-dev libbz2-dev \
+#cmake uuid-dev libgcrypt-dev ca-certificates \
+#scsitools mg htop module-assistant debhelper runit parted \
+#anacron software-properties-common libyaml-dev gettext git"
 
-export DEBIAN_FRONTEND=noninteractive
+#export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-apt-get install -o Dpkg::Options::="--force-confnew" -f -y --force-yes --no-install-recommends $debs
+#apt-get update
+#apt-get install -o Dpkg::Options::="--force-confnew" -f -y --force-yes --no-install-recommends $debs
 
-# Add the vcap:vcap user to match CF
-useradd -m --comment 'fissile user' vcap
+## Add the vcap:vcap user to match CF
+#useradd -m --comment 'fissile user' vcap
