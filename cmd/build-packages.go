@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -43,10 +42,6 @@ compiled once.
 			return err
 		}
 
-		if flagBuildPackagesStemcell == "" {
-			return fmt.Errorf("--stemcell parameter required")
-		}
-
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
 			workPathCompilationDir,
@@ -81,9 +76,10 @@ func init() {
 		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.",
 	)
 
-	buildPackagesCmd.PersistentFlags().String(
+	buildPackagesCmd.PersistentFlags().StringP(
 		"stemcell",
-		"",
+		"s",
+		"splatform/fissile-opensuse-stemcell:42.2",
 		"The source stemcell",
 	)
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -71,10 +70,6 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			flagBuildImagesForce = true
 		}
 
-		if flagBuildImagesStemcell == "" {
-			return fmt.Errorf("--stemcell parameter required")
-		}
-
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagBuildImagesStemcell,
@@ -136,8 +131,8 @@ func init() {
 
 	buildImagesCmd.PersistentFlags().StringP(
 		"stemcell",
-		"",
-		"",
+		"s",
+		"splatform/fissile-opensuse-stemcell:42.2",
 		"The source stemcell",
 	)
 
