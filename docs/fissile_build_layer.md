@@ -17,7 +17,7 @@ Has subcommands for building Docker layers used during the creation of your imag
 ### Options inherited from parent commands
 
 ```
-  -c, --cache-dir string         Local BOSH cache directory. (default "/home/chaser/.bosh/cache")
+  -c, --cache-dir string         Local BOSH cache directory. (default "~/.bosh/cache")
       --config string            config file (default is $HOME/.fissile.yaml)
   -d, --dark-opinions string     Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.
   -l, --light-opinions string    Path to a BOSH deployment manifest file that contains properties to be used as defaults.

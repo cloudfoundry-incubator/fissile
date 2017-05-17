@@ -79,7 +79,7 @@ func init() {
 	buildPackagesCmd.PersistentFlags().StringP(
 		"stemcell",
 		"s",
-		"splatform/fissile-opensuse-stemcell:42.2",
+		"",
 		"The source stemcell",
 	)
 

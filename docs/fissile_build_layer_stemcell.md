@@ -21,7 +21,7 @@ fissile build layer stemcell
 ### Options inherited from parent commands
 
 ```
-  -c, --cache-dir string         Local BOSH cache directory. (default "/home/chaser/.bosh/cache")
+  -c, --cache-dir string         Local BOSH cache directory. (default "~/.bosh/cache")
       --config string            config file (default is $HOME/.fissile.yaml)
   -d, --dark-opinions string     Path to a BOSH deployment manifest file that contains properties that should not have opinionated defaults.
   -F, --from string              Docker image used as a base for the layers (default "ubuntu:14.04")
