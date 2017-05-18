@@ -18,6 +18,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	dockerImageEnvVar      = "FISSILE_TEST_DOCKER_IMAGE"
+	defaultDockerTestImage = "ubuntu:14.04"
+)
+
 // Given the contents of a Dockerfile, return each non-comment line in an array
 func getDockerfileLines(text string) []string {
 	var result []string

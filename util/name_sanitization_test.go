@@ -13,7 +13,7 @@ func TestSanitizeDockerName(t *testing.T) {
 		"semver+build":  "semver-build",
 		"branch-name":   "branch-name",
 		"remote/branch": "remote-branch",
-		"image:tag":     "image:tag",
+		"image:tag":     "image-tag",
 		"[Ｇｏ]\n":        "-",
 	} {
 		assert.Equal(output, SanitizeDockerName(input), "Incorrect sanitization")
