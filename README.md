@@ -42,6 +42,14 @@ go get github.com/SUSE/fissile
 
 To prepare the computer on which you plan to build docker images follow the documentation [here](./docs/fissile-environment.md).
 
+## Testing
+
+Environment:
+
+```
+FISSILE_TEST_DOCKER_IMAGE - the name of the default docker image for testing (e.g. splatform/fissile-opensuse-stemcell:42.2)
+```
+
 ## Usage
 
 You can find detailed usage documentation [here](./docs/fissile.md).
