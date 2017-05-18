@@ -18,7 +18,6 @@ import (
 
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
-	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -267,19 +266,11 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
-	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
+	imageName := "splatform/fissile-stemcell-opensuse:42.2"
 
-	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepContainer, ui)
+	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", keepContainer, ui)
 	assert.NoError(err)
 
-	imageName := comp.BaseImageName()
-
-	_, err = comp.CreateCompilationBase(dockerImageName)
-	defer func() {
-		err = dockerManager.RemoveImage(imageName)
-		assert.NoError(err)
-	}()
-	assert.NoError(err)
 	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 
@@ -324,7 +315,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 
 	// Clean up any unexpected volumes (there should not be any)
 	volumes, err := client.ListVolumes(dockerclient.ListVolumesOptions{
-		Filters: map[string][]string{"name": []string{testRepository}},
+		Filters: map[string][]string{"name": []string{imageName}},
 	})
 	if assert.NoError(err) && !assert.Empty(volumes) {
 		for _, volume := range volumes {
@@ -610,19 +601,11 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	testRepository := fmt.Sprintf("fissile-test-compilator-%s", uuid.New())
+	imageName := "splatform/fissile-stemcell-opensuse:42.2"
 
-	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", testRepository, compilation.FakeBase, "3.14.15", keepInContainer, ui)
+	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", keepInContainer, ui)
 	assert.NoError(err)
 
-	imageName := comp.BaseImageName()
-
-	_, err = comp.CreateCompilationBase(dockerImageName)
-	defer func() {
-		err = dockerManager.RemoveImage(imageName)
-		assert.NoError(err)
-	}()
-	assert.NoError(err)
 	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 

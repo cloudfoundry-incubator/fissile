@@ -13,6 +13,8 @@ var (
 	flagBuildImagesRoles         string
 	flagPatchPropertiesDirective string
 	flagOutputDirectory          string
+
+	flagBuildImagesStemcell string
 )
 
 // buildImagesCmd represents the images command
@@ -23,9 +25,9 @@ var buildImagesCmd = &cobra.Command{
 This command goes through all the role definitions in the role manifest creating a
 Dockerfile for each of them and building it.
 
-Each role gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find 
+Each role gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find
 a Dockerfile and a directory structure that gets ADDed to the docker image. The
-directory structure contains jobs, packages and all other necessary scripts and 
+directory structure contains jobs, packages and all other necessary scripts and
 templates.
 
 The images will have a 'role' label useful for filtering.
@@ -47,6 +49,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		flagBuildImagesRoles = buildImagesViper.GetString("roles")
 		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
 		flagOutputDirectory = buildImagesViper.GetString("output-directory")
+		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
 
 		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
 		if err != nil {
@@ -69,7 +72,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
-			flagRepository,
+			flagBuildImagesStemcell,
 			flagMetrics,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
@@ -124,6 +127,13 @@ func init() {
 		"O",
 		"",
 		"Output the result as tar files in the given directory rather than building with docker",
+	)
+
+	buildImagesCmd.PersistentFlags().StringP(
+		"stemcell",
+		"s",
+		"",
+		"The source stemcell",
 	)
 
 	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())

@@ -11,3 +11,6 @@ scripts/templates/transformations.go
 *~
 /test-assets/*/.dev_builds
 /test-assets/*/.blobs
+
+.vscode/**
+debug.test

@@ -19,7 +19,7 @@ import (
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image
 type PackagesImageBuilder struct {
-	repository           string
+	stemcellImageName    string
 	compiledPackagesPath string
 	targetPath           string
 	fissileVersion       string
@@ -30,12 +30,12 @@ type PackagesImageBuilder struct {
 var baseImageOverride string
 
 // NewPackagesImageBuilder creates a new PackagesImageBuilder
-func NewPackagesImageBuilder(repository, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
+func NewPackagesImageBuilder(stemcellImageName string, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
 	return &PackagesImageBuilder{
-		repository:           repository,
+		stemcellImageName:    stemcellImageName,
 		compiledPackagesPath: compiledPackagesPath,
 		targetPath:           targetPath,
 		fissileVersion:       fissileVersion,
@@ -96,7 +96,7 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 // packages layer image.  Given a list of packages, it returns the base image
 // name to use, as well as the set of packages that still need to be inserted.
 func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Packages) (string, model.Packages, error) {
-	baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+	baseImageName := p.stemcellImageName
 	if baseImageOverride != "" {
 		baseImageName = baseImageOverride
 	}
@@ -161,7 +161,7 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 
 		// Generate dockerfile
 		dockerfile := bytes.Buffer{}
-		baseImageName := GetBaseImageName(p.repository, p.fissileVersion)
+		baseImageName := p.stemcellImageName
 		if !forceBuildAll {
 			baseImageName, packages, err = p.determinePackagesLayerBaseImage(packages)
 			if err != nil {
@@ -236,7 +236,7 @@ func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleM
 	}
 
 	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
-		p.repository,
+		p.stemcellImageName,
 		rmVersion,
 	)), nil
 }

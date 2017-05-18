@@ -28,13 +28,3 @@ go-bindata -pkg=compilation -o=./scripts/compilation/compilation.go \
     -prefix ./test-assets \
     ./scripts/compilation \
     ./test-assets/scripts/compilation/*.sh
-
-if ! test -f ./scripts/configgin/output/configgin.tgz ; then
-    make/configgin
-fi
-
-# We don't use bindata's compression as it seems to do worse than the default
-# gzip compression from tar
-go-bindata -nocompress -pkg=configgin -o=./scripts/configgin/configgin.go \
-    -prefix=./scripts/configgin/output \
-    ./scripts/configgin/output/configgin.tgz

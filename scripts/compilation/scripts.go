@@ -6,6 +6,8 @@ import (
 )
 
 const (
+	// OpenSUSE ist the name of the openSUSE base image
+	OpenSUSE = "opensuse"
 	// UbuntuBase is the name of the Ubuntu base image
 	UbuntuBase = "ubuntu"
 	// FakeBase is the name of the fake base image
