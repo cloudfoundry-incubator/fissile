@@ -6,10 +6,8 @@ import (
 )
 
 const (
-	// OpenSUSE ist the name of the openSUSE base image
-	OpenSUSE = "opensuse"
-	// UbuntuBase is the name of the Ubuntu base image
-	UbuntuBase = "ubuntu"
+	// LinxuBase is the name of the Ubuntu base image
+	LinuxBase = "linux"
 	// FakeBase is the name of the fake base image
 	FakeBase = "fake"
 	// FailBase is used to force package compile to fail when testing.

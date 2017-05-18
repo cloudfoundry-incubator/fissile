@@ -510,7 +510,7 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 	}
 	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
-		ImageName:     c.BaseImageName(),
+		ImageName:     c.stemcellImageName,
 		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
 		Mounts:        mounts,
 		Volumes:       map[string]map[string]string{sourceMountName: nil},
@@ -689,11 +689,6 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 	// volumes as its own. Example which made trouble without
 	// this: "nginx" vs. ngix_webdav".
 	return util.SanitizeDockerName(fmt.Sprintf("%s-%s-%s-pkg-%s-gkp", c.baseCompilationContainerName(), pkg.Release.Name, pkg.Release.Version, pkg.Name))
-}
-
-// BaseImageName returns the name of the compilation base image
-func (c *Compilator) BaseImageName() string {
-	return c.stemcellImageName
 }
 
 // removeCompiledPackages must be called after initPackageMaps as it closes

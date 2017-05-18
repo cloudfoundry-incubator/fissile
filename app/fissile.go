@@ -263,12 +263,12 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 
 	var comp *compilator.Compilator
 	if withoutDocker {
-		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.UbuntuBase, f.Version, f.UI)
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	} else {
-		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.UbuntuBase, f.Version, false, f.UI)
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, false, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
