@@ -235,8 +235,9 @@ func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleM
 		return "", err
 	}
 
-	return util.SanitizeDockerName(fmt.Sprintf("%s-role-packages:%s",
-		p.stemcellImageName,
-		rmVersion,
-	)), nil
+	return fmt.Sprintf("%s:%s",
+		util.SanitizeDockerName(fmt.Sprintf("%s-role-packages",
+			p.stemcellImageName,
+		)),
+		util.SanitizeDockerName(rmVersion)), nil
 }
