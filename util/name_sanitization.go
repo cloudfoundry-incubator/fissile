@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	rgxDockerNames = regexp.MustCompile(`(?i)[^a-z0-9_.:-]+`)
+	rgxDockerNames = regexp.MustCompile(`(?i)[^a-z0-9_.-]+`)
 )
 
 // SanitizeDockerName makes a string conform with the rules for Docker names

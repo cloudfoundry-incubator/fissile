@@ -64,124 +64,6 @@ func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) e
 	return nil
 }
 
-// ShowBaseImage will show details about the base BOSH images
-func (f *Fissile) ShowBaseImage(repository string) error {
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
-	comp, err := compilator.NewDockerCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, false, f.UI)
-	if err != nil {
-		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
-	}
-
-	image, err := dockerManager.FindImage(comp.BaseImageName())
-	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", comp.BaseImageName(), err.Error())
-	}
-
-	f.UI.Printf("\nCompilation Layer: %s\n", color.GreenString(comp.BaseImageName()))
-	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
-
-	baseImageName := builder.GetBaseImageName(repository, f.Version)
-	image, err = dockerManager.FindImage(baseImageName)
-	f.UI.Printf("\nStemcell Layer: %s\n", color.GreenString(baseImageName))
-	f.UI.Printf("ID: %s\n", color.GreenString(image.ID))
-	f.UI.Printf("Virtual Size: %sMB\n", color.YellowString("%.2f", float64(image.VirtualSize)/(1024*1024)))
-
-	return nil
-}
-
-// CreateBaseCompilationImage will recompile the base BOSH image for a release
-func (f *Fissile) CreateBaseCompilationImage(baseImageName, repository, metricsPath string, keepContainer bool) error {
-	if metricsPath != "" {
-		stampy.Stamp(metricsPath, "fissile", "create-compilation-image", "start")
-		defer stampy.Stamp(metricsPath, "fissile", "create-compilation-image", "done")
-	}
-
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
-	baseImage, err := dockerManager.FindImage(baseImageName)
-	if err != nil {
-		return fmt.Errorf("Error looking up base image %s: %s", baseImageName, err)
-	}
-
-	f.UI.Println(color.GreenString("Base image with ID %s found", color.YellowString(baseImage.ID)))
-
-	comp, err := compilator.NewDockerCompilator(dockerManager, "", "", repository, compilation.UbuntuBase, f.Version, keepContainer, f.UI)
-	if err != nil {
-		return fmt.Errorf("Error creating a new compilator: %s", err.Error())
-	}
-
-	if _, err := comp.CreateCompilationBase(baseImageName); err != nil {
-		return fmt.Errorf("Error creating compilation base image: %s", err.Error())
-	}
-
-	return nil
-}
-
-// GenerateBaseDockerImage generates a base docker image to be used as a FROM for role images
-func (f *Fissile) GenerateBaseDockerImage(targetPath, baseImage, metricsPath string, noBuild bool, repository string) error {
-	if metricsPath != "" {
-		stampy.Stamp(metricsPath, "fissile", "create-role-base", "start")
-		defer stampy.Stamp(metricsPath, "fissile", "create-role-base", "done")
-	}
-
-	dockerManager, err := docker.NewImageManager()
-	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
-	}
-
-	baseImageName := builder.GetBaseImageName(repository, f.Version)
-
-	image, err := dockerManager.FindImage(baseImageName)
-	if err == docker.ErrImageNotFound {
-		f.UI.Println("Image doesn't exist, it will be created ...")
-	} else if err != nil {
-		return fmt.Errorf("Error looking up image: %s", err.Error())
-	} else {
-		f.UI.Println(color.GreenString(
-			"Base role image %s with ID %s already exists. Doing nothing.",
-			color.YellowString(baseImageName),
-			color.YellowString(image.ID),
-		))
-		return nil
-	}
-
-	if !strings.HasSuffix(targetPath, string(os.PathSeparator)) {
-		targetPath = fmt.Sprintf("%s%c", targetPath, os.PathSeparator)
-	}
-
-	baseImageBuilder := builder.NewBaseImageBuilder(baseImage)
-
-	if noBuild {
-		f.UI.Println("Skipping image build because of flag.")
-		return nil
-	}
-
-	f.UI.Println("Building base docker image ...")
-	log := new(bytes.Buffer)
-	stdoutWriter := docker.NewFormattingWriter(
-		log,
-		docker.ColoredBuildStringFunc(baseImageName),
-	)
-
-	tarPopulator := baseImageBuilder.NewDockerPopulator()
-	err = dockerManager.BuildImageFromCallback(baseImageName, stdoutWriter, tarPopulator)
-	if err != nil {
-		log.WriteTo(f.UI)
-		return fmt.Errorf("Error building base image: %s", err)
-	}
-	f.UI.Println(color.GreenString("Done."))
-
-	return nil
-}
-
 // ListPackages will list all BOSH packages within a list of dev releases
 func (f *Fissile) ListPackages() error {
 	if len(f.releases) == 0 {
@@ -354,7 +236,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -381,12 +263,12 @@ func (f *Fissile) Compile(repository, targetPath, roleManifestPath, metricsPath 
 
 	var comp *compilator.Compilator
 	if withoutDocker {
-		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, f.UI)
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	} else {
-		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, repository, compilation.UbuntuBase, f.Version, false, f.UI)
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, false, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
@@ -464,7 +346,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -485,7 +367,7 @@ func (f *Fissile) GeneratePackagesRoleImage(repository string, roleManifest *mod
 		}
 	}
 
-	baseImageName := builder.GetBaseImageName(repository, f.Version)
+	baseImageName := stemcellImageName
 	if hasImage, err := dockerManager.HasImage(baseImageName); err != nil {
 		return fmt.Errorf("Error getting base image: %s", err)
 	} else if !hasImage {
@@ -565,7 +447,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -601,7 +483,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
-		repository,
+		stemcellImageName,
 		compiledPackagesPath,
 		targetPath,
 		f.Version,
@@ -617,9 +499,9 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	}
 
 	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(repository, roleManifest, noBuild, force, roles, packagesImageBuilder)
+		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, roles, packagesImageBuilder)
 	} else {
-		err = f.GeneratePackagesRoleTarball(repository, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
+		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
 	}
 	if err != nil {
 		return err
@@ -631,7 +513,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 	}
 
 	roleBuilder, err := builder.NewRoleImageBuilder(
-		repository,
+		stemcellImageName,
 		compiledPackagesPath,
 		targetPath,
 		lightManifestPath,
@@ -645,7 +527,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, metricsPath string,
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, stemcellImageName, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 
