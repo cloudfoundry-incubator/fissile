@@ -21,6 +21,7 @@ if [ -d /var/vcap/sys/run ]; then
 fi
 
 # Write a couple of identification files for the stemcell
+mkdir -p /var/vcap/instance
 echo {{ .role.Name }} > /var/vcap/instance/name
 # TODO: we need to discover the index of the instance for HA
 # things to work
