@@ -54,6 +54,10 @@ mkdir -p /var/vcap/sys/run
 chown root:vcap /var/vcap/sys/run
 chmod 775 /var/vcap/sys/run
 
+# Fix permissions
+chmod 640 /var/log/messages
+chmod 1730 /var/spool/cron/tabs/
+
 {{ if eq .role.Type "bosh-task" }}
     # Start rsyslog and cron
     service rsyslog start
