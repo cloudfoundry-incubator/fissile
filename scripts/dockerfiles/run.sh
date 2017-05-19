@@ -1,4 +1,4 @@
-#!/usr/bin/dumb-init --single-child /bin/bash
+#!/bin/bash
 
 set -e
 
@@ -8,6 +8,12 @@ Usage: run.sh
 EOL
 exit 0
 fi
+
+# Make BOSH installed binaries available
+export PATH=/var/vcap/bosh/bin:$PATH
+
+# Load RVM
+source /usr/local/rvm/scripts/rvm
 
 # Unmark the role. We may have this file from a previous run of the
 # role, i.e. this may be a restart. Ensure that we are not seen as
@@ -41,7 +47,7 @@ export DNS_RECORD_NAME=$(/bin/hostname)
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
 
-/opt/hcf/configgin/configgin \
+configgin \
 	--jobs /opt/hcf/job_config.json \
 	--env2conf /opt/hcf/env2conf.yml
 
