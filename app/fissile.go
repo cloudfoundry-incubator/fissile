@@ -371,7 +371,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 	if hasImage, err := dockerManager.HasImage(baseImageName); err != nil {
 		return fmt.Errorf("Error getting base image: %s", err)
 	} else if !hasImage {
-		return fmt.Errorf("Failed to find role base %s, did you build it first?", baseImageName)
+		return fmt.Errorf("Failed to find stemcell image %s, did you pull it first?", baseImageName)
 	}
 
 	if noBuild {
