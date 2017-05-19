@@ -20,6 +20,12 @@ if [ -d /var/vcap/sys/run ]; then
     find /var/vcap/sys/run -name "*.pid" -delete
 fi
 
+# Write a couple of identification files for the stemcell
+echo {{ .role.Name }} > /var/vcap/instance/name
+# TODO: we need to discover the index of the instance for HA
+# things to work
+echo 0 > /var/vcap/instance/id
+
 # Note, any changes to this list of variables have to be replicated in
 # --> model/mustache.go, func builtins
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
