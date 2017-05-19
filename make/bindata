@@ -4,6 +4,7 @@ set -o errexit
 
 go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \
            -prefix=./scripts/dockerfiles \
+           ./scripts/dockerfiles/*.sh \
            ./scripts/dockerfiles/Dockerfile-* \
 
 # Note. We are working around an issue with go-bindata here.
