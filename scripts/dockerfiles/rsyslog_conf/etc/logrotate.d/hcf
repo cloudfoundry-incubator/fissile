@@ -1,9 +1,0 @@
-/var/vcap/sys/log/*.log /var/vcap/sys/log/*/*.log /var/vcap/sys/log/*/*/*.log {
-  missingok
-  rotate 7
-  compress
-  delaycompress
-  copytruncate
-  maxsize=10M
-  minsize=9M
-}

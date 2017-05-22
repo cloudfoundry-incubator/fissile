@@ -8,4 +8,5 @@ LABEL "role"="{{ .role.Name }}" "version"="{{ .image_version }}"
 
 ADD root /
 
-ENTRYPOINT ["/bin/bash", "/opt/hcf/run.sh"]
+RUN chmod +x /opt/hcf/run.sh
+ENTRYPOINT ["/usr/bin/dumb-init", "/opt/hcf/run.sh"]

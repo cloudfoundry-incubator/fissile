@@ -1,4 +1,4 @@
-#!/usr/bin/dumb-init --single-child /bin/bash
+#!/bin/bash
 
 set -e
 
@@ -8,6 +8,12 @@ Usage: run.sh
 EOL
 exit 0
 fi
+
+# Make BOSH installed binaries available
+export PATH=/var/vcap/bosh/bin:$PATH
+
+# Load RVM
+source /usr/local/rvm/scripts/rvm
 
 # Unmark the role. We may have this file from a previous run of the
 # role, i.e. this may be a restart. Ensure that we are not seen as
@@ -19,6 +25,13 @@ find /run -name "*.pid" -delete
 if [ -d /var/vcap/sys/run ]; then
     find /var/vcap/sys/run -name "*.pid" -delete
 fi
+
+# Write a couple of identification files for the stemcell
+mkdir -p /var/vcap/instance
+echo {{ .role.Name }} > /var/vcap/instance/name
+# TODO: we need to discover the index of the instance for HA
+# things to work
+echo 0 > /var/vcap/instance/id
 
 # Note, any changes to this list of variables have to be replicated in
 # --> model/mustache.go, func builtins
@@ -34,7 +47,7 @@ export DNS_RECORD_NAME=$(/bin/hostname)
     bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
 {{ end }}
 
-/opt/hcf/configgin/configgin \
+configgin \
 	--jobs /opt/hcf/job_config.json \
 	--env2conf /opt/hcf/env2conf.yml
 
@@ -47,6 +60,10 @@ fi
 mkdir -p /var/vcap/sys/run
 chown root:vcap /var/vcap/sys/run
 chmod 775 /var/vcap/sys/run
+
+# Fix permissions
+chmod 640 /var/log/messages
+chmod 1730 /var/spool/cron/tabs/
 
 {{ if eq .role.Type "bosh-task" }}
     # Start rsyslog and cron

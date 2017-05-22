@@ -4,10 +4,8 @@ set -o errexit
 
 go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \
            -prefix=./scripts/dockerfiles \
-           ./scripts/dockerfiles/Dockerfile-* \
-           ./scripts/dockerfiles/monitrc.erb \
            ./scripts/dockerfiles/*.sh \
-           ./scripts/dockerfiles/rsyslog_conf/...
+           ./scripts/dockerfiles/Dockerfile-* \
 
 # Note. We are working around an issue with go-bindata here.
 # See
