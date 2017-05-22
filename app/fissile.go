@@ -527,7 +527,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, stemcellImageName, 
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, stemcellImageName, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 
