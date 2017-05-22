@@ -367,11 +367,10 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		}
 	}
 
-	baseImageName := stemcellImageName
-	if hasImage, err := dockerManager.HasImage(baseImageName); err != nil {
-		return fmt.Errorf("Error getting base image: %s", err)
+	if hasImage, err := dockerManager.HasImage(stemcellImageName); err != nil {
+		return fmt.Errorf("Error looking up stemcell image: %s", err)
 	} else if !hasImage {
-		return fmt.Errorf("Failed to find stemcell image %s, did you pull it first?", baseImageName)
+		return fmt.Errorf("Failed to find stemcell image %s. Did you pull it?", stemcellImageName)
 	}
 
 	if noBuild {
@@ -447,7 +446,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, repository, stemcellImageName, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -483,6 +482,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, stemcellImageName, metricsPath 
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
+		repository,
 		stemcellImageName,
 		compiledPackagesPath,
 		targetPath,

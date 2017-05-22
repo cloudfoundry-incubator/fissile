@@ -14,11 +14,15 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/dockerfiles"
 	"github.com/SUSE/fissile/util"
+
+	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/hpcloud/termui"
 )
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image
 type PackagesImageBuilder struct {
+	repository           string
+	stemcellImage        *dockerclient.Image
 	stemcellImageName    string
 	compiledPackagesPath string
 	targetPath           string
@@ -30,11 +34,24 @@ type PackagesImageBuilder struct {
 var baseImageOverride string
 
 // NewPackagesImageBuilder creates a new PackagesImageBuilder
-func NewPackagesImageBuilder(stemcellImageName string, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
+func NewPackagesImageBuilder(repository string, stemcellImageName string, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
+
+	imageManager, err := docker.NewImageManager()
+	if err != nil {
+		return nil, err
+	}
+
+	stemcellImage, err := imageManager.FindImage(stemcellImageName)
+	if err != nil {
+		return nil, err
+	}
+
 	return &PackagesImageBuilder{
+		repository:           repository,
+		stemcellImage:        stemcellImage,
 		stemcellImageName:    stemcellImageName,
 		compiledPackagesPath: compiledPackagesPath,
 		targetPath:           targetPath,
@@ -230,12 +247,13 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 
 // GetRolePackageImageName generates a docker image name for the amalgamation for a role image
 func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
-	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, p.fissileVersion)
+	extra := fmt.Sprintf("%s:%s", p.fissileVersion, p.stemcellImage.ID)
+	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, extra)
 	if err != nil {
 		return "", err
 	}
 
-	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.stemcellImageName))
+	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repository))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(rmVersion)), nil
 }

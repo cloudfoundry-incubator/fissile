@@ -23,6 +23,19 @@ const (
 	defaultDockerTestImage = "ubuntu:14.04"
 )
 
+var dockerImageName string
+
+func TestMain(m *testing.M) {
+	dockerImageName = os.Getenv(dockerImageEnvVar)
+	if dockerImageName == "" {
+		dockerImageName = defaultDockerTestImage
+	}
+
+	retCode := m.Run()
+
+	os.Exit(retCode)
+}
+
 // Given the contents of a Dockerfile, return each non-comment line in an array
 func getDockerfileLines(text string) []string {
 	var result []string
@@ -52,7 +65,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)
+	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
 	dockerfile := bytes.Buffer{}
@@ -97,7 +110,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", compiledPackagesDir, targetPath, "3.14.15", ui)
+	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
 	tarFile := &bytes.Buffer{}
