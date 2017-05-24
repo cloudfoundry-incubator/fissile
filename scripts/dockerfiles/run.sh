@@ -97,7 +97,7 @@ chmod 1730 /var/spool/cron/tabs/
 
 {{ if eq .role.Type "bosh-task" }}
     # Start rsyslog and cron
-    service rsyslog start
+    /usr/sbin/rsyslogd
     cron
 {{ else }}
     # rsyslog and cron are started via monit
