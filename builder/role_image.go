@@ -339,6 +339,8 @@ type roleBuildJob struct {
 	outputDirectory string
 	resultsCh       chan<- error
 	abort           <-chan struct{}
+	registry        string
+	organization    string
 	repository      string
 	baseImageName   string
 }
@@ -357,7 +359,7 @@ func (j roleBuildJob) Run() {
 			return err
 		}
 
-		roleImageName := GetRoleDevImageName(j.repository, j.role, devVersion)
+		roleImageName := GetRoleDevImageName(j.registry, j.organization, j.repository, j.role, devVersion)
 		outputPath := filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		if !j.force {
 			if j.outputDirectory == "" {
@@ -435,7 +437,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -467,6 +469,8 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 			outputDirectory: outputDirectory,
 			resultsCh:       resultsCh,
 			abort:           abort,
+			registry:        registry,
+			organization:    organization,
 			repository:      repository,
 			baseImageName:   baseImageName,
 		})
@@ -490,8 +494,17 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, repository, baseIm
 }
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
-func GetRoleDevImageName(repository string, role *model.Role, version string) string {
-	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, role.Name))
+func GetRoleDevImageName(registry, organization, repository string, role *model.Role, version string) string {
+	var imageName string
+	if registry != "" {
+		imageName = registry + "/"
+	}
+
+	if organization != "" {
+		imageName += util.SanitizeDockerName(organization) + "/"
+	}
+
+	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, role.Name))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(version))
 }

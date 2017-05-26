@@ -455,6 +455,8 @@ func TestBuildRoleImages(t *testing.T) {
 
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
+		"test-registry.com:9000",
+		"test-organization",
 		"test-repository",
 		"",
 		"",
@@ -475,6 +477,8 @@ func TestBuildRoleImages(t *testing.T) {
 	// Should not allow invalid worker counts
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
+		"test-registry.com:9000",
+		"test-organization",
 		"test-repository",
 		"",
 		"",
@@ -501,6 +505,8 @@ func TestBuildRoleImages(t *testing.T) {
 
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
+		"test-registry.com:9000",
+		"test-organization",
 		"test-repository",
 		"",
 		"",
@@ -525,6 +531,8 @@ func TestBuildRoleImages(t *testing.T) {
 	}
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
+		"test-registry.com:9000",
+		"test-organization",
 		"test-repository",
 		"",
 		"",
@@ -557,6 +565,8 @@ func TestBuildRoleImages(t *testing.T) {
 	}
 	err = roleImageBuilder.BuildRoleImages(
 		rolesManifest.Roles,
+		"test-registry.com:9000",
+		"test-organization",
 		"test-repository",
 		"",
 		"",
@@ -566,12 +576,45 @@ func TestBuildRoleImages(t *testing.T) {
 	)
 	assert.NoError(err)
 
-	expected := `.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},start
-.*,fissile,create-role-images::test-repository-myrole:[a-z0-9]{40},done
-.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},start
-.*,fissile,create-role-images::test-repository-foorole:[a-z0-9]{40},done`
+	expected := `.*,fissile,create-role-images::test-registry.com:9000/test-organization/test-repository-myrole:[a-z0-9]{40},start
+.*,fissile,create-role-images::test-registry.com:9000/test-organization/test-repository-myrole:[a-z0-9]{40},done
+.*,fissile,create-role-images::test-registry.com:9000/test-organization/test-repository-foorole:[a-z0-9]{40},start
+.*,fissile,create-role-images::test-registry.com:9000/test-organization/test-repository-foorole:[a-z0-9]{40},done`
 
 	contents, err := ioutil.ReadFile(metrics)
 	assert.NoError(err)
 	assert.Regexp(regexp.MustCompile(expected), string(contents))
+}
+
+func TestGetRoleDevImageName(t *testing.T) {
+	assert := assert.New(t)
+
+	var role model.Role
+
+	role.Name = "foorole"
+
+	reg := "test-registry:9000"
+	org := "test-org"
+	repo := "test-repository"
+	version := "a886ed76c6d6e5a96ad5c37fb208368a430a29d770f1d149a78e1e6e8091eb12"
+
+	// Test with repository only
+	expected := "test-repository-foorole:a886ed76c6d6e5a96ad5c37fb208368a430a29d770f1d149a78e1e6e8091eb12"
+	imageName := GetRoleDevImageName("", "", repo, &role, version)
+	assert.Equal(expected, imageName)
+
+	// Test with org and repository
+	expected = "test-org/test-repository-foorole:a886ed76c6d6e5a96ad5c37fb208368a430a29d770f1d149a78e1e6e8091eb12"
+	imageName = GetRoleDevImageName("", org, repo, &role, version)
+	assert.Equal(expected, imageName)
+
+	// Test with registry and repository
+	expected = "test-registry:9000/test-repository-foorole:a886ed76c6d6e5a96ad5c37fb208368a430a29d770f1d149a78e1e6e8091eb12"
+	imageName = GetRoleDevImageName(reg, "", repo, &role, version)
+	assert.Equal(expected, imageName)
+
+	// Test with all three
+	expected = "test-registry:9000/test-org/test-repository-foorole:a886ed76c6d6e5a96ad5c37fb208368a430a29d770f1d149a78e1e6e8091eb12"
+	imageName = GetRoleDevImageName(reg, org, repo, &role, version)
+	assert.Equal(expected, imageName)
 }
