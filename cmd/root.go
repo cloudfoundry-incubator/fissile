@@ -246,7 +246,7 @@ func validateBasicFlags() error {
 	flagCacheDir = viper.GetString("cache-dir")
 	flagWorkDir = viper.GetString("work-dir")
 	flagRepository = viper.GetString("repository")
-	flagDockerRegistry = viper.GetString("docker-registry")
+	flagDockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
 	flagDockerOrganization = viper.GetString("docker-organization")
 	flagWorkers = viper.GetInt("workers")
 	flagLightOpinions = viper.GetString("light-opinions")
