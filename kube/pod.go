@@ -267,6 +267,14 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 
 	switch role.Type {
 	case model.RoleTypeBosh:
+		var timeout int32 = 1
+		if role.Run != nil &&
+			role.Run.HealthCheck != nil &&
+			role.Run.HealthCheck.Liveness != nil &&
+			role.Run.HealthCheck.Liveness.Timeout > 0 {
+			timeout = role.Run.HealthCheck.Liveness.Timeout
+		}
+
 		return &v1.Probe{
 			Handler: v1.Handler{
 				TCPSocket: &v1.TCPSocketAction{
@@ -275,6 +283,7 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 			},
 			// TODO: make this configurable (figure out where the knob should live)
 			InitialDelaySeconds: 600,
+			TimeoutSeconds:      timeout,
 		}
 	default:
 		return nil
@@ -294,9 +303,17 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
+
+	var timeout int32 = 1
+
 	if role.Run.HealthCheck != nil {
+		if role.Run.HealthCheck.Readiness != nil &&
+			role.Run.HealthCheck.Readiness.Timeout > 0 {
+			timeout = role.Run.HealthCheck.Readiness.Timeout
+		}
+
 		if role.Run.HealthCheck.URL != "" {
-			return getContainerURLReadinessProbe(role)
+			return getContainerURLReadinessProbe(role, timeout)
 		}
 		if role.Run.HealthCheck.Port != 0 {
 			return &v1.Probe{
@@ -305,6 +322,7 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 						Port: intstr.FromInt(int(role.Run.HealthCheck.Port)),
 					},
 				},
+				TimeoutSeconds: timeout,
 			}, nil
 		}
 		if len(role.Run.HealthCheck.Command) > 0 {
@@ -314,6 +332,7 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 						Command: role.Run.HealthCheck.Command,
 					},
 				},
+				TimeoutSeconds: timeout,
 			}, nil
 		}
 	}
@@ -341,13 +360,14 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 					Port: intstr.FromInt(int(probePort)),
 				},
 			},
+			TimeoutSeconds: timeout,
 		}, nil
 	default:
 		return nil, nil
 	}
 }
 
-func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
+func getContainerURLReadinessProbe(role *model.Role, timeout int32) (*v1.Probe, error) {
 	probeURL, err := url.Parse(role.Run.HealthCheck.URL)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid URL health check for %s: %s", role.Name, err)
@@ -412,6 +432,7 @@ func getContainerURLReadinessProbe(role *model.Role) (*v1.Probe, error) {
 				HTTPHeaders: headers,
 			},
 		},
+		TimeoutSeconds: timeout,
 	}, nil
 }
 
