@@ -267,7 +267,7 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 
 	switch role.Type {
 	case model.RoleTypeBosh:
-		var timeout int32 = 1
+		var timeout int32
 		if role.Run != nil &&
 			role.Run.HealthCheck != nil &&
 			role.Run.HealthCheck.Liveness != nil &&
@@ -304,7 +304,7 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 		return nil, nil
 	}
 
-	var timeout int32 = 1
+	var timeout int32
 
 	if role.Run.HealthCheck != nil {
 		if role.Run.HealthCheck.Readiness != nil &&
