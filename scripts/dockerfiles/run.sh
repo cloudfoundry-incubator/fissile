@@ -16,6 +16,7 @@ export PATH=/var/vcap/bosh/bin:$PATH
 source /usr/local/rvm/scripts/rvm
 
 # Taken from https://github.com/cloudfoundry/bosh-linux-stemcell-builder/blob/95aa0de0fe734547b2dd9241685c31c5f6d61a83/stemcell_builder/lib/prelude_apply.bash
+# To be used by scripts that are run or sourced by this file.
 function get_os_type {
   centos_file=$chroot/etc/centos-release
   rhel_file=$chroot/etc/redhat-release
