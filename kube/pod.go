@@ -256,6 +256,15 @@ func getSecurityContext(role *model.Role) *v1.SecurityContext {
 }
 
 func getContainerLivenessProbe(role *model.Role) *v1.Probe {
+	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
+	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
+	//
+	// InitialDelaySeconds -
+	// TimeoutSeconds      - 1, min 1
+	// PeriodSeconds       - 10, min 1 (interval between probes)
+	// SuccessThreshold    - 1 (default, must be this value for liveness probe)
+	// FailureThreshold    - 3, min 1
+
 	switch role.Type {
 	case model.RoleTypeBosh:
 		return &v1.Probe{
@@ -273,6 +282,15 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 }
 
 func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
+	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
+	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
+	//
+	// InitialDelaySeconds -
+	// TimeoutSeconds      - 1, min 1
+	// PeriodSeconds       - 10, min 1 (interval between probes)
+	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
+	// FailureThreshold    - 3, min 1
+
 	if role.Run == nil {
 		return nil, nil
 	}
