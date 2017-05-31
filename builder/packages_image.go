@@ -109,6 +109,10 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 	return err
 }
 
+func (p *PackagesImageBuilder) fissileVersionLabel() string {
+	return fmt.Sprintf("version.generator.fissile=%s", p.fissileVersion)
+}
+
 // determinePackagesLayerBaseImage finds the best base image to use for the
 // packages layer image.  Given a list of packages, it returns the base image
 // name to use, as well as the set of packages that still need to be inserted.
@@ -224,8 +228,9 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 // generateDockerfile builds a docker file for the shared packages layer.
 func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages model.Packages, outputFile io.Writer) error {
 	context := map[string]interface{}{
-		"base_image": baseImage,
-		"packages":   packages,
+		"base_image":      baseImage,
+		"packages":        packages,
+		"fissile_version": p.fissileVersionLabel(),
 	}
 	asset, err := dockerfiles.Asset("Dockerfile-packages")
 	if err != nil {
