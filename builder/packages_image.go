@@ -110,7 +110,8 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 }
 
 func (p *PackagesImageBuilder) fissileVersionLabel() string {
-	return fmt.Sprintf("version.generator.fissile=%s", p.fissileVersion)
+	return fmt.Sprintf("version.generator.fissile=%s",
+		strings.Replace(p.fissileVersion, "+", "_", -1))
 }
 
 // determinePackagesLayerBaseImage finds the best base image to use for the

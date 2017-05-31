@@ -244,7 +244,7 @@ func TestJobsProperties(t *testing.T) {
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	assert.NoError(err)
 
-	properties, err := release.Jobs[0].getPropertiesForJob(opinions)
+	properties, err := release.Jobs[0].GetPropertiesForJob(opinions)
 	assert.Len(properties, 2)
 	actualJSON, err := json.Marshal(properties)
 	if assert.NoError(err) {
