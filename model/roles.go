@@ -100,10 +100,18 @@ type RoleRunExposedPort struct {
 
 // HealthCheck describes a non-standard health check endpoint
 type HealthCheck struct {
-	URL     string            `yaml:"url"`     // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
-	Headers map[string]string `yaml:"headers"` // Custom headers; only used for URL.
-	Command []string          `yaml:"command"` // Custom command. Cannot be used with other checks.
-	Port    int32             `yaml:"port"`    // Port for a TCP probe. Cannot be used with other checks.
+	URL       string            `yaml:"url"`                 // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
+	Headers   map[string]string `yaml:"headers"`             // Custom headers; only used for URL.
+	Command   []string          `yaml:"command"`             // Custom command. Cannot be used with other checks.
+	Port      int32             `yaml:"port"`                // Port for a TCP probe. Cannot be used with other checks.
+	Liveness  *HealthProbe      `yaml:"liveness,omitempty"`  // Details of liveness probe configuration
+	Readiness *HealthProbe      `yaml:"readiness,omitempty"` // Ditto for readiness probe
+}
+
+// HealthProbe holds the configuration for liveness and readiness
+// probes based on the HealthCheck containing them.
+type HealthProbe struct {
+	Timeout int32 `yaml:"timeout,omitempty"` // Timeout in seconds, default 3, minimum 1
 }
 
 // Roles is an array of Role*

@@ -303,6 +303,58 @@ func TestPodGetContainerPorts(t *testing.T) {
 	}
 }
 
+func TestPodGetContainerLivenessProbe(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	samples := []struct {
+		desc     string
+		probe    *model.HealthCheck
+		expected *v1.Probe
+		err      string
+	}{
+		{
+			desc:  "Always on, defaults",
+			probe: nil,
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Liveness timeout",
+			probe: &model.HealthCheck{
+				Liveness: &model.HealthProbe{
+					Timeout: 20,
+				},
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds:      20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+	}
+
+	// TODO use golang 1.7's subtests
+	for _, sample := range samples {
+		role.Run.HealthCheck = sample.probe
+		actual := getContainerLivenessProbe(role)
+		assert.Equal(sample.expected, actual, sample.desc)
+	}
+}
+
 func TestPodGetContainerReadinessProbe(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert)
@@ -470,6 +522,60 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				Handler: v1.Handler{
 					HTTPGet: &v1.HTTPGetAction{
 						Scheme: v1.URISchemeHTTP,
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+					},
+				},
+			},
+		},
+		{
+			desc: "Port probe, readiness timeout",
+			probe: &model.HealthCheck{
+				Port: 1234,
+				Readiness: &model.HealthProbe{
+					Timeout: 20,
+				},
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds: 20,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(1234),
+					},
+				},
+			},
+		},
+		{
+			desc: "Command probe, readiness timeout",
+			probe: &model.HealthCheck{
+				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+				Readiness: &model.HealthProbe{
+					Timeout: 20,
+				},
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds: 20,
+				Handler: v1.Handler{
+					Exec: &v1.ExecAction{
+						Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (simple), readiness timeout",
+			probe: &model.HealthCheck{
+				URL: "http://example.com/path",
+				Readiness: &model.HealthProbe{
+					Timeout: 20,
+				},
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds: 20,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
 						Port:   intstr.FromInt(80),
 						Path:   "/path",
 					},
