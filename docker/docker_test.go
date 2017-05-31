@@ -582,7 +582,7 @@ func TestFindBestImageWithLabels_OnlyBase(t *testing.T) {
 	setupFindBestImageWithLabels(mockDockerClient, images)
 
 	wantedTags := []string{"wanted-tag"} // There is no match here
-	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags)
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags, []string{})
 	assert.NoError(err)
 	assert.Equal(images[0].history[0].ID, desiredImage)
 	assert.Empty(foundLabels)
@@ -617,7 +617,7 @@ func TestFindBestImageWithLabels_Simple(t *testing.T) {
 	}
 	setupFindBestImageWithLabels(mockDockerClient, images)
 
-	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag})
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag}, []string{})
 	assert.NoError(err)
 	assert.Equal(images[1].history[0].ID, desiredImage)
 	assert.Equal(images[1].labels, foundLabels)
@@ -660,7 +660,7 @@ func TestFindBestImageWithLabels_PickSmaller(t *testing.T) {
 	}
 	setupFindBestImageWithLabels(mockDockerClient, images)
 
-	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag})
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag}, []string{})
 	assert.NoError(err)
 	assert.Equal(images[2].history[0].ID, desiredImage)
 	assert.Equal(images[2].labels, foundLabels)
@@ -703,8 +703,55 @@ func TestFindBestImageWithLabels_PickMostMatchingTags(t *testing.T) {
 	}
 	setupFindBestImageWithLabels(mockDockerClient, images)
 
-	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags)
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, wantedTags, []string{})
 	assert.NoError(err)
 	assert.Equal(images[1].history[0].ID, desiredImage)
 	assert.Equal(images[1].labels, foundLabels)
+}
+
+func TestFindBestImageWithLabels_SimpleMandatory(t *testing.T) {
+	assert := assert.New(t)
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDockerClient := NewMockdockerClient(mockCtl)
+	dockerManager := &ImageManager{
+		client: mockDockerClient,
+	}
+
+	wantedTag := "wanted-tag"
+	requiredTag := "required-tag"
+	images := []mockImage{
+		{
+			name: "base-image:tag",
+			history: []dockerclient.ImageHistory{
+				{ID: "base-image-id"},
+			},
+		},
+		{
+			name: "another-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "another-layer", Size: 1},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{wantedTag: "value"},
+		},
+		{
+			name: "some-other-layer",
+			history: []dockerclient.ImageHistory{
+				{ID: "some-other-layer", Size: 1},
+				{ID: "base-image-id"},
+			},
+			labels: map[string]string{
+				wantedTag:   "value",
+				requiredTag: "needed",
+			},
+		},
+	}
+	setupFindBestImageWithLabels(mockDockerClient, images)
+
+	desiredImage, foundLabels, err := dockerManager.FindBestImageWithLabels(images[0].name, []string{wantedTag}, []string{requiredTag})
+	assert.NoError(err)
+	assert.Equal(images[2].history[0].ID, desiredImage)
+	assert.Equal(images[2].labels, foundLabels)
 }

@@ -129,11 +129,16 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 		remainingPackages[pkg.Fingerprint] = pkg
 	}
 
+	var mandatoryLabels = []string{
+		p.fissileVersionLabel(),
+	}
+
 	dockerManger, err := docker.NewImageManager()
 	if err != nil {
 		return "", nil, err
 	}
-	matchedImage, foundLabels, err := dockerManger.FindBestImageWithLabels(baseImageName, labels)
+	matchedImage, foundLabels, err := dockerManger.FindBestImageWithLabels(baseImageName,
+		labels, mandatoryLabels)
 	if err != nil {
 		return "", nil, err
 	}
@@ -142,7 +147,7 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 	for label := range foundLabels {
 		parts := strings.Split(label, ".")
 		if len(parts) != 2 || parts[0] != "fingerprint" {
-			// Should never reach here...
+			// Will reach this for mandatory matched labels, i.e. fissile version
 			continue
 		}
 		delete(remainingPackages, parts[1])
