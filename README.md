@@ -7,7 +7,7 @@ It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH
 agent.
 
 ## Build and Install
-Building fissile needs Go 1.4 or higher and Docker. 
+Building fissile needs Go 1.4 or higher and Docker.
 You can download go from the [Golang website](https://golang.org/doc/install) and
 Docker from the [Docker website](https://www.docker.com)
 
@@ -53,6 +53,10 @@ FISSILE_TEST_DOCKER_IMAGE - the name of the default docker image for testing (e.
 ## Usage
 
 You can find detailed usage documentation [here](./docs/fissile.md).
+
+## Stemcells
+
+You can find details about fissile docker stemcells and how they are built [here](./docs/stemcells.md).
 
 ## Kubernetes
 
