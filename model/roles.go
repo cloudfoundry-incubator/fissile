@@ -855,25 +855,6 @@ func (r *Role) IsDevRole() bool {
 	return false
 }
 
-// GetFileSignature returns the SHA1 of a file based on its path and contents
-func GetFileSignature(filePath string) (string, error) {
-	hasher := sha1.New()
-
-	hasher.Write([]byte(filePath))
-
-	f, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := io.Copy(hasher, f); err != nil {
-		return "", err
-	}
-
-	f.Close()
-	return hex.EncodeToString(hasher.Sum(nil)), nil
-}
-
 // AggregateSignatures returns the SHA1 for a slice of strings
 func AggregateSignatures(signatures []string) string {
 	hasher := sha1.New()
