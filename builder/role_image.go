@@ -520,7 +520,10 @@ func (j roleBuildJob) Version() (string, error) {
 		return "", err
 	}
 
-	signatures := []string{devVersion}
+	signatures := []string{
+		devVersion,
+		j.builder.fissileVersion,
+	}
 
 	// Job order comes from the role manifest, and is sort of
 	// fix. Avoid sorting for now.  Also note, if a property is
