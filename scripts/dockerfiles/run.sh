@@ -15,6 +15,37 @@ export PATH=/var/vcap/bosh/bin:$PATH
 # Load RVM
 source /usr/local/rvm/scripts/rvm
 
+# Taken from https://github.com/cloudfoundry/bosh-linux-stemcell-builder/blob/95aa0de0fe734547b2dd9241685c31c5f6d61a83/stemcell_builder/lib/prelude_apply.bash
+# To be used by scripts that are run or sourced by this file.
+function get_os_type {
+  centos_file=$chroot/etc/centos-release
+  rhel_file=$chroot/etc/redhat-release
+  ubuntu_file=$chroot/etc/lsb-release
+  photonos_file=$chroot/etc/photon-release
+  opensuse_file=$chroot/etc/SuSE-release
+
+  os_type=''
+  if [ -f $photonos_file ]
+  then
+    os_type='photonos'
+  elif [ -f $ubuntu_file ]
+  then
+    os_type='ubuntu'
+  elif [ -f $centos_file ]
+  then
+    os_type='centos'
+  elif [ -f $rhel_file ]
+  then
+    os_type='rhel'
+  elif [ -f $opensuse_file ]
+  then
+    os_type='opensuse'
+  fi
+
+  echo $os_type
+}
+export -f get_os_type
+
 # Unmark the role. We may have this file from a previous run of the
 # role, i.e. this may be a restart. Ensure that we are not seen as
 # ready yet.
@@ -67,7 +98,7 @@ chmod 1730 /var/spool/cron/tabs/
 
 {{ if eq .role.Type "bosh-task" }}
     # Start rsyslog and cron
-    service rsyslog start
+    /usr/sbin/rsyslogd
     cron
 {{ else }}
     # rsyslog and cron are started via monit
