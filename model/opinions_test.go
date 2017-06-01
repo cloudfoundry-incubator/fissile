@@ -92,7 +92,7 @@ func TestOpinionsFlattenOpinions(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(confOpinions)
 
-	light := FlattenOpinions(confOpinions.Light)
+	light := FlattenOpinions(confOpinions.Light, false)
 	assert.NotNil(light)
 	assert.Len(light, 5)
 	for _, property := range []string{

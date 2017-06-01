@@ -18,8 +18,8 @@ func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, 
 	allErrs := validation.ErrorList{}
 
 	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
-	darkOpinions := model.FlattenOpinions(opinions.Dark)
-	lightOpinions := model.FlattenOpinions(opinions.Light)
+	darkOpinions := model.FlattenOpinions(opinions.Dark, false)
+	lightOpinions := model.FlattenOpinions(opinions.Light, false)
 	manifestProperties := collectManifestProperties(roleManifest)
 
 	// All properties must be defined in a BOSH release
