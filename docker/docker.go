@@ -169,7 +169,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 	return nil
 }
 
-// BuildImageFromCallback builds a docker image by letting a callback popuplate
+// BuildImageFromCallback builds a docker image by letting a callback populate
 // a tar.Writer; the callback must write a Dockerfile into the tar stream (as
 // well as any additional build context).  If stdoutWriter implements io.Closer,
 // it will be closed when done.
@@ -239,10 +239,12 @@ func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) 
 	return image, nil
 }
 
-// FindBestImageWithLabels finds the best image that has a given base image, and
-// has as many of the given labels as possible.  Returns the best matching image
-// name, and all of the matched labels (and their values).
-func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []string) (string, map[string]string, error) {
+// FindBestImageWithLabels finds the best image that has a given base
+// image, and has as many of the given labels as possible.  Returns
+// the best matching image name, and all of the matched labels (and
+// their values). Manadatory labels are labels an image must have to
+// be considered as candidate.
+func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []string, mandatory []string) (string, map[string]string, error) {
 	// We want to walk through all images newer than the provided base image,
 	// and find everything with some set of matching labels.  For all of the
 	// images with at least one match, we use the smallest-sized image for each
@@ -263,9 +265,15 @@ func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []st
 	desiredLayer := history[0].ID
 
 	// Convert the desired labels to a hash for easier lookup
-	desiredLabels := make(map[string]bool, len(labels))
+	desiredLabels := make(map[string]struct{}, len(labels))
 	for _, label := range labels {
-		desiredLabels[label] = true
+		desiredLabels[label] = struct{}{}
+	}
+
+	// Convert the mandatory labels to a hash for easier lookup and matching
+	mandatoryLabels := make(map[string]struct{}, len(labels))
+	for _, label := range mandatory {
+		mandatoryLabels[label] = struct{}{}
 	}
 
 	// Iterate through all available images and find candidates
@@ -292,6 +300,11 @@ func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []st
 		}
 		if !found {
 			// This image does not derive from the desired base image
+			continue
+		}
+
+		if !d.HasLabels(&candidate, mandatoryLabels) {
+			// This image does not have all of the mandatory labels
 			continue
 		}
 
@@ -350,8 +363,28 @@ func (d *ImageManager) FindBestImageWithLabels(baseImageName string, labels []st
 			matchedLabels[label] = value
 		}
 	}
+	// Include the mandatory labels too.
+	for _, label := range mandatory {
+		if value, ok := bestMatch.Labels[label]; ok {
+			matchedLabels[label] = value
+		}
+	}
 
 	return bestMatch.ID, matchedLabels, nil
+}
+
+// HasLabels determines if all of the provided labels (keys of the
+// map) are in the set of the image's labels. It returns true if so,
+// and false otherwise.
+func (d *ImageManager) HasLabels(image *dockerclient.APIImages, labels map[string]struct{}) bool {
+	var found int
+	// Check that all labels are among the image's labels
+	for label := range image.Labels {
+		if _, ok := labels[label]; ok {
+			found = found + 1
+		}
+	}
+	return found == len(labels)
 }
 
 // HasImage determines if the given image already exists in Docker
