@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"io/ioutil"
+	"reflect"
 
 	"gopkg.in/yaml.v2"
 )
@@ -40,15 +41,16 @@ func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 	return result, nil
 }
 
-// FlattenOpinions converts the incoming nested map of opinions into a flat
-// map of properties to values (strings).
-func FlattenOpinions(opinions map[string]interface{}) map[string]string {
+// FlattenOpinions converts the incoming nested map of opinions into a
+// flat map of properties to values (strings). When 'total' is set (to
+// true) array values are recursed into and flattened as well.
+func FlattenOpinions(opinions map[string]interface{}, total bool) map[string]string {
 	result := make(map[string]string)
-	flattenOpinionsRecurse(result, "", opinions)
+	flattenOpinionsRecurse(result, "", opinions, total)
 	return result
 }
 
-func flattenOpinionsRecurse(result map[string]string, prefix string, value interface{}) {
+func flattenOpinionsRecurse(result map[string]string, prefix string, value interface{}, total bool) {
 
 	var cprefix string
 	if prefix == "" {
@@ -61,7 +63,7 @@ func flattenOpinionsRecurse(result map[string]string, prefix string, value inter
 		for ks, value := range vmap {
 			// Here the `ks` iteration variable is already a
 			// string, contrary to the Interface loop below.
-			flattenOpinionsRecurse(result, cprefix+ks, value)
+			flattenOpinionsRecurse(result, cprefix+ks, value, total)
 		}
 		return
 	}
@@ -70,9 +72,27 @@ func flattenOpinionsRecurse(result map[string]string, prefix string, value inter
 			ks := fmt.Sprintf("%v", key)
 			// Generate string iteration variable from general
 			// key, compare String loop above.
-			flattenOpinionsRecurse(result, cprefix+ks, value)
+			flattenOpinionsRecurse(result, cprefix+ks, value, total)
 		}
 		return
+	}
+
+	// Flatten arrays. Go through reflection for generic iteration
+	// regardless of element-type. Recursion takes interface{} anyway.
+	if total {
+		v := reflect.ValueOf(value)
+		if (v.Kind() == reflect.Array) || (v.Kind() == reflect.Slice) {
+			for i := 0; i < v.Len(); i++ {
+				ks := fmt.Sprintf("[%d]", i)
+				child := v.Index(i).Interface()
+				flattenOpinionsRecurse(result, prefix+ks, child, total)
+				// Note use of 'prefix' above, instead
+				// of 'cprefix'.  For arrays the '[d]'
+				// is the separator, and a '.' is
+				// superfluous.
+			}
+			return
+		}
 	}
 
 	result[prefix] = fmt.Sprintf("%v", value)

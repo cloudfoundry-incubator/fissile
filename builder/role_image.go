@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -58,6 +59,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
+
 	return &RoleImageBuilder{
 		repository:           repository,
 		compiledPackagesPath: compiledPackagesPath,
@@ -350,10 +352,11 @@ func (j roleBuildJob) Run() {
 	}
 
 	j.resultsCh <- func() error {
-		devVersion, err := j.role.GetRoleDevVersion()
+		devVersion, err := j.Version()
 		if err != nil {
-			return fmt.Errorf("Error calculating checksum for role %s: %s", j.role.Name, err.Error())
+			return err
 		}
+
 		roleImageName := GetRoleDevImageName(j.repository, j.role, devVersion)
 		outputPath := filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		if !j.force {
@@ -491,4 +494,65 @@ func GetRoleDevImageName(repository string, role *model.Role, version string) st
 	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, role.Name))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(version))
+}
+
+// Version determines the version hash for the role, using the basic
+// role dev version, and the aggregated spec and opinion
+// information. In this manner opinion changes cause a rebuild of the
+// associated role images.
+func (j roleBuildJob) Version() (string, error) {
+
+	// Basic role version
+	devVersion, err := j.role.GetRoleDevVersion()
+	if err != nil {
+		return "", fmt.Errorf("Error calculating checksum for role %s: %s", j.role.Name, err.Error())
+	}
+
+	// Aggregate with the properties from the opinions, per each
+	// job in the role.  This is similar to what NewDockerPopulator
+	// (and its subordinate WriteConfigs) do, with an important
+	// difference:
+	// - NDP/WC does not care about order. We do, as we need a
+	//   stable hash for the configuration.
+
+	opinions, err := model.NewOpinions(j.builder.lightOpinionsPath, j.builder.darkOpinionsPath)
+	if err != nil {
+		return "", err
+	}
+
+	signatures := []string{
+		devVersion,
+		j.builder.fissileVersion,
+	}
+
+	// Job order comes from the role manifest, and is sort of
+	// fix. Avoid sorting for now.  Also note, if a property is
+	// used multiple times, in different jobs, it will be added
+	// that often. No deduplication across the jobs.
+	for _, job := range j.role.Jobs {
+		// Get properties ...
+		properties, err := job.GetPropertiesForJob(opinions)
+		if err != nil {
+			return "", err
+		}
+
+		// ... and flatten the nest into a simple k/v mapping.
+		// Note, this is a total flattening, even over arrays.
+		flatProps := model.FlattenOpinions(properties, true)
+
+		// Get and sort the keys, ...
+		var keys []string
+		for property := range flatProps {
+			keys = append(keys, property)
+		}
+		sort.Strings(keys)
+
+		// ... then add them and their values to the hash precursor
+		for _, property := range keys {
+			value := flatProps[property]
+			signatures = append(signatures, property, value)
+		}
+	}
+	devVersion = model.AggregateSignatures(signatures)
+	return devVersion, nil
 }

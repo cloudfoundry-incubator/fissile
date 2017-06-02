@@ -854,3 +854,20 @@ func (r *Role) IsDevRole() bool {
 	}
 	return false
 }
+
+// AggregateSignatures returns the SHA1 for a slice of strings
+func AggregateSignatures(signatures []string) string {
+	hasher := sha1.New()
+	length := 0
+	for _, signature := range signatures {
+		// Hash the strings, with separator/terminator. We do
+		// __not__ want {"ab","a"} and {"a","ba"} to hash to
+		// the same value.
+		hasher.Write([]byte(signature))
+		hasher.Write([]byte("\x00"))
+		length = length + len(signature)
+	}
+	// Hash in the total length of the input
+	hasher.Write([]byte(fmt.Sprintf("%d", length)))
+	return hex.EncodeToString(hasher.Sum(nil))
+}

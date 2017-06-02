@@ -257,7 +257,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	if err != nil {
 		return nil, err
 	}
-	properties, err := j.getPropertiesForJob(opinions)
+	properties, err := j.GetPropertiesForJob(opinions)
 	if err != nil {
 		return nil, err
 	}
@@ -272,8 +272,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	return jobJSON, nil
 }
 
-// getPropertiesForJob returns the parameters for the given job, using its specs and opinions
-func (j *Job) getPropertiesForJob(opinions *Opinions) (map[string]interface{}, error) {
+// GetPropertiesForJob returns the parameters for the given job, using its specs and opinions
+func (j *Job) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, error) {
 	props := make(map[string]interface{})
 	lightOpinions, ok := opinions.Light["properties"]
 	if !ok {
