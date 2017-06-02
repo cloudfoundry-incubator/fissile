@@ -17,18 +17,20 @@ var (
 	fissile *app.Fissile
 	version string
 
-	flagRoleManifest   string
-	flagRelease        []string
-	flagReleaseName    []string
-	flagReleaseVersion []string
-	flagCacheDir       string
-	flagWorkDir        string
-	flagRepository     string
-	flagWorkers        int
-	flagLightOpinions  string
-	flagDarkOpinions   string
-	flagOutputFormat   string
-	flagMetrics        string
+	flagRoleManifest       string
+	flagRelease            []string
+	flagReleaseName        []string
+	flagReleaseVersion     []string
+	flagCacheDir           string
+	flagWorkDir            string
+	flagDockerRegistry     string
+	flagDockerOrganization string
+	flagRepository         string
+	flagWorkers            int
+	flagLightOpinions      string
+	flagDarkOpinions       string
+	flagOutputFormat       string
+	flagMetrics            string
 
 	// workPath* variables contain paths derived from flagWorkDir
 	workPathCompilationDir string
@@ -128,6 +130,20 @@ func init() {
 		"p",
 		"fissile",
 		"Repository name prefix used to create image names.",
+	)
+
+	RootCmd.PersistentFlags().StringP(
+		"docker-registry",
+		"",
+		"",
+		"Docker registry used when referencing image names",
+	)
+
+	RootCmd.PersistentFlags().StringP(
+		"docker-organization",
+		"",
+		"",
+		"Docker organization used when referencing image names",
 	)
 
 	RootCmd.PersistentFlags().IntP(
@@ -230,6 +246,8 @@ func validateBasicFlags() error {
 	flagCacheDir = viper.GetString("cache-dir")
 	flagWorkDir = viper.GetString("work-dir")
 	flagRepository = viper.GetString("repository")
+	flagDockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
+	flagDockerOrganization = viper.GetString("docker-organization")
 	flagWorkers = viper.GetInt("workers")
 	flagLightOpinions = viper.GetString("light-opinions")
 	flagDarkOpinions = viper.GetString("dark-opinions")

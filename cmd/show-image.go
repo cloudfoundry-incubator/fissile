@@ -36,6 +36,8 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 		}
 
 		return fissile.ListRoleImages(
+			flagDockerRegistry,
+			flagDockerOrganization,
 			flagRepository,
 			flagRoleManifest,
 			flagShowImageDockerOnly,

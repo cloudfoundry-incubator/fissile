@@ -97,16 +97,7 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 		return "", err
 	}
 
-	devImageName := builder.GetRoleDevImageName(settings.Repository, role, devVersion)
-	imageName := devImageName
-
-	if settings.Organization != "" && settings.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s/%s", settings.Registry, settings.Organization, devImageName)
-	} else if settings.Organization != "" {
-		imageName = fmt.Sprintf("%s/%s", settings.Organization, devImageName)
-	} else if settings.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s", settings.Registry, devImageName)
-	}
+	imageName := builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
 
 	return imageName, nil
 }

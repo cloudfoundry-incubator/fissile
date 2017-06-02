@@ -72,6 +72,8 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
+			flagDockerRegistry,
+			flagDockerOrganization,
 			flagRepository,
 			flagBuildImagesStemcell,
 			flagMetrics,

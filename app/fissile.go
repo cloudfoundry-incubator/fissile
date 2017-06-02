@@ -446,7 +446,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, repository, stemcellImageName, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -527,7 +527,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, stemcellImageName, 
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
 		return err
 	}
 
@@ -535,7 +535,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, repository, stemcellImageName, 
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -565,7 +565,7 @@ func (f *Fissile) ListRoleImages(repository string, rolesManifestPath string, ex
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
 
-		imageName := builder.GetRoleDevImageName(repository, role, devVersion)
+		imageName := builder.GetRoleDevImageName(registry, organization, repository, role, devVersion)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)
