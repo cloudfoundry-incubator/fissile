@@ -151,6 +151,7 @@ type ConfigurationVariable struct {
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 	Type        CVType                          `yaml:"type"`
 	Internal    bool                            `yaml:"internal,omitempty"`
+	Secret      bool                            `yaml:"secret,omitempty"`
 }
 
 // CVType is the type of the configuration variable; see the constants below

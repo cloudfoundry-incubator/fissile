@@ -186,6 +186,11 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	result := make([]v1.EnvVar, 0, len(configs))
 
 	for _, config := range configs {
+		// Skip secrets, we emit them at XXX as proper such.
+		if config.Secret {
+			continue
+		}
+
 		var value interface{}
 
 		value = config.Default
