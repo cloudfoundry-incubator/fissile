@@ -179,8 +179,14 @@ func TestPodGetEnvVars(t *testing.T) {
 			"ALL_VAR":    "placeholder",
 			"SECRET_VAR": "the-secret",
 		}
+		secrets := RefMap{
+			"SECRET_VAR": Ref{
+				Secret: "secret-1",
+				Key:    "secret-var",
+			},
+		}
 
-		vars, err := getEnvVars(role, defaults)
+		vars, err := getEnvVars(role, defaults, secrets)
 		assert.NoError(err)
 		assert.NotEmpty(vars)
 
@@ -201,7 +207,7 @@ func TestPodGetEnvVars(t *testing.T) {
 		}
 		assert.True(founda, "failed to find expected variable SOME_VAR")
 		assert.True(foundb, "failed to find expected variable ALL_VAR")
-		assert.False(foundc, "unexpectedly found secret variable SECRET_VAR")
+		assert.True(foundc, "failed to find secret variable SECRET_VAR")
 	}
 }
 

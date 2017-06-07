@@ -23,7 +23,7 @@ const monitPort = 2289
 // any objects it depends on
 func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
 
-	vars, err := getEnvVars(role, settings.Defaults)
+	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
 	}
@@ -176,7 +176,7 @@ func getVolumeMounts(role *model.Role) []v1.VolumeMount {
 	return result
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets RefMap) ([]v1.EnvVar, error) {
 	configs, err := role.GetVariablesForRole()
 
 	if err != nil {
@@ -186,8 +186,21 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	result := make([]v1.EnvVar, 0, len(configs))
 
 	for _, config := range configs {
-		// Skip secrets, we emit them at XXX as proper such.
+		// Secret CVs have special output, they refer to a K8s
+		// secret for their value instead of storing it
+		// directly.
 		if config.Secret {
+			result = append(result, v1.EnvVar{
+				Name: config.Name,
+				ValueFrom: &v1.EnvVarSource{
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: secrets[config.Name].Secret,
+						},
+						Key: secrets[config.Name].Key,
+					},
+				},
+			})
 			continue
 		}
 
