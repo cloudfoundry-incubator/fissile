@@ -191,26 +191,9 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 			continue
 		}
 
-		var value interface{}
-
-		value = config.Default
-
-		if defaultValue, ok := defaults[config.Name]; ok {
-			value = defaultValue
-		}
-
-		if value == nil {
+		ok, stringifiedValue := configValue(config, defaults)
+		if !ok {
 			continue
-		}
-
-		var stringifiedValue string
-		if valueAsString, ok := value.(string); ok {
-			stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
-			if err != nil {
-				stringifiedValue = valueAsString
-			}
-		} else {
-			stringifiedValue = fmt.Sprintf("%v", value)
 		}
 
 		result = append(result, v1.EnvVar{
@@ -229,6 +212,33 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	})
 
 	return result, nil
+}
+
+func configValue(config *model.ConfigurationVariable, defaults map[string]string) (bool, string) {
+	var value interface{}
+
+	value = config.Default
+
+	if defaultValue, ok := defaults[config.Name]; ok {
+		value = defaultValue
+	}
+
+	if value == nil {
+		return false, ""
+	}
+
+	var stringifiedValue string
+	if valueAsString, ok := value.(string); ok {
+		var err error
+		stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
+		if err != nil {
+			stringifiedValue = valueAsString
+		}
+	} else {
+		stringifiedValue = fmt.Sprintf("%v", value)
+	}
+
+	return true, stringifiedValue
 }
 
 func getSecurityContext(role *model.Role) *v1.SecurityContext {
