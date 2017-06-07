@@ -720,6 +720,47 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		return err
 	}
 
+	// Phase I (a): Gather the secrets
+
+	cvs := model.MakeMapOfVariables(rolesManifest)
+	for key, value := range cvs {
+		if !value.Secret {
+			delete(cvs, key)
+		}
+	}
+	// cvs now holds only the secrets.
+	thesecrets, therefs, err := kube.MakeSecrets(cvs, defaults)
+	if err != nil {
+		return err
+	}
+
+	// Phase I (b): Export the secrets
+
+	secretsDir := filepath.Join(outputDir, "secrets")
+	if err = os.MkdirAll(secretsDir, 0755); err != nil {
+		return err
+	}
+
+	for _, secret := range thesecrets {
+		outputPath := filepath.Join(secretsDir, fmt.Sprintf("%s.yml", secret.ObjectMeta.Name))
+		f.UI.Printf("Writing config %s for secret %s\n",
+			color.CyanString(outputPath),
+			color.CyanString(secret.ObjectMeta.Name),
+		)
+
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+
+		if err := kube.WriteYamlConfig(secret, outputFile); err != nil {
+			return err
+		}
+	}
+
+	// Phase II: Export the roles
+
 	settings := &kube.ExportSettings{
 		Defaults:        defaults,
 		Registry:        registry,
@@ -728,6 +769,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		UseMemoryLimits: useMemoryLimits,
 		FissileVersion:  fissileVersion,
 		Opinions:        opinions,
+		Secrets:         therefs,
 	}
 
 	for _, role := range rolesManifest.Roles {
