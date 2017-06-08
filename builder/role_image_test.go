@@ -29,8 +29,6 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 		nil,
 	)
 
-	releaseVersion := "3.14.15"
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
@@ -51,7 +49,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", releaseVersion, "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
@@ -64,7 +62,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.Contains(dockerfileString, "MAINTAINER", "release images should contain maintainer information")
 	assert.Contains(
 		dockerfileString,
-		fmt.Sprintf(`LABEL "role"="%s" "version"="%s"`, rolesManifest.Roles[0].Name, releaseVersion),
+		fmt.Sprintf(`LABEL "role"="%s"`, rolesManifest.Roles[0].Name),
 		"Expected role label",
 	)
 
@@ -104,7 +102,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
@@ -158,7 +156,7 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(rolesManifest.Roles[0])
@@ -208,7 +206,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "3.14.15", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
 	torPkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
@@ -432,7 +430,6 @@ func TestBuildRoleImages(t *testing.T) {
 		lightOpinionsPath,
 		darkOpinionsPath,
 		"",
-		"3.14.15",
 		"6.28.30",
 		ui,
 	)
