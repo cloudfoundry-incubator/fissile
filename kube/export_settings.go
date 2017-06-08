@@ -1,5 +1,9 @@
 package kube
 
+import (
+	"github.com/SUSE/fissile/model"
+)
+
 // ExportSettings are configuration for creating Kubernetes configs
 type ExportSettings struct {
 	Repository      string
@@ -7,4 +11,6 @@ type ExportSettings struct {
 	Registry        string
 	Organization    string
 	UseMemoryLimits bool
+	FissileVersion  string
+	Opinions        *model.Opinions
 }

@@ -259,7 +259,11 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 // GetRolePackageImageName generates a docker image name for the amalgamation for a role image
 func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
 	extra := fmt.Sprintf("%s:%s", p.fissileVersion, p.stemcellImage.ID)
-	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, extra)
+
+	// Opinions are not relevant for the packages layer
+	opinions := model.NewEmptyOpinions()
+
+	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, opinions, p.fissileVersion, extra)
 	if err != nil {
 		return "", err
 	}

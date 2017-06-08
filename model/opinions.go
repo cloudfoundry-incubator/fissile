@@ -14,6 +14,22 @@ type Opinions struct {
 	Dark  map[string]interface{}
 }
 
+// NewEmptyOpinions returns an empty opinions object, used for testing and
+// generating the version of the package layer, that doesn't change if opinions
+// change
+func NewEmptyOpinions() *Opinions {
+	result := &Opinions{
+		Light: map[string]interface{}{
+			"properties": map[interface{}]interface{}{},
+		},
+		Dark: map[string]interface{}{
+			"properties": map[interface{}]interface{}{},
+		},
+	}
+
+	return result
+}
+
 // NewOpinions returns the json opinions for the light and dark opinion files
 func NewOpinions(lightFile, darkFile string) (*Opinions, error) {
 	result := &Opinions{}

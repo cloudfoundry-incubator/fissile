@@ -213,7 +213,9 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	statefulset, _, err := NewStatefulSet(role, &ExportSettings{})
+	statefulset, _, err := NewStatefulSet(role, &ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
 	if !assert.NoError(err) {
 		return
 	}

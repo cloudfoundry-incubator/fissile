@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"github.com/SUSE/fissile/model"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -32,16 +34,25 @@ var buildKubeCmd = &cobra.Command{
 			return err
 		}
 
+		opinions, err := model.NewOpinions(
+			flagLightOpinions,
+			flagDarkOpinions,
+		)
+		if err != nil {
+			return err
+		}
+
 		return fissile.GenerateKube(
 			flagRoleManifest,
 			flagBuildKubeOutputDir,
 			flagRepository,
 			flagDockerRegistry,
 			flagDockerOrganization,
+			fissile.Version,
 			flagBuildKubeDefaultEnvFiles,
 			flagBuildKubeUseMemoryLimits,
+			opinions,
 		)
-
 	},
 }
 

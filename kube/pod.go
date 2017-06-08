@@ -91,8 +91,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 
 // getContainerImageName returns the name of the docker image to use for a role
 func getContainerImageName(role *model.Role, settings *ExportSettings) (string, error) {
-
-	devVersion, err := role.GetRoleDevVersion()
+	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.FissileVersion)
 	if err != nil {
 		return "", err
 	}

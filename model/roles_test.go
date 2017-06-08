@@ -315,14 +315,14 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	}
 
 	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
-	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, "")
+	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
 	secondManifest := &RoleManifest{Roles: Roles{altRole, refRole}}
-	secondHash, _ := secondManifest.GetRoleManifestDevPackageVersion(secondManifest.Roles, "")
+	secondHash, _ := secondManifest.GetRoleManifestDevPackageVersion(secondManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
 	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
 	jobOrderManifest := &RoleManifest{Roles: Roles{wrongJobOrder, altRole}}
-	jobOrderHash, _ := jobOrderManifest.GetRoleManifestDevPackageVersion(jobOrderManifest.Roles, "")
+	jobOrderHash, _ := jobOrderManifest.GetRoleManifestDevPackageVersion(jobOrderManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
 	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
-	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, "some string")
+	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "some string")
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }
 

@@ -535,7 +535,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -559,8 +559,13 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManife
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	opinions, err := model.NewOpinions(opinionsPath, darkOpinionsPath)
+	if err != nil {
+		return fmt.Errorf("Error loading opinions: %s", err.Error())
+	}
+
 	for _, role := range rolesManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion()
+		devVersion, err := role.GetRoleDevVersion(opinions, f.Version)
 		if err != nil {
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
@@ -758,7 +763,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string, useMemoryLimits bool) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, opinions *model.Opinions) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -777,6 +782,8 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		Organization:    organization,
 		Repository:      repository,
 		UseMemoryLimits: useMemoryLimits,
+		FissileVersion:  fissileVersion,
+		Opinions:        opinions,
 	}
 
 	for _, role := range rolesManifest.Roles {

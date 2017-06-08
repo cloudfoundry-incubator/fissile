@@ -313,7 +313,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra string) (string, error) {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *Opinions, fissileVersion, extra string) (string, error) {
 	// Make sure our roles are sorted, to have consistent output
 	roles = append(Roles{}, roles...)
 	sort.Sort(roles)
@@ -322,7 +322,7 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, extra strin
 	hasher.Write([]byte(extra))
 
 	for _, role := range roles {
-		version, err := role.GetRoleDevVersion()
+		version, err := role.GetRoleDevVersion(opinions, fissileVersion)
 		if err != nil {
 			return "", err
 		}
@@ -433,8 +433,63 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
-// GetRoleDevVersion gets the aggregate signature of all jobs and packages
-func (r *Role) GetRoleDevVersion() (string, error) {
+// GetRoleDevVersion determines the version hash for the role, using the basic
+// role dev version, and the aggregated spec and opinion
+// information. In this manner opinion changes cause a rebuild of the
+// associated role images.
+func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string) (string, error) {
+
+	// Basic role version
+	devVersion, err := r.getRoleJobAndPackagesSignature()
+	if err != nil {
+		return "", fmt.Errorf("Error calculating checksum for role %s: %s", r.Name, err.Error())
+	}
+
+	// Aggregate with the properties from the opinions, per each
+	// job in the role.  This is similar to what NewDockerPopulator
+	// (and its subordinate WriteConfigs) do, with an important
+	// difference:
+	// - NDP/WC does not care about order. We do, as we need a
+	//   stable hash for the configuration.
+	signatures := []string{
+		devVersion,
+		fissileVersion,
+	}
+
+	// Job order comes from the role manifest, and is sort of
+	// fix. Avoid sorting for now.  Also note, if a property is
+	// used multiple times, in different jobs, it will be added
+	// that often. No deduplication across the jobs.
+	for _, job := range r.Jobs {
+		// Get properties ...
+		properties, err := job.GetPropertiesForJob(opinions)
+		if err != nil {
+			return "", err
+		}
+
+		// ... and flatten the nest into a simple k/v mapping.
+		// Note, this is a total flattening, even over arrays.
+		flatProps := FlattenOpinions(properties, true)
+
+		// Get and sort the keys, ...
+		var keys []string
+		for property := range flatProps {
+			keys = append(keys, property)
+		}
+		sort.Strings(keys)
+
+		// ... then add them and their values to the hash precursor
+		for _, property := range keys {
+			value := flatProps[property]
+			signatures = append(signatures, property, value)
+		}
+	}
+	devVersion = AggregateSignatures(signatures)
+	return devVersion, nil
+}
+
+// getRoleJobAndPackagesSignature gets the aggregate signature of all jobs and packages
+func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
 	roleSignature := ""
 	var packages Packages
 
