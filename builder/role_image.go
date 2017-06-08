@@ -46,7 +46,6 @@ type RoleImageBuilder struct {
 	compiledPackagesPath string
 	targetPath           string
 	metricsPath          string
-	version              string
 	fissileVersion       string
 	lightOpinionsPath    string
 	darkOpinionsPath     string
@@ -54,7 +53,7 @@ type RoleImageBuilder struct {
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, version, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -64,7 +63,6 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 		compiledPackagesPath: compiledPackagesPath,
 		targetPath:           targetPath,
 		metricsPath:          metricsPath,
-		version:              version,
 		fissileVersion:       fissileVersion,
 		lightOpinionsPath:    lightOpinionsPath,
 		darkOpinionsPath:     darkOpinionsPath,
@@ -310,10 +308,9 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 	dockerfileTemplate := template.New("Dockerfile-role")
 
 	context := map[string]interface{}{
-		"base_image":    baseImageName,
-		"image_version": r.version,
-		"role":          role,
-		"licenses":      role.Jobs[0].Release.License.Files,
+		"base_image": baseImageName,
+		"role":       role,
+		"licenses":   role.Jobs[0].Release.License.Files,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))

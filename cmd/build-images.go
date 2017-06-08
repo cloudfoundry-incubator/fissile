@@ -51,11 +51,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		flagOutputDirectory = buildImagesViper.GetString("output-directory")
 		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
 
-		err := fissile.SetPatchPropertiesDirective(flagPatchPropertiesDirective)
-		if err != nil {
-			return err
-		}
-		err = fissile.LoadReleases(
+		err := fissile.LoadReleases(
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
