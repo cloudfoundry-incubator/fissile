@@ -40,6 +40,8 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 			flagDockerOrganization,
 			flagRepository,
 			flagRoleManifest,
+			flagLightOpinions,
+			flagDarkOpinions,
 			flagShowImageDockerOnly,
 			flagShowImageWithSizes,
 		)

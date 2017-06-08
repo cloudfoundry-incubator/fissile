@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/SUSE/fissile/builder"
 	"github.com/SUSE/fissile/compilator"
@@ -27,12 +26,10 @@ import (
 
 // Fissile represents a fissile application
 type Fissile struct {
-	Version                    string
-	UI                         *termui.UI
-	cmdErr                     error
-	releases                   []*model.Release // Only applies for some commands
-	patchPropertiesReleaseName string           // Only applies for some commands
-	patchPropertiesJobName     string           // Only applies for some commands
+	Version  string
+	UI       *termui.UI
+	cmdErr   error
+	releases []*model.Release // Only applies for some commands
 }
 
 // NewFissileApplication creates a new app.Fissile
@@ -41,27 +38,6 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 		Version: version,
 		UI:      ui,
 	}
-}
-
-// SetPatchPropertiesDirective saves the patch-properties release and job names, if specified.
-func (f *Fissile) SetPatchPropertiesDirective(patchPropertiesDirective string) error {
-	if patchPropertiesDirective == "" {
-		return nil
-	}
-	msgStart := "Invalid format for --patch-properties-release flag: should be RELEASE/JOB;"
-	parts := strings.Split(patchPropertiesDirective, "/")
-	if len(parts) != 2 {
-		return fmt.Errorf(msgStart+" got %d part(s)", len(parts))
-	}
-	if parts[0] == "" {
-		return fmt.Errorf(msgStart + " no RELEASE is specified")
-	}
-	if parts[1] == "" {
-		return fmt.Errorf(msgStart + " no JOB is specified")
-	}
-	f.patchPropertiesReleaseName = parts[0]
-	f.patchPropertiesJobName = parts[1]
-	return nil
 }
 
 // ListPackages will list all BOSH packages within a list of dev releases
@@ -519,7 +495,6 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		lightManifestPath,
 		darkManifestPath,
 		metricsPath,
-		"",
 		f.Version,
 		f.UI,
 	)
@@ -535,7 +510,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -559,8 +534,13 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManife
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	opinions, err := model.NewOpinions(opinionsPath, darkOpinionsPath)
+	if err != nil {
+		return fmt.Errorf("Error loading opinions: %s", err.Error())
+	}
+
 	for _, role := range rolesManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion()
+		devVersion, err := role.GetRoleDevVersion(opinions, f.Version)
 		if err != nil {
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
@@ -618,10 +598,7 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	}
 
 	f.releases = releases
-	err := f.injectPatchPropertiesJobSpec()
-	if err != nil {
-		return fmt.Errorf("Error loading release information: %s", err)
-	}
+
 	return nil
 }
 
@@ -646,34 +623,6 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
 	return getDiffsFromReleases(f.releases)
-}
-
-// Since each job processes only its own spec, inject the designated
-// patches-properties pseudo-job's spec into all the other jobs' specs.
-func (f *Fissile) injectPatchPropertiesJobSpec() error {
-	if f.patchPropertiesReleaseName == "" || f.patchPropertiesJobName == "" {
-		return nil
-	}
-	var patchPropertiesJob *model.Job
-	for _, release := range f.releases {
-		if release.Name == f.patchPropertiesReleaseName {
-			job, _ := release.LookupJob(f.patchPropertiesJobName)
-			if job != nil {
-				patchPropertiesJob = job
-			}
-		}
-	}
-	if patchPropertiesJob == nil {
-		return nil
-	}
-	for _, release := range f.releases {
-		for _, job := range release.Jobs {
-			if release.Name != f.patchPropertiesReleaseName || job != patchPropertiesJob {
-				job.MergeSpec(patchPropertiesJob)
-			}
-		}
-	}
-	return nil
 }
 
 type keyHash map[string]string
@@ -758,7 +707,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization string, defaultFiles []string, useMemoryLimits bool) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, opinions *model.Opinions) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -777,6 +726,8 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		Organization:    organization,
 		Repository:      repository,
 		UseMemoryLimits: useMemoryLimits,
+		FissileVersion:  fissileVersion,
+		Opinions:        opinions,
 	}
 
 	for _, role := range rolesManifest.Roles {

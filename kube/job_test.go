@@ -44,7 +44,9 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 
-	job, err := NewJob(role, &ExportSettings{})
+	job, err := NewJob(role, &ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
@@ -87,7 +89,9 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 
-	job, err := NewJob(role, &ExportSettings{})
+	job, err := NewJob(role, &ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}
