@@ -823,50 +823,47 @@ func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) va
 	return allErrs
 }
 
-// validateHealthCheck reports all roles with conflicting health
-// checks.
+// validateHealthCheck reports a role with conflicting health
+// checks in its probes
 func validateHealthCheck(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	// Ensure that we don't have conflicting health checks
 	if role.Run.HealthCheck != nil {
-
-		// TODO --- Cleanup --- Factor checks into function operating on a *HealthProbe
-
 		if role.Run.HealthCheck.Readiness != nil {
-			checks := make([]string, 0, 3)
-			if role.Run.HealthCheck.Readiness.URL != "" {
-				checks = append(checks, "url")
-			}
-			if len(role.Run.HealthCheck.Readiness.Command) > 0 {
-				checks = append(checks, "command")
-			}
-			if role.Run.HealthCheck.Readiness.Port != 0 {
-				checks = append(checks, "port")
-			}
-			if len(checks) > 1 {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].run.healthcheck.readiness", role.Name),
-					checks, "Expected at most one of url, command, or port"))
-			}
+			allErrs = append(allErrs,
+				validateHealthProbe(role, "readiness",
+					role.Run.HealthCheck.Readiness)...)
 		}
 		if role.Run.HealthCheck.Liveness != nil {
-			checks := make([]string, 0, 3)
-			if role.Run.HealthCheck.Liveness.URL != "" {
-				checks = append(checks, "url")
-			}
-			if len(role.Run.HealthCheck.Liveness.Command) > 0 {
-				checks = append(checks, "command")
-			}
-			if role.Run.HealthCheck.Liveness.Port != 0 {
-				checks = append(checks, "port")
-			}
-			if len(checks) > 1 {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].run.healthcheck.liveness", role.Name),
-					checks, "Expected at most one of url, command, or port"))
-			}
+			allErrs = append(allErrs,
+				validateHealthProbe(role, "liveness",
+					role.Run.HealthCheck.Liveness)...)
 		}
+	}
+
+	return allErrs
+}
+
+// validateHealthProbe reports a role with conflicting health checks
+// in the specified probe.
+func validateHealthProbe(role *Role, probeName string, probe *HealthProbe) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	checks := make([]string, 0, 3)
+	if probe.URL != "" {
+		checks = append(checks, "url")
+	}
+	if len(probe.Command) > 0 {
+		checks = append(checks, "command")
+	}
+	if probe.Port != 0 {
+		checks = append(checks, "port")
+	}
+	if len(checks) > 1 {
+		allErrs = append(allErrs, validation.Invalid(
+			fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+			checks, "Expected at most one of url, command, or port"))
 	}
 
 	return allErrs
