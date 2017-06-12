@@ -312,7 +312,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 
 	samples := []struct {
 		desc     string
-		probe    *model.HealthCheck
+		probe    *model.HealthProbe
 		expected *v1.Probe
 		err      string
 	}{
@@ -329,14 +329,288 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 			},
 		},
 		{
-			desc: "Liveness timeout",
-			probe: &model.HealthCheck{
-				Liveness: &model.HealthProbe{
-					Timeout: 20,
+			desc: "Port probe",
+			probe: &model.HealthProbe{
+				Port: 1234,
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(1234),
+					},
 				},
+			},
+		},
+		{
+			desc: "Command probe",
+			probe: &model.HealthProbe{
+				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					Exec: &v1.ExecAction{
+						Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (simple)",
+			probe: &model.HealthProbe{
+				URL: "http://example.com/path",
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (custom port)",
+			probe: &model.HealthProbe{
+				URL: "https://example.com:1234/path",
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTPS,
+						Host:   "example.com",
+						Port:   intstr.FromInt(1234),
+						Path:   "/path",
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (Invalid scheme)",
+			probe: &model.HealthProbe{
+				URL: "file:///etc/shadow",
+			},
+			err: "Health check for myrole has unsupported URI scheme \"file\"",
+		},
+		{
+			desc: "URL probe (query)",
+			probe: &model.HealthProbe{
+				URL: "http://example.com/path?query#hash",
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
+						Port:   intstr.FromInt(80),
+						Path:   "/path?query",
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (auth)",
+			probe: &model.HealthProbe{
+				URL: "http://user:pass@example.com/path",
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+						HTTPHeaders: []v1.HTTPHeader{
+							{
+								Name:  "Authorization",
+								Value: base64.StdEncoding.EncodeToString([]byte("user:pass")),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (custom headers)",
+			probe: &model.HealthProbe{
+				URL:     "http://example.com/path",
+				Headers: map[string]string{"x-header": "some value"},
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+						HTTPHeaders: []v1.HTTPHeader{
+							{
+								Name:  "X-Header",
+								Value: "some value",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (invalid URL)",
+			probe: &model.HealthProbe{
+				URL: "://",
+			},
+			err: "Invalid liveness URL health check for myrole: parse ://: missing protocol scheme",
+		},
+		{
+			desc: "URL probe (invalid port)",
+			probe: &model.HealthProbe{
+				URL: "http://example.com:port_number/",
+			},
+			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+		},
+		{
+			desc: "URL probe (localhost)",
+			probe: &model.HealthProbe{
+				URL: "http://container-ip/path",
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+					},
+				},
+			},
+		},
+		{
+			desc: "Defaults, liveness timeout",
+			probe: &model.HealthProbe{
+				Timeout: 20,
 			},
 			expected: &v1.Probe{
 				TimeoutSeconds:      20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Port probe, liveness timeout",
+			probe: &model.HealthProbe{
+				Port:    1234,
+				Timeout: 20,
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds:      20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(1234),
+					},
+				},
+			},
+		},
+		{
+			desc: "Command probe, liveness timeout",
+			probe: &model.HealthProbe{
+				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+				Timeout: 20,
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds:      20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					Exec: &v1.ExecAction{
+						Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
+					},
+				},
+			},
+		},
+		{
+			desc: "URL probe (simple), liveness timeout",
+			probe: &model.HealthProbe{
+				URL:     "http://example.com/path",
+				Timeout: 20,
+			},
+			expected: &v1.Probe{
+				TimeoutSeconds:      20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					HTTPGet: &v1.HTTPGetAction{
+						Scheme: v1.URISchemeHTTP,
+						Host:   "example.com",
+						Port:   intstr.FromInt(80),
+						Path:   "/path",
+					},
+				},
+			},
+		},
+		{
+			desc: "Initial Delay Seconds",
+			probe: &model.HealthProbe{
+				InitialDelay: 22,
+				Port:         2289,
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 22,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Success Threshold - Properly IGNORED",
+			probe: &model.HealthProbe{
+				SuccessThreshold: 20,
+				Port:             2289,
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Failure Threshold",
+			probe: &model.HealthProbe{
+				FailureThreshold: 20,
+				Port:             2289,
+			},
+			expected: &v1.Probe{
+				FailureThreshold:    20,
+				InitialDelaySeconds: 600,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Period Seconds",
+			probe: &model.HealthProbe{
+				Period: 20,
+				Port:   2289,
+			},
+			expected: &v1.Probe{
+				PeriodSeconds:       20,
 				InitialDelaySeconds: 600,
 				Handler: v1.Handler{
 					TCPSocket: &v1.TCPSocketAction{
@@ -349,9 +623,16 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 
 	// TODO use golang 1.7's subtests
 	for _, sample := range samples {
-		role.Run.HealthCheck = sample.probe
-		actual := getContainerLivenessProbe(role)
-		assert.Equal(sample.expected, actual, sample.desc)
+		role.Run.HealthCheck = &model.HealthCheck{
+			Liveness: sample.probe,
+		}
+		actual, err := getContainerLivenessProbe(role)
+		if sample.err != "" {
+			assert.EqualError(err, sample.err, sample.desc)
+		} else {
+			assert.NoError(err, sample.desc)
+			assert.Equal(sample.expected, actual, sample.desc)
+		}
 	}
 }
 
@@ -364,7 +645,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 
 	samples := []struct {
 		desc     string
-		probe    *model.HealthCheck
+		probe    *model.HealthProbe
 		expected *v1.Probe
 		err      string
 	}{
@@ -375,7 +656,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Port probe",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				Port: 1234,
 			},
 			expected: &v1.Probe{
@@ -388,7 +669,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Command probe",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
 			},
 			expected: &v1.Probe{
@@ -401,7 +682,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (simple)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "http://example.com/path",
 			},
 			expected: &v1.Probe{
@@ -417,7 +698,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (custom port)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "https://example.com:1234/path",
 			},
 			expected: &v1.Probe{
@@ -433,14 +714,14 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (Invalid scheme)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "file:///etc/shadow",
 			},
 			err: "Health check for myrole has unsupported URI scheme \"file\"",
 		},
 		{
 			desc: "URL probe (query)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "http://example.com/path?query#hash",
 			},
 			expected: &v1.Probe{
@@ -456,7 +737,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (auth)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "http://user:pass@example.com/path",
 			},
 			expected: &v1.Probe{
@@ -478,7 +759,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (custom headers)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL:     "http://example.com/path",
 				Headers: map[string]string{"x-header": "some value"},
 			},
@@ -501,21 +782,21 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (invalid URL)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "://",
 			},
-			err: "Invalid URL health check for myrole: parse ://: missing protocol scheme",
+			err: "Invalid readiness URL health check for myrole: parse ://: missing protocol scheme",
 		},
 		{
 			desc: "URL probe (invalid port)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "http://example.com:port_number/",
 			},
 			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
 		},
 		{
 			desc: "URL probe (localhost)",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				URL: "http://container-ip/path",
 			},
 			expected: &v1.Probe{
@@ -530,11 +811,9 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Port probe, readiness timeout",
-			probe: &model.HealthCheck{
-				Port: 1234,
-				Readiness: &model.HealthProbe{
-					Timeout: 20,
-				},
+			probe: &model.HealthProbe{
+				Port:    1234,
+				Timeout: 20,
 			},
 			expected: &v1.Probe{
 				TimeoutSeconds: 20,
@@ -547,11 +826,9 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "Command probe, readiness timeout",
-			probe: &model.HealthCheck{
+			probe: &model.HealthProbe{
 				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
-				Readiness: &model.HealthProbe{
-					Timeout: 20,
-				},
+				Timeout: 20,
 			},
 			expected: &v1.Probe{
 				TimeoutSeconds: 20,
@@ -564,11 +841,9 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		},
 		{
 			desc: "URL probe (simple), readiness timeout",
-			probe: &model.HealthCheck{
-				URL: "http://example.com/path",
-				Readiness: &model.HealthProbe{
-					Timeout: 20,
-				},
+			probe: &model.HealthProbe{
+				URL:     "http://example.com/path",
+				Timeout: 20,
 			},
 			expected: &v1.Probe{
 				TimeoutSeconds: 20,
@@ -582,11 +857,73 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "Initial Delay Seconds",
+			probe: &model.HealthProbe{
+				InitialDelay: 22,
+				Port:         2289,
+			},
+			expected: &v1.Probe{
+				InitialDelaySeconds: 22,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Success Threshold",
+			probe: &model.HealthProbe{
+				SuccessThreshold: 20,
+				Port:             2289,
+			},
+			expected: &v1.Probe{
+				SuccessThreshold: 20,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Failure Threshold",
+			probe: &model.HealthProbe{
+				FailureThreshold: 20,
+				Port:             2289,
+			},
+			expected: &v1.Probe{
+				FailureThreshold: 20,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
+		{
+			desc: "Period Seconds",
+			probe: &model.HealthProbe{
+				Period: 20,
+				Port:   2289,
+			},
+			expected: &v1.Probe{
+				PeriodSeconds: 20,
+				Handler: v1.Handler{
+					TCPSocket: &v1.TCPSocketAction{
+						Port: intstr.FromInt(2289),
+					},
+				},
+			},
+		},
 	}
 
 	// TODO use golang 1.7's subtests
 	for _, sample := range samples {
-		role.Run.HealthCheck = sample.probe
+		role.Run.HealthCheck = &model.HealthCheck{
+			Readiness: sample.probe,
+		}
 		actual, err := getContainerReadinessProbe(role)
 		if sample.err != "" {
 			assert.EqualError(err, sample.err, sample.desc)
