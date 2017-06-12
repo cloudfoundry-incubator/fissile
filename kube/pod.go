@@ -74,7 +74,10 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 		},
 	}
 
-	livenessProbe := getContainerLivenessProbe(role)
+	livenessProbe, err := getContainerLivenessProbe(role)
+	if err != nil {
+		return v1.PodTemplateSpec{}, err
+	}
 	readinessProbe, err := getContainerReadinessProbe(role)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
@@ -245,7 +248,7 @@ func getSecurityContext(role *model.Role) *v1.SecurityContext {
 	return sc
 }
 
-func getContainerLivenessProbe(role *model.Role) *v1.Probe {
+func getContainerLivenessProbe(role *model.Role) (*v1.Probe, error) {
 	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
 	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
 	//
@@ -255,76 +258,76 @@ func getContainerLivenessProbe(role *model.Role) *v1.Probe {
 	// SuccessThreshold    - 1 (default, must be this value for liveness probe)
 	// FailureThreshold    - 3, min 1
 
-	switch role.Type {
-	case model.RoleTypeBosh:
-		var timeout int32
-		if role.Run != nil &&
-			role.Run.HealthCheck != nil &&
-			role.Run.HealthCheck.Liveness != nil &&
-			role.Run.HealthCheck.Liveness.Timeout > 0 {
-			timeout = role.Run.HealthCheck.Liveness.Timeout
-		}
-
-		return &v1.Probe{
-			Handler: v1.Handler{
-				TCPSocket: &v1.TCPSocketAction{
-					Port: intstr.FromInt(monitPort),
-				},
-			},
-			// TODO: make this configurable (figure out where the knob should live)
-			InitialDelaySeconds: 600,
-			TimeoutSeconds:      timeout,
-		}
-	default:
-		return nil
-	}
-}
-
-func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
-	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
-	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
-	//
-	// InitialDelaySeconds -
-	// TimeoutSeconds      - 1, min 1
-	// PeriodSeconds       - 10, min 1 (interval between probes)
-	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
-	// FailureThreshold    - 3, min 1
-
 	if role.Run == nil {
 		return nil, nil
 	}
 
-	var timeout int32
+	probe := &v1.Probe{}
 
-	if role.Run.HealthCheck != nil {
-		if role.Run.HealthCheck.Readiness != nil &&
-			role.Run.HealthCheck.Readiness.Timeout > 0 {
-			timeout = role.Run.HealthCheck.Readiness.Timeout
+	if role.Run.HealthCheck != nil &&
+		role.Run.HealthCheck.Liveness != nil {
+
+		p, err := configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness, probe)
+
+		// Liveness-specific post-processing of fields.
+
+		// The SuccessThreshold defaults to and cannot be
+		// anything but 1 for a liveness probe according to
+		// k8s docs. Force this default over anything the
+		// manifest may have done in configureCotnainerProbe.
+		probe.SuccessThreshold = 0
+
+		if probe.InitialDelaySeconds == 0 {
+			// Our standard default
+			probe.InitialDelaySeconds = 600
 		}
 
-		if role.Run.HealthCheck.URL != "" {
-			return getContainerURLReadinessProbe(role, timeout)
+		// Bail early on error or when configured with custom action
+		if p != nil || err != nil {
+			return p, err
 		}
-		if role.Run.HealthCheck.Port != 0 {
-			return &v1.Probe{
-				Handler: v1.Handler{
-					TCPSocket: &v1.TCPSocketAction{
-						Port: intstr.FromInt(int(role.Run.HealthCheck.Port)),
-					},
-				},
-				TimeoutSeconds: timeout,
-			}, nil
+
+		// p not set => probe is configured witohut custom action.
+		// Fall through to the type-specific action setup below.
+	}
+
+	switch role.Type {
+	case model.RoleTypeBosh:
+		if probe.InitialDelaySeconds == 0 {
+			// Our standard default
+			probe.InitialDelaySeconds = 600
 		}
-		if len(role.Run.HealthCheck.Command) > 0 {
-			return &v1.Probe{
-				Handler: v1.Handler{
-					Exec: &v1.ExecAction{
-						Command: role.Run.HealthCheck.Command,
-					},
-				},
-				TimeoutSeconds: timeout,
-			}, nil
+		probe.Handler = v1.Handler{
+			TCPSocket: &v1.TCPSocketAction{
+				Port: intstr.FromInt(monitPort),
+			},
 		}
+
+		return probe, nil
+	default:
+		return nil, nil
+	}
+}
+
+func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
+	if role.Run == nil {
+		return nil, nil
+	}
+
+	probe := &v1.Probe{}
+
+	if role.Run.HealthCheck != nil &&
+		role.Run.HealthCheck.Readiness != nil {
+
+		p, err := configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness, probe)
+
+		// Bail early on error or when configured with custom action
+		if p != nil || err != nil {
+			return p, err
+		}
+
+		// p not set => probe is configured without custom action.
+		// Fall through to the type-specific action setup below.
 	}
 	switch role.Type {
 	case model.RoleTypeBosh:
@@ -344,23 +347,63 @@ func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &v1.Probe{
-			Handler: v1.Handler{
-				TCPSocket: &v1.TCPSocketAction{
-					Port: intstr.FromInt(int(probePort)),
-				},
+		probe.Handler = v1.Handler{
+			TCPSocket: &v1.TCPSocketAction{
+				Port: intstr.FromInt(int(probePort)),
 			},
-			TimeoutSeconds: timeout,
-		}, nil
+		}
+		return probe, nil
 	default:
 		return nil, nil
 	}
 }
 
-func getContainerURLReadinessProbe(role *model.Role, timeout int32) (*v1.Probe, error) {
-	probeURL, err := url.Parse(role.Run.HealthCheck.URL)
+func configureContainerProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe, probe *v1.Probe) (*v1.Probe, error) {
+	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
+	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
+	//
+	// InitialDelaySeconds -
+	// TimeoutSeconds      - 1, min 1
+	// PeriodSeconds       - 10, min 1 (interval between probes)
+	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
+	// FailureThreshold    - 3, min 1
+
+	probe.InitialDelaySeconds = roleProbe.InitialDelay
+	probe.TimeoutSeconds = roleProbe.Timeout
+	probe.PeriodSeconds = roleProbe.Period
+	probe.SuccessThreshold = roleProbe.SuccessThreshold
+	probe.FailureThreshold = roleProbe.FailureThreshold
+
+	if roleProbe.URL != "" {
+		return getContainerURLProbe(role, probeName, roleProbe, probe)
+	}
+
+	if roleProbe.Port != 0 {
+		probe.Handler = v1.Handler{
+			TCPSocket: &v1.TCPSocketAction{
+				Port: intstr.FromInt(int(roleProbe.Port)),
+			},
+		}
+		return probe, nil
+	}
+
+	if len(roleProbe.Command) > 0 {
+		probe.Handler = v1.Handler{
+			Exec: &v1.ExecAction{
+				Command: roleProbe.Command,
+			},
+		}
+		return probe, nil
+	}
+
+	// Configured, but not a custom action.
+	return nil, nil
+}
+
+func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe, probe *v1.Probe) (*v1.Probe, error) {
+	probeURL, err := url.Parse(roleProbe.URL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid URL health check for %s: %s", role.Name, err)
+		return nil, fmt.Errorf("Invalid %s URL health check for %s: %s", probeName, role.Name, err)
 	}
 
 	var scheme v1.URIScheme
@@ -398,7 +441,7 @@ func getContainerURLReadinessProbe(role *model.Role, timeout int32) (*v1.Probe, 
 			Value: base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
 		})
 	}
-	for key, value := range role.Run.HealthCheck.Headers {
+	for key, value := range roleProbe.Headers {
 		headers = append(headers, v1.HTTPHeader{
 			Name:  http.CanonicalHeaderKey(key),
 			Value: value,
@@ -412,18 +455,17 @@ func getContainerURLReadinessProbe(role *model.Role, timeout int32) (*v1.Probe, 
 	}
 	// probeURL.Fragment should not be sent to the server, so we ignore it here
 
-	return &v1.Probe{
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
-				Host:        host,
-				Port:        port,
-				Path:        path,
-				Scheme:      scheme,
-				HTTPHeaders: headers,
-			},
+	probe.Handler = v1.Handler{
+		HTTPGet: &v1.HTTPGetAction{
+			Host:        host,
+			Port:        port,
+			Path:        path,
+			Scheme:      scheme,
+			HTTPHeaders: headers,
 		},
-		TimeoutSeconds: timeout,
-	}, nil
+	}
+
+	return probe, nil
 }
 
 //metadata:
