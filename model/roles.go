@@ -100,18 +100,22 @@ type RoleRunExposedPort struct {
 
 // HealthCheck describes a non-standard health check endpoint
 type HealthCheck struct {
-	URL       string            `yaml:"url"`                 // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
-	Headers   map[string]string `yaml:"headers"`             // Custom headers; only used for URL.
-	Command   []string          `yaml:"command"`             // Custom command. Cannot be used with other checks.
-	Port      int32             `yaml:"port"`                // Port for a TCP probe. Cannot be used with other checks.
-	Liveness  *HealthProbe      `yaml:"liveness,omitempty"`  // Details of liveness probe configuration
-	Readiness *HealthProbe      `yaml:"readiness,omitempty"` // Ditto for readiness probe
+	Liveness  *HealthProbe `yaml:"liveness,omitempty"`  // Details of liveness probe configuration
+	Readiness *HealthProbe `yaml:"readiness,omitempty"` // Ditto for readiness probe
 }
 
 // HealthProbe holds the configuration for liveness and readiness
 // probes based on the HealthCheck containing them.
 type HealthProbe struct {
-	Timeout int32 `yaml:"timeout,omitempty"` // Timeout in seconds, default 3, minimum 1
+	URL              string            `yaml:"url"`                         // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
+	Headers          map[string]string `yaml:"headers"`                     // Custom headers; only used for URL.
+	Command          []string          `yaml:"command"`                     // Custom command. Cannot be used with other checks.
+	Port             int32             `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
+	InitialDelay     int32             `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
+	Period           int32             `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
+	Timeout          int32             `yaml:"timeout,omitempty"`           // Timeout in seconds, default 3, minimum 1
+	SuccessThreshold int32             `yaml:"success_threshold,omitempty"` // Success threshold in seconds, default 1, minimum 1
+	FailureThreshold int32             `yaml:"failure_threshold,omitempty"` // Failure threshold in seconds, default 3, minimum 1
 }
 
 // Roles is an array of Role*
@@ -826,21 +830,42 @@ func validateHealthCheck(role *Role) validation.ErrorList {
 
 	// Ensure that we don't have conflicting health checks
 	if role.Run.HealthCheck != nil {
-		checks := make([]string, 0, 3)
 
-		if role.Run.HealthCheck.URL != "" {
-			checks = append(checks, "url")
+		// TODO --- Cleanup --- Factor checks into function operating on a *HealthProbe
+
+		if role.Run.HealthCheck.Readiness != nil {
+			checks := make([]string, 0, 3)
+			if role.Run.HealthCheck.Readiness.URL != "" {
+				checks = append(checks, "url")
+			}
+			if len(role.Run.HealthCheck.Readiness.Command) > 0 {
+				checks = append(checks, "command")
+			}
+			if role.Run.HealthCheck.Readiness.Port != 0 {
+				checks = append(checks, "port")
+			}
+			if len(checks) > 1 {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].run.healthcheck.readiness", role.Name),
+					checks, "Expected at most one of url, command, or port"))
+			}
 		}
-		if len(role.Run.HealthCheck.Command) > 0 {
-			checks = append(checks, "command")
-		}
-		if role.Run.HealthCheck.Port != 0 {
-			checks = append(checks, "port")
-		}
-		if len(checks) != 1 {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.healthcheck", role.Name),
-				checks, "Expected exactly one of url, command, or port"))
+		if role.Run.HealthCheck.Liveness != nil {
+			checks := make([]string, 0, 3)
+			if role.Run.HealthCheck.Liveness.URL != "" {
+				checks = append(checks, "url")
+			}
+			if len(role.Run.HealthCheck.Liveness.Command) > 0 {
+				checks = append(checks, "command")
+			}
+			if role.Run.HealthCheck.Liveness.Port != 0 {
+				checks = append(checks, "port")
+			}
+			if len(checks) > 1 {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].run.healthcheck.liveness", role.Name),
+					checks, "Expected at most one of url, command, or port"))
+			}
 		}
 	}
 
