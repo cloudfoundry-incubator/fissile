@@ -43,6 +43,16 @@ func podTestLoadRole(assert *assert.Assertions) *model.Role {
 		return nil
 	}
 
+	// Force a broadcast SECRET_VAR into the manifest, to see in all roles
+	manifest.Configuration.Variables =
+		append(manifest.Configuration.Variables,
+			&model.ConfigurationVariable{
+				Name:     "SECRET_VAR",
+				Type:     model.CVTypeUser,
+				Secret:   true,
+				Internal: true,
+			})
+
 	return role
 }
 
@@ -165,16 +175,24 @@ func TestPodGetEnvVars(t *testing.T) {
 
 	for _, sample := range samples {
 		defaults := map[string]string{
-			"SOME_VAR": sample.input,
-			"ALL_VAR":  "placeholder",
+			"SOME_VAR":   sample.input,
+			"ALL_VAR":    "placeholder",
+			"SECRET_VAR": "the-secret",
+		}
+		secrets := SecretRefMap{
+			"SECRET_VAR": SecretRef{
+				Secret: "secret-1",
+				Key:    "secret-var",
+			},
 		}
 
-		vars, err := getEnvVars(role, defaults)
+		vars, err := getEnvVars(role, defaults, secrets)
 		assert.NoError(err)
 		assert.NotEmpty(vars)
 
 		founda := false
 		foundb := false
+		foundc := false
 		for _, result := range vars {
 			if result.Name == "SOME_VAR" {
 				founda = true
@@ -183,9 +201,15 @@ func TestPodGetEnvVars(t *testing.T) {
 			if result.Name == "ALL_VAR" {
 				foundb = true
 			}
+			if result.Name == "SECRET_VAR" {
+				foundc = true
+				assert.Equal("secret-var", result.ValueFrom.SecretKeyRef.Key)
+				assert.Equal("secret-1", result.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+			}
 		}
 		assert.True(founda, "failed to find expected variable SOME_VAR")
 		assert.True(foundb, "failed to find expected variable ALL_VAR")
+		assert.True(foundc, "failed to find secret variable SECRET_VAR")
 	}
 }
 

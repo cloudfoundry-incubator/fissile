@@ -23,7 +23,7 @@ const monitPort = 2289
 // any objects it depends on
 func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
 
-	vars, err := getEnvVars(role, settings.Defaults)
+	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
 	}
@@ -176,7 +176,7 @@ func getVolumeMounts(role *model.Role) []v1.VolumeMount {
 	return result
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap) ([]v1.EnvVar, error) {
 	configs, err := role.GetVariablesForRole()
 
 	if err != nil {
@@ -186,26 +186,27 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	result := make([]v1.EnvVar, 0, len(configs))
 
 	for _, config := range configs {
-		var value interface{}
-
-		value = config.Default
-
-		if defaultValue, ok := defaults[config.Name]; ok {
-			value = defaultValue
-		}
-
-		if value == nil {
+		// Secret CVs have special output, they refer to a K8s
+		// secret for their value instead of storing it
+		// directly.
+		if config.Secret {
+			result = append(result, v1.EnvVar{
+				Name: config.Name,
+				ValueFrom: &v1.EnvVarSource{
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: secrets[config.Name].Secret,
+						},
+						Key: secrets[config.Name].Key,
+					},
+				},
+			})
 			continue
 		}
 
-		var stringifiedValue string
-		if valueAsString, ok := value.(string); ok {
-			stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
-			if err != nil {
-				stringifiedValue = valueAsString
-			}
-		} else {
-			stringifiedValue = fmt.Sprintf("%v", value)
+		ok, stringifiedValue := configValue(config, defaults)
+		if !ok {
+			continue
 		}
 
 		result = append(result, v1.EnvVar{
@@ -224,6 +225,33 @@ func getEnvVars(role *model.Role, defaults map[string]string) ([]v1.EnvVar, erro
 	})
 
 	return result, nil
+}
+
+func configValue(config *model.ConfigurationVariable, defaults map[string]string) (bool, string) {
+	var value interface{}
+
+	value = config.Default
+
+	if defaultValue, ok := defaults[config.Name]; ok {
+		value = defaultValue
+	}
+
+	if value == nil {
+		return false, ""
+	}
+
+	var stringifiedValue string
+	if valueAsString, ok := value.(string); ok {
+		var err error
+		stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
+		if err != nil {
+			stringifiedValue = valueAsString
+		}
+	} else {
+		stringifiedValue = fmt.Sprintf("%v", value)
+	}
+
+	return true, stringifiedValue
 }
 
 func getSecurityContext(role *model.Role) *v1.SecurityContext {
