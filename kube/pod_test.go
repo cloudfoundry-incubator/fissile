@@ -203,6 +203,8 @@ func TestPodGetEnvVars(t *testing.T) {
 			}
 			if result.Name == "SECRET_VAR" {
 				foundc = true
+				assert.Equal("secret-var", result.ValueFrom.SecretKeyRef.Key)
+				assert.Equal("secret-1", result.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
 			}
 		}
 		assert.True(founda, "failed to find expected variable SOME_VAR")
