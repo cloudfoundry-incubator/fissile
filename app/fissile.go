@@ -729,7 +729,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		}
 	}
 	// cvs now holds only the secrets.
-	thesecrets, therefs, err := kube.MakeSecrets(cvs, defaults)
+	secrets, refs, err := kube.MakeSecrets(cvs, defaults)
 	if err != nil {
 		return err
 	}
@@ -741,7 +741,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		return err
 	}
 
-	for _, secret := range thesecrets {
+	for _, secret := range secrets {
 		outputPath := filepath.Join(secretsDir, fmt.Sprintf("%s.yml", secret.ObjectMeta.Name))
 		f.UI.Printf("Writing config %s for secret %s\n",
 			color.CyanString(outputPath),
@@ -769,7 +769,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		UseMemoryLimits: useMemoryLimits,
 		FissileVersion:  fissileVersion,
 		Opinions:        opinions,
-		Secrets:         therefs,
+		Secrets:         refs,
 	}
 
 	for _, role := range rolesManifest.Roles {

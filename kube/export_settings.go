@@ -13,5 +13,5 @@ type ExportSettings struct {
 	UseMemoryLimits bool
 	FissileVersion  string
 	Opinions        *model.Opinions
-	Secrets         RefMap
+	Secrets         SecretRefMap
 }

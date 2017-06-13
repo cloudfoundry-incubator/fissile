@@ -176,7 +176,7 @@ func getVolumeMounts(role *model.Role) []v1.VolumeMount {
 	return result
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets RefMap) ([]v1.EnvVar, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap) ([]v1.EnvVar, error) {
 	configs, err := role.GetVariablesForRole()
 
 	if err != nil {

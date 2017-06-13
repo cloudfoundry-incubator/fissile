@@ -2,7 +2,6 @@ package kube
 
 import (
 	"fmt"
-	//	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/model"
@@ -25,30 +24,30 @@ func NewSecret(name string) *apiv1.Secret {
 	return secret
 }
 
-// Ref is an entry in the RefMap
-type Ref struct {
+// SecretRef is an entry in the SecretRefMap
+type SecretRef struct {
 	Secret string
 	Key    string
 }
 
-// RefMap maps the names of secret CVs to the combination of secret
-// and key used to store their value. Note that the key has to be
-// stored, because of the transformation at (**). Ok, not truly, but
-// then we would have to replicate the transform at the place where
-// the mapping is used. I prefer to do it only once.
-type RefMap map[string]Ref
+// SecretRefMap maps the names of secret CVs to the combination of
+// secret and key used to store their value. Note that the key has to
+// be stored, because of the transformation at (**). Ok, not truly,
+// but then we would have to replicate the transform at the place
+// where the mapping is used. I prefer to do it only once.
+type SecretRefMap map[string]SecretRef
 
 // MakeSecrets creates an array of new Secrets filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secret, RefMap, error) {
+func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secret, SecretRefMap, error) {
 	var thesecrets []*apiv1.Secret
-	refs := make(map[string]Ref)
+	refs := make(map[string]SecretRef)
 
 	max := apiv1.MaxSecretSize
 	count := 1
-	current := NewSecret(fmt.Sprintf("secret-%d", count))
-	total := 0 // Accumulated size of the values stored in 'current'
+	currentSecret := NewSecret(fmt.Sprintf("secret-%d", count))
+	total := 0 // Accumulated size of the values stored in 'currentSecret'
 
 	for key, value := range secrets {
 		ok, strValue := configValue(value, defaults)
@@ -69,9 +68,9 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 		// secret. Finalize it, and open a new one to store
 		// the current entry and anything after.
 		if total+blen > max {
-			thesecrets = append(thesecrets, current)
-			count = count + 1
-			current = NewSecret(fmt.Sprintf("secret-%d", count))
+			thesecrets = append(thesecrets, currentSecret)
+			count++
+			currentSecret = NewSecret(fmt.Sprintf("secret-%d", count))
 			total = 0
 		}
 
@@ -85,17 +84,17 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 
 		skey := strings.ToLower(strings.Replace(key, "_", "-", -1))
 
-		current.Data[skey] = bytes
-		refs[key] = Ref{
-			Secret: current.ObjectMeta.Name,
+		currentSecret.Data[skey] = bytes
+		refs[key] = SecretRef{
+			Secret: currentSecret.ObjectMeta.Name,
 			Key:    skey,
 		}
-		total = total + blen
+		total += blen
 	}
 
 	// Save the last K8s secret. Note that it will contain at
 	// least one entry, by definition / construction.
-	thesecrets = append(thesecrets, current)
+	thesecrets = append(thesecrets, currentSecret)
 
 	return thesecrets, refs, nil
 }

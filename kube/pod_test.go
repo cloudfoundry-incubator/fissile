@@ -179,8 +179,8 @@ func TestPodGetEnvVars(t *testing.T) {
 			"ALL_VAR":    "placeholder",
 			"SECRET_VAR": "the-secret",
 		}
-		secrets := RefMap{
-			"SECRET_VAR": Ref{
+		secrets := SecretRefMap{
+			"SECRET_VAR": SecretRef{
 				Secret: "secret-1",
 				Key:    "secret-var",
 			},
