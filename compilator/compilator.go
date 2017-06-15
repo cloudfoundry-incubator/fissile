@@ -161,8 +161,8 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles) error {
-	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles))
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles, verbose bool) error {
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles), verbose)
 
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
@@ -693,7 +693,7 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 
 // removeCompiledPackages must be called after initPackageMaps as it closes
 // the broadcast channels of anything already compiled.
-func (c *Compilator) removeCompiledPackages(packages model.Packages) (model.Packages, error) {
+func (c *Compilator) removeCompiledPackages(packages model.Packages, verbose bool) (model.Packages, error) {
 	var culledPackages model.Packages
 	for _, pkg := range packages {
 		compiled, err := isPackageCompiledHarness(c, pkg)
@@ -703,8 +703,14 @@ func (c *Compilator) removeCompiledPackages(packages model.Packages) (model.Pack
 
 		if compiled {
 			close(c.signalDependencies[pkg.Fingerprint])
+			if verbose {
+				c.ui.Printf("found %s in %s\n", color.YellowString(pkg.Name), pkg.GetPackageCompiledDir(c.hostWorkDir))
+			}
 		} else {
 			culledPackages = append(culledPackages, pkg)
+			if verbose {
+				c.ui.Printf("building %s in %s\n", color.YellowString(pkg.Name), pkg.GetPackageCompiledDir(c.hostWorkDir))
+			}
 		}
 	}
 

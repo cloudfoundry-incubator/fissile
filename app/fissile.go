@@ -41,7 +41,7 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 }
 
 // ListPackages will list all BOSH packages within a list of dev releases
-func (f *Fissile) ListPackages() error {
+func (f *Fissile) ListPackages(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -50,7 +50,17 @@ func (f *Fissile) ListPackages() error {
 		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, pkg := range release.Packages {
-			f.UI.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+			var isCached string
+
+			if verbose {
+				if _, err := os.Stat(pkg.Path); err == nil {
+					isCached = color.WhiteString(fmt.Sprintf(" (cached at %s)", pkg.Path))
+				} else {
+					isCached = color.RedString(" (cache not found)")
+				}
+			}
+
+			f.UI.Printf("%s (%s)%s\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version), isCached)
 		}
 
 		f.UI.Printf(
@@ -212,7 +222,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker, verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -255,7 +265,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, f.releases, roles); err != nil {
+	if err := comp.Compile(workerCount, f.releases, roles, verbose); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 

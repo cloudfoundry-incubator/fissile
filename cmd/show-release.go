@@ -29,7 +29,7 @@ The report contains the name, version, description and counts of jobs and packag
 			return err
 		}
 
-		return fissile.ListPackages()
+		return fissile.ListPackages(flagVerbose)
 	},
 }
 

@@ -50,7 +50,7 @@ func TestListPackages(t *testing.T) {
 
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
 	if assert.NoError(err) {
-		err = f.ListPackages()
+		err = f.ListPackages(false)
 		assert.Nil(err, "Expected ListPackages to find the release")
 	}
 }
