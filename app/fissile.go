@@ -47,14 +47,20 @@ func (f *Fissile) ListPackages(verbose bool) error {
 	}
 
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		var releasePath string
+
+		if verbose {
+			releasePath = color.WhiteString(" (%s)", release.Path)
+		}
+
+		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, pkg := range release.Packages {
 			var isCached string
 
 			if verbose {
 				if _, err := os.Stat(pkg.Path); err == nil {
-					isCached = color.WhiteString(fmt.Sprintf(" (cached at %s)", pkg.Path))
+					isCached = color.WhiteString(" (cached at %s)", pkg.Path)
 				} else {
 					isCached = color.RedString(" (cache not found)")
 				}
