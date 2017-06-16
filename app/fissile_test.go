@@ -74,7 +74,7 @@ func TestListJobs(t *testing.T) {
 
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
 	if assert.NoError(err) {
-		err = f.ListJobs()
+		err = f.ListJobs(false)
 		assert.Nil(err, "Expected ListJobs to find the release")
 	}
 }
