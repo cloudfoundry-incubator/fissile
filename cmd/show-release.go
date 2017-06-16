@@ -25,7 +25,7 @@ The report contains the name, version, description and counts of jobs and packag
 			return err
 		}
 
-		if err := fissile.ListJobs(); err != nil {
+		if err := fissile.ListJobs(flagVerbose); err != nil {
 			return err
 		}
 

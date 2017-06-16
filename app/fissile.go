@@ -73,16 +73,32 @@ func (f *Fissile) ListPackages(verbose bool) error {
 }
 
 // ListJobs will list all jobs within a list of dev releases
-func (f *Fissile) ListJobs() error {
+func (f *Fissile) ListJobs(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		var releasePath string
+
+		if verbose {
+			releasePath = color.WhiteString(" (%s)", release.Path)
+		}
+
+		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, job := range release.Jobs {
-			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+			var isCached string
+
+			if verbose {
+				if _, err := os.Stat(job.Path); err == nil {
+					isCached = color.WhiteString(" (cached at %s)", job.Path)
+				} else {
+					isCached = color.RedString(" (cache not found)")
+				}
+			}
+
+			f.UI.Printf("%s (%s)%s: %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), isCached, job.Description)
 		}
 
 		f.UI.Printf(
