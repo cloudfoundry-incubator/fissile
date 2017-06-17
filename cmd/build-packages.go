@@ -50,6 +50,7 @@ compiled once.
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
 			flagBuildPackagesWithoutDocker,
+			flagVerbose,
 		)
 	},
 }

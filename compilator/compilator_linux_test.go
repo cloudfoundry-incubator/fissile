@@ -59,6 +59,6 @@ func TestCompilePackageInMountNS(t *testing.T) {
 	c, err := NewMountNSCompilator(tempDir, "", "repo", "linux", "0", ui)
 	assert.NoError(err)
 
-	err = c.Compile(2, []*model.Release{release}, nil)
+	err = c.Compile(2, []*model.Release{release}, nil, false)
 	assert.NoError(err, stderr.String())
 }

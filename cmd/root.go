@@ -31,6 +31,7 @@ var (
 	flagDarkOpinions       string
 	flagOutputFormat       string
 	flagMetrics            string
+	flagVerbose            bool
 
 	// workPath* variables contain paths derived from flagWorkDir
 	workPathCompilationDir string
@@ -181,6 +182,13 @@ func init() {
 		"Choose output format, one of human, json, or yaml (currently only for 'show properties')",
 	)
 
+	RootCmd.PersistentFlags().BoolP(
+		"verbose",
+		"V",
+		false,
+		"Enable verbose output.",
+	)
+
 	viper.BindPFlags(RootCmd.PersistentFlags())
 }
 
@@ -253,6 +261,7 @@ func validateBasicFlags() error {
 	flagDarkOpinions = viper.GetString("dark-opinions")
 	flagOutputFormat = viper.GetString("output")
 	flagMetrics = viper.GetString("metrics")
+	flagVerbose = viper.GetBool("verbose")
 
 	extendPathsFromWorkDirectory()
 

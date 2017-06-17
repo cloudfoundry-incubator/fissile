@@ -41,16 +41,32 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 }
 
 // ListPackages will list all BOSH packages within a list of dev releases
-func (f *Fissile) ListPackages() error {
+func (f *Fissile) ListPackages(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		var releasePath string
+
+		if verbose {
+			releasePath = color.WhiteString(" (%s)", release.Path)
+		}
+
+		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, pkg := range release.Packages {
-			f.UI.Printf("%s (%s)\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version))
+			var isCached string
+
+			if verbose {
+				if _, err := os.Stat(pkg.Path); err == nil {
+					isCached = color.WhiteString(" (cached at %s)", pkg.Path)
+				} else {
+					isCached = color.RedString(" (cache not found)")
+				}
+			}
+
+			f.UI.Printf("%s (%s)%s\n", color.YellowString(pkg.Name), color.WhiteString(pkg.Version), isCached)
 		}
 
 		f.UI.Printf(
@@ -63,16 +79,32 @@ func (f *Fissile) ListPackages() error {
 }
 
 // ListJobs will list all jobs within a list of dev releases
-func (f *Fissile) ListJobs() error {
+func (f *Fissile) ListJobs(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Dev release %s (%s)", color.YellowString(release.Name), color.MagentaString(release.Version)))
+		var releasePath string
+
+		if verbose {
+			releasePath = color.WhiteString(" (%s)", release.Path)
+		}
+
+		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, job := range release.Jobs {
-			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), job.Description)
+			var isCached string
+
+			if verbose {
+				if _, err := os.Stat(job.Path); err == nil {
+					isCached = color.WhiteString(" (cached at %s)", job.Path)
+				} else {
+					isCached = color.RedString(" (cache not found)")
+				}
+			}
+
+			f.UI.Printf("%s (%s)%s: %s\n", color.YellowString(job.Name), color.WhiteString(job.Version), isCached, job.Description)
 		}
 
 		f.UI.Printf(
@@ -212,7 +244,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker, verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -255,7 +287,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, f.releases, roles); err != nil {
+	if err := comp.Compile(workerCount, f.releases, roles, verbose); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
