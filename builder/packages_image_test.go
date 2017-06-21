@@ -65,7 +65,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, compiledPackagesDir, targetPath, "3.14.15", ui)
+	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
 	dockerfile := bytes.Buffer{}
@@ -111,7 +111,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, compiledPackagesDir, targetPath, "3.14.15", ui)
+	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
 	tarFile := &bytes.Buffer{}

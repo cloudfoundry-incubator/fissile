@@ -14,7 +14,8 @@ var (
 	flagPatchPropertiesDirective string
 	flagOutputDirectory          string
 
-	flagBuildImagesStemcell string
+	flagBuildImagesStemcell   string
+	flagBuildImagesStemcellID string
 )
 
 // buildImagesCmd represents the images command
@@ -50,6 +51,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
 		flagOutputDirectory = buildImagesViper.GetString("output-directory")
 		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
+		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -72,6 +74,7 @@ from other specs.  At most one is allowed.  Its syntax is --patch-properties-rel
 			flagDockerOrganization,
 			flagRepository,
 			flagBuildImagesStemcell,
+			flagBuildImagesStemcellID,
 			flagMetrics,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
@@ -133,6 +136,13 @@ func init() {
 		"s",
 		"",
 		"The source stemcell",
+	)
+
+	buildImagesCmd.PersistentFlags().StringP(
+		"stemcell-id",
+		"",
+		"",
+		"Docker image ID for the stemcell (intended for CI)",
 	)
 
 	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())
