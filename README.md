@@ -1,133 +1,70 @@
 
 ![fissile-logo](./docs/fissile-logo.png)
 
-Fissile converts existing BOSH dev releases into docker images.
+Fissile converts existing [BOSH] dev releases into docker images.
 
 It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH
 agent.
 
-## Build and Install
-Building fissile needs Go 1.4 or higher and Docker.
-You can download go from the [Golang website](https://golang.org/doc/install) and
-Docker from the [Docker website](https://www.docker.com)
+[BOSH]: http://bosh.io/docs
+
+## Getting fissile
+
+### Prerequisites
+Building fissile needs [Go 1.7] or higher and [Docker].
+
+[Go 1.7]: https://golang.org/doc/install
+[Docker]: https://www.docker.com
 
 ### Build procedure
-Execute the following commands to compile fissile
+Fissile requires generated code using additional tools, and therefore isn't
+`go get`table.
 
 ```
-$ cd $GOPATH
-$ mkdir -p src/github.com/SUSE
-$ cd src/github.com/SUSE
-$ git clone https://github.com/SUSE/fissile.git
-$ cd fissile
-$ git submodule sync --recursive
-$ git submodule update --init  --recursive
-$ make tools            ## optional step, only required to install dependencies
-$ make docker-deps      ## pull latest ubuntu14.04 container
+$ go get -d github.com/SUSE/fissile       # Download sources
+$ cd $GOPATH/src/github.com/SUSE/fissile
+$ make tools                              # install required tools; only needed first time
+$ make docker-deps                        # pull docker images required to build
 $ make all
 ```
 
 Depending on your architecture you can use the fissile binary files from those directories:
 `fissile/build/darwin-amd64` or `fissile/build/linux-amd64`.
 
-## Install procedure
+## Using Fissile
+Please refer to the following additional documentation:
 
-The fissile is also a go-gettable package:
+* [Walkthrough] on configuring and using fissile to build a docker image and
+corresponding Kubernetes resource definition
+* Additional [Kubernetes] usage instructions and resource definition details
+* Information on [stemcells] and how to build them
+* Auto-generated [usage reference]
 
-```
-go get github.com/SUSE/fissile
-```
+[walkthrough]: ./docs/configuration.md
+[Kubernetes]: ./docs/kubernetes.md
+[stemcells]: ./docs/stemcells.md
+[usage reference]: ./docs/generated/fissile.md
 
-## Prepare Environment
+## Developing Fissile
+In general, use the default `make` target is preferred before making a
+[pull request].  This will run the tests, as well as the linters.  To manually
+build fissile only, run `make bindata build`.  This will first run the necessary
+code generation before building the binary.
 
-To prepare the computer on which you plan to build docker images follow the documentation [here](./docs/fissile-environment.md).
+[pull request]: https://github.com/SUSE/fissile/pulls
 
-## Testing
+### Testing
+Run tests with `make test` (or use `go test` directly if you want to filter for
+specific tests, etc.)  There are environment variables that can be set to
+adjust how tests are run:
 
-Environment:
+Name | Value
+--- | ---
+`FISSILE_TEST_DOCKER_IMAGE` | the name of the default docker image for testing(e.g. `splatform/fissile-opensuse-stemcell:42.2`)
 
-```
-FISSILE_TEST_DOCKER_IMAGE - the name of the default docker image for testing (e.g. splatform/fissile-opensuse-stemcell:42.2)
-```
+### Vendoring
+Fissile uses [Godep] for vendoring required source code.  To update the vendored
+source tree, please run `godep save ./...` and double-check that it has not done
+anything silly.
 
-## Usage
-
-You can find detailed usage documentation [here](./docs/fissile.md).
-
-## Stemcells
-
-You can find details about fissile docker stemcells and how they are built [here](./docs/stemcells.md).
-
-## Kubernetes
-
-### TODO
-
-- [ ] Implement extension of the role manifest in the fissile model
-- [ ] Implement the conversion of role manifest information to kube objects in fissile
-- [ ] Alter the role manifest so we no longer use HCP constructs (for service discovery)
-- [ ] Deploy & test
-
-### Generated objects
-
-> Note: we now have _almost_ all the information we need in the role manifest to
-> be able to generate the needed kube objects.
-> However, if one can assume that at some point kube may be the only deployment
-> mechanism for HCF, it's interesting to consider that we could maintain all the
-> kube configurations for HCF manually.
-> The role manifest would then be reduced to a minimal size - only the information
-> required to transform the BOSH releases to docker images.
-
-Each object can have it's own file. We should be able to concatenate them if we
-need to.
-We have 3 things we need in Cloud Foundry:
-- stateful sets (mysql, consul, etcd)
-- jobs (post-deployment-setup, sso-create-service, autoscaler-create-service)
-- deployments (all other roles that are not stateful sets and are not jobs)
-
-#### namespace
-
-As far as I can tell, this is not _really_ required.
-
-
-#### persistent volumes
-
-We need to generate persistent volumes for the stateful sets. The deployments
-should not require any persistence.
-
-
-#### deployment (with pods)
-
-Nothing special here. Most of the things we have should be deployments.
-
-
-#### stateful sets (with pods)
-
-We should be able to identify these based on the fact that they need persistent
-storage.
-
-
-#### jobs (with pods)
-
-Everything that's a bosh-task should be a job. These should never be associated
-with a service.
-
-
-#### services
-
-We need to create services for all exposed ports in the role manifest.
-It would seem that for _our_ stateful sets we could make do with headless services
-because none of them need load balancing, or an allocated clusterIP.
-
-
-### Configuration
-
-At this point the environment variables needed by each pod need to be exposed
-for each pod. The user needs to configure and match all of them.
-Not sure how we'll be able to make it nice for the user *yet*.
-
-> Notes
->
-> - Why aren't all the defaults for env vars in the role manifest strings?
-> - The UAA auth settings should move away from the role manifest.
-> - The kube client-go library is about to change structure (and move from PetSet to StatefulSet)
->   Would it make sense to start directly with that?
+[Godep]: https://github.com/tools/godep#godep
