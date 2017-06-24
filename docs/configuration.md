@@ -72,8 +72,9 @@ configuration:
 ```
 
 Note that the variables `DNS_RECORD_NAME` and `IP_ADDRESS` are special and are
-automatically supplied to the container.  There are also some fields not shown
-above (as the are not needed for NATS):
+automatically supplied to the container.  They are currently the only special
+variables.  There are also some fields not shown above (as the are not needed
+for NATS):
 
 For the role:
 
@@ -181,10 +182,10 @@ export FISSILE_STEMCELL="splatform/fissile-stemcell-opensuse:42.2-6.ga651b2d-28.
 We can now assemble all the files necessary from the information above:
 
 ```bash
-$ cat > role-manifest.yml # See above for contents
-$ cat > opinions.yml
-$ cat > dark-opinions.yml
-$ cat > defaults.txt
+$ vim role-manifest.yml # See above for contents
+$ vim opinions.yml
+$ vim dark-opinions.yml
+$ vim defaults.txt
 $ git clone https://github.com/cloudfoundry/nats-release.git # from $FISSILE_RELEASE
 $ git -C nats-release submodule update --init --recursive
 ```

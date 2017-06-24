@@ -18,7 +18,7 @@ Building fissile needs [Go 1.7] or higher and [Docker].
 
 ### Build procedure
 Fissile requires generated code using additional tools, and therefore isn't
-`go get`table.
+`go get`-able.
 
 ```
 $ go get -d github.com/SUSE/fissile       # Download sources
