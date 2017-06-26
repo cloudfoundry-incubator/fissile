@@ -34,14 +34,12 @@ templates.
 The images will have a 'role' label useful for filtering.
 The entrypoint for each image is ` + "`/opt/hcf/run.sh`" + `.
 
-Before running this command, you should run ` + "`fissile build layer stemcell`" + `.
-
 The images will be tagged: ` + "`<repository>-<role_name>:<SIGNATURE>`" + `.
 The SIGNATURE is based on the hashes of all jobs and packages that are included in
 the image.
 
-The --patch-properties-release flag is used to distinguish the patchProperties release/job spec
-from other specs.  At most one is allowed.  Its syntax is --patch-properties-release=<RELEASE>/<JOB>.
+The ` + "`--patch-properties-release`" + ` flag is used to distinguish the patchProperties release/job spec
+from other specs.  At most one is allowed.
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 

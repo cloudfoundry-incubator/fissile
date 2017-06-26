@@ -4,7 +4,7 @@ GIT_ROOT:=$(shell git rev-parse --show-toplevel)
 
 .PHONY: all clean format lint vet bindata build test docker-deps reap dist
 
-all: clean format lint vet bindata build test docker-deps
+all: clean format lint vet bindata docker-deps build test
 
 clean:
 	${GIT_ROOT}/make/clean
