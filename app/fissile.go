@@ -244,7 +244,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames []string, workerCount int, withoutDocker, verbose bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, withoutDocker, verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -264,8 +264,13 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	releases, err := f.getReleasesByName(releaseNames)
+	if err != nil {
+		return err
+	}
+
 	f.UI.Println(color.GreenString("Compiling packages for dev releases:"))
-	for _, release := range f.releases {
+	for _, release := range releases {
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
@@ -287,7 +292,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, f.releases, roles, verbose); err != nil {
+	if err := comp.Compile(workerCount, releases, roles, verbose); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
@@ -635,6 +640,31 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	f.releases = releases
 
 	return nil
+}
+
+// getReleasesByName returns all named releases, or all releases if no names are given
+func (f *Fissile) getReleasesByName(releaseNames []string) ([]*model.Release, error) {
+	if len(releaseNames) == 0 {
+		return f.releases, nil
+	}
+
+	var releases []*model.Release
+	var missingReleases []string
+releaseNameLoop:
+	for _, releaseName := range releaseNames {
+		for _, release := range f.releases {
+			if release.Name == releaseName {
+				releases = append(releases, release)
+				continue releaseNameLoop
+			}
+		}
+		missingReleases = append(missingReleases, releaseName)
+	}
+	if len(missingReleases) > 0 {
+		return nil, fmt.Errorf("Some releases are unknown: %v", missingReleases)
+	}
+	return releases, nil
+
 }
 
 // DiffConfigurationBases generates a diff comparing the specs for two different BOSH releases

@@ -29,6 +29,7 @@ compiled once.
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
+		flagBuildPackagesOnlyReleases := buildPackagesViper.GetString("only-releases")
 		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 
@@ -48,6 +49,7 @@ compiled once.
 			flagRoleManifest,
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
+			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),
 			flagWorkers,
 			flagBuildPackagesWithoutDocker,
 			flagVerbose,
@@ -68,6 +70,13 @@ func init() {
 		"",
 		"",
 		"Build only packages for the given role names; comma separated.",
+	)
+
+	buildPackagesCmd.PersistentFlags().StringP(
+		"only-releases",
+		"",
+		"",
+		"Build only packages for the given release names; comma separated.",
 	)
 
 	buildPackagesCmd.PersistentFlags().BoolP(

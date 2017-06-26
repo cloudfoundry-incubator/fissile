@@ -234,3 +234,48 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 		}
 	}
 }
+
+func TestFissileGetReleasesByName(t *testing.T) {
+	assert := assert.New(t)
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	releasePaths := []string{
+		filepath.Join(workDir, "../test-assets/extracted-license"),
+		filepath.Join(workDir, "../test-assets/extracted-license"),
+	}
+	cacheDir := filepath.Join(workDir, "../test-assets/extracted-license/bosh-cache")
+
+	f := NewFissileApplication(",", ui)
+	err = f.LoadReleases(releasePaths, []string{"test-dev", "test2"}, []string{}, cacheDir)
+	if !assert.NoError(err) {
+		return
+	}
+
+	releases, err := f.getReleasesByName([]string{"test-dev"})
+	if assert.NoError(err) {
+		if assert.Len(releases, 1, "should have exactly one matching release") {
+			assert.Equal("test-dev", releases[0].Name, "release has unexpected name")
+		}
+	}
+	releases, err = f.getReleasesByName([]string{"test2", "test-dev"})
+	if assert.NoError(err) {
+		if assert.Len(releases, 2, "should have exactly two matching releases") {
+			assert.Equal("test2", releases[0].Name, "first release has unexpected name")
+			assert.Equal("test-dev", releases[1].Name, "second release has unexpected name")
+		}
+	}
+	releases, err = f.getReleasesByName([]string{})
+	if assert.NoError(err) {
+		if assert.Len(releases, 2, "not specifying releases should return all releases") {
+			assert.Equal("test-dev", releases[0].Name, "first release has unexpected name")
+			assert.Equal("test2", releases[1].Name, "second release has unexpected name")
+		}
+	}
+	_, err = f.getReleasesByName([]string{"test-dev", "missing"})
+	if assert.Error(err, "Getting a non-existant release should result in an error") {
+		assert.Contains(err.Error(), "missing", "Error message should contain missing release name")
+		assert.NotContains(err.Error(), "test-dev", "Error message should not contain valid release name")
+	}
+}
