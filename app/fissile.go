@@ -264,8 +264,13 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
+	releases, err := f.getReleasesByName(releaseNames)
+	if err != nil {
+		return err
+	}
+
 	f.UI.Println(color.GreenString("Compiling packages for dev releases:"))
-	for _, release := range f.releases {
+	for _, release := range releases {
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
@@ -285,11 +290,6 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 	roles, err := roleManifest.SelectRoles(roleNames)
 	if err != nil {
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
-	}
-
-	releases, err := f.getReleasesByName(releaseNames)
-	if err != nil {
-		return err
 	}
 
 	if err := comp.Compile(workerCount, releases, roles, verbose); err != nil {
