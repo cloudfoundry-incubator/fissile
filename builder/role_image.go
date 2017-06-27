@@ -85,7 +85,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 					continue
 				}
 
-				releaseDir := filepath.Join("root/opt/hcf/share/doc", job.Release.Name)
+				releaseDir := filepath.Join("root/opt/scf/share/doc", job.Release.Name)
 
 				for filename, contents := range job.Release.License.Files {
 					err := util.WriteToTarStream(tarWriter, contents, tar.Header{
@@ -170,7 +170,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		// Copy role startup scripts
 		for script, sourceScriptPath := range role.GetScriptPaths() {
 			err := util.CopyFileToTarStream(tarWriter, sourceScriptPath, &tar.Header{
-				Name: filepath.Join("root/opt/hcf/startup", script),
+				Name: filepath.Join("root/opt/scf/startup", script),
 			})
 			if err != nil {
 				return fmt.Errorf("Error writing script %s: %s", script, err)
@@ -183,7 +183,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, runScriptContents, tar.Header{
-			Name: "root/opt/hcf/run.sh",
+			Name: "root/opt/scf/run.sh",
 		})
 		if err != nil {
 			return err
@@ -194,19 +194,19 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, jobsConfigContents, tar.Header{
-			Name: "root/opt/hcf/job_config.json",
+			Name: "root/opt/scf/job_config.json",
 		})
 		if err != nil {
 			return err
 		}
 
-		// Create env2conf templates file in /opt/hcf/env2conf.yml
+		// Create env2conf templates file in /opt/scf/env2conf.yml
 		configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
 		if err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, configTemplatesBytes, tar.Header{
-			Name: "root/opt/hcf/env2conf.yml",
+			Name: "root/opt/scf/env2conf.yml",
 		})
 		if err != nil {
 			return err
@@ -283,7 +283,7 @@ func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) 
 			files[src] = dest
 
 			if index == 0 {
-				files["/opt/hcf/monitrc.erb"] = "/etc/monitrc"
+				files["/opt/scf/monitrc.erb"] = "/etc/monitrc"
 			}
 		}
 

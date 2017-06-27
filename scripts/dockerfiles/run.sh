@@ -71,16 +71,16 @@ export DNS_RECORD_NAME=$(/bin/hostname)
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}
-    source {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+    source {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
 {{ end }}
 # Run custom role scripts
 {{ range $script := .role.Scripts}}
-    bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+    bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
 {{ end }}
 
 configgin \
-	--jobs /opt/hcf/job_config.json \
-	--env2conf /opt/hcf/env2conf.yml
+	--jobs /opt/scf/job_config.json \
+	--env2conf /opt/scf/env2conf.yml
 
 if [ -e /etc/monitrc ]
 then
@@ -108,8 +108,8 @@ chmod 1730 /var/spool/cron/tabs/
 # Run any custom scripts other than pre-start
 {{ range $script := .role.PostConfigScripts}}
 {{ if not (is_pre_start $script) }}
-    echo bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
-    bash {{ if not (is_abs $script) }}/opt/hcf/startup/{{ end }}{{ $script }}
+    echo bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
+    bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
 {{ end }}
 {{ end }}
 

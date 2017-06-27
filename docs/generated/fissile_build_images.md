@@ -15,7 +15,7 @@ directory structure contains jobs, packages and all other necessary scripts and
 templates.
 
 The images will have a 'role' label useful for filtering.
-The entrypoint for each image is `/opt/hcf/run.sh`.
+The entrypoint for each image is `/opt/scf/run.sh`.
 
 The images will be tagged: `<repository>-<role_name>:<SIGNATURE>`.
 The SIGNATURE is based on the hashes of all jobs and packages that are included in
