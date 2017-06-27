@@ -1,8 +1,11 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -65,6 +68,29 @@ func TestJSONHelperValidInput(t *testing.T) {
 			if assert.NoError(err, "Unexpected error for test sample %s", testData.name) {
 				assert.JSONEq(testData.json, string(result), "Unexpected result for test sample %s", testData.name)
 			}
+		}
+	}
+}
+
+type dummyMarshaler struct {
+	obj interface{}
+}
+
+func (m *dummyMarshaler) Marshal() (interface{}, error) {
+	return m.obj, nil
+}
+
+func TestMarshalAdapter(t *testing.T) {
+	assert := assert.New(t)
+	adapter := NewMarshalAdapter(&dummyMarshaler{3})
+
+	if jsonResult, err := json.Marshal(adapter); assert.NoError(err) {
+		assert.JSONEq("3", string(jsonResult))
+	}
+	if yamlResult, err := yaml.Marshal(adapter); assert.NoError(err) {
+		var unmarshalled interface{}
+		if assert.NoError(yaml.Unmarshal(yamlResult, &unmarshalled)) {
+			testhelpers.IsYAMLSubset(assert, 3, unmarshalled)
 		}
 	}
 }

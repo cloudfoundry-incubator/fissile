@@ -4,11 +4,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/testhelpers"
 	"github.com/SUSE/fissile/util"
 
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestPackageInfoOk(t *testing.T) {
@@ -96,4 +99,46 @@ func TestPackageExtractOk(t *testing.T) {
 
 	assert.Nil(util.ValidatePath(packageDir, true, ""))
 	assert.Nil(util.ValidatePath(filepath.Join(packageDir, "packaging"), false, ""))
+}
+
+func TestPackageMarshal(t *testing.T) {
+	assert := assert.New(t)
+	sample := &Package{
+		Name:        "sample package",
+		Version:     "abc",
+		Fingerprint: "def",
+		SHA1:        "ghi",
+		Release: &Release{
+			Name:    "sample release",
+			Version: "unused",
+		},
+		Path: "/some/path",
+		Dependencies: Packages{
+			&Package{
+				Name:        "dependent package",
+				Fingerprint: "jkl",
+			},
+		},
+	}
+	sample.Dependencies = append(sample.Dependencies, sample) // Create a loop
+	var expected interface{}
+	err := yaml.Unmarshal([]byte(strings.Replace(`---
+		name: sample package
+		version: abc
+		fingerprint: def
+		sha1: ghi
+		release: sample release
+		path: /some/path
+		dependencies:
+		- jkl
+		- def
+	`, "\t", "    ", -1)), &expected)
+	if !assert.NoError(err, "Error unmarshalling expected value") {
+		return
+	}
+
+	actual, err := sample.Marshal()
+	if assert.NoError(err) {
+		testhelpers.IsYAMLSubset(assert, expected, actual)
+	}
 }

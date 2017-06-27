@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/SUSE/fissile/testhelpers"
+
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -330,4 +332,65 @@ func TestGetDeploymentConfig(t *testing.T) {
 		assert.Contains(configs, expected)
 	}
 	assert.Len(configs, len(allExpected))
+}
+
+func TestReleaseMarshal(t *testing.T) {
+	assert := assert.New(t)
+	sample := &Release{
+		Jobs: Jobs{
+			&Job{
+				Fingerprint: "abc",
+				Packages: Packages{
+					&Package{
+						Fingerprint: "ghi",
+					},
+				},
+			},
+			&Job{
+				Fingerprint: "def",
+				Packages: Packages{
+					&Package{
+						Fingerprint: "jkl",
+					},
+				},
+			},
+		},
+		Packages:           Packages{},
+		Name:               "sample release",
+		UncommittedChanges: true,
+		CommitHash:         "mno",
+		Version:            "123",
+		Path:               "/some/path",
+		DevBOSHCacheDir:    "/some/bosh/cache",
+	}
+	// Make sure reference cycles don't break marshalling
+	for _, job := range sample.Jobs {
+		job.Release = sample
+		for _, pkg := range job.Packages {
+			pkg.Release = sample
+			sample.Packages = append(sample.Packages, pkg)
+		}
+	}
+	license := ReleaseLicense{
+		Release: sample,
+		Files: map[string][]byte{
+			"hello": []byte("world"),
+		},
+	}
+	sample.License = license
+	expected := map[string]interface{}{
+		"jobs":               []string{"abc", "def"},
+		"packages":           []string{"ghi", "jkl"},
+		"license":            map[string]string{"hello": "world"},
+		"name":               "sample release",
+		"uncommittedChanges": true,
+		"commitHash":         "mno",
+		"version":            "123",
+		"path":               "/some/path",
+		"devBOSHCacheDir":    "/some/bosh/cache",
+	}
+	actual, err := sample.Marshal()
+	if assert.NoError(err) {
+		testhelpers.IsYAMLSubset(assert, expected, actual)
+	}
 }

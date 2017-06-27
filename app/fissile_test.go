@@ -2,14 +2,17 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/SUSE/fissile/model"
+
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 )
@@ -107,6 +110,221 @@ func TestListProperties(t *testing.T) {
 		err = f.ListProperties("yaml")
 		assert.NoError(err, "Expected ListProperties to list release properties in YAML")
 	}
+}
+
+var testSerializeInput struct {
+	releases []*model.Release
+	once     sync.Once
+}
+
+func initTestSerializeInput() {
+	releases := []*model.Release{
+		&model.Release{
+			Name: "first release",
+			Jobs: model.Jobs{
+				&model.Job{
+					Name:        "first job",
+					Description: "a first job",
+					Fingerprint: "job-one",
+					Templates: []*model.JobTemplate{
+						&model.JobTemplate{
+							SourcePath:      "/dev/urandom",
+							DestinationPath: "/dev/null",
+							Content:         "hello",
+						},
+					},
+				},
+			},
+			Packages: model.Packages{
+				&model.Package{
+					Name:        "base package",
+					Fingerprint: "abc",
+					Path:        "/some/path",
+					SHA1:        "123",
+					Version:     "one",
+				},
+			},
+			CommitHash:         "zzz",
+			DevBOSHCacheDir:    "/bosh/cache/1",
+			Path:               "/some/path/1",
+			UncommittedChanges: false,
+			Version:            "ONE",
+		},
+		&model.Release{
+			Name: "second release",
+			Jobs: model.Jobs{
+				&model.Job{
+					Name:        "second job",
+					Description: "a second job",
+					Fingerprint: "job-two",
+				},
+			},
+			Packages: model.Packages{
+				&model.Package{
+					Name:        "dependent package",
+					Fingerprint: "def",
+					Path:        "/another/path",
+					SHA1:        "456",
+					Version:     "two",
+				},
+			},
+			CommitHash:         "qqq",
+			DevBOSHCacheDir:    "/bosh/cache/2",
+			Path:               "/some/path/2",
+			UncommittedChanges: true,
+			Version:            "TWO",
+		},
+	}
+
+	// Set up package dependencies + reference cycles via release
+	var lastPkg *model.Package
+	for _, r := range releases {
+		for _, j := range r.Jobs {
+			j.Packages = r.Packages
+			j.Release = r
+			for _, template := range j.Templates {
+				template.Job = j
+			}
+		}
+		for _, pkg := range r.Packages {
+			pkg.Release = r
+			if lastPkg != nil {
+				pkg.Dependencies = append(pkg.Dependencies, lastPkg)
+			}
+			lastPkg = pkg
+		}
+	}
+
+	testSerializeInput.releases = releases
+}
+
+func TestSerializePackages(t *testing.T) {
+	assert := assert.New(t)
+	testSerializeInput.once.Do(initTestSerializeInput)
+	f := &Fissile{releases: testSerializeInput.releases}
+	result, err := f.SerializePackages()
+	if !assert.NoError(err) {
+		return
+	}
+	actual, err := json.Marshal(result)
+	if !assert.NoError(err) {
+		return
+	}
+	expected := `{
+		"abc": {
+			"name": "base package",
+			"fingerprint": "abc",
+			"path": "/some/path",
+			"sha1": "123",
+			"version": "one",
+			"dependencies": [],
+			"release": "first release"
+		},
+		"def": {
+			"name": "dependent package",
+			"fingerprint": "def",
+			"path": "/another/path",
+			"sha1": "456",
+			"version": "two",
+			"dependencies": ["abc"],
+			"release": "second release"
+		}
+	}`
+	assert.JSONEq(expected, string(actual))
+
+	_, err = (&Fissile{}).SerializeReleases()
+	assert.EqualError(err, "Releases not loaded")
+}
+
+func TestSerializeReleases(t *testing.T) {
+	assert := assert.New(t)
+	testSerializeInput.once.Do(initTestSerializeInput)
+	f := &Fissile{releases: testSerializeInput.releases}
+	result, err := f.SerializeReleases()
+	if !assert.NoError(err) {
+		return
+	}
+	actual, err := json.Marshal(result)
+	if !assert.NoError(err) {
+		return
+	}
+	expected := `{
+		"first release": {
+			"name": "first release",
+			"packages": ["abc"],
+			"commitHash": "zzz",
+			"devBOSHCacheDir": "/bosh/cache/1",
+			"jobs": ["job-one"],
+			"license": {},
+			"path": "/some/path/1",
+			"uncommittedChanges": false,
+			"version": "ONE"
+		},
+		"second release": {
+			"name": "second release",
+			"packages": ["def"],
+			"commitHash": "qqq",
+			"devBOSHCacheDir": "/bosh/cache/2",
+			"jobs": ["job-two"],
+			"license": {},
+			"path": "/some/path/2",
+			"uncommittedChanges": true,
+			"version": "TWO"
+		}
+	}`
+	assert.JSONEq(expected, string(actual))
+
+	_, err = (&Fissile{}).SerializeReleases()
+	assert.EqualError(err, "Releases not loaded")
+}
+
+func TestSerializeJobs(t *testing.T) {
+	assert := assert.New(t)
+	testSerializeInput.once.Do(initTestSerializeInput)
+	f := &Fissile{releases: testSerializeInput.releases}
+	result, err := f.SerializeJobs()
+	if !assert.NoError(err) {
+		return
+	}
+	actual, err := json.Marshal(result)
+	if !assert.NoError(err) {
+		return
+	}
+	expected := `{
+		"job-one": {
+			"name": "first job",
+			"fingerprint": "job-one",
+			"packages": ["abc"],
+			"release": "first release",
+			"description": "a first job",
+			"path": "",
+			"properties": [],
+			"sha1": "",
+			"templates": [{
+				"sourcePath": "/dev/urandom",
+				"destinationPath": "/dev/null",
+				"job": "job-one",
+				"content": "hello"
+			}],
+			"version": ""
+		},
+		"job-two": {
+			"name": "second job",
+			"fingerprint": "job-two",
+			"packages": ["def"],
+			"release": "second release",
+			"description": "a second job",
+			"path": "",
+			"properties": [],
+			"sha1": "",
+			"templates": [],
+			"version": ""
+		}
+	}`
+	assert.JSONEq(expected, string(actual))
+
+	_, err = (&Fissile{}).SerializeJobs()
+	assert.EqualError(err, "Releases not loaded")
 }
 
 func TestDevDiffConfigurations(t *testing.T) {

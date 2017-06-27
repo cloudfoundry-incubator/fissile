@@ -229,3 +229,33 @@ func (r *Release) jobsDirPath() string {
 func (r *Release) manifestFilePath() string {
 	return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
 }
+
+// Marshal implements the util.Marshaler interface
+func (r *Release) Marshal() (interface{}, error) {
+	jobFingerprints := make([]string, 0, len(r.Jobs))
+	for _, job := range r.Jobs {
+		jobFingerprints = append(jobFingerprints, job.Fingerprint)
+	}
+
+	pkgs := make([]string, 0, len(r.Packages))
+	for _, pkg := range r.Packages {
+		pkgs = append(pkgs, pkg.Fingerprint)
+	}
+
+	licenses := make(map[string]string)
+	for name, value := range r.License.Files {
+		licenses[name] = string(value)
+	}
+
+	return map[string]interface{}{
+		"jobs":               jobFingerprints,
+		"packages":           pkgs,
+		"license":            licenses,
+		"name":               r.Name,
+		"uncommittedChanges": r.UncommittedChanges,
+		"commitHash":         r.CommitHash,
+		"version":            r.Version,
+		"path":               r.Path,
+		"devBOSHCacheDir":    r.DevBOSHCacheDir,
+	}, nil
+}

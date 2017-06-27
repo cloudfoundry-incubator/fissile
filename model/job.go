@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/SUSE/fissile/util"
+
 	"github.com/pivotal-golang/archiver/extractor"
 	"gopkg.in/yaml.v2"
 )
@@ -370,4 +372,40 @@ func (slice Jobs) Swap(i, j int) {
 
 func (j *Job) jobArchivePath() string {
 	return filepath.Join(j.Release.DevBOSHCacheDir, j.SHA1)
+}
+
+// Marshal implements the util.Marshaler interface
+func (j *Job) Marshal() (interface{}, error) {
+	var releaseName string
+	if j.Release != nil {
+		releaseName = j.Release.Name
+	}
+
+	templates := make([]interface{}, 0, len(j.Templates))
+	for _, template := range j.Templates {
+		templates = append(templates, util.NewMarshalAdapter(template))
+	}
+
+	pkgs := make([]string, 0, len(j.Packages))
+	for _, pkg := range j.Packages {
+		pkgs = append(pkgs, pkg.Fingerprint)
+	}
+
+	properties := make([]*JobProperty, 0, len(j.Properties))
+	for _, prop := range j.Properties {
+		properties = append(properties, prop)
+	}
+
+	return map[string]interface{}{
+		"name":        j.Name,
+		"description": j.Description,
+		"templates":   templates,
+		"packages":    pkgs,
+		"path":        j.Path,
+		"fingerprint": j.Fingerprint,
+		"sha1":        j.SHA1,
+		"properties":  properties,
+		"version":     j.Version,
+		"release":     releaseName,
+	}, nil
 }

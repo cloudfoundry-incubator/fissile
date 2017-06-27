@@ -164,3 +164,25 @@ func (p *Package) GetPackageCompiledTempDir(workDir string) string {
 func (p *Package) GetPackageCompiledDir(workDir string) string {
 	return filepath.Join(workDir, p.Fingerprint, "compiled")
 }
+
+// Marshal implements the util.Marshaler interface
+func (p *Package) Marshal() (interface{}, error) {
+	var releaseName string
+	if p.Release != nil {
+		releaseName = p.Release.Name
+	}
+	dependencies := make([]string, 0, len(p.Dependencies))
+	for _, dependency := range p.Dependencies {
+		dependencies = append(dependencies, dependency.Fingerprint)
+	}
+
+	return map[string]interface{}{
+		"name":         p.Name,
+		"version":      p.Version,
+		"fingerprint":  p.Fingerprint,
+		"sha1":         p.SHA1,
+		"release":      releaseName,
+		"path":         p.Path,
+		"dependencies": dependencies,
+	}, nil
+}
