@@ -9,6 +9,15 @@ EOL
 exit 0
 fi
 
+# Compatibility code for use with older stemcells. Move all files
+# provided in the old location to the new.
+
+if [ -d /opt/hcf ] ; then
+    mkdir -p /opt/scf
+    mv       /opt/hcf/* /opt/scf/
+    rmdir    /opt/hcf
+fi
+
 # Make BOSH installed binaries available
 export PATH=/var/vcap/bosh/bin:$PATH
 
