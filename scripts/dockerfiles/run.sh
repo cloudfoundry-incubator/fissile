@@ -10,12 +10,15 @@ exit 0
 fi
 
 # Compatibility code for use with older stemcells. Move all files
-# provided in the old location to the new.
+# provided in the old location to the new. And fix the references
+# they have.
 
 if [ -d /opt/hcf ] ; then
     mkdir -p /opt/scf
     mv       /opt/hcf/* /opt/scf/
     rmdir    /opt/hcf
+    sed < /opt/scf/monitrc.erb > $$ -e 's|/hcf|/scf|'
+    mv $$ /opt/scf/monitrc.erb
 fi
 
 # Make BOSH installed binaries available
