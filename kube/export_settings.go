@@ -14,4 +14,5 @@ type ExportSettings struct {
 	FissileVersion  string
 	Opinions        *model.Opinions
 	Secrets         SecretRefMap
+	CreateHelmChart bool
 }

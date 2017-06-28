@@ -772,7 +772,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, opinions *model.Opinions) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -800,8 +800,11 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	// Phase I (b): Export the secrets
-
-	secretsDir := filepath.Join(outputDir, "secrets")
+	subDir := "secrets"
+	if createHelmChart {
+		subDir = "templates"
+	}
+	secretsDir := filepath.Join(outputDir, subDir)
 	if err = os.MkdirAll(secretsDir, 0755); err != nil {
 		return err
 	}
@@ -835,14 +838,22 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		FissileVersion:  fissileVersion,
 		Opinions:        opinions,
 		Secrets:         refs,
+		CreateHelmChart: createHelmChart,
 	}
 
 	for _, role := range rolesManifest.Roles {
 		if role.IsDevRole() {
 			continue
 		}
+		if createHelmChart && role.Run.FlightStage == model.FlightStageManual {
+			continue
+		}
 
-		roleTypeDir := filepath.Join(outputDir, string(role.Type))
+		subDir = string(role.Type)
+		if createHelmChart {
+			subDir = "templates"
+		}
+		roleTypeDir := filepath.Join(outputDir, subDir)
 		if err = os.MkdirAll(roleTypeDir, 0755); err != nil {
 			return err
 		}

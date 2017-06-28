@@ -11,6 +11,7 @@ var (
 	flagBuildKubeOutputDir       string
 	flagBuildKubeDefaultEnvFiles []string
 	flagBuildKubeUseMemoryLimits bool
+	flagBuildKubeCreateHelmChart bool
 )
 
 // buildKubeCmd represents the kube command
@@ -23,6 +24,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeOutputDir = viper.GetString("kube-output-dir")
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = viper.GetBool("use-memory-limits")
+		flagBuildKubeCreateHelmChart = viper.GetBool("create-helm-chart")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -51,6 +53,7 @@ var buildKubeCmd = &cobra.Command{
 			fissile.Version,
 			flagBuildKubeDefaultEnvFiles,
 			flagBuildKubeUseMemoryLimits,
+			flagBuildKubeCreateHelmChart,
 			opinions,
 		)
 	},
@@ -78,6 +81,13 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating kube configurations",
+	)
+
+	buildKubeCmd.PersistentFlags().BoolP(
+		"create-helm-chart",
+		"",
+		false,
+		"Write kube configuration as a helm chart",
 	)
 
 	viper.BindPFlags(buildKubeCmd.PersistentFlags())
