@@ -50,7 +50,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 	total := 0 // Accumulated size of the values stored in 'currentSecret'
 
 	for key, value := range secrets {
-		ok, strValue := configValue(value, defaults)
+		ok, strValue := ConfigValue(value, defaults)
 		if !ok {
 			return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
 		}

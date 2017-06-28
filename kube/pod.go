@@ -204,7 +204,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			continue
 		}
 
-		ok, stringifiedValue := configValue(config, defaults)
+		ok, stringifiedValue := ConfigValue(config, defaults)
 		if !ok {
 			continue
 		}
@@ -227,7 +227,8 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 	return result, nil
 }
 
-func configValue(config *model.ConfigurationVariable, defaults map[string]string) (bool, string) {
+// ConfigValue fetches the value of config variable (should this live somewhere else?)
+func ConfigValue(config *model.ConfigurationVariable, defaults map[string]string) (bool, string) {
 	var value interface{}
 
 	value = config.Default

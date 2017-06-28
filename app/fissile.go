@@ -827,6 +827,38 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		}
 	}
 
+	// Export the default values for variables
+	if createHelmChart {
+		outputPath := filepath.Join(outputDir, "values.yaml")
+		f.UI.Printf("Writing config %s\n",
+			color.CyanString(outputPath),
+		)
+
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+
+		env := make(map[string]*string)
+		for key, value := range model.MakeMapOfVariables(rolesManifest) {
+			if !value.Secret || value.Generator == nil {
+				ok, strValue := kube.ConfigValue(value, defaults)
+				env[key] = nil
+				if ok {
+					env[key] = &strValue
+				}
+			}
+		}
+		buf, err := yaml.Marshal(map[string]map[string]*string{"env": env})
+		if err == nil {
+			_, err = outputFile.Write(buf)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
 	// Phase II: Export the roles
 
 	settings := &kube.ExportSettings{
