@@ -1,7 +1,9 @@
 package kube
 
 import (
+	"bytes"
 	"io"
+	"regexp"
 
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/runtime/serializer/json"
@@ -33,10 +35,20 @@ func WriteYamlConfig(kubeObject runtime.Object, writer io.Writer) error {
 		return err
 	}
 
+	buffer := &bytes.Buffer{}
 	serializer := json.NewYAMLSerializer(json.DefaultMetaFactory, Scheme, Scheme)
-	if err := serializer.Encode(kubeObject, writer); err != nil {
+	if err := serializer.Encode(kubeObject, buffer); err != nil {
 		return err
 	}
 
-	return nil
+	// Make sure "{{ templates }}" are not split into multiple lines in the YAML output
+	template := regexp.MustCompile(`(?s)'\{\{.*?\}\}'`)
+	// Replace all newlines (and following whitespace) inside templates with a single space
+	lineBreak := regexp.MustCompile("\n[ \t]*")
+	repl := template.ReplaceAllFunc(buffer.Bytes(), func(src []byte) []byte {
+		return lineBreak.ReplaceAll(src[1:len(src)-1], []byte(" "))
+	})
+
+	_, err := writer.Write(repl)
+	return err
 }

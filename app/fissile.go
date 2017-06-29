@@ -794,7 +794,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		}
 	}
 	// cvs now holds only the secrets.
-	secrets, refs, err := kube.MakeSecrets(cvs, defaults)
+	secrets, refs, err := kube.MakeSecrets(cvs, defaults, createHelmChart)
 	if err != nil {
 		return err
 	}

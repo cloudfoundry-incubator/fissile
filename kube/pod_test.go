@@ -186,7 +186,7 @@ func TestPodGetEnvVars(t *testing.T) {
 			},
 		}
 
-		vars, err := getEnvVars(role, defaults, secrets)
+		vars, err := getEnvVars(role, defaults, secrets, false)
 		assert.NoError(err)
 		assert.NotEmpty(vars)
 

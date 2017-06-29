@@ -23,7 +23,7 @@ const monitPort = 2289
 // any objects it depends on
 func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
 
-	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets)
+	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings.CreateHelmChart)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
 	}
@@ -176,7 +176,7 @@ func getVolumeMounts(role *model.Role) []v1.VolumeMount {
 	return result
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap) ([]v1.EnvVar, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, createHelmChart bool) ([]v1.EnvVar, error) {
 	configs, err := role.GetVariablesForRole()
 
 	if err != nil {
@@ -204,9 +204,19 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			continue
 		}
 
-		ok, stringifiedValue := ConfigValue(config, defaults)
-		if !ok {
-			continue
+		var stringifiedValue string
+		if createHelmChart {
+			required := ""
+			if config.Required {
+				required = fmt.Sprintf(`required "A valid .Values.env.%s is required" `, config.Name)
+			}
+			stringifiedValue = fmt.Sprintf("{{ %s.Values.env.%s | quote }}", required, config.Name)
+		} else {
+			var ok bool
+			ok, stringifiedValue = ConfigValue(config, defaults)
+			if !ok {
+				continue
+			}
 		}
 
 		result = append(result, v1.EnvVar{

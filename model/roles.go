@@ -121,6 +121,17 @@ type HealthProbe struct {
 // Roles is an array of Role*
 type Roles []*Role
 
+// GeneratorType describes the type of generator used for the configuration value
+type GeneratorType string
+
+// These are the available generator types for configuration values
+const (
+	GeneratorTypePassword      = GeneratorType("Password")      // Password
+	GeneratorTypeSSH           = GeneratorType("SSH")           // SSH key
+	GeneratorTypeCACertificate = GeneratorType("CACertificate") // CA Certificate
+	GeneratorTypeCertificate   = GeneratorType("Certificate")   // Certificate
+)
+
 // Configuration contains information about how to configure the
 // resulting images
 type Configuration struct {
@@ -152,6 +163,7 @@ type ConfigurationVariable struct {
 	Type        CVType                          `yaml:"type"`
 	Internal    bool                            `yaml:"internal,omitempty"`
 	Secret      bool                            `yaml:"secret,omitempty"`
+	Required    bool                            `yaml:"required,omitempty"`
 }
 
 // CVType is the type of the configuration variable; see the constants below
@@ -189,9 +201,9 @@ func (confVars ConfigurationVariableSlice) Swap(i, j int) {
 // ConfigurationVariableGenerator describes how to automatically generate values
 // for a configuration variable
 type ConfigurationVariableGenerator struct {
-	ID        string `yaml:"id"`
-	Type      string `yaml:"type"`
-	ValueType string `yaml:"value_type"`
+	ID        string        `yaml:"id"`
+	Type      GeneratorType `yaml:"type"`
+	ValueType string        `yaml:"value_type"`
 }
 
 type roleJob struct {
