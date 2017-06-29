@@ -8,7 +8,6 @@ import (
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	v1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
-	"k8s.io/client-go/pkg/runtime"
 )
 
 // NewStatefulSet returns a k8s stateful set for the given role
@@ -27,46 +26,29 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 
 	volumeClaimTemplates := getVolumeClaims(role)
 
-	headedService, err := NewClusterIPService(role, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	headlessService, err := NewClusterIPService(role, true)
+	svcList, err := NewClusterIPServiceList(role, true)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &v1beta1.StatefulSet{
-			TypeMeta: meta.TypeMeta{
-				APIVersion: "apps/v1beta1",
-				Kind:       "StatefulSet",
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "apps/v1beta1",
+			Kind:       "StatefulSet",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: role.Name,
+			Labels: map[string]string{
+				RoleNameLabel: role.Name,
 			},
-			ObjectMeta: v1.ObjectMeta{
-				Name: role.Name,
-				Labels: map[string]string{
-					RoleNameLabel: role.Name,
-				},
-			},
-			Spec: v1beta1.StatefulSetSpec{
-				Replicas:             &role.Run.Scaling.Min,
-				ServiceName:          fmt.Sprintf("%s-pod", role.Name),
-				Template:             podTemplate,
-				VolumeClaimTemplates: volumeClaimTemplates,
-			},
-		}, &v1.List{
-			TypeMeta: meta.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "List",
-			},
-			Items: []runtime.RawExtension{
-				runtime.RawExtension{
-					Object: headedService,
-				},
-				runtime.RawExtension{
-					Object: headlessService,
-				},
-			},
-		}, nil
+		},
+		Spec: v1beta1.StatefulSetSpec{
+			Replicas:             &role.Run.Scaling.Min,
+			ServiceName:          fmt.Sprintf("%s-pod", role.Name),
+			Template:             podTemplate,
+			VolumeClaimTemplates: volumeClaimTemplates,
+		},
+	}, svcList, nil
 }
 
 // getVolumeClaims returns the list of persistent volume claims from a role

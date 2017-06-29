@@ -9,14 +9,14 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached service
-func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.Service, error) {
+func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.List, error) {
 
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	svc, err := NewClusterIPService(role, false)
+	svc, err := NewClusterIPServiceList(role, false)
 	if err != nil {
 		return nil, nil, err
 	}

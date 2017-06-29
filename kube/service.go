@@ -7,17 +7,50 @@ import (
 	"github.com/SUSE/fissile/model"
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
 )
 
-// NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool) (*apiv1.Service, error) {
-	if len(role.Run.ExposedPorts) == 0 {
-		// Kubernetes refuses to create services with no ports, so we should
-		// not return anything at all in this case
+// NewClusterIPServiceList creates a list of ClusterIP services
+func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, error) {
+	list := &apiv1.List{
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "List",
+		},
+		Items: []runtime.RawExtension{},
+	}
+	if headless {
+		svc, err := NewClusterIPService(role, true, false)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+		}
+	}
+	svc, err := NewClusterIPService(role, false, false)
+	if err != nil {
+		return nil, err
+	}
+	if svc != nil {
+		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+	}
+	svc, err = NewClusterIPService(role, false, true)
+	if err != nil {
+		return nil, err
+	}
+	if svc != nil {
+		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+	}
+	if len(list.Items) == 0 {
 		return nil, nil
 	}
+	return list, nil
+}
 
+// NewClusterIPService creates a new k8s ClusterIP service
+func NewClusterIPService(role *model.Role, headless bool, public bool) (*apiv1.Service, error) {
 	service := &apiv1.Service{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "v1",
@@ -37,8 +70,13 @@ func NewClusterIPService(role *model.Role, headless bool) (*apiv1.Service, error
 	if headless {
 		service.ObjectMeta.Name = fmt.Sprintf("%s-pod", role.Name)
 		service.Spec.ClusterIP = apiv1.ClusterIPNone
+	} else if public {
+		service.ObjectMeta.Name = fmt.Sprintf("%s-public", role.Name)
 	}
 	for _, portDef := range role.Run.ExposedPorts {
+		if public && !portDef.Public {
+			continue
+		}
 		protocol := apiv1.ProtocolTCP
 		switch strings.ToLower(portDef.Protocol) {
 		case "tcp":
@@ -67,9 +105,14 @@ func NewClusterIPService(role *model.Role, headless bool) (*apiv1.Service, error
 			}
 			service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		}
-		if portDef.Public {
+		if public && portDef.Public {
 			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
 		}
+	}
+	if len(service.Spec.Ports) == 0 {
+		// Kubernetes refuses to create services with no ports, so we should
+		// not return anything at all in this case
+		return nil, nil
 	}
 	return service, nil
 }

@@ -105,7 +105,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	}
 	var endpointService, headlessService *apiv1.Service
 
-	if assert.Len(deps.Items, 2, "Should have two services per stateful role") {
+	if assert.Len(deps.Items, 3, "Should have three services per stateful role") {
 		for _, item := range deps.Items {
 			svc := item.Object.(*apiv1.Service)
 			if svc.Spec.ClusterIP == apiv1.ClusterIPNone {
@@ -116,7 +116,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		}
 	}
 	if assert.NotNil(endpointService, "endpoint service not found") {
-		assert.Equal(role.Name, endpointService.ObjectMeta.Name, "unexpected endpoint service name")
+		assert.Equal(role.Name+"-public", endpointService.ObjectMeta.Name, "unexpected endpoint service name")
 	}
 	if assert.NotNil(headlessService, "headless service not found") {
 		assert.Equal(role.Name+"-pod", headlessService.ObjectMeta.Name, "unexpected headless service name")
@@ -139,23 +139,6 @@ func TestStatefulSetPorts(t *testing.T) {
 	expectedYAML := strings.Replace(`---
 		items:
 		-
-			# This is the public service port
-			metadata:
-				name: myrole
-			spec:
-				ports:
-				-
-						name: http
-						port: 80
-						targetPort: http
-				-
-						name: https
-						port: 443
-						targetPort: https
-				selector:
-					skiff-role-name: myrole
-				type: ClusterIP
-		-
 			# This is the per-pod naming port
 			metadata:
 				name: myrole-pod
@@ -175,6 +158,40 @@ func TestStatefulSetPorts(t *testing.T) {
 					skiff-role-name: myrole
 				type: ClusterIP
 				clusterIP: None
+		-
+			# This is the private service port
+			metadata:
+				name: myrole
+			spec:
+				ports:
+				-
+						name: http
+						port: 80
+						targetPort: http
+				-
+						name: https
+						port: 443
+						targetPort: https
+				selector:
+					skiff-role-name: myrole
+				type: ClusterIP
+		-
+			# This is the public service port
+			metadata:
+				name: myrole-public
+			spec:
+				ports:
+				-
+						name: http
+						port: 80
+						targetPort: http
+				-
+						name: https
+						port: 443
+						targetPort: https
+				selector:
+					skiff-role-name: myrole
+				type: ClusterIP
 		-
 			# This is the actual StatefulSet
 			metadata:
