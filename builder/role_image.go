@@ -15,10 +15,10 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/dockerfiles"
 	"github.com/SUSE/fissile/util"
-	"github.com/hpcloud/stampy"
+	"github.com/SUSE/stampy"
+	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
-	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
 	"gopkg.in/yaml.v2"
 )

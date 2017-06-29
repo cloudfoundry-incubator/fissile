@@ -6,10 +6,10 @@ import (
 
 	"github.com/SUSE/fissile/app"
 	"github.com/SUSE/fissile/cmd"
+	"github.com/SUSE/termui"
+	"github.com/SUSE/termui/sigint"
 
 	"github.com/fatih/color"
-	"github.com/hpcloud/termui"
-	"github.com/hpcloud/termui/sigint"
 )
 
 var version = "0"

@@ -2,5 +2,9 @@
 
 set -o errexit
 
+. make/include/colors.sh
+
+printf "%b==> Testing %b\n" "${OK_COLOR}" "${NO_COLOR}"
+
 go generate ./docker/ # for mocks
 go test -race -cover $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')

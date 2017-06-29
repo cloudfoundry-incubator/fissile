@@ -16,10 +16,10 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/compilation"
 	"github.com/SUSE/fissile/util"
+	"github.com/SUSE/stampy"
+	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
-	"github.com/hpcloud/stampy"
-	"github.com/hpcloud/termui"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )

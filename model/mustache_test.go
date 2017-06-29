@@ -18,17 +18,17 @@ func TestMain(m *testing.M) {
 func TestParsing(t *testing.T) {
 	// Arrange
 	assert := assert.New(t)
-	template := "((HCP_IDENTITY_SCHEME))://((#HCP_IDENTITY_EXTERNAL_HOST))((HCP_INSTANCE_ID)).((HCP_IDENTITY_EXTERNAL_HOST)):((HCP_IDENTITY_EXTERNAL_PORT))((/HCP_IDENTITY_EXTERNAL_HOST))((^HCP_IDENTITY_EXTERNAL_HOST))scf.uaa-int.((HCP_SERVICE_DOMAIN_SUFFIX)):8443((/HCP_IDENTITY_EXTERNAL_HOST))"
+	template := "((FISSILE_IDENTITY_SCHEME))://((#FISSILE_IDENTITY_EXTERNAL_HOST))((FISSILE_INSTANCE_ID)).((FISSILE_IDENTITY_EXTERNAL_HOST)):((FISSILE_IDENTITY_EXTERNAL_PORT))((/FISSILE_IDENTITY_EXTERNAL_HOST))((^FISSILE_IDENTITY_EXTERNAL_HOST))scf.uaa-int.((FISSILE_SERVICE_DOMAIN_SUFFIX)):8443((/FISSILE_IDENTITY_EXTERNAL_HOST))"
 
 	// Act
 	pieces, err := parseTemplate(template)
 
 	// Assert
 	assert.NoError(err)
-	assert.Contains(pieces, "HCP_INSTANCE_ID")
-	assert.Contains(pieces, "HCP_IDENTITY_EXTERNAL_HOST")
-	assert.Contains(pieces, "HCP_IDENTITY_EXTERNAL_PORT")
-	assert.Contains(pieces, "HCP_SERVICE_DOMAIN_SUFFIX")
+	assert.Contains(pieces, "FISSILE_INSTANCE_ID")
+	assert.Contains(pieces, "FISSILE_IDENTITY_EXTERNAL_HOST")
+	assert.Contains(pieces, "FISSILE_IDENTITY_EXTERNAL_PORT")
+	assert.Contains(pieces, "FISSILE_SERVICE_DOMAIN_SUFFIX")
 	assert.NotContains(pieces, "FOO")
 }
 

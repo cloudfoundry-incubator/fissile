@@ -16,10 +16,10 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/compilation"
 	"github.com/SUSE/fissile/util"
-	"github.com/hpcloud/stampy"
+	"github.com/SUSE/stampy"
+	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
-	"github.com/hpcloud/termui"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"

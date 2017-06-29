@@ -11,7 +11,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/hpcloud/termui/sigint"
+	"github.com/SUSE/termui/sigint"
 )
 
 const (
