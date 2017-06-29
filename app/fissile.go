@@ -842,7 +842,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 
 		env := make(map[string]*string)
 		for key, value := range model.MakeMapOfVariables(rolesManifest) {
-			if !value.Secret || value.Generator == nil {
+			if !value.Secret || value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword {
 				ok, strValue := kube.ConfigValue(value, defaults)
 				env[key] = nil
 				if ok {
