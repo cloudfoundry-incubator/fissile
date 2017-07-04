@@ -10,8 +10,8 @@ import (
 	"github.com/SUSE/fissile/model"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
-	//	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
 
 func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
@@ -57,11 +57,12 @@ func TestServiceOK(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := NewClusterIPService(role, false)
+	service, err := NewClusterIPService(role, false, false)
 	if !assert.NoError(err) {
 		return
 	}
 
+	require.NotNil(t, service)
 	assert.Equal("ClusterIP", string(service.Spec.Type))
 	assert.Equal("", service.Spec.ClusterIP)
 
@@ -108,11 +109,12 @@ func TestHeadlessServiceOK(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := NewClusterIPService(role, true)
+	service, err := NewClusterIPService(role, true, false)
 	if !assert.NoError(err) {
 		return
 	}
 
+	require.NotNil(t, service)
 	assert.Equal("ClusterIP", string(service.Spec.Type))
 	assert.Equal("None", service.Spec.ClusterIP)
 

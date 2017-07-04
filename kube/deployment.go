@@ -8,15 +8,15 @@ import (
 	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// NewDeployment creates a Deployment for the given role, and its attached service
-func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.Service, error) {
+// NewDeployment creates a Deployment for the given role, and its attached services
+func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.List, error) {
 
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	svc, err := NewClusterIPService(role, false)
+	svc, err := NewClusterIPServiceList(role, false)
 	if err != nil {
 		return nil, nil, err
 	}
