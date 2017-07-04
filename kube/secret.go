@@ -68,12 +68,6 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, value.Name)
 			case value.Generator.Type == model.GeneratorTypePassword:
 				strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
-			default:
-				ok, strValue := ConfigValue(value, defaults)
-				if !ok {
-					return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
-				}
-				strValue = base64.StdEncoding.EncodeToString([]byte(strValue))
 			}
 		} else {
 			ok, strValue := ConfigValue(value, defaults)
