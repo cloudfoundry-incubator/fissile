@@ -76,8 +76,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 				strValue = base64.StdEncoding.EncodeToString([]byte(strValue))
 			}
 		} else {
-			var ok bool
-			ok, strValue = ConfigValue(value, defaults)
+			ok, strValue := ConfigValue(value, defaults)
 			if !ok {
 				return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
 			}
