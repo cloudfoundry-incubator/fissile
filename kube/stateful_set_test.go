@@ -182,10 +182,6 @@ func TestStatefulSetPorts(t *testing.T) {
 			spec:
 				ports:
 				-
-						name: http
-						port: 80
-						targetPort: http
-				-
 						name: https
 						port: 443
 						targetPort: https

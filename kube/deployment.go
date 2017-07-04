@@ -8,7 +8,7 @@ import (
 	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// NewDeployment creates a Deployment for the given role, and its attached service
+// NewDeployment creates a Deployment for the given role, and its attached services
 func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.List, error) {
 
 	podTemplate, err := NewPodTemplate(role, settings)

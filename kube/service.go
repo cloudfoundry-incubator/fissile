@@ -21,6 +21,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 		Items: []runtime.RawExtension{},
 	}
 	if headless {
+		// Create headless, private service
 		svc, err := NewClusterIPService(role, true, false)
 		if err != nil {
 			return nil, err
@@ -29,6 +30,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 			list.Items = append(list.Items, runtime.RawExtension{Object: svc})
 		}
 	}
+	// Create private service
 	svc, err := NewClusterIPService(role, false, false)
 	if err != nil {
 		return nil, err
@@ -36,6 +38,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 	if svc != nil {
 		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
 	}
+	// Create public service
 	svc, err = NewClusterIPService(role, false, true)
 	if err != nil {
 		return nil, err
@@ -105,7 +108,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool) (*apiv1.S
 			}
 			service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		}
-		if public && portDef.Public {
+		if public {
 			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
 		}
 	}
