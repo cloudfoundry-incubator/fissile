@@ -62,20 +62,18 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 	for key, value := range secrets {
 		var strValue string
 		if createHelmChart {
-			if value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword {
+			switch {
+			case value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword:
 				errString := fmt.Sprintf("A valid .Values.env.%s is required", value.Name)
 				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, value.Name)
-			} else {
-				if value.Generator.Type == model.GeneratorTypePassword {
-					strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
-				} else {
-					var ok bool
-					ok, strValue = ConfigValue(value, defaults)
-					if !ok {
-						return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
-					}
-					strValue = base64.StdEncoding.EncodeToString([]byte(strValue))
+			case value.Generator.Type == model.GeneratorTypePassword:
+				strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
+			default:
+				ok, strValue := ConfigValue(value, defaults)
+				if !ok {
+					return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
 				}
+				strValue = base64.StdEncoding.EncodeToString([]byte(strValue))
 			}
 		} else {
 			var ok bool
