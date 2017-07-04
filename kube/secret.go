@@ -95,14 +95,17 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 			return nil, nil, fmt.Errorf("Secret '%s' overflows K8s limit of %d bytes",
 				key, max)
 		}
-		// The current entry's value overflows the current K8s
-		// secret. Finalize it, and open a new one to store
-		// the current entry and anything after.
-		if total+blen > max {
-			thesecrets = append(thesecrets, currentSecret)
-			count++
-			currentSecret = NewSecret(fmt.Sprintf("secret-%d", count))
-			total = 0
+		// Helm charts include template expansion so the size calculation cannot be done here.
+		if !createHelmChart {
+			// The current entry's value overflows the current K8s
+			// secret. Finalize it, and open a new one to store
+			// the current entry and anything after.
+			if total+blen > max {
+				thesecrets = append(thesecrets, currentSecret)
+				count++
+				currentSecret = NewSecret(fmt.Sprintf("secret-%d", count))
+				total = 0
+			}
 		}
 
 		// (**) From the old transformer we know that "secrets
