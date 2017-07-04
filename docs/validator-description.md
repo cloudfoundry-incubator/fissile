@@ -1,6 +1,6 @@
-# Checks performed by the HCF role manifest validator
+# Checks performed by the original role manifest validator
 
-Most of these checks are independent of the HCF project. Some are not,
+Most of these checks are independent of the SCF project. Some are not,
 these are noted when the checks are described in detail.
 
 ## Inputs to the validator
@@ -86,7 +86,7 @@ This is likely historic cruft, i.e. these checks got implemented
 first, and when the global defaults-based checks were added later it
 was forgotten that they could use the new structure.
 
-__Note__: The HCF validator excludes a number of properties from this
+__Note__: The SCF validator excludes a number of properties from this
 check. __Discussion with Vlad__ is needed to determine which
 exclusions could/should (not) be made generic, and if yes, how.
 
@@ -184,36 +184,36 @@ __Note__ however that a number of special parameters are ignored if
 they appear in `TP - CV`. __Discussion with Vlad__ is needed on how to
 handle these for generic operation of `fissile`. These are:
 
- * Variables not defined in the role manifest which are injected through scripts.
+ * A number of variables were not defined in the role manifest and
+   were injected through scripts instead. The list below is reasonably
+   complete as of the date the fissile validator was written. By now
+   it likely is very much out of date.
 
-   * CATS_SUITES
-   * CONSUL_HCF_CLUSTER_IPS
-   * DNS_RECORD_NAME
-   * DONT_SKIP_CERT_VERIFY_INTERNAL
-   * ETCD_HCF_CLUSTER_IPS
-   * HTTPS_PROXY
-   * HTTP_PROXY
-   * IP_ADDRESS
-   * JWT_SIGNING_PEM
-   * JWT_SIGNING_PUB
-   * MYSQL_HCF_CLUSTER_IPS
-   * NATS_HCF_CLUSTER_IPS
-   * NO_PROXY
-   * http_proxy
-   * https_proxy
-   * no_proxy
+   * `*_CLUSTER_IPS`
+   * `CATS_SUITES`
+   * `DNS_RECORD_NAME`
+   * `DONT_SKIP_CERT_VERIFY_INTERNAL`
+   * `HTTPS_PROXY`
+   * `HTTP_PROXY`
+   * `IP_ADDRESS`
+   * `JWT_SIGNING_PEM`
+   * `JWT_SIGNING_PUB`
+   * `NO_PROXY`
+   * `http_proxy`
+   * `https_proxy`
+   * `no_proxy`
 
  * UAA-related variables, injected via scripts
 
-   * JWT_SIGNING_PUB
-   * JWT_SIGNING_PEM
-   * UAA_CLIENTS
-   * UAA_USER_AUTHORITIES
+   * `JWT_SIGNING_PUB`
+   * `JWT_SIGNING_PEM`
+   * `UAA_CLIENTS`
+   * `UAA_USER_AUTHORITIES`
 
  * Variables related to role-indexing
 
-   * HCF_BOOTSTRAP
-   * HCF_ROLE_INDEX
+   * SCF_BOOTSTRAP
+   * SCF_ROLE_INDEX
 
 ### All role manifest templates must be sorted
 
@@ -228,7 +228,7 @@ any whose mustache definition does not contain any variables.
 
 ### All of the scripts must be used
 
-This check is currently specific to HCF because it assumes a specific
+This check is currently specific to SCF because it assumes a specific
 location where to search for the script files used by the keys
 `scripts`, `environment_scripts` and `post_config_scripts`, and for
 the location of the manifest. If that can be supplied through fissile
@@ -240,7 +240,7 @@ paragraph.
 
 ### Check clustering
 
-This is a check specific to HCF.
+This is a check specific to SCF.
 
 Checks that all roles requiring any of the clustering parameters use
 the script "scripts/configure-HA-hosts.sh" and that all roles which
@@ -252,7 +252,7 @@ It should not be implemented in generic `fissile`.
 
 Check for roles of type `docker` with a key `run.env` whose elements
 reference unknown parameters. We ignore the parameters provided by
-HCP, and the proxy parts, these are ok.
+the control plane, and the proxy parts, these are ok.
 
 The `we ignore ...` actually refers to all the parameters mentioned in
 the note in section __All role manifest templates must use only declared

@@ -218,20 +218,20 @@
 			"Rev": "2604f3bda7e8960c1be1063709e7d7f0765048d0"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/stampy",
+			"ImportPath": "github.com/SUSE/stampy",
 			"Comment": "0.0.0-7-g4d305fa",
 			"Rev": "4d305fae6f7ef4be26203a24cd21f9e95a6fa3ee"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui",
+			"ImportPath": "github.com/SUSE/termui",
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui/sigint",
+			"ImportPath": "github.com/SUSE/termui/sigint",
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui/termpassword",
+			"ImportPath": "github.com/SUSE/termui/termpassword",
 			"Rev": "dad033384005d3fbd624a66ba83100af0984eff1"
 		},
 		{

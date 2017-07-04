@@ -14,8 +14,7 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/dockerfiles"
 	"github.com/SUSE/fissile/util"
-
-	"github.com/hpcloud/termui"
+	"github.com/SUSE/termui"
 )
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image

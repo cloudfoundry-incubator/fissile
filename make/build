@@ -12,6 +12,10 @@ set -o errexit -o nounset
 
 ${GIT_ROOT}/make/bindata
 
+. make/include/colors.sh
+
+printf "%b==> Building %b\n" "${OK_COLOR}" "${NO_COLOR}"
+
 OSES="linux darwin"
 GOARCH=${GOARCH:-$(go env GOARCH)}
 

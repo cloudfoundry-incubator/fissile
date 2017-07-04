@@ -1,5 +1,9 @@
 #!/bin/sh
 
+. make/include/colors.sh
+
+printf "%b==> Binary Data %b\n" "${OK_COLOR}" "${NO_COLOR}"
+
 set -o errexit
 
 go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \

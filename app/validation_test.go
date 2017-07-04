@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/SUSE/fissile/model"
-	"github.com/hpcloud/termui"
+	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 )
 

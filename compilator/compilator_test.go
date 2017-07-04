@@ -15,9 +15,9 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/compilation"
 	"github.com/SUSE/fissile/util"
+	"github.com/SUSE/termui"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
-	"github.com/hpcloud/termui"
 	"github.com/stretchr/testify/assert"
 )
 

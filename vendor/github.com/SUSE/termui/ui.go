@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hpcloud/termui/termpassword"
+	"github.com/SUSE/termui/termpassword"
 )
 
 // UI is an abstraction around a terminal with various helper functions to
