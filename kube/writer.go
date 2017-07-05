@@ -41,7 +41,9 @@ func WriteYamlConfig(kubeObject runtime.Object, writer io.Writer) error {
 		return err
 	}
 
-	// Make sure "{{ templates }}" are not split into multiple lines in the YAML output
+	// Make sure "'{{ templates }}'" are not split into multiple lines in the YAML output.
+	// Also strip the surrounding single quotes; the templates add quotes themselves as needed
+	// (they use double-quotes so that newlines can be escaped and preserved).
 	template := regexp.MustCompile(`(?s)'\{\{.*?\}\}'`)
 	// Replace all newlines (and following whitespace) inside templates with a single space
 	lineBreak := regexp.MustCompile("\n[ \t]*")

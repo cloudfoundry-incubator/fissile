@@ -12,7 +12,7 @@ import (
 
 // Secret is a copy of apiv1.Secret
 // The Data field is a map of strings, not byte arrays, to avoid base64 encoding.
-// The protobug tags, and fields not used here have also been removed.
+// The protobuf tags, and fields not used here have also been removed.
 type Secret struct {
 	meta.TypeMeta    `json:",inline"`
 	apiv1.ObjectMeta `json:"metadata,omitempty"`
