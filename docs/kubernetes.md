@@ -52,7 +52,7 @@ All roles without the above constraints will be generated as deployments.
 Each role may have attached services generated as necessary.  There are three
 general conditions:
 
-- Each StatefulSet will have a headless service (e.g. `nats-pod`); this is used
+- Each StatefulSet will have a headless service (e.g. `nats-set`); this is used
   to manage the StatefulSet (a Kubernetes requirement), and to allow discovery
   of pods within a role via DNS.
 - A role may have a service for its public ports, if any port is public.

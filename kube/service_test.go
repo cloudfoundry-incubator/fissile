@@ -128,7 +128,7 @@ func TestHeadlessServiceOK(t *testing.T) {
 	}
 	expectedYAML := strings.Replace(`---
 			metadata:
-				name: myrole-pod
+				name: myrole-set
 			spec:
 				ports:
 				-
