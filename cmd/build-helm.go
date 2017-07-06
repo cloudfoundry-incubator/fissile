@@ -21,7 +21,7 @@ var buildHelmCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildHelmOutputDir = viper.GetString("helm-output-dir")
+		flagBuildHelmOutputDir = viper.GetString("output-dir")
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = viper.GetBool("use-memory-limits")
 		flagBuildHelmChartFilename = viper.GetString("chart-file")
@@ -64,7 +64,7 @@ func init() {
 	buildCmd.AddCommand(buildHelmCmd)
 
 	buildHelmCmd.PersistentFlags().StringP(
-		"helm-output-dir",
+		"output-dir",
 		"",
 		".",
 		"Helm chart files will be written to this directory",

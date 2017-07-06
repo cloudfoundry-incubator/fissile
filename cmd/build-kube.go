@@ -22,7 +22,7 @@ var buildKubeCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildKubeOutputDir = viper.GetString("kube-output-dir")
+		flagBuildKubeOutputDir = viper.GetString("output-dir")
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = viper.GetBool("use-memory-limits")
 		flagBuildKubeCreateHelmChart = viper.GetBool("create-helm-chart")
@@ -66,8 +66,8 @@ func init() {
 	buildCmd.AddCommand(buildKubeCmd)
 
 	buildKubeCmd.PersistentFlags().StringP(
-		"kube-output-dir",
-		"k",
+		"output-dir",
+		"",
 		".",
 		"Kubernetes configuration files will be written to this directory",
 	)
