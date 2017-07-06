@@ -786,8 +786,6 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		return err
 	}
 
-	// Phase I (a): Gather the secrets
-
 	cvs := model.MakeMapOfVariables(rolesManifest)
 	for key, value := range cvs {
 		if !value.Secret {
@@ -800,13 +798,30 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		return err
 	}
 
-	// Phase I (b): Export the secrets
+	err = f.generateSecrets(outputDir, secrets, rolesManifest, createHelmChart)
+	if err != nil {
+		return err
+	}
+
+	if createHelmChart {
+		if err = f.copyHelmChart(outputDir, chartFilename); err != nil {
+			return err
+		}
+		if err = f.generateHelmValues(outputDir, rolesManifest, defaults); err != nil {
+			return err
+		}
+	}
+
+	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
+}
+
+func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, rolesManifest *model.RoleManifest, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"
 	}
 	secretsDir := filepath.Join(outputDir, subDir)
-	if err = os.MkdirAll(secretsDir, 0755); err != nil {
+	if err := os.MkdirAll(secretsDir, 0755); err != nil {
 		return err
 	}
 
@@ -827,71 +842,68 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 			return err
 		}
 	}
+	return nil
+}
 
-	if createHelmChart {
-		// Copy Chart.yaml into helm chart
-		outputPath := filepath.Join(outputDir, "Chart.yaml")
-		f.UI.Printf("Copying %s to %s\n",
-			color.CyanString(chartFilename),
-			color.CyanString(outputPath),
-		)
-		inputFile, err := os.Open(chartFilename)
-		if err != nil {
-			return err
-		}
-		defer inputFile.Close()
+func (f *Fissile) copyHelmChart(outputDir string, chartFilename string) error {
+	// Copy Chart.yaml into helm chart
+	outputPath := filepath.Join(outputDir, "Chart.yaml")
+	f.UI.Printf("Copying %s to %s\n",
+		color.CyanString(chartFilename),
+		color.CyanString(outputPath),
+	)
+	inputFile, err := os.Open(chartFilename)
+	if err != nil {
+		return err
+	}
+	defer inputFile.Close()
 
-		outputFile, err := os.Create(outputPath)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(outputFile, inputFile)
-		if err == nil {
-			err = outputFile.Close()
-		} else {
-			outputFile.Close()
-		}
-		if err != nil {
-			return err
-		}
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(outputFile, inputFile)
+	if err == nil {
+		return outputFile.Close()
+	}
+	_ = outputFile.Close()
+	return err
+}
 
-		// Export the default values for variables
-		outputPath = filepath.Join(outputDir, "values.yaml")
-		f.UI.Printf("Writing config %s\n",
-			color.CyanString(outputPath),
-		)
+func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.RoleManifest, defaults map[string]string) error {
+	// Export the default values for variables
+	outputPath := filepath.Join(outputDir, "values.yaml")
+	f.UI.Printf("Writing config %s\n",
+		color.CyanString(outputPath),
+	)
 
-		outputFile, err = os.Create(outputPath)
-		if err != nil {
-			return err
-		}
-
-		env := make(map[string]*string)
-		for key, value := range model.MakeMapOfVariables(rolesManifest) {
-			if !value.Secret || value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword {
-				ok, strValue := kube.ConfigValue(value, defaults)
-				env[key] = nil
-				if ok {
-					env[key] = &strValue
-				}
-			}
-		}
-		buf, err := yaml.Marshal(map[string]map[string]*string{"env": env})
-		if err == nil {
-			_, err = outputFile.Write(buf)
-		}
-		if err == nil {
-			err = outputFile.Close()
-		} else {
-			outputFile.Close()
-		}
-		if err != nil {
-			return err
-		}
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		return err
 	}
 
-	// Phase II: Export the roles
+	env := make(map[string]*string)
+	for key, value := range model.MakeMapOfVariables(rolesManifest) {
+		if !value.Secret || value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword {
+			ok, strValue := kube.ConfigValue(value, defaults)
+			env[key] = nil
+			if ok {
+				env[key] = &strValue
+			}
+		}
+	}
+	buf, err := yaml.Marshal(map[string]map[string]*string{"env": env})
+	if err == nil {
+		_, err = outputFile.Write(buf)
+	}
+	if err == nil {
+		return outputFile.Close()
+	}
+	_ = outputFile.Close()
+	return err
+}
 
+func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, fissileVersion string, rolesManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
 	settings := &kube.ExportSettings{
 		Defaults:        defaults,
 		Registry:        registry,
@@ -912,12 +924,12 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 			continue
 		}
 
-		subDir = string(role.Type)
+		subDir := string(role.Type)
 		if createHelmChart {
 			subDir = "templates"
 		}
 		roleTypeDir := filepath.Join(outputDir, subDir)
-		if err = os.MkdirAll(roleTypeDir, 0755); err != nil {
+		if err := os.MkdirAll(roleTypeDir, 0755); err != nil {
 			return err
 		}
 		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yml", role.Name))
