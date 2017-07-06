@@ -208,7 +208,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		if createHelmChart {
 			required := ""
 			if config.Required {
-				required = fmt.Sprintf(`required "A valid .Values.env.%s is required" `, config.Name)
+				required = fmt.Sprintf(`required "%s configuration missing" `, config.Name)
 			}
 			stringifiedValue = fmt.Sprintf("{{ %s.Values.env.%s | quote }}", required, config.Name)
 		} else {

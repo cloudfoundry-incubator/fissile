@@ -64,7 +64,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		if createHelmChart {
 			switch {
 			case value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword:
-				errString := fmt.Sprintf("A valid .Values.env.%s is required", value.Name)
+				errString := fmt.Sprintf("%s configuration missing", value.Name)
 				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, value.Name)
 			case value.Generator.Type == model.GeneratorTypePassword:
 				strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
