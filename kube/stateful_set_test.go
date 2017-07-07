@@ -119,7 +119,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		assert.Equal(role.Name+"-public", endpointService.ObjectMeta.Name, "unexpected endpoint service name")
 	}
 	if assert.NotNil(headlessService, "headless service not found") {
-		assert.Equal(role.Name+"-pod", headlessService.ObjectMeta.Name, "unexpected headless service name")
+		assert.Equal(role.Name+"-set", headlessService.ObjectMeta.Name, "unexpected headless service name")
 	}
 
 	objects := apiv1.List{
@@ -141,7 +141,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		-
 			# This is the per-pod naming port
 			metadata:
-				name: myrole-pod
+				name: myrole-set
 			spec:
 				ports:
 				-
@@ -194,7 +194,7 @@ func TestStatefulSetPorts(t *testing.T) {
 				name: myrole
 			spec:
 				replicas: 1
-				serviceName: myrole-pod
+				serviceName: myrole-set
 				template:
 					metadata:
 						labels:
@@ -248,7 +248,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 		name: myrole
 	spec:
 		replicas: 1
-		serviceName: myrole-pod
+		serviceName: myrole-set
 		template:
 			metadata:
 				labels:

@@ -71,7 +71,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool) (*apiv1.S
 		},
 	}
 	if headless {
-		service.ObjectMeta.Name = fmt.Sprintf("%s-pod", role.Name)
+		service.ObjectMeta.Name = fmt.Sprintf("%s-set", role.Name)
 		service.Spec.ClusterIP = apiv1.ClusterIPNone
 	} else if public {
 		service.ObjectMeta.Name = fmt.Sprintf("%s-public", role.Name)

@@ -44,7 +44,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 		},
 		Spec: v1beta1.StatefulSetSpec{
 			Replicas:             &role.Run.Scaling.Min,
-			ServiceName:          fmt.Sprintf("%s-pod", role.Name),
+			ServiceName:          fmt.Sprintf("%s-set", role.Name),
 			Template:             podTemplate,
 			VolumeClaimTemplates: volumeClaimTemplates,
 		},
