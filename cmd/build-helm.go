@@ -21,10 +21,10 @@ var buildHelmCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildHelmOutputDir = viper.GetString("output-dir")
-		flagBuildHelmDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
-		flagBuildHelmUseMemoryLimits = viper.GetBool("use-memory-limits")
-		flagBuildHelmChartFilename = viper.GetString("chart-file")
+		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
+		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
+		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
+		flagBuildHelmChartFilename = buildHelmViper.GetString("chart-file")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -59,8 +59,11 @@ var buildHelmCmd = &cobra.Command{
 		)
 	},
 }
+var buildHelmViper = viper.New()
 
 func init() {
+	initViper(buildHelmViper)
+
 	buildCmd.AddCommand(buildHelmCmd)
 
 	buildHelmCmd.PersistentFlags().StringP(
@@ -91,5 +94,5 @@ func init() {
 		"Chart.yaml file that will be copied into the helm chart",
 	)
 
-	viper.BindPFlags(buildHelmCmd.PersistentFlags())
+	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())
 }

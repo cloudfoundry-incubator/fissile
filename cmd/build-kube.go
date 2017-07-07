@@ -20,9 +20,9 @@ var buildKubeCmd = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagBuildKubeOutputDir = viper.GetString("output-dir")
-		flagBuildKubeDefaultEnvFiles = splitNonEmpty(viper.GetString("defaults-file"), ",")
-		flagBuildKubeUseMemoryLimits = viper.GetBool("use-memory-limits")
+		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
+		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
+		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -57,8 +57,11 @@ var buildKubeCmd = &cobra.Command{
 		)
 	},
 }
+var buildKubeViper = viper.New()
 
 func init() {
+	initViper(buildKubeViper)
+
 	buildCmd.AddCommand(buildKubeCmd)
 
 	buildKubeCmd.PersistentFlags().StringP(
@@ -82,5 +85,5 @@ func init() {
 		"Include memory limits when generating kube configurations",
 	)
 
-	viper.BindPFlags(buildKubeCmd.PersistentFlags())
+	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())
 }
