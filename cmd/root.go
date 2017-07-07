@@ -178,7 +178,7 @@ func init() {
 	RootCmd.PersistentFlags().StringP(
 		"output",
 		"o",
-		"human",
+		app.OutputFormatHuman,
 		"Choose output format, one of human, json, or yaml (currently only for 'show properties')",
 	)
 

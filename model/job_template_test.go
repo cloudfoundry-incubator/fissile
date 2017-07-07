@@ -27,3 +27,53 @@ func TestJobTemplatesContentOk(t *testing.T) {
 		assert.NotEmpty(template)
 	}
 }
+
+func TestJobTemplateMarshal(t *testing.T) {
+	testCases := []struct {
+		name     string
+		template *JobTemplate
+		expected map[string]interface{}
+	}{
+		{
+			name: "simple",
+			template: &JobTemplate{
+				SourcePath:      "/source",
+				DestinationPath: "/dest",
+				Job:             &Job{Fingerprint: "asdf"},
+				Content:         "<content>",
+			},
+			expected: map[string]interface{}{
+				"sourcePath":      "/source",
+				"destinationPath": "/dest",
+				"job":             "asdf",
+				"content":         "<content>",
+			},
+		},
+		{
+			name: "jobless",
+			template: &JobTemplate{
+				SourcePath:      "/source",
+				DestinationPath: "/dest",
+				Job:             nil,
+				Content:         "<content>",
+			},
+			expected: map[string]interface{}{
+				"sourcePath":      "/source",
+				"destinationPath": "/dest",
+				"job":             "",
+				"content":         "<content>",
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			actual, err := testCase.template.Marshal()
+			if assert.NoError(err) {
+				assert.Equal(testCase.expected, actual)
+			}
+		})
+	}
+}

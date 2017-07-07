@@ -6,13 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/testhelpers"
 	"github.com/SUSE/fissile/util"
 
-	"strings"
-
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestJobInfoOk(t *testing.T) {
@@ -307,4 +308,119 @@ func TestWriteConfigs(t *testing.T) {
 			"default": {}
 		}
 	}`, string(json))
+}
+
+func TestJobMarshal(t *testing.T) {
+	testCases := []struct {
+		value    *Job
+		expected string
+	}{
+		{
+			value: &Job{
+				Name: "simple",
+			},
+			expected: `---
+				name: simple
+			`,
+		},
+		{
+			value: &Job{
+				Name: "release-name",
+				Release: &Release{
+					Name: "some-release",
+				},
+			},
+			expected: `---
+				name: release-name
+				release: some-release
+			`,
+		},
+		{
+			value: &Job{
+				Name: "templates",
+				Templates: []*JobTemplate{
+					&JobTemplate{
+						SourcePath: "/source",
+						Content:    "<content>",
+						Job:        &Job{Name: "templates"}, // fake a loop
+					},
+				},
+			},
+			expected: `---
+				name: templates
+				templates:
+				- sourcePath: /source
+				  content: <content>
+			`,
+		},
+		{
+			value: &Job{
+				Name: "packages",
+				Packages: []*Package{
+					{
+						Fingerprint: "abc",
+					},
+				},
+			},
+			expected: `---
+				name: packages
+				packages:
+				- abc # only list the fingerprint, not the whole object
+			`,
+		},
+		{
+			value: &Job{
+				Name:        "filled-out",
+				Description: "a filled-out job",
+				Path:        "/path/to/thing",
+				Fingerprint: "abc123",
+				SHA1:        "def456",
+				Properties: []*JobProperty{
+					&JobProperty{
+						Name:        "property",
+						Description: "some job property",
+						Default:     1,
+						Job:         &Job{Name: "filled-out"}, // fake a loop
+					},
+				},
+				Version: "v123",
+			},
+			expected: `---
+				name: filled-out
+				description: a filled-out job
+				path: /path/to/thing
+				fingerprint: abc123
+				sha1: def456
+				properties:
+				- name: property
+				  description: some job property
+				  default: 1
+				  job: filled-out
+				version: v123
+			`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.value.Name, func(t *testing.T) {
+			assert := assert.New(t)
+			adapter := util.NewMarshalAdapter(testCase.value)
+
+			actual, err := yaml.Marshal(adapter)
+			if !assert.NoError(err) {
+				return
+			}
+
+			var unmarshalled, expected interface{}
+
+			if !assert.NoError(yaml.Unmarshal(actual, &unmarshalled), "Error unmarshalling result") {
+				return
+			}
+			expectedBytes := []byte(strings.Replace(testCase.expected, "\t", "    ", -1))
+			if !assert.NoError(yaml.Unmarshal(expectedBytes, &expected), "Error in expected input") {
+				return
+			}
+			testhelpers.IsYAMLSubset(assert, expected, unmarshalled)
+		})
+	}
 }

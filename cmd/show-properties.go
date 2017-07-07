@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"github.com/SUSE/fissile/app"
+
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +27,7 @@ The report lists the properties per job per release, with their default value.
 			return err
 		}
 
-		return fissile.ListProperties(flagOutputFormat)
+		return fissile.ListProperties(app.OutputFormat(flagOutputFormat))
 	},
 }
 

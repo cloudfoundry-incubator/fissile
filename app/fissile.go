@@ -25,6 +25,17 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// OutputFormat is one of the known output formats for commands showing loaded
+// information
+type OutputFormat string
+
+// Valid output formats
+const (
+	OutputFormatHuman = "human" // output for human consumption
+	OutputFormatJSON  = "json"  // output as JSON
+	OutputFormatYAML  = "yaml"  // output as YAML
+)
+
 // Fissile represents a fissile application
 type Fissile struct {
 	Version  string
@@ -118,15 +129,15 @@ func (f *Fissile) ListJobs(verbose bool) error {
 }
 
 // ListProperties will list all properties in all jobs within a list of dev releases
-func (f *Fissile) ListProperties(outputFormat string) error {
+func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	switch outputFormat {
-	case "human":
+	case OutputFormatHuman:
 		f.listPropertiesForHuman()
-	case "json":
+	case OutputFormatJSON:
 		// Note: The encoding/json is unable to handle type
 		// -- map[interface {}]interface {}
 		// Such types can occur when the default value has sub-structure.
@@ -137,7 +148,7 @@ func (f *Fissile) ListProperties(outputFormat string) error {
 		}
 
 		f.UI.Printf("%s", buf)
-	case "yaml":
+	case OutputFormatYAML:
 		buf, err := yaml.Marshal(f.collectProperties())
 		if err != nil {
 			return err
@@ -149,6 +160,49 @@ func (f *Fissile) ListProperties(outputFormat string) error {
 	}
 
 	return nil
+}
+
+// SerializePackages returns all packages in loaded releases, keyed by fingerprint
+func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
+	if len(f.releases) == 0 {
+		return nil, fmt.Errorf("Releases not loaded")
+	}
+
+	pkgs := make(map[string]interface{})
+	for _, release := range f.releases {
+		for _, pkg := range release.Packages {
+			pkgs[pkg.Fingerprint] = util.NewMarshalAdapter(pkg)
+		}
+	}
+	return pkgs, nil
+}
+
+// SerializeReleases will return all of the loaded releases
+func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
+	if len(f.releases) == 0 {
+		return nil, fmt.Errorf("Releases not loaded")
+	}
+
+	releases := make(map[string]interface{})
+	for _, release := range f.releases {
+		releases[release.Name] = util.NewMarshalAdapter(release)
+	}
+	return releases, nil
+}
+
+// SerializeJobs will return all of the jobs within the dev releases, keyed by fingerprint
+func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
+	if len(f.releases) == 0 {
+		return nil, fmt.Errorf("Releases not loaded")
+	}
+
+	jobs := make(map[string]interface{})
+	for _, release := range f.releases {
+		for _, job := range release.Jobs {
+			jobs[job.Fingerprint] = util.NewMarshalAdapter(job)
+		}
+	}
+	return jobs, nil
 }
 
 func (f *Fissile) listPropertiesForHuman() {

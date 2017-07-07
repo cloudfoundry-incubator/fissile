@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// The Marshaler interface is implemented by types which require custom
+// marshalling support for dumping as JSON / YAML
+type Marshaler interface {
+	Marshal() (interface{}, error)
+}
+
 // JSONMarshal marshals an arbitrary map to JSON; this only exists because
 // JSON.Marshal insists on having maps that have string (and not interface{})
 // keys
@@ -63,4 +69,27 @@ func jsonMarshalHelper(input interface{}) (interface{}, *jsonMarshalError) {
 	default:
 		return input, nil
 	}
+}
+
+type marshalAdapter struct {
+	object Marshaler
+}
+
+// MarshalJSON implements the encoding/json.Marshal interface
+func (a *marshalAdapter) MarshalJSON() ([]byte, error) {
+	result, err := a.object.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(result)
+}
+
+// MarshalYAML implements the yaml.Marshal interface
+func (a *marshalAdapter) MarshalYAML() (interface{}, error) {
+	return a.object.Marshal()
+}
+
+// NewMarshalAdapter creates a new adapter for JSON/YAML marshalling
+func NewMarshalAdapter(m Marshaler) interface{} {
+	return &marshalAdapter{m}
 }
