@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -9,9 +10,18 @@ import (
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
 
+// Secret is a copy of apiv1.Secret
+// The Data field is a map of strings, not byte arrays, to avoid base64 encoding.
+// The protobuf tags, and fields not used here have also been removed.
+type Secret struct {
+	meta.TypeMeta    `json:",inline"`
+	apiv1.ObjectMeta `json:"metadata,omitempty"`
+	Data             map[string]string `json:"data,omitempty"`
+}
+
 // NewSecret creates a single new, empty K8s Secret
-func NewSecret(name string) *apiv1.Secret {
-	secret := &apiv1.Secret{
+func NewSecret(name string) *Secret {
+	secret := &Secret{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
@@ -20,7 +30,7 @@ func NewSecret(name string) *apiv1.Secret {
 			Name: name,
 		},
 	}
-	secret.Data = make(map[string][]byte)
+	secret.Data = make(map[string]string)
 	return secret
 }
 
@@ -40,8 +50,8 @@ type SecretRefMap map[string]SecretRef
 // MakeSecrets creates an array of new Secrets filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secret, SecretRefMap, error) {
-	var thesecrets []*apiv1.Secret
+func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) ([]*Secret, SecretRefMap, error) {
+	var thesecrets []*Secret
 	refs := make(map[string]SecretRef)
 
 	max := apiv1.MaxSecretSize
@@ -50,9 +60,21 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 	total := 0 // Accumulated size of the values stored in 'currentSecret'
 
 	for key, value := range secrets {
-		ok, strValue := configValue(value, defaults)
-		if !ok {
-			return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
+		var strValue string
+		if createHelmChart {
+			switch {
+			case value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword:
+				errString := fmt.Sprintf("%s configuration missing", value.Name)
+				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, value.Name)
+			case value.Generator.Type == model.GeneratorTypePassword:
+				strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
+			}
+		} else {
+			ok, strValue := ConfigValue(value, defaults)
+			if !ok {
+				return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
+			}
+			strValue = base64.StdEncoding.EncodeToString([]byte(strValue))
 		}
 
 		bytes := []byte(strValue)
@@ -64,14 +86,17 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 			return nil, nil, fmt.Errorf("Secret '%s' overflows K8s limit of %d bytes",
 				key, max)
 		}
-		// The current entry's value overflows the current K8s
-		// secret. Finalize it, and open a new one to store
-		// the current entry and anything after.
-		if total+blen > max {
-			thesecrets = append(thesecrets, currentSecret)
-			count++
-			currentSecret = NewSecret(fmt.Sprintf("secret-%d", count))
-			total = 0
+		// Helm charts include template expansion so the size calculation cannot be done here.
+		if !createHelmChart {
+			// The current entry's value overflows the current K8s
+			// secret. Finalize it, and open a new one to store
+			// the current entry and anything after.
+			if total+blen > max {
+				thesecrets = append(thesecrets, currentSecret)
+				count++
+				currentSecret = NewSecret(fmt.Sprintf("secret-%d", count))
+				total = 0
+			}
 		}
 
 		// (**) From the old transformer we know that "secrets
@@ -84,7 +109,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string) ([]*apiv1.Secr
 
 		skey := strings.ToLower(strings.Replace(key, "_", "-", -1))
 
-		currentSecret.Data[skey] = bytes
+		currentSecret.Data[skey] = strValue
 		refs[key] = SecretRef{
 			Secret: currentSecret.ObjectMeta.Name,
 			Key:    skey,
