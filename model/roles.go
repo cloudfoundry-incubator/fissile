@@ -278,7 +278,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
-				role.Type, "Excpected one of bosh, bosh-task, or docker"))
+				role.Type, "Expected one of bosh, bosh-task, or docker"))
 		}
 
 		allErrs = append(allErrs, validateRoleRun(role, &rolesManifest, declaredConfigs)...)
