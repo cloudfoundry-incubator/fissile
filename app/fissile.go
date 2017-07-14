@@ -951,6 +951,13 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 		_, err = outputFile.Write(buf)
 	}
 	if err == nil {
+		_, err = outputFile.Write([]byte(`k8s:
+  storage-class:
+    persistent: persistent
+    shared: shared
+`))
+	}
+	if err == nil {
 		return outputFile.Close()
 	}
 	_ = outputFile.Close()
