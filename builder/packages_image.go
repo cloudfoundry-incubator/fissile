@@ -3,11 +3,14 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/SUSE/fissile/docker"
@@ -260,17 +263,31 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 
 // GetRolePackageImageName generates a docker image name for the amalgamation for a role image
 func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
-	extra := fmt.Sprintf("%s:%s", p.fissileVersion, p.stemcellImageID)
+	// Get the list of packages; use the fingerprint to ensure we have no repeats
+	pkgMap := make(map[string]*model.Package)
+	for _, r := range roles {
+		for _, j := range r.Jobs {
+			for _, pkg := range j.Packages {
+				pkgMap[pkg.Fingerprint] = pkg
+			}
+		}
+	}
 
-	// Opinions are not relevant for the packages layer
-	opinions := model.NewEmptyOpinions()
+	// Sort the packages to have a consistent order
+	pkgs := make(model.Packages, 0, len(pkgMap))
+	for _, pkg := range pkgMap {
+		pkgs = append(pkgs, pkg)
+	}
+	sort.Sort(pkgs)
 
-	rmVersion, err := roleManifest.GetRoleManifestDevPackageVersion(roles, opinions, p.fissileVersion, extra)
-	if err != nil {
-		return "", err
+	// Get the hash
+	hasher := sha1.New()
+	hasher.Write([]byte(fmt.Sprintf("%s:%s", p.fissileVersion, p.stemcellImageID)))
+	for _, pkg := range pkgs {
+		hasher.Write([]byte(strings.Join([]string{"", pkg.Fingerprint, pkg.Name, pkg.SHA1}, "\000")))
 	}
 
 	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repository))
-
-	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(rmVersion)), nil
+	imageTag := util.SanitizeDockerName(hex.EncodeToString(hasher.Sum(nil)))
+	return fmt.Sprintf("%s:%s", imageName, imageTag), nil
 }

@@ -225,6 +225,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("FissileVersionShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
 		builder := PackagesImageBuilder{
 			repository:      "test",
 			fissileVersion:  "0.1.2",
@@ -242,6 +243,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 	})
 
 	t.Run("StemcellImageIDShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
 		builder := PackagesImageBuilder{
 			repository:      "test",
 			fissileVersion:  "0.1.2",
@@ -259,6 +261,9 @@ func TestGetRolePackageImageName(t *testing.T) {
 	})
 
 	t.Run("RepositoryShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
+		// The repository is only relevant because it changes the part before
+		// the colon; it doesn't actually change the hash
 		builder := PackagesImageBuilder{
 			repository:      "test",
 			fissileVersion:  "0.1.2",
@@ -272,9 +277,14 @@ func TestGetRolePackageImageName(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing repository should change package layer hash")
+
+		oldImageTag := strings.Split(oldImageName, ":")[1]
+		newImageTag := strings.Split(newImageName, ":")[1]
+		assert.Equal(t, oldImageTag, newImageTag, "Changing the repository should not change tag")
 	})
 
 	t.Run("TemplatesShouldBeIrrelevant", func(t *testing.T) {
+		t.Parallel()
 		builder := PackagesImageBuilder{
 			repository:      "test",
 			fissileVersion:  "0.1.2",
@@ -308,6 +318,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 	})
 
 	t.Run("RolesShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
 		builder := PackagesImageBuilder{
 			repository:      "test",
 			fissileVersion:  "0.1.2",
@@ -320,5 +331,81 @@ func TestGetRolePackageImageName(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing roles should change package layer hash")
+	})
+
+	makeTemplateRole := func() *model.Role {
+		return &model.Role{
+			Name: "test-role",
+			Jobs: model.Jobs{
+				&model.Job{
+					Name: "test-job",
+					Packages: model.Packages{
+						&model.Package{
+							Name:        "pkg-name",
+							Version:     "pkg-version",
+							Fingerprint: "pkg-fingerprint",
+							SHA1:        "pkg-sha1",
+						},
+					},
+					Fingerprint: "job-fingerprint",
+					SHA1:        "job-sha1",
+				},
+			},
+		}
+
+	}
+
+	t.Run("PackageSHA1ShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
+		builder := PackagesImageBuilder{
+			repository:      "test",
+			fissileVersion:  "0.1.2",
+			stemcellImageID: "stemcell:latest",
+		}
+		role := makeTemplateRole()
+		oldImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		role.Jobs[0].Packages[0].SHA1 = "different sha1"
+		newImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldImageName, newImageName, "Changing package SHA1 should change package layer hash")
+	})
+
+	t.Run("PackageFingerprintShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
+		builder := PackagesImageBuilder{
+			repository:      "test",
+			fissileVersion:  "0.1.2",
+			stemcellImageID: "stemcell:latest",
+		}
+		role := makeTemplateRole()
+		oldImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		role.Jobs[0].Packages[0].Fingerprint = "different fingerprint"
+		newImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldImageName, newImageName, "Changing package fingerprint should change package layer hash")
+	})
+
+	t.Run("PackageNameShouldBeRelevant", func(t *testing.T) {
+		t.Parallel()
+		builder := PackagesImageBuilder{
+			repository:      "test",
+			fissileVersion:  "0.1.2",
+			stemcellImageID: "stemcell:latest",
+		}
+		role := makeTemplateRole()
+		oldImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		role.Jobs[0].Packages[0].Name = "different name"
+		newImageName, err := builder.GetRolePackageImageName(roleManifest, model.Roles{role})
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldImageName, newImageName, "Changing package name should change package layer hash")
 	})
 }
