@@ -75,7 +75,7 @@ func getVolumeClaims(role *model.Role, createHealmChart bool) []v1.PersistentVol
 
 	if createHealmChart {
 		for i := range types {
-			types[i].storageClass = fmt.Sprintf("((kube.storage-class.%s))", types[i].storageClass)
+			types[i].storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", types[i].storageClass)
 		}
 	}
 

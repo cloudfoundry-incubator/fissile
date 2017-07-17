@@ -110,7 +110,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		}
 		if public {
 			if settings.CreateHelmChart {
-				service.Spec.ExternalIPs = []string{"{{kube.external-ip}}"}
+				service.Spec.ExternalIPs = []string{"{{ .Values.kube.external_ip | quote }}"}
 			} else {
 				service.Spec.ExternalIPs = []string{"192.168.77.77"}
 			}
