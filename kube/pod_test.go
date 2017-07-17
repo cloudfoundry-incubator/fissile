@@ -8,12 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/util/intstr"
