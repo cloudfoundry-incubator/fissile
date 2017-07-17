@@ -945,6 +945,18 @@ func (r *Role) IsDevRole() bool {
 	return false
 }
 
+// IsStopOnFailureRole tests if the role is tagged to stop on a failure, or
+// not.
+func (r *Role) IsStopOnFailureRole() bool {
+	for _, tag := range r.Tags {
+		switch tag {
+		case "stop-on-failure":
+			return true
+		}
+	}
+	return false
+}
+
 // AggregateSignatures returns the SHA1 for a slice of strings
 func AggregateSignatures(signatures []string) string {
 	hasher := sha1.New()

@@ -957,6 +957,30 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	return err
 }
 
+func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings *kube.ExportSettings) error {
+	if role.IsStopOnFailureRole() {
+		pod, err := kube.NewPod(role, settings)
+		if err != nil {
+			return err
+		}
+
+		if err := kube.WriteYamlConfig(pod, outputFile); err != nil {
+			return err
+		}
+	} else {
+		job, err := kube.NewJob(role, settings)
+		if err != nil {
+			return err
+		}
+
+		if err := kube.WriteYamlConfig(job, outputFile); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, fissileVersion string, rolesManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
 	settings := &kube.ExportSettings{
 		Defaults:        defaults,
@@ -1001,12 +1025,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 
 		switch role.Type {
 		case model.RoleTypeBoshTask:
-			job, err := kube.NewJob(role, settings)
-			if err != nil {
-				return err
-			}
-
-			if err := kube.WriteYamlConfig(job, outputFile); err != nil {
+			if err := f.generateBoshTaskRole(outputFile, role, settings); err != nil {
 				return err
 			}
 
