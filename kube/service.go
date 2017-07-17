@@ -12,7 +12,7 @@ import (
 )
 
 // NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, error) {
+func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSettings) (*apiv1.List, error) {
 	list := &apiv1.List{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "v1",
@@ -22,7 +22,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 	}
 	if headless {
 		// Create headless, private service
-		svc, err := NewClusterIPService(role, true, false)
+		svc, err := NewClusterIPService(role, true, false, settings)
 		if err != nil {
 			return nil, err
 		}
@@ -31,7 +31,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 		}
 	}
 	// Create private service
-	svc, err := NewClusterIPService(role, false, false)
+	svc, err := NewClusterIPService(role, false, false, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
 	}
 	// Create public service
-	svc, err = NewClusterIPService(role, false, true)
+	svc, err = NewClusterIPService(role, false, true, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool) (*apiv1.List, erro
 }
 
 // NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool, public bool) (*apiv1.Service, error) {
+func NewClusterIPService(role *model.Role, headless bool, public bool, settings *ExportSettings) (*apiv1.Service, error) {
 	service := &apiv1.Service{
 		TypeMeta: meta.TypeMeta{
 			APIVersion: "v1",
@@ -109,7 +109,11 @@ func NewClusterIPService(role *model.Role, headless bool, public bool) (*apiv1.S
 			service.Spec.Ports = append(service.Spec.Ports, svcPort)
 		}
 		if public {
-			service.Spec.ExternalIPs = []string{"192.168.77.77"} // TODO Make this work on not-vagrant
+			if settings.CreateHelmChart {
+				service.Spec.ExternalIPs = []string{"{{k8s.external-ip}}"}
+			} else {
+				service.Spec.ExternalIPs = []string{"192.168.77.77"}
+			}
 		}
 	}
 	if len(service.Spec.Ports) == 0 {

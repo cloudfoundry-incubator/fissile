@@ -952,6 +952,7 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	}
 	if err == nil {
 		_, err = outputFile.Write([]byte(`k8s:
+  external-ip: 192.168.77.77
   storage-class:
     persistent: persistent
     shared: shared

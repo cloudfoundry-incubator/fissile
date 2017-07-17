@@ -26,7 +26,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 
 	volumeClaimTemplates := getVolumeClaims(role, settings.CreateHelmChart)
 
-	svcList, err := NewClusterIPServiceList(role, true)
+	svcList, err := NewClusterIPServiceList(role, true, settings)
 	if err != nil {
 		return nil, nil, err
 	}
