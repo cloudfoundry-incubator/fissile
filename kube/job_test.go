@@ -31,7 +31,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	}
 
 	role := manifest.LookupRole(roleName)
-	if !assert.NotNil(role, "Failed fo find role %s", roleName) {
+	if !assert.NotNil(role, "Failed to find role %s", roleName) {
 		return nil
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/SUSE/fissile/model"
 
 	"k8s.io/client-go/pkg/api/resource"
+	meta "k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 )
@@ -90,6 +91,42 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 	}
 
 	return podSpec, nil
+}
+
+// NewPod creates a new Pod for the given role, as well as any objects it depends on
+func NewPod(role *model.Role, settings *ExportSettings) (*v1.Pod, error) {
+	podTemplate, err := NewPodTemplate(role, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	if role.Run == nil {
+		return nil, fmt.Errorf("Role %s has no run information", role.Name)
+	}
+
+	// Pod must have a restart policy that isn't "always"
+	switch role.Run.FlightStage {
+	case model.FlightStageManual:
+		podTemplate.Spec.RestartPolicy = v1.RestartPolicyNever
+	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
+		podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+	default:
+		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
+	}
+
+	return &v1.Pod{
+		TypeMeta: meta.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: role.Name,
+			Labels: map[string]string{
+				RoleNameLabel: role.Name,
+			},
+		},
+		Spec: podTemplate.Spec,
+	}, nil
 }
 
 // getContainerImageName returns the name of the docker image to use for a role

@@ -1,19 +1,24 @@
 package kube
 
 import (
+	"bytes"
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/testhelpers"
+
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 )
 
-func podTestLoadRole(assert *assert.Assertions) *model.Role {
+func podTemplateTestLoadRole(assert *assert.Assertions) *model.Role {
 	workDir, err := os.Getwd()
 	if !assert.NoError(err) {
 		return nil
@@ -58,7 +63,7 @@ func podTestLoadRole(assert *assert.Assertions) *model.Role {
 
 func TestPodGetVolumes(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -110,7 +115,7 @@ func TestPodGetVolumes(t *testing.T) {
 
 func TestPodGetVolumeMounts(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -139,7 +144,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 
 func TestPodGetEnvVars(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -215,7 +220,7 @@ func TestPodGetEnvVars(t *testing.T) {
 
 func TestPodGetContainerPorts(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -329,7 +334,7 @@ func TestPodGetContainerPorts(t *testing.T) {
 
 func TestPodGetContainerLivenessProbe(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -662,7 +667,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 
 func TestPodGetContainerReadinessProbe(t *testing.T) {
 	assert := assert.New(t)
-	role := podTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert)
 	if role == nil {
 		return
 	}
@@ -956,4 +961,112 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 			assert.Equal(sample.expected, actual, sample.desc)
 		}
 	}
+}
+
+func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/pods.yml")
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
+	if !assert.NoError(err) {
+		return nil
+	}
+	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
+	if !assert.NoError(err) {
+		return nil
+	}
+
+	role := manifest.LookupRole(roleName)
+	if !assert.NotNil(role, "Failed to find role %s", roleName) {
+		return nil
+	}
+
+	return role
+
+}
+
+func TestPodPreFlight(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+
+	pod, err := NewPod(role, &ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(pod, &yamlConfig); !assert.NoError(err) {
+		return
+	}
+
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
+		return
+	}
+	expectedYAML := strings.Replace(`---
+	apiVersion: v1
+	kind: Pod
+	metadata:
+		name: pre-role
+	spec:
+		containers:
+		-
+			name: pre-role
+		restartPolicy: OnFailure
+	`, "\t", "    ", -1)
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		return
+	}
+
+	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+}
+
+func TestPodPostFlight(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "post-role")
+	if role == nil {
+		return
+	}
+
+	pod, err := NewPod(role, &ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
+	if !assert.NoError(err, "Failed to create pod from role post-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	yamlConfig := bytes.Buffer{}
+	if err := WriteYamlConfig(pod, &yamlConfig); !assert.NoError(err) {
+		return
+	}
+
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
+		return
+	}
+	expectedYAML := strings.Replace(`---
+	apiVersion: v1
+	kind: Pod
+	metadata:
+		name: post-role
+	spec:
+		containers:
+		-
+			name: post-role
+		restartPolicy: OnFailure
+	`, "\t", "    ", -1)
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		return
+	}
+	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
 }
