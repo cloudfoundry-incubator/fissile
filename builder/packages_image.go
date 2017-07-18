@@ -261,8 +261,8 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 	return nil
 }
 
-// GetRolePackageImageName generates a docker image name for the amalgamation for a role image
-func (p *PackagesImageBuilder) GetRolePackageImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
+// GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified roles
+func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
 	for _, r := range roles {
