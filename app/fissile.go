@@ -424,7 +424,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
 	if err != nil {
 		return fmt.Errorf("Error finding role's package name: %s", err.Error())
 	}
@@ -472,7 +472,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
 	if err != nil {
 		return fmt.Errorf("Error finding role's package name: %v", err)
 	}
@@ -578,7 +578,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetRolePackageImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
 	if err != nil {
 		return err
 	}
