@@ -68,7 +68,7 @@ func TestPodGetVolumes(t *testing.T) {
 		return
 	}
 
-	claims := getVolumeClaims(role)
+	claims := getVolumeClaims(role, false)
 
 	assert.Len(claims, 2, "expected two claims")
 

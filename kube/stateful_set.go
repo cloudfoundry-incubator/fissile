@@ -24,9 +24,9 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 		return nil, nil, err
 	}
 
-	volumeClaimTemplates := getVolumeClaims(role)
+	volumeClaimTemplates := getVolumeClaims(role, settings.CreateHelmChart)
 
-	svcList, err := NewClusterIPServiceList(role, true)
+	svcList, err := NewClusterIPServiceList(role, true, settings)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -52,7 +52,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 }
 
 // getVolumeClaims returns the list of persistent volume claims from a role
-func getVolumeClaims(role *model.Role) []v1.PersistentVolumeClaim {
+func getVolumeClaims(role *model.Role, createHealmChart bool) []v1.PersistentVolumeClaim {
 	totalLength := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
 	claims := make([]v1.PersistentVolumeClaim, 0, totalLength)
 
@@ -71,6 +71,12 @@ func getVolumeClaims(role *model.Role) []v1.PersistentVolumeClaim {
 			"shared",
 			v1.ReadWriteMany,
 		},
+	}
+
+	if createHealmChart {
+		for i := range types {
+			types[i].storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", types[i].storageClass)
+		}
 	}
 
 	for _, volumeTypeInfo := range types {

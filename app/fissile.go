@@ -946,7 +946,16 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 			}
 		}
 	}
-	buf, err := yaml.Marshal(map[string]map[string]*string{"env": env})
+	buf, err := yaml.Marshal(map[string]interface{}{
+		"env": env,
+		"kube": map[string]interface{}{
+			"external_ip": "192.168.77.77",
+			"storage_class": map[string]interface{}{
+				"persistent": "persistent",
+				"shared":     "shared",
+			},
+		},
+	})
 	if err == nil {
 		_, err = outputFile.Write(buf)
 	}
