@@ -339,6 +339,7 @@ type roleBuildJob struct {
 	organization    string
 	repository      string
 	baseImageName   string
+	verbosity       util.Verbosity
 }
 
 func (j roleBuildJob) Run() {
@@ -355,7 +356,7 @@ func (j roleBuildJob) Run() {
 			return err
 		}
 
-		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.fissileVersion)
+		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.fissileVersion, j.verbosity)
 		if err != nil {
 			return err
 		}
@@ -438,7 +439,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int, verbosity util.Verbosity) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -474,6 +475,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organiza
 			organization:    organization,
 			repository:      repository,
 			baseImageName:   baseImageName,
+			verbosity:       verbosity,
 		})
 	}
 

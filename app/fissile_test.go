@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +54,7 @@ func TestListPackages(t *testing.T) {
 
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
 	if assert.NoError(err) {
-		err = f.ListPackages(false)
+		err = f.ListPackages(util.VerbosityDefault)
 		assert.Nil(err, "Expected ListPackages to find the release")
 	}
 }
@@ -77,7 +78,7 @@ func TestListJobs(t *testing.T) {
 
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
 	if assert.NoError(err) {
-		err = f.ListJobs(false)
+		err = f.ListJobs(util.VerbosityDefault)
 		assert.Nil(err, "Expected ListJobs to find the release")
 	}
 }

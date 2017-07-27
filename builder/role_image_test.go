@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 	"github.com/SUSE/termui"
 
 	"github.com/stretchr/testify/assert"
@@ -460,6 +461,7 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		false,
 		2,
+		util.VerbosityDefault,
 	)
 	assert.NoError(err)
 
@@ -482,6 +484,7 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		false,
 		0,
+		util.VerbosityDefault,
 	)
 	assert.Error(err, "Invalid worker count should result in an error")
 	assert.Contains(err.Error(), "count", "Building the image should have failed due to invalid worker count")
@@ -510,6 +513,7 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		false,
 		1,
+		util.VerbosityDefault,
 	)
 	if assert.Error(err) {
 		assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
@@ -536,6 +540,7 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		false,
 		len(rolesManifest.Roles),
+		util.VerbosityDefault,
 	)
 	assert.NoError(err)
 	assert.Empty(buildersRan, "should not have ran any builders")
@@ -570,6 +575,7 @@ func TestBuildRoleImages(t *testing.T) {
 		false,
 		false,
 		1,
+		util.VerbosityDefault,
 	)
 	assert.NoError(err)
 

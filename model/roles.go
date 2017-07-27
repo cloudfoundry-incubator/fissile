@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/SUSE/fissile/util"
 	"github.com/SUSE/fissile/validation"
 
 	"gopkg.in/yaml.v2"
@@ -330,7 +331,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *Opinions, fissileVersion, extra string) (string, error) {
+func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *Opinions, fissileVersion, extra string, verbosity util.Verbosity) (string, error) {
 	// Make sure our roles are sorted, to have consistent output
 	roles = append(Roles{}, roles...)
 	sort.Sort(roles)
@@ -339,7 +340,7 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *O
 	hasher.Write([]byte(extra))
 
 	for _, role := range roles {
-		version, err := role.GetRoleDevVersion(opinions, fissileVersion)
+		version, err := role.GetRoleDevVersion(opinions, fissileVersion, verbosity)
 		if err != nil {
 			return "", err
 		}
@@ -397,7 +398,7 @@ func (r *Role) GetScriptPaths() map[string]string {
 }
 
 // GetScriptSignatures returns the SHA1 of all of the script file names and contents
-func (r *Role) GetScriptSignatures() (string, error) {
+func (r *Role) GetScriptSignatures(verbosity util.Verbosity) (string, error) {
 	hasher := sha1.New()
 
 	i := 0
@@ -426,11 +427,15 @@ func (r *Role) GetScriptSignatures() (string, error) {
 		f.Close()
 	}
 
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	sig := hex.EncodeToString(hasher.Sum(nil))
+	if verbosity >= util.VerbosityDebug {
+		fmt.Printf("Role %s got scripts:\n%s\n => %s\n", r.Name, strings.Join(scripts, "\n"), sig)
+	}
+	return sig, nil
 }
 
 // GetTemplateSignatures returns the SHA1 of all of the templates and contents
-func (r *Role) GetTemplateSignatures() (string, error) {
+func (r *Role) GetTemplateSignatures(verbosity util.Verbosity) (string, error) {
 	hasher := sha1.New()
 
 	i := 0
@@ -447,17 +452,21 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 		hasher.Write([]byte(template))
 	}
 
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	sig := hex.EncodeToString(hasher.Sum(nil))
+	if verbosity >= util.VerbosityDebug {
+		fmt.Printf("Role %s got templates:\n%s\n => %s\n", r.Name, strings.Join(templates, "\n"), sig)
+	}
+	return sig, nil
 }
 
 // GetRoleDevVersion determines the version hash for the role, using the basic
 // role dev version, and the aggregated spec and opinion
 // information. In this manner opinion changes cause a rebuild of the
 // associated role images.
-func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string) (string, error) {
+func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string, verbosity util.Verbosity) (string, error) {
 
 	// Basic role version
-	devVersion, err := r.getRoleJobAndPackagesSignature()
+	devVersion, err := r.getRoleJobAndPackagesSignature(verbosity)
 	if err != nil {
 		return "", fmt.Errorf("Error calculating checksum for role %s: %s", r.Name, err.Error())
 	}
@@ -502,45 +511,52 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string) (str
 		}
 	}
 	devVersion = AggregateSignatures(signatures)
+	if verbosity >= util.VerbosityDebug {
+		fmt.Printf("role %s has signatures %s => %s\n", r.Name, strings.Join(signatures, " "), devVersion)
+	}
 	return devVersion, nil
 }
 
 // getRoleJobAndPackagesSignature gets the aggregate signature of all jobs and packages
-func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
-	roleSignature := ""
+func (r *Role) getRoleJobAndPackagesSignature(verbosity util.Verbosity) (string, error) {
+	var roleSignatures []string
 	var packages Packages
 
 	// Jobs are *not* sorted because they are an array and the order may be
 	// significant, in particular for bosh-task roles.
 	for _, job := range r.Jobs {
-		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, job.SHA1)
+		roleSignatures = append(roleSignatures, fmt.Sprintf("Job %s: %s", job.Name, job.SHA1))
 		packages = append(packages, job.Packages...)
 	}
 
 	sort.Sort(packages)
 	for _, pkg := range packages {
-		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, pkg.SHA1)
+		roleSignatures = append(roleSignatures, fmt.Sprintf("Package %s: %s", pkg.Name, pkg.SHA1))
 	}
 
 	// Collect signatures for various script sections
-	sig, err := r.GetScriptSignatures()
+	sig, err := r.GetScriptSignatures(verbosity)
 	if err != nil {
 		return "", err
 	}
-	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+	roleSignatures = append(roleSignatures, fmt.Sprintf("Scripts: %s", sig))
 
 	// If there are templates, generate signature for them
 	if r.Configuration != nil && r.Configuration.Templates != nil {
-		sig, err = r.GetTemplateSignatures()
+		sig, err = r.GetTemplateSignatures(verbosity)
 		if err != nil {
 			return "", err
 		}
-		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
+		roleSignatures = append(roleSignatures, fmt.Sprintf("Configuration: %s", sig))
 	}
 
 	hasher := sha1.New()
-	hasher.Write([]byte(roleSignature))
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	hasher.Write([]byte(strings.Join(roleSignatures, "\n")))
+	signature := hex.EncodeToString(hasher.Sum(nil))
+	if verbosity >= util.VerbosityDebug {
+		fmt.Printf("role %s has job/package signatures:\n%s\n=> %s\n", r.Name, strings.Join(roleSignatures, "\n"), signature)
+	}
+	return signature, nil
 }
 
 // HasTag returns true if the role has a specific tag

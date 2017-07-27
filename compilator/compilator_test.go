@@ -53,7 +53,7 @@ func TestCompilationEmpty(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		err := c.Compile(1, genTestCase(), nil, false)
+		err := c.Compile(1, genTestCase(), nil, util.VerbosityDefault)
 		close(waitCh)
 		assert.NoError(err)
 	}()
@@ -83,7 +83,7 @@ func TestCompilationBasic(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release, nil, false)
+		c.Compile(1, release, nil, util.VerbosityDefault)
 		close(waitCh)
 	}()
 
@@ -162,7 +162,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	waitCh := make(chan struct{})
 	go func() {
-		c.Compile(1, release, nil, false)
+		c.Compile(1, release, nil, util.VerbosityDefault)
 		close(waitCh)
 	}()
 
@@ -203,7 +203,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	waitCh := make(chan struct{})
 	errCh := make(chan error)
 	go func() {
-		errCh <- c.Compile(1, []*model.Release{release}, roleManifest.Roles, false)
+		errCh <- c.Compile(1, []*model.Release{release}, roleManifest.Roles, util.VerbosityDefault)
 	}()
 	go func() {
 		// `libevent` is a dependency of `tor` and will be compiled first
@@ -365,7 +365,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	release := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	err = c.Compile(1, release, nil, false)
+	err = c.Compile(1, release, nil, util.VerbosityDefault)
 	assert.NotNil(err)
 }
 
@@ -468,7 +468,7 @@ func TestCompilationParallel(t *testing.T) {
 
 	testDoneCh := make(chan struct{})
 	go func() {
-		err = c.Compile(2, releases, nil, false)
+		err = c.Compile(2, releases, nil, util.VerbosityDefault)
 		assert.NoError(err)
 		close(testDoneCh)
 	}()
@@ -720,7 +720,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 
 	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")
 
-	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, nil), false)
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, nil), util.VerbosityDefault)
 	assert.NoError(err)
 
 	assert.Len(packages, 2)

@@ -2,6 +2,7 @@ package kube
 
 import (
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
@@ -9,9 +10,9 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached services
-func NewDeployment(role *model.Role, settings *ExportSettings) (*extra.Deployment, *apiv1.List, error) {
+func NewDeployment(role *model.Role, settings *ExportSettings, verbosity util.Verbosity) (*extra.Deployment, *apiv1.List, error) {
 
-	podTemplate, err := NewPodTemplate(role, settings)
+	podTemplate, err := NewPodTemplate(role, settings, verbosity)
 	if err != nil {
 		return nil, nil, err
 	}

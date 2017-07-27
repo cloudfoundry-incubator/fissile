@@ -54,6 +54,7 @@ var buildKubeCmd = &cobra.Command{
 			false,
 			"",
 			opinions,
+			flagVerbose,
 		)
 	},
 }

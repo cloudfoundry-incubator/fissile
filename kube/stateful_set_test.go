@@ -9,6 +9,7 @@ import (
 
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
+	"github.com/SUSE/fissile/util"
 	"github.com/stretchr/testify/assert"
 
 	yaml "gopkg.in/yaml.v2"
@@ -59,7 +60,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	statefulset, deps, err := NewStatefulSet(role, &ExportSettings{})
+	statefulset, deps, err := NewStatefulSet(role, &ExportSettings{}, util.VerbosityDefault)
 	if !assert.NoError(err) {
 		return
 	}
@@ -188,7 +189,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 
 	statefulset, _, err := NewStatefulSet(role, &ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, util.VerbosityDefault)
 	if !assert.NoError(err) {
 		return
 	}

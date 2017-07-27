@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -222,7 +223,7 @@ func TestGetScriptSignatures(t *testing.T) {
 		},
 	}
 
-	firstHash, _ := refRole.GetScriptSignatures()
+	firstHash, _ := refRole.GetScriptSignatures(util.VerbosityDefault)
 
 	workDir, err := ioutil.TempDir("", "fissile-test-")
 	assert.NoError(err)
@@ -243,13 +244,13 @@ func TestGetScriptSignatures(t *testing.T) {
 		},
 	}
 
-	differentPatchHash, _ := differentPatch.GetScriptSignatures()
+	differentPatchHash, _ := differentPatch.GetScriptSignatures(util.VerbosityDefault)
 	assert.NotEqual(firstHash, differentPatchHash, "role hash should be dependent on patch string")
 
 	err = ioutil.WriteFile(scriptPath, []byte("false\n"), 0644)
 	assert.NoError(err)
 
-	differentPatchFileHash, _ := differentPatch.GetScriptSignatures()
+	differentPatchFileHash, _ := differentPatch.GetScriptSignatures(util.VerbosityDefault)
 	assert.NotEqual(differentPatchFileHash, differentPatchHash, "role manifest hash should be dependent on patch contents")
 }
 
@@ -272,8 +273,8 @@ func TestGetTemplateSignatures(t *testing.T) {
 		},
 	}
 
-	differentTemplateHash1, _ := differentTemplate1.GetTemplateSignatures()
-	differentTemplateHash2, _ := differentTemplate2.GetTemplateSignatures()
+	differentTemplateHash1, _ := differentTemplate1.GetTemplateSignatures(util.VerbosityDefault)
+	differentTemplateHash2, _ := differentTemplate2.GetTemplateSignatures(util.VerbosityDefault)
 	assert.NotEqual(differentTemplateHash1, differentTemplateHash2, "template hash should be dependent on template contents")
 }
 
@@ -315,14 +316,14 @@ func TestGetRoleManifestDevPackageVersion(t *testing.T) {
 	}
 
 	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
-	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
+	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "", util.VerbosityDefault)
 	secondManifest := &RoleManifest{Roles: Roles{altRole, refRole}}
-	secondHash, _ := secondManifest.GetRoleManifestDevPackageVersion(secondManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
+	secondHash, _ := secondManifest.GetRoleManifestDevPackageVersion(secondManifest.Roles, NewEmptyOpinions(), "0.0.0", "", util.VerbosityDefault)
 	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
 	jobOrderManifest := &RoleManifest{Roles: Roles{wrongJobOrder, altRole}}
-	jobOrderHash, _ := jobOrderManifest.GetRoleManifestDevPackageVersion(jobOrderManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
+	jobOrderHash, _ := jobOrderManifest.GetRoleManifestDevPackageVersion(jobOrderManifest.Roles, NewEmptyOpinions(), "0.0.0", "", util.VerbosityDefault)
 	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
-	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "some string")
+	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "some string", util.VerbosityDefault)
 	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
 }
 
