@@ -880,7 +880,7 @@ func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, role
 	}
 
 	for _, secret := range secrets {
-		outputPath := filepath.Join(secretsDir, fmt.Sprintf("%s.yml", secret.ObjectMeta.Name))
+		outputPath := filepath.Join(secretsDir, fmt.Sprintf("%s.yaml", secret.ObjectMeta.Name))
 		f.UI.Printf("Writing config %s for secret %s\n",
 			color.CyanString(outputPath),
 			color.CyanString(secret.ObjectMeta.Name),
@@ -1019,7 +1019,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 		if err := os.MkdirAll(roleTypeDir, 0755); err != nil {
 			return err
 		}
-		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yml", role.Name))
+		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yaml", role.Name))
 
 		f.UI.Printf("Writing config %s for role %s\n",
 			color.CyanString(outputPath),
