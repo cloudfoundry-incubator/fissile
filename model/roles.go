@@ -400,13 +400,11 @@ func (r *Role) GetScriptPaths() map[string]string {
 func (r *Role) GetScriptSignatures() (string, error) {
 	hasher := sha1.New()
 
-	i := 0
 	paths := r.GetScriptPaths()
-	scripts := make([]string, len(paths))
+	scripts := make([]string, 0, len(paths))
 
-	for _, f := range paths {
-		scripts[i] = f
-		i++
+	for filename := range paths {
+		scripts = append(scripts, filename)
 	}
 
 	sort.Strings(scripts)
@@ -414,16 +412,16 @@ func (r *Role) GetScriptSignatures() (string, error) {
 	for _, filename := range scripts {
 		hasher.Write([]byte(filename))
 
-		f, err := os.Open(filename)
+		f, err := os.Open(paths[filename])
 		if err != nil {
 			return "", err
 		}
 
-		if _, err := io.Copy(hasher, f); err != nil {
+		_, err = io.Copy(hasher, f)
+		f.Close()
+		if err != nil {
 			return "", err
 		}
-
-		f.Close()
 	}
 
 	return hex.EncodeToString(hasher.Sum(nil)), nil
