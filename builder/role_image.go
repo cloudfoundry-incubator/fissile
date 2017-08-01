@@ -367,7 +367,7 @@ func (j roleBuildJob) Run() {
 			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repository, j.role, devVersion)
 			outputPath = fmt.Sprintf("%s.tar", roleImageName)
 		} else {
-			roleImageName = GetRoleDevImageName(j.registry, "", j.repository, j.role, devVersion)
+			roleImageName = GetRoleDevImageName("", "", j.repository, j.role, devVersion)
 			outputPath = filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		}
 
