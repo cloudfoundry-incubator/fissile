@@ -27,6 +27,9 @@ build:
 dist:
 	${GIT_ROOT}/make/package
 
+release:
+	${GIT_ROOT}/make/release
+
 docker-deps:
 	${GIT_ROOT}/make/docker-deps
 

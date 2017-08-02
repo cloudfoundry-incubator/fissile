@@ -1,0 +1,11 @@
+#!/bin/sh
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+SRC=`basename $(pwd)`
+
+. ${GIT_ROOT}/make/include/versioning
+echo ${ARTIFACT_NAME},${GIT_BRANCH},${GIT_DESCRIBE} > .version
+
+cd ..
+tar --exclude=.git -cJvf fissile-${ARTIFACT_VERSION}.tar.xz $SRC
+cd $SRC
