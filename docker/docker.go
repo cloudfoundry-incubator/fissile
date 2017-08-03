@@ -430,6 +430,7 @@ func (d *ImageManager) CreateImage(containerID string, repository string, tag st
 type RunInContainerOpts struct {
 	ContainerName string
 	ImageName     string
+	NetworkMode   string
 	Cmd           []string
 	// Mount points, src -> dest
 	// dest may be special values ContainerInPath, ContainerOutPath
@@ -502,6 +503,7 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		HostConfig: &dockerclient.HostConfig{
 			Privileged:     false,
 			Binds:          []string{},
+			NetworkMode:    opts.NetworkMode,
 			ReadonlyRootfs: false,
 		},
 		Name: opts.ContainerName,

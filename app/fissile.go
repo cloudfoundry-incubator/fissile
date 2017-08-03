@@ -299,7 +299,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, withoutDocker, verbose bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -336,7 +336,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	} else {
-		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, false, f.UI)
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}

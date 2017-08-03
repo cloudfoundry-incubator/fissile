@@ -31,6 +31,7 @@ compiled once.
 		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
 		flagBuildPackagesOnlyReleases := buildPackagesViper.GetString("only-releases")
 		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
+		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 
 		err := fissile.LoadReleases(
@@ -51,6 +52,7 @@ compiled once.
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),
 			flagWorkers,
+			flagBuildPackagesDockerNetworkMode,
 			flagBuildPackagesWithoutDocker,
 			flagVerbose,
 		)
@@ -84,6 +86,13 @@ func init() {
 		"",
 		false,
 		"Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.",
+	)
+
+	buildPackagesCmd.PersistentFlags().StringP(
+		"docker-network-mode",
+		"",
+		"",
+		"Specify network mode to be used when building with docker. e.g. \"--docker-network-mode host\" is equivalent to \"docker run --network=host\"",
 	)
 
 	buildPackagesCmd.PersistentFlags().StringP(
