@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -150,8 +151,8 @@ func init() {
 	RootCmd.PersistentFlags().IntP(
 		"workers",
 		"W",
-		2,
-		"Number of workers to use.",
+		0,
+		"Number of workers to use; zero means determine based on CPU count.",
 	)
 
 	RootCmd.PersistentFlags().StringP(
@@ -264,6 +265,10 @@ func validateBasicFlags() error {
 	flagVerbose = viper.GetBool("verbose")
 
 	extendPathsFromWorkDirectory()
+
+	if flagWorkers < 1 {
+		flagWorkers = runtime.NumCPU()
+	}
 
 	if err = absolutePaths(
 		&flagRoleManifest,
