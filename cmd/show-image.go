@@ -44,6 +44,7 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 			flagDarkOpinions,
 			flagShowImageDockerOnly,
 			flagShowImageWithSizes,
+			flagVerbose,
 		)
 	},
 }

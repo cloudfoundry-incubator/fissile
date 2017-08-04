@@ -10,6 +10,7 @@ import (
 
 	"github.com/SUSE/fissile/builder"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 
 	"k8s.io/client-go/pkg/api/resource"
 	meta "k8s.io/client-go/pkg/api/unversioned"
@@ -22,7 +23,7 @@ const monitPort = 2289
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
+func NewPodTemplate(role *model.Role, settings *ExportSettings, verbosity util.Verbosity) (v1.PodTemplateSpec, error) {
 
 	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings.CreateHelmChart)
 	if err != nil {
@@ -46,7 +47,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 		return v1.PodTemplateSpec{}, err
 	}
 
-	image, err := getContainerImageName(role, settings)
+	image, err := getContainerImageName(role, settings, verbosity)
 	if err != nil {
 		return v1.PodTemplateSpec{}, err
 	}
@@ -94,8 +95,8 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateS
 }
 
 // NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings *ExportSettings) (*v1.Pod, error) {
-	podTemplate, err := NewPodTemplate(role, settings)
+func NewPod(role *model.Role, settings *ExportSettings, verbosity util.Verbosity) (*v1.Pod, error) {
+	podTemplate, err := NewPodTemplate(role, settings, verbosity)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +131,8 @@ func NewPod(role *model.Role, settings *ExportSettings) (*v1.Pod, error) {
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
-func getContainerImageName(role *model.Role, settings *ExportSettings) (string, error) {
-	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.FissileVersion)
+func getContainerImageName(role *model.Role, settings *ExportSettings, verbosity util.Verbosity) (string, error) {
+	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.FissileVersion, verbosity)
 	if err != nil {
 		return "", err
 	}

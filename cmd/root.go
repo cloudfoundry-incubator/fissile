@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/SUSE/fissile/app"
+	"github.com/SUSE/fissile/util"
 )
 
 var (
@@ -32,7 +33,7 @@ var (
 	flagDarkOpinions       string
 	flagOutputFormat       string
 	flagMetrics            string
-	flagVerbose            bool
+	flagVerbose            util.Verbosity
 
 	// workPath* variables contain paths derived from flagWorkDir
 	workPathCompilationDir string
@@ -183,11 +184,14 @@ func init() {
 		"Choose output format, one of human, json, or yaml (currently only for 'show properties')",
 	)
 
-	RootCmd.PersistentFlags().BoolP(
+	RootCmd.PersistentFlags().CountP(
 		"verbose",
 		"V",
-		false,
-		"Enable verbose output.",
+		"Output more messages.",
+	)
+	RootCmd.PersistentFlags().Count(
+		"quiet",
+		"Output fewer messages.",
 	)
 
 	viper.BindPFlags(RootCmd.PersistentFlags())
@@ -262,7 +266,7 @@ func validateBasicFlags() error {
 	flagDarkOpinions = viper.GetString("dark-opinions")
 	flagOutputFormat = viper.GetString("output")
 	flagMetrics = viper.GetString("metrics")
-	flagVerbose = viper.GetBool("verbose")
+	flagVerbose = util.VerbosityDebug + util.Verbosity(viper.GetInt("verbose")) - util.Verbosity(viper.GetInt("quiet"))
 
 	extendPathsFromWorkDirectory()
 

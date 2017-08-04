@@ -4,14 +4,15 @@ import (
 	"fmt"
 
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 	meta "k8s.io/client-go/pkg/api/unversioned"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
 	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on
-func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
-	podTemplate, err := NewPodTemplate(role, settings)
+func NewJob(role *model.Role, settings *ExportSettings, verbosity util.Verbosity) (*extra.Job, error) {
+	podTemplate, err := NewPodTemplate(role, settings, verbosity)
 	if err != nil {
 		return nil, err
 	}

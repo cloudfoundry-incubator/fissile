@@ -56,6 +56,7 @@ var buildHelmCmd = &cobra.Command{
 			true,
 			flagBuildHelmChartFilename,
 			opinions,
+			flagVerbose,
 		)
 	},
 }

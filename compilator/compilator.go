@@ -161,8 +161,8 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles, verbose bool) error {
-	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles), verbose)
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles, verbosity util.Verbosity) error {
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles), verbosity)
 
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
@@ -693,7 +693,7 @@ func (c *Compilator) getPackageContainerName(pkg *model.Package) string {
 
 // removeCompiledPackages must be called after initPackageMaps as it closes
 // the broadcast channels of anything already compiled.
-func (c *Compilator) removeCompiledPackages(packages model.Packages, verbose bool) (model.Packages, error) {
+func (c *Compilator) removeCompiledPackages(packages model.Packages, verbosity util.Verbosity) (model.Packages, error) {
 	var culledPackages model.Packages
 	for _, pkg := range packages {
 		compiled, err := isPackageCompiledHarness(c, pkg)
@@ -703,12 +703,12 @@ func (c *Compilator) removeCompiledPackages(packages model.Packages, verbose boo
 
 		if compiled {
 			close(c.signalDependencies[pkg.Fingerprint])
-			if verbose {
+			if verbosity >= util.VerbosityVerbose {
 				c.ui.Printf("found %s in %s\n", color.YellowString(pkg.Name), pkg.GetPackageCompiledDir(c.hostWorkDir))
 			}
 		} else {
 			culledPackages = append(culledPackages, pkg)
-			if verbose {
+			if verbosity >= util.VerbosityVerbose {
 				c.ui.Printf("building %s in %s\n", color.YellowString(pkg.Name), pkg.GetPackageCompiledDir(c.hostWorkDir))
 			}
 		}

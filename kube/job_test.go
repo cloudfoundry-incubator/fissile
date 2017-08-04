@@ -9,6 +9,7 @@ import (
 
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
+	"github.com/SUSE/fissile/util"
 
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
@@ -48,7 +49,7 @@ func TestJobPreFlight(t *testing.T) {
 
 	job, err := NewJob(role, &ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, util.VerbosityDefault)
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
@@ -93,7 +94,7 @@ func TestJobPostFlight(t *testing.T) {
 
 	job, err := NewJob(role, &ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, util.VerbosityDefault)
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}

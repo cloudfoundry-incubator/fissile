@@ -10,6 +10,7 @@ import (
 
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
+	"github.com/SUSE/fissile/util"
 
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
@@ -997,7 +998,7 @@ func TestPodPreFlight(t *testing.T) {
 
 	pod, err := NewPod(role, &ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, util.VerbosityDefault)
 	if !assert.NoError(err, "Failed to create pod from role pre-role") {
 		return
 	}
@@ -1039,7 +1040,7 @@ func TestPodPostFlight(t *testing.T) {
 
 	pod, err := NewPod(role, &ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, util.VerbosityDefault)
 	if !assert.NoError(err, "Failed to create pod from role post-role") {
 		return
 	}

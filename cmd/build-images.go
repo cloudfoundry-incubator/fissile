@@ -83,6 +83,7 @@ from other specs.  At most one is allowed.
 			flagLightOpinions,
 			flagDarkOpinions,
 			flagOutputDirectory,
+			flagVerbose,
 		)
 	},
 }

@@ -53,7 +53,7 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 }
 
 // ListPackages will list all BOSH packages within a list of dev releases
-func (f *Fissile) ListPackages(verbose bool) error {
+func (f *Fissile) ListPackages(verbosity util.Verbosity) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -61,7 +61,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 	for _, release := range f.releases {
 		var releasePath string
 
-		if verbose {
+		if verbosity >= util.VerbosityVerbose {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
@@ -70,7 +70,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 		for _, pkg := range release.Packages {
 			var isCached string
 
-			if verbose {
+			if verbosity >= util.VerbosityVerbose {
 				if _, err := os.Stat(pkg.Path); err == nil {
 					isCached = color.WhiteString(" (cached at %s)", pkg.Path)
 				} else {
@@ -91,7 +91,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 }
 
 // ListJobs will list all jobs within a list of dev releases
-func (f *Fissile) ListJobs(verbose bool) error {
+func (f *Fissile) ListJobs(verbosity util.Verbosity) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -99,7 +99,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 	for _, release := range f.releases {
 		var releasePath string
 
-		if verbose {
+		if verbosity >= util.VerbosityVerbose {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
@@ -108,7 +108,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 		for _, job := range release.Jobs {
 			var isCached string
 
-			if verbose {
+			if verbosity >= util.VerbosityVerbose {
 				if _, err := os.Stat(job.Path); err == nil {
 					isCached = color.WhiteString(" (cached at %s)", job.Path)
 				} else {
@@ -299,7 +299,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, withoutDocker, verbose bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, withoutDocker bool, verbosity util.Verbosity) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -347,7 +347,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, releases, roles, verbose); err != nil {
+	if err := comp.Compile(workerCount, releases, roles, verbosity); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
@@ -516,7 +516,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, rolesManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, verbosity util.Verbosity) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -597,7 +597,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
+	if err := roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount, verbosity); err != nil {
 		return err
 	}
 
@@ -605,7 +605,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool, verbosity util.Verbosity) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -635,7 +635,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, rolesManife
 	}
 
 	for _, role := range rolesManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion(opinions, f.Version)
+		devVersion, err := role.GetRoleDevVersion(opinions, f.Version, verbosity)
 		if err != nil {
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
@@ -827,7 +827,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, createHelmChart bool, chartFilename string, opinions *model.Opinions) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, createHelmChart bool, chartFilename string, opinions *model.Opinions, verbosity util.Verbosity) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -866,7 +866,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 		}
 	}
 
-	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
+	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions, verbosity)
 }
 
 func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, rolesManifest *model.RoleManifest, createHelmChart bool) error {
@@ -966,9 +966,9 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	return err
 }
 
-func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings *kube.ExportSettings) error {
+func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings *kube.ExportSettings, verbosity util.Verbosity) error {
 	if role.IsStopOnFailureRole() {
-		pod, err := kube.NewPod(role, settings)
+		pod, err := kube.NewPod(role, settings, verbosity)
 		if err != nil {
 			return err
 		}
@@ -977,7 +977,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 			return err
 		}
 	} else {
-		job, err := kube.NewJob(role, settings)
+		job, err := kube.NewJob(role, settings, verbosity)
 		if err != nil {
 			return err
 		}
@@ -990,7 +990,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, fissileVersion string, rolesManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
+func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, fissileVersion string, rolesManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions, verbosity util.Verbosity) error {
 	settings := &kube.ExportSettings{
 		Defaults:        defaults,
 		Registry:        registry,
@@ -1034,7 +1034,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 
 		switch role.Type {
 		case model.RoleTypeBoshTask:
-			if err := f.generateBoshTaskRole(outputFile, role, settings); err != nil {
+			if err := f.generateBoshTaskRole(outputFile, role, settings, verbosity); err != nil {
 				return err
 			}
 
@@ -1042,7 +1042,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 
 			if role.HasTag("clustered") || needsStorage {
-				statefulSet, deps, err := kube.NewStatefulSet(role, settings)
+				statefulSet, deps, err := kube.NewStatefulSet(role, settings, verbosity)
 				if err != nil {
 					return err
 				}
@@ -1058,7 +1058,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 				continue
 			}
 
-			deployment, svc, err := kube.NewDeployment(role, settings)
+			deployment, svc, err := kube.NewDeployment(role, settings, verbosity)
 			if err != nil {
 				return err
 			}
