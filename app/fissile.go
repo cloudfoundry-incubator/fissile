@@ -922,37 +922,15 @@ func (f *Fissile) copyHelmChart(outputDir string, chartFilename string) error {
 func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.RoleManifest, defaults map[string]string) error {
 	// Export the default values for variables
 	outputPath := filepath.Join(outputDir, "values.yaml")
-	f.UI.Printf("Writing config %s\n",
-		color.CyanString(outputPath),
-	)
+	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
 
 	outputFile, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-
-	env := make(map[string]*string)
-	for key, value := range model.MakeMapOfVariables(rolesManifest) {
-		if !value.Secret || value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword {
-			ok, strValue := kube.ConfigValue(value, defaults)
-			env[key] = nil
-			if ok {
-				env[key] = &strValue
-			}
-		}
-	}
-	buf, err := yaml.Marshal(map[string]interface{}{
-		"env": env,
-		"kube": map[string]interface{}{
-			"external_ip": "192.168.77.77",
-			"storage_class": map[string]interface{}{
-				"persistent": "persistent",
-				"shared":     "shared",
-			},
-		},
-	})
+	values, err := kube.MakeValues(rolesManifest, defaults)
 	if err == nil {
-		_, err = outputFile.Write(buf)
+		err = values.WriteConfig(outputFile)
 	}
 	if err == nil {
 		return outputFile.Close()
