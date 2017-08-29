@@ -869,7 +869,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
-func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, rolesManifest *model.RoleManifest, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(outputDir string, secrets *kube.ConfigObject, rolesManifest *model.RoleManifest, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"
@@ -879,22 +879,17 @@ func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, role
 		return err
 	}
 
-	for _, secret := range secrets {
-		outputPath := filepath.Join(secretsDir, fmt.Sprintf("%s.yaml", secret.ObjectMeta.Name))
-		f.UI.Printf("Writing config %s for secret %s\n",
-			color.CyanString(outputPath),
-			color.CyanString(secret.ObjectMeta.Name),
-		)
+	outputPath := filepath.Join(secretsDir, "secret.yaml")
+	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
 
-		outputFile, err := os.Create(outputPath)
-		if err != nil {
-			return err
-		}
-		defer outputFile.Close()
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer outputFile.Close()
 
-		if err := kube.WriteYamlConfig(secret, outputFile); err != nil {
-			return err
-		}
+	if err := secrets.WriteConfig(outputFile); err != nil {
+		return err
 	}
 	return nil
 }
