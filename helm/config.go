@@ -15,29 +15,32 @@ type ConfigType interface {
 	write(w io.Writer, prefix string)
 }
 
-func writeConditionAndComment(w io.Writer, config ConfigType, prefix *string, indent int, writeValue func()) {
+func useOnce(prefix *string) string {
+	result := *prefix
+	*prefix = strings.Repeat(" ", len(*prefix))
+	return result
+}
+
+func writeElement(w io.Writer, element ConfigType, prefix *string, indent int, value string) {
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(w, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
 	}
-	if comment := config.getComment(); comment != "" {
+	if comment := element.getComment(); comment != "" {
 		for _, line := range strings.Split(comment, "\n") {
 			if len(line) > 0 {
 				line = " " + line
 			}
-			fmt.Fprintf(w, *prefix+"#%s\n", line)
-			*prefix = strings.Repeat(" ", len(*prefix))
+			fmt.Fprintf(w, "%s#%s\n", useOnce(prefix), line)
 		}
 	}
-	condition := config.getCondition()
+	condition := element.getCondition()
 	if condition != "" {
-		fmt.Fprintf(w, *prefix+"{{- %s }}\n", condition)
-		*prefix = strings.Repeat(" ", len(*prefix))
+		fmt.Fprintf(w, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
-	writeValue()
-	*prefix = strings.Repeat(" ", len(*prefix))
+	element.write(w, useOnce(prefix)+value)
 	if condition != "" {
 		fmt.Fprintln(w, *prefix+"{{- end }}")
 	}
@@ -87,7 +90,7 @@ func (list *ConfigList) Add(values ...ConfigType) {
 
 func (list ConfigList) write(w io.Writer, prefix string) {
 	for _, value := range list.values {
-		writeConditionAndComment(w, value, &prefix, 0, func() { value.write(w, prefix+"-") })
+		writeElement(w, value, &prefix, 0, "-")
 	}
 }
 
@@ -110,7 +113,7 @@ func (object *ConfigObject) Add(name string, value ConfigType) {
 func (object ConfigObject) write(w io.Writer, prefix string) {
 	for _, namedValue := range object.values {
 		name, value := namedValue.name, namedValue.value
-		writeConditionAndComment(w, value, &prefix, 2, func() { value.write(w, prefix+name+":") })
+		writeElement(w, value, &prefix, 2, name+":")
 	}
 }
 
@@ -118,11 +121,11 @@ func (object ConfigObject) write(w io.Writer, prefix string) {
 func (object ConfigObject) WriteConfig(w io.Writer) error {
 	fmt.Fprintln(w, "---")
 	prefix := ""
-	writeConditionAndComment(w, &object, &prefix, 0, func() { object.write(w, prefix) })
+	writeElement(w, &object, &prefix, 0, "")
 	return nil
 }
 
-//NewKubeConfig sets up generic Kube config structure with minimal metadata
+//NewKubeConfig sets up generic a Kube config structure with minimal metadata
 func NewKubeConfig(kind string, name string) *ConfigObject {
 	obj := &ConfigObject{}
 	obj.Add("apiVersion", NewConfigScalar("v1"))
