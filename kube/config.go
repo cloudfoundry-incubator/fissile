@@ -23,8 +23,13 @@ func writeConditionAndComment(w io.Writer, config ConfigType, prefix *string, in
 		*prefix += " "
 	}
 	if comment := config.getComment(); comment != "" {
-		fmt.Fprintf(w, *prefix+"# %s\n", comment)
-		*prefix = strings.Repeat(" ", len(*prefix))
+		for _, line := range strings.Split(comment, "\n") {
+			if len(line) > 0 {
+				line = " " + line
+			}
+			fmt.Fprintf(w, *prefix+"#%s\n", line)
+			*prefix = strings.Repeat(" ", len(*prefix))
+		}
 	}
 	condition := config.getCondition()
 	if condition != "" {

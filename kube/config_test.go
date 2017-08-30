@@ -475,4 +475,36 @@ Object:
 {{- end }}
 {{- end }}
 `)
+
+	// Multi-line comments
+	root = &ConfigObject{}
+	root.add("Scalar", &ConfigScalar{value: "42", comment: "Many\n\nlines"})
+
+	equal(t, root, `---
+# Many
+#
+# lines
+Scalar: 42
+`)
+
+	// list of list
+	list1 = &ConfigList{}
+	list1.add(&ConfigScalar{value: "42", comment: "Many\n\nlines"})
+
+	list2 = &ConfigList{}
+	list2.add(list1)
+	list2.add(NewConfigScalar("foo"))
+
+	root = &ConfigObject{}
+	root.add("List", list2)
+
+	equal(t, root, `---
+List:
+- # Many
+  #
+  # lines
+  - 42
+- foo
+`)
+
 }
