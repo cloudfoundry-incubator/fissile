@@ -7,13 +7,13 @@ import (
 // MakeValues returns a ConfigObject with all default values for the Helm chart
 func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (ConfigObject, error) {
 	env := ConfigObject{}
-	for key, cv := range model.MakeMapOfVariables(rolesManifest) {
+	for name, cv := range model.MakeMapOfVariables(rolesManifest) {
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
-			ok, strValue := cv.Value(defaults)
+			ok, value := cv.Value(defaults)
 			if !ok {
-				strValue = "~"
+				value = "~"
 			}
-			env.Add(key, NewConfigScalarWithComment(strValue, cv.Description))
+			env.Add(name, NewConfigScalarWithComment(value, cv.Description))
 		}
 	}
 
