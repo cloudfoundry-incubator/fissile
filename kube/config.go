@@ -43,17 +43,32 @@ func writeConditionAndComment(w io.Writer, config ConfigType, prefix *string, in
 	}
 }
 
-// ConfigScalar represents a scalar value inside a list or object
-type ConfigScalar struct {
-	value     string
+// configMeta provides the shared metadata (comments & conditions) for all config types
+type configMeta struct {
 	comment   string
 	condition string
 }
 
-func (scalar ConfigScalar) getComment() string             { return scalar.comment }
-func (scalar ConfigScalar) getCondition() string           { return scalar.condition }
-func (scalar *ConfigScalar) setComment(comment string)     { scalar.comment = comment }
-func (scalar *ConfigScalar) setCondition(condition string) { scalar.condition = condition }
+func (meta configMeta) getComment() string             { return meta.comment }
+func (meta configMeta) getCondition() string           { return meta.condition }
+func (meta *configMeta) setComment(comment string)     { meta.comment = comment }
+func (meta *configMeta) setCondition(condition string) { meta.condition = condition }
+
+// ConfigScalar represents a scalar value inside a list or object
+type ConfigScalar struct {
+	configMeta
+	value string
+}
+
+// NewConfigScalar creates a simple scalar node without comment or condition
+func NewConfigScalar(value string) *ConfigScalar {
+	return &ConfigScalar{value: value}
+}
+
+// NewConfigScalar creates a simple scalar node without comment or condition
+func NewConfigScalarWithComment(value string, comment string) *ConfigScalar {
+	return &ConfigScalar{configMeta{comment: comment}, value}
+}
 
 func (scalar ConfigScalar) write(w io.Writer, prefix string) {
 	fmt.Fprintln(w, prefix+" "+scalar.value)
@@ -61,15 +76,9 @@ func (scalar ConfigScalar) write(w io.Writer, prefix string) {
 
 // ConfigList represents an ordered list of unnamed config nodes
 type ConfigList struct {
-	values    []ConfigType
-	comment   string
-	condition string
+	configMeta
+	values []ConfigType
 }
-
-func (list ConfigList) getComment() string             { return list.comment }
-func (list ConfigList) getCondition() string           { return list.condition }
-func (list *ConfigList) setComment(comment string)     { list.comment = comment }
-func (list *ConfigList) setCondition(condition string) { list.condition = condition }
 
 // add one or more config values at the end of the list
 func (list *ConfigList) add(values ...ConfigType) {
@@ -89,15 +98,9 @@ type namedValue struct {
 
 // ConfigObject represents an ordered lst of named config values
 type ConfigObject struct {
-	values    []namedValue
-	comment   string
-	condition string
+	configMeta
+	values []namedValue
 }
-
-func (object ConfigObject) getComment() string             { return object.comment }
-func (object ConfigObject) getCondition() string           { return object.condition }
-func (object *ConfigObject) setComment(comment string)     { object.comment = comment }
-func (object *ConfigObject) setCondition(condition string) { object.condition = condition }
 
 // add a singled named config value at the end of the list
 func (object *ConfigObject) add(name string, value ConfigType) {
@@ -117,11 +120,6 @@ func (object ConfigObject) WriteConfig(w io.Writer) error {
 	prefix := ""
 	writeConditionAndComment(w, &object, &prefix, 0, func() { object.write(w, prefix) })
 	return nil
-}
-
-// NewConfigScalar creates a simple scalar node without comment or condition
-func NewConfigScalar(value string) *ConfigScalar {
-	return &ConfigScalar{value: value}
 }
 
 //NewKubeConfig sets up generic Kube config structure with minimal metadata

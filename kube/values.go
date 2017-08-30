@@ -13,7 +13,7 @@ func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (
 			if !ok {
 				strValue = "~"
 			}
-			env.add(key, &ConfigScalar{value: strValue, comment: value.Description})
+			env.add(key, NewConfigScalarWithComment(strValue, value.Description))
 		}
 	}
 

@@ -49,7 +49,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		skey := strings.ToLower(strings.Replace(key, "_", "-", -1))
 
-		data.add(skey, &ConfigScalar{value: strValue, comment: value.Description})
+		data.add(skey, NewConfigScalarWithComment(strValue, value.Description))
 		refs[key] = SecretRef{
 			Secret: "secret",
 			Key:    skey,

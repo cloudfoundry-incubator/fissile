@@ -478,7 +478,9 @@ Object:
 
 	// Multi-line comments
 	root = &ConfigObject{}
-	root.add("Scalar", &ConfigScalar{value: "42", comment: "Many\n\nlines"})
+	scalar := NewConfigScalar("42")
+	scalar.setComment("Many\n\nlines")
+	root.add("Scalar", scalar)
 
 	equal(t, root, `---
 # Many
@@ -489,7 +491,9 @@ Scalar: 42
 
 	// list of list
 	list1 = &ConfigList{}
-	list1.add(&ConfigScalar{value: "42", comment: "Many\n\nlines"})
+	scalar = NewConfigScalar("42")
+	scalar.setComment("Many\n\nlines")
+	list1.add(scalar)
 
 	list2 = &ConfigList{}
 	list2.add(list1)
