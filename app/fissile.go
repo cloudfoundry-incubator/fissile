@@ -13,6 +13,7 @@ import (
 	"github.com/SUSE/fissile/builder"
 	"github.com/SUSE/fissile/compilator"
 	"github.com/SUSE/fissile/docker"
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/kube"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/scripts/compilation"
@@ -869,7 +870,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
-func (f *Fissile) generateSecrets(outputDir string, secrets *kube.ConfigObject, rolesManifest *model.RoleManifest, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(outputDir string, secrets *helm.ConfigObject, rolesManifest *model.RoleManifest, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"

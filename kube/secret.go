@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 )
 
@@ -24,10 +25,10 @@ type SecretRefMap map[string]SecretRef
 // MakeSecrets creates Secret KubeConfig filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (*ConfigObject, SecretRefMap, error) {
+func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (*helm.ConfigObject, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
-	data := ConfigObject{}
+	data := helm.ConfigObject{}
 	for key, value := range secrets {
 		var strValue string
 		if createHelmChart {
@@ -49,15 +50,15 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		skey := strings.ToLower(strings.Replace(key, "_", "-", -1))
 
-		data.add(skey, NewConfigScalarWithComment(strValue, value.Description))
+		data.Add(skey, helm.NewConfigScalarWithComment(strValue, value.Description))
 		refs[key] = SecretRef{
 			Secret: "secret",
 			Key:    skey,
 		}
 	}
 
-	secret := NewKubeConfig("Secret", "secret")
-	secret.add("data", &data)
+	secret := helm.NewKubeConfig("Secret", "secret")
+	secret.Add("data", &data)
 
 	return secret, refs, nil
 }

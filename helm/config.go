@@ -1,4 +1,4 @@
-package kube
+package helm
 
 import (
 	"fmt"
@@ -65,7 +65,7 @@ func NewConfigScalar(value string) *ConfigScalar {
 	return &ConfigScalar{value: value}
 }
 
-// NewConfigScalar creates a simple scalar node without comment or condition
+// NewConfigScalarWithComment creates a simple scalar node with comment
 func NewConfigScalarWithComment(value string, comment string) *ConfigScalar {
 	return &ConfigScalar{configMeta{comment: comment}, value}
 }
@@ -80,8 +80,8 @@ type ConfigList struct {
 	values []ConfigType
 }
 
-// add one or more config values at the end of the list
-func (list *ConfigList) add(values ...ConfigType) {
+// Add one or more config values at the end of the list
+func (list *ConfigList) Add(values ...ConfigType) {
 	list.values = append(list.values, values...)
 }
 
@@ -102,8 +102,8 @@ type ConfigObject struct {
 	values []namedValue
 }
 
-// add a singled named config value at the end of the list
-func (object *ConfigObject) add(name string, value ConfigType) {
+// Add a singled named config value at the end of the list
+func (object *ConfigObject) Add(name string, value ConfigType) {
 	object.values = append(object.values, namedValue{name: name, value: value})
 }
 
@@ -125,12 +125,12 @@ func (object ConfigObject) WriteConfig(w io.Writer) error {
 //NewKubeConfig sets up generic Kube config structure with minimal metadata
 func NewKubeConfig(kind string, name string) *ConfigObject {
 	obj := &ConfigObject{}
-	obj.add("apiVersion", NewConfigScalar("v1"))
-	obj.add("kind", NewConfigScalar(kind))
+	obj.Add("apiVersion", NewConfigScalar("v1"))
+	obj.Add("kind", NewConfigScalar(kind))
 
 	meta := ConfigObject{}
-	meta.add("name", NewConfigScalar(name))
-	obj.add("metadata", &meta)
+	meta.Add("name", NewConfigScalar(name))
+	obj.Add("metadata", &meta)
 
 	return obj
 }

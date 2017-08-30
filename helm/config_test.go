@@ -1,4 +1,4 @@
-package kube
+package helm
 
 import (
 	"bytes"
@@ -41,7 +41,7 @@ func TestConfig(t *testing.T) {
 
 	// Simple scalar
 	root := &ConfigObject{}
-	root.add("Scalar", NewConfigScalar("42"))
+	root.Add("Scalar", NewConfigScalar("42"))
 
 	equal(t, root, `---
 Scalar: 42
@@ -67,12 +67,12 @@ Scalar: 42
 
 	// Simple list
 	list := &ConfigList{}
-	list.add(NewConfigScalar("1"))
-	list.add(NewConfigScalar("2"))
-	list.add(NewConfigScalar("3"))
+	list.Add(NewConfigScalar("1"))
+	list.Add(NewConfigScalar("2"))
+	list.Add(NewConfigScalar("3"))
 
 	root = &ConfigObject{}
-	root.add("List", list)
+	root.Add("List", list)
 
 	equal(t, root, `---
 List:
@@ -119,12 +119,12 @@ List:
 
 	// Simple Object
 	obj := &ConfigObject{}
-	obj.add("foo", NewConfigScalar("1"))
-	obj.add("bar", NewConfigScalar("2"))
-	obj.add("baz", NewConfigScalar("3"))
+	obj.Add("foo", NewConfigScalar("1"))
+	obj.Add("bar", NewConfigScalar("2"))
+	obj.Add("baz", NewConfigScalar("3"))
 
 	root = &ConfigObject{}
-	root.add("Object", obj)
+	root.Add("Object", obj)
 
 	equal(t, root, `---
 Object:
@@ -171,21 +171,21 @@ Object:
 
 	// list of list of list
 	list1 := &ConfigList{}
-	list1.add(NewConfigScalar("1"))
-	list1.add(NewConfigScalar("2"))
+	list1.Add(NewConfigScalar("1"))
+	list1.Add(NewConfigScalar("2"))
 
 	list2 := &ConfigList{}
-	list2.add(list1)
-	list2.add(NewConfigScalar("x"))
-	list2.add(NewConfigScalar("y"))
+	list2.Add(list1)
+	list2.Add(NewConfigScalar("x"))
+	list2.Add(NewConfigScalar("y"))
 
 	list3 := &ConfigList{}
-	list3.add(list2)
-	list3.add(NewConfigScalar("foo"))
-	list3.add(NewConfigScalar("bar"))
+	list3.Add(list2)
+	list3.Add(NewConfigScalar("foo"))
+	list3.Add(NewConfigScalar("bar"))
 
 	root = &ConfigObject{}
-	root.add("List", list3)
+	root.Add("List", list3)
 
 	equal(t, root, `---
 List:
@@ -261,21 +261,21 @@ List:
 
 	// Object of object of object
 	obj1 := &ConfigObject{}
-	obj1.add("One", NewConfigScalar("1"))
-	obj1.add("Two", NewConfigScalar("2"))
+	obj1.Add("One", NewConfigScalar("1"))
+	obj1.Add("Two", NewConfigScalar("2"))
 
 	obj2 := &ConfigObject{}
-	obj2.add("OneTwo", obj1)
-	obj2.add("X", NewConfigScalar("x"))
-	obj2.add("Y", NewConfigScalar("y"))
+	obj2.Add("OneTwo", obj1)
+	obj2.Add("X", NewConfigScalar("x"))
+	obj2.Add("Y", NewConfigScalar("y"))
 
 	obj3 := &ConfigObject{}
-	obj3.add("XY", obj2)
-	obj3.add("Foo", NewConfigScalar("foo"))
-	obj3.add("Bar", NewConfigScalar("bar"))
+	obj3.Add("XY", obj2)
+	obj3.Add("Foo", NewConfigScalar("foo"))
+	obj3.Add("Bar", NewConfigScalar("bar"))
 
 	root = &ConfigObject{}
-	root.add("Object", obj3)
+	root.Add("Object", obj3)
 
 	equal(t, root, `---
 Object:
@@ -357,15 +357,15 @@ Object:
 
 	// Object of list
 	list = &ConfigList{}
-	list.add(NewConfigScalar("1"))
-	list.add(NewConfigScalar("2"))
-	list.add(NewConfigScalar("3"))
+	list.Add(NewConfigScalar("1"))
+	list.Add(NewConfigScalar("2"))
+	list.Add(NewConfigScalar("3"))
 
 	obj = &ConfigObject{}
-	obj.add("List", list)
+	obj.Add("List", list)
 
 	root = &ConfigObject{}
-	root.add("Object", obj)
+	root.Add("Object", obj)
 
 	equal(t, root, `---
 Object:
@@ -419,15 +419,15 @@ Object:
 
 	// List of Object
 	obj = &ConfigObject{}
-	obj.add("Foo", NewConfigScalar("foo"))
-	obj.add("Bar", NewConfigScalar("bar"))
-	obj.add("Baz", NewConfigScalar("baz"))
+	obj.Add("Foo", NewConfigScalar("foo"))
+	obj.Add("Bar", NewConfigScalar("bar"))
+	obj.Add("Baz", NewConfigScalar("baz"))
 
 	list = &ConfigList{}
-	list.add(obj)
+	list.Add(obj)
 
 	root = &ConfigObject{}
-	root.add("Object", list)
+	root.Add("Object", list)
 
 	equal(t, root, `---
 Object:
@@ -480,7 +480,7 @@ Object:
 	root = &ConfigObject{}
 	scalar := NewConfigScalar("42")
 	scalar.setComment("Many\n\nlines")
-	root.add("Scalar", scalar)
+	root.Add("Scalar", scalar)
 
 	equal(t, root, `---
 # Many
@@ -493,14 +493,14 @@ Scalar: 42
 	list1 = &ConfigList{}
 	scalar = NewConfigScalar("42")
 	scalar.setComment("Many\n\nlines")
-	list1.add(scalar)
+	list1.Add(scalar)
 
 	list2 = &ConfigList{}
-	list2.add(list1)
-	list2.add(NewConfigScalar("foo"))
+	list2.Add(list1)
+	list2.Add(NewConfigScalar("foo"))
 
 	root = &ConfigObject{}
-	root.add("List", list2)
+	root.Add("List", list2)
 
 	equal(t, root, `---
 List:
