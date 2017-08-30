@@ -929,7 +929,7 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	if err != nil {
 		return err
 	}
-	values, err := kube.MakeValues(rolesManifest, defaults)
+	values, err := helm.MakeValues(rolesManifest, defaults)
 	if err == nil {
 		err = values.WriteConfig(outputFile)
 	}

@@ -29,18 +29,18 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 	refs := make(map[string]SecretRef)
 
 	data := helm.ConfigObject{}
-	for key, value := range secrets {
+	for key, cv := range secrets {
 		var strValue string
 		if createHelmChart {
 			switch {
-			case value.Generator == nil || value.Generator.Type != model.GeneratorTypePassword:
-				errString := fmt.Sprintf("%s configuration missing", value.Name)
-				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, value.Name)
-			case value.Generator.Type == model.GeneratorTypePassword:
+			case cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword:
+				errString := fmt.Sprintf("%s configuration missing", cv.Name)
+				strValue = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, cv.Name)
+			case cv.Generator.Type == model.GeneratorTypePassword:
 				strValue = "{{ randAlphaNum 32 | b64enc | quote }}"
 			}
 		} else {
-			ok, strValue := ConfigValue(value, defaults)
+			ok, strValue := cv.Value(defaults)
 			if !ok {
 				return nil, nil, fmt.Errorf("Secret '%s' has no value", key)
 			}
@@ -50,7 +50,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		skey := strings.ToLower(strings.Replace(key, "_", "-", -1))
 
-		data.Add(skey, helm.NewConfigScalarWithComment(strValue, value.Description))
+		data.Add(skey, helm.NewConfigScalarWithComment(strValue, cv.Description))
 		refs[key] = SecretRef{
 			Secret: "secret",
 			Key:    skey,
