@@ -8,6 +8,7 @@ import (
 
 // Node is the interface implemented by all config node types
 type Node interface {
+	apply([]func(*sharedFields))
 	getComment() string
 	getCondition() string
 	setComment(string)
@@ -52,10 +53,26 @@ type sharedFields struct {
 	condition string
 }
 
+func (shared *sharedFields) apply(modifiers []func(*sharedFields)) {
+	for _, modifier := range modifiers {
+		modifier(shared)
+	}
+}
+
 func (shared sharedFields) getComment() string             { return shared.comment }
 func (shared sharedFields) getCondition() string           { return shared.condition }
 func (shared *sharedFields) setComment(comment string)     { shared.comment = comment }
 func (shared *sharedFields) setCondition(condition string) { shared.condition = condition }
+
+// Comment returns modifier function to set the comment of a Node
+func Comment(comment string) func(*sharedFields) {
+	return func(shared *sharedFields) { shared.comment = comment }
+}
+
+// Condition returns modifier function to set the condition of a Node
+func Condition(condition string) func(*sharedFields) {
+	return func(shared *sharedFields) { shared.condition = condition }
+}
 
 // Scalar represents a scalar value inside a list or object
 type Scalar struct {
@@ -63,14 +80,11 @@ type Scalar struct {
 	value string
 }
 
-// NewScalar creates a simple scalar node without comment or condition
-func NewScalar(value string) *Scalar {
-	return &Scalar{value: value}
-}
-
-// NewScalarWithComment creates a simple scalar node with comment
-func NewScalarWithComment(value string, comment string) *Scalar {
-	return &Scalar{sharedFields{comment: comment}, value}
+// NewScalar creates a scalar node and initializes shared fields
+func NewScalar(value string, modifiers ...func(*sharedFields)) *Scalar {
+	scalar := &Scalar{value: value}
+	scalar.apply(modifiers)
+	return scalar
 }
 
 func (scalar Scalar) write(enc Encoder, prefix string) {
@@ -81,6 +95,13 @@ func (scalar Scalar) write(enc Encoder, prefix string) {
 type List struct {
 	sharedFields
 	nodes []Node
+}
+
+// NewList creates an empty list node and initializes shared fields
+func NewList(modifiers ...func(*sharedFields)) *List {
+	list := &List{}
+	list.apply(modifiers)
+	return list
 }
 
 // Add one or more nodes at the end of the list
@@ -105,6 +126,13 @@ type Object struct {
 	nodes []namedNode
 }
 
+// NewObject creates an empty object node and initializes shared fields
+func NewObject(modifiers ...func(*sharedFields)) *Object {
+	object := &Object{}
+	object.apply(modifiers)
+	return object
+}
+
 // Add a singled named node at the end of the list
 func (object *Object) Add(name string, node Node) {
 	object.nodes = append(object.nodes, namedNode{name: name, node: node})
@@ -118,16 +146,16 @@ func (object Object) write(enc Encoder, prefix string) {
 }
 
 //NewKubeConfig sets up generic a Kube config structure with minimal metadata
-func NewKubeConfig(kind string, name string) *Object {
-	obj := &Object{}
-	obj.Add("apiVersion", NewScalar("v1"))
-	obj.Add("kind", NewScalar(kind))
+func NewKubeConfig(kind string, name string, modifiers ...func(*sharedFields)) *Object {
+	object := NewObject(modifiers...)
+	object.Add("apiVersion", NewScalar("v1"))
+	object.Add("kind", NewScalar(kind))
 
-	meta := Object{}
+	meta := NewObject()
 	meta.Add("name", NewScalar(name))
-	obj.Add("metadata", &meta)
+	object.Add("metadata", meta)
 
-	return obj
+	return object
 }
 
 // Encoder writes the config data to an output stream

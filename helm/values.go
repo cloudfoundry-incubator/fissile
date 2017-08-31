@@ -6,26 +6,26 @@ import (
 
 // MakeValues returns an Object with all default values for the Helm chart
 func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (*Object, error) {
-	env := &Object{}
+	env := NewObject()
 	for name, cv := range model.MakeMapOfVariables(rolesManifest) {
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
 			ok, value := cv.Value(defaults)
 			if !ok {
 				value = "~"
 			}
-			env.Add(name, NewScalarWithComment(value, cv.Description))
+			env.Add(name, NewScalar(value, Comment(cv.Description)))
 		}
 	}
 
-	sc := &Object{}
+	sc := NewObject()
 	sc.Add("persistent", NewScalar("persistent"))
 	sc.Add("shared", NewScalar("shared"))
 
-	kube := &Object{}
+	kube := NewObject()
 	kube.Add("external_ip", NewScalar("192.168.77.77"))
 	kube.Add("storage_class", sc)
 
-	values := &Object{}
+	values := NewObject()
 	values.Add("env", env)
 	values.Add("kube", kube)
 

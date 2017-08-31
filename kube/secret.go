@@ -28,7 +28,7 @@ type SecretRefMap map[string]SecretRef
 func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (*helm.Object, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
-	data := helm.Object{}
+	data := helm.NewObject()
 	for name, cv := range secrets {
 		var value string
 		if createHelmChart {
@@ -50,7 +50,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		key := strings.ToLower(strings.Replace(name, "_", "-", -1))
 
-		data.Add(key, helm.NewScalarWithComment(value, cv.Description))
+		data.Add(key, helm.NewScalar(value, helm.Comment(cv.Description)))
 		refs[name] = SecretRef{
 			Secret: "secret",
 			Key:    key,
@@ -58,7 +58,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 	}
 
 	secret := helm.NewKubeConfig("Secret", "secret")
-	secret.Add("data", &data)
+	secret.Add("data", data)
 
 	return secret, refs, nil
 }

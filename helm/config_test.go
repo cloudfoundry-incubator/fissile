@@ -40,7 +40,7 @@ func equal(t *testing.T, config *Object, expect string) {
 func TestConfig(t *testing.T) {
 
 	// Simple scalar
-	root := &Object{}
+	root := NewObject()
 	root.Add("Scalar", NewScalar("42"))
 
 	equal(t, root, `---
@@ -66,12 +66,12 @@ Scalar: 42
 `)
 
 	// Simple list
-	list := &List{}
+	list := NewList()
 	list.Add(NewScalar("1"))
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("List", list)
 
 	equal(t, root, `---
@@ -118,12 +118,12 @@ List:
 `)
 
 	// Simple Object
-	obj := &Object{}
+	obj := NewObject()
 	obj.Add("foo", NewScalar("1"))
 	obj.Add("bar", NewScalar("2"))
 	obj.Add("baz", NewScalar("3"))
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -170,21 +170,21 @@ Object:
 `)
 
 	// list of list of list
-	list1 := &List{}
+	list1 := NewList()
 	list1.Add(NewScalar("1"))
 	list1.Add(NewScalar("2"))
 
-	list2 := &List{}
+	list2 := NewList()
 	list2.Add(list1)
 	list2.Add(NewScalar("x"))
 	list2.Add(NewScalar("y"))
 
-	list3 := &List{}
+	list3 := NewList()
 	list3.Add(list2)
 	list3.Add(NewScalar("foo"))
 	list3.Add(NewScalar("bar"))
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("List", list3)
 
 	equal(t, root, `---
@@ -260,21 +260,21 @@ List:
 `)
 
 	// Object of object of object
-	obj1 := &Object{}
+	obj1 := NewObject()
 	obj1.Add("One", NewScalar("1"))
 	obj1.Add("Two", NewScalar("2"))
 
-	obj2 := &Object{}
+	obj2 := NewObject()
 	obj2.Add("OneTwo", obj1)
 	obj2.Add("X", NewScalar("x"))
 	obj2.Add("Y", NewScalar("y"))
 
-	obj3 := &Object{}
+	obj3 := NewObject()
 	obj3.Add("XY", obj2)
 	obj3.Add("Foo", NewScalar("foo"))
 	obj3.Add("Bar", NewScalar("bar"))
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("Object", obj3)
 
 	equal(t, root, `---
@@ -356,15 +356,15 @@ Object:
 `)
 
 	// Object of list
-	list = &List{}
+	list = NewList()
 	list.Add(NewScalar("1"))
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	obj = &Object{}
+	obj = NewObject()
 	obj.Add("List", list)
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -418,15 +418,15 @@ Object:
 `)
 
 	// List of Object
-	obj = &Object{}
+	obj = NewObject()
 	obj.Add("Foo", NewScalar("foo"))
 	obj.Add("Bar", NewScalar("bar"))
 	obj.Add("Baz", NewScalar("baz"))
 
-	list = &List{}
+	list = NewList()
 	list.Add(obj)
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("Object", list)
 
 	equal(t, root, `---
@@ -477,7 +477,7 @@ Object:
 `)
 
 	// Multi-line comments
-	root = &Object{}
+	root = NewObject()
 	scalar := NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	root.Add("Scalar", scalar)
@@ -490,16 +490,16 @@ Scalar: 42
 `)
 
 	// list of list
-	list1 = &List{}
+	list1 = NewList()
 	scalar = NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	list1.Add(scalar)
 
-	list2 = &List{}
+	list2 = NewList()
 	list2.Add(list1)
 	list2.Add(NewScalar("foo"))
 
-	root = &Object{}
+	root = NewObject()
 	root.Add("List", list2)
 
 	equal(t, root, `---
