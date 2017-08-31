@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// ConfigType is the interface implemented by all config node types
-type ConfigType interface {
+// Node is the interface implemented by all config node types
+type Node interface {
 	getComment() string
 	getCondition() string
 	setComment(string)
@@ -21,14 +21,14 @@ func useOnce(prefix *string) string {
 	return result
 }
 
-func writeElement(w io.Writer, element ConfigType, prefix *string, indent int, value string) {
+func writeNode(w io.Writer, node Node, prefix *string, indent int, value string) {
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(w, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
 	}
-	if comment := element.getComment(); comment != "" {
+	if comment := node.getComment(); comment != "" {
 		for _, line := range strings.Split(comment, "\n") {
 			if len(line) > 0 {
 				line = " " + line
@@ -36,103 +36,103 @@ func writeElement(w io.Writer, element ConfigType, prefix *string, indent int, v
 			fmt.Fprintf(w, "%s#%s\n", useOnce(prefix), line)
 		}
 	}
-	condition := element.getCondition()
+	condition := node.getCondition()
 	if condition != "" {
 		fmt.Fprintf(w, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
-	element.write(w, useOnce(prefix)+value)
+	node.write(w, useOnce(prefix)+value)
 	if condition != "" {
 		fmt.Fprintln(w, *prefix+"{{- end }}")
 	}
 }
 
-// configMeta provides the shared metadata (comments & conditions) for all config types
-type configMeta struct {
+// sharedFields provides the shared metadata (comments & conditions) for all Node types
+type sharedFields struct {
 	comment   string
 	condition string
 }
 
-func (meta configMeta) getComment() string             { return meta.comment }
-func (meta configMeta) getCondition() string           { return meta.condition }
-func (meta *configMeta) setComment(comment string)     { meta.comment = comment }
-func (meta *configMeta) setCondition(condition string) { meta.condition = condition }
+func (shared sharedFields) getComment() string             { return shared.comment }
+func (shared sharedFields) getCondition() string           { return shared.condition }
+func (shared *sharedFields) setComment(comment string)     { shared.comment = comment }
+func (shared *sharedFields) setCondition(condition string) { shared.condition = condition }
 
-// ConfigScalar represents a scalar value inside a list or object
-type ConfigScalar struct {
-	configMeta
+// Scalar represents a scalar value inside a list or object
+type Scalar struct {
+	sharedFields
 	value string
 }
 
-// NewConfigScalar creates a simple scalar node without comment or condition
-func NewConfigScalar(value string) *ConfigScalar {
-	return &ConfigScalar{value: value}
+// NewScalar creates a simple scalar node without comment or condition
+func NewScalar(value string) *Scalar {
+	return &Scalar{value: value}
 }
 
-// NewConfigScalarWithComment creates a simple scalar node with comment
-func NewConfigScalarWithComment(value string, comment string) *ConfigScalar {
-	return &ConfigScalar{configMeta{comment: comment}, value}
+// NewScalarWithComment creates a simple scalar node with comment
+func NewScalarWithComment(value string, comment string) *Scalar {
+	return &Scalar{sharedFields{comment: comment}, value}
 }
 
-func (scalar ConfigScalar) write(w io.Writer, prefix string) {
+func (scalar Scalar) write(w io.Writer, prefix string) {
 	fmt.Fprintln(w, prefix+" "+scalar.value)
 }
 
-// ConfigList represents an ordered list of unnamed config nodes
-type ConfigList struct {
-	configMeta
-	values []ConfigType
+// List represents an ordered list of unnamed nodes
+type List struct {
+	sharedFields
+	nodes []Node
 }
 
-// Add one or more config values at the end of the list
-func (list *ConfigList) Add(values ...ConfigType) {
-	list.values = append(list.values, values...)
+// Add one or more nodes at the end of the list
+func (list *List) Add(nodes ...Node) {
+	list.nodes = append(list.nodes, nodes...)
 }
 
-func (list ConfigList) write(w io.Writer, prefix string) {
-	for _, value := range list.values {
-		writeElement(w, value, &prefix, 0, "-")
+func (list List) write(w io.Writer, prefix string) {
+	for _, node := range list.nodes {
+		writeNode(w, node, &prefix, 0, "-")
 	}
 }
 
-type namedValue struct {
-	name  string
-	value ConfigType
+type namedNode struct {
+	name string
+	node Node
 }
 
-// ConfigObject represents an ordered lst of named config values
-type ConfigObject struct {
-	configMeta
-	values []namedValue
+// Object represents an ordered lst of named nodes
+type Object struct {
+	sharedFields
+	nodes []namedNode
 }
 
-// Add a singled named config value at the end of the list
-func (object *ConfigObject) Add(name string, value ConfigType) {
-	object.values = append(object.values, namedValue{name: name, value: value})
+// Add a singled named node at the end of the list
+func (object *Object) Add(name string, node Node) {
+	object.nodes = append(object.nodes, namedNode{name: name, node: node})
 }
 
-func (object ConfigObject) write(w io.Writer, prefix string) {
-	for _, namedValue := range object.values {
-		name, value := namedValue.name, namedValue.value
-		writeElement(w, value, &prefix, 2, name+":")
+func (object Object) write(w io.Writer, prefix string) {
+	for _, namedNode := range object.nodes {
+		name, node := namedNode.name, namedNode.node
+		writeNode(w, node, &prefix, 2, name+":")
 	}
 }
 
 // WriteConfig writes templatized YAML config to Writer
-func (object ConfigObject) WriteConfig(w io.Writer) error {
+func (object Object) WriteConfig(w io.Writer) error {
 	fmt.Fprintln(w, "---")
 	prefix := ""
-	writeElement(w, &object, &prefix, 0, "")
+	writeNode(w, &object, &prefix, 0, "")
 	return nil
 }
 
 //NewKubeConfig sets up generic a Kube config structure with minimal metadata
-func NewKubeConfig(kind string, name string) *ConfigObject {
-	obj := &ConfigObject{}
-	obj.Add("apiVersion", NewConfigScalar("v1"))
-	obj.Add("kind", NewConfigScalar(kind))
+func NewKubeConfig(kind string, name string) *Object {
+	obj := &Object{}
+	obj.Add("apiVersion", NewScalar("v1"))
+	obj.Add("kind", NewScalar(kind))
 
-	meta := ConfigObject{}
-	meta.Add("name", NewConfigScalar(name))
+	meta := Object{}
+	meta.Add("name", NewScalar(name))
 	obj.Add("metadata", &meta)
 
 	return obj

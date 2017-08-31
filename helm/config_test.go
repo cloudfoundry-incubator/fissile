@@ -9,29 +9,29 @@ import (
 )
 
 // annotate by recursively adding comments or conditions to each node
-func annotate(any ConfigType, comment bool, index int) int {
+func annotate(node Node, comment bool, index int) int {
 	index++
 	if comment {
-		any.setComment(fmt.Sprintf("comment %d", index))
+		node.setComment(fmt.Sprintf("comment %d", index))
 	} else {
-		any.setCondition(fmt.Sprintf("if condition %d", index))
+		node.setCondition(fmt.Sprintf("if condition %d", index))
 	}
-	switch any.(type) {
-	case *ConfigList:
-		for _, item := range any.(*ConfigList).values {
-			index = annotate(item, comment, index)
+	switch node.(type) {
+	case *List:
+		for _, node := range node.(*List).nodes {
+			index = annotate(node, comment, index)
 		}
-	case *ConfigObject:
-		for _, item := range any.(*ConfigObject).values {
-			index = annotate(item.value, comment, index)
+	case *Object:
+		for _, namedNode := range node.(*Object).nodes {
+			index = annotate(namedNode.node, comment, index)
 		}
 	}
 	return index
 }
-func addComments(any ConfigType)   { annotate(any, true, 0) }
-func addConditions(any ConfigType) { annotate(any, false, 0) }
+func addComments(node Node)   { annotate(node, true, 0) }
+func addConditions(node Node) { annotate(node, false, 0) }
 
-func equal(t *testing.T, config *ConfigObject, expect string) {
+func equal(t *testing.T, config *Object, expect string) {
 	buffer := &bytes.Buffer{}
 	config.WriteConfig(buffer)
 	assert.Equal(t, expect, buffer.String())
@@ -40,8 +40,8 @@ func equal(t *testing.T, config *ConfigObject, expect string) {
 func TestConfig(t *testing.T) {
 
 	// Simple scalar
-	root := &ConfigObject{}
-	root.Add("Scalar", NewConfigScalar("42"))
+	root := &Object{}
+	root.Add("Scalar", NewScalar("42"))
 
 	equal(t, root, `---
 Scalar: 42
@@ -66,12 +66,12 @@ Scalar: 42
 `)
 
 	// Simple list
-	list := &ConfigList{}
-	list.Add(NewConfigScalar("1"))
-	list.Add(NewConfigScalar("2"))
-	list.Add(NewConfigScalar("3"))
+	list := &List{}
+	list.Add(NewScalar("1"))
+	list.Add(NewScalar("2"))
+	list.Add(NewScalar("3"))
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("List", list)
 
 	equal(t, root, `---
@@ -118,12 +118,12 @@ List:
 `)
 
 	// Simple Object
-	obj := &ConfigObject{}
-	obj.Add("foo", NewConfigScalar("1"))
-	obj.Add("bar", NewConfigScalar("2"))
-	obj.Add("baz", NewConfigScalar("3"))
+	obj := &Object{}
+	obj.Add("foo", NewScalar("1"))
+	obj.Add("bar", NewScalar("2"))
+	obj.Add("baz", NewScalar("3"))
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -170,21 +170,21 @@ Object:
 `)
 
 	// list of list of list
-	list1 := &ConfigList{}
-	list1.Add(NewConfigScalar("1"))
-	list1.Add(NewConfigScalar("2"))
+	list1 := &List{}
+	list1.Add(NewScalar("1"))
+	list1.Add(NewScalar("2"))
 
-	list2 := &ConfigList{}
+	list2 := &List{}
 	list2.Add(list1)
-	list2.Add(NewConfigScalar("x"))
-	list2.Add(NewConfigScalar("y"))
+	list2.Add(NewScalar("x"))
+	list2.Add(NewScalar("y"))
 
-	list3 := &ConfigList{}
+	list3 := &List{}
 	list3.Add(list2)
-	list3.Add(NewConfigScalar("foo"))
-	list3.Add(NewConfigScalar("bar"))
+	list3.Add(NewScalar("foo"))
+	list3.Add(NewScalar("bar"))
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("List", list3)
 
 	equal(t, root, `---
@@ -260,21 +260,21 @@ List:
 `)
 
 	// Object of object of object
-	obj1 := &ConfigObject{}
-	obj1.Add("One", NewConfigScalar("1"))
-	obj1.Add("Two", NewConfigScalar("2"))
+	obj1 := &Object{}
+	obj1.Add("One", NewScalar("1"))
+	obj1.Add("Two", NewScalar("2"))
 
-	obj2 := &ConfigObject{}
+	obj2 := &Object{}
 	obj2.Add("OneTwo", obj1)
-	obj2.Add("X", NewConfigScalar("x"))
-	obj2.Add("Y", NewConfigScalar("y"))
+	obj2.Add("X", NewScalar("x"))
+	obj2.Add("Y", NewScalar("y"))
 
-	obj3 := &ConfigObject{}
+	obj3 := &Object{}
 	obj3.Add("XY", obj2)
-	obj3.Add("Foo", NewConfigScalar("foo"))
-	obj3.Add("Bar", NewConfigScalar("bar"))
+	obj3.Add("Foo", NewScalar("foo"))
+	obj3.Add("Bar", NewScalar("bar"))
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("Object", obj3)
 
 	equal(t, root, `---
@@ -356,15 +356,15 @@ Object:
 `)
 
 	// Object of list
-	list = &ConfigList{}
-	list.Add(NewConfigScalar("1"))
-	list.Add(NewConfigScalar("2"))
-	list.Add(NewConfigScalar("3"))
+	list = &List{}
+	list.Add(NewScalar("1"))
+	list.Add(NewScalar("2"))
+	list.Add(NewScalar("3"))
 
-	obj = &ConfigObject{}
+	obj = &Object{}
 	obj.Add("List", list)
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -418,15 +418,15 @@ Object:
 `)
 
 	// List of Object
-	obj = &ConfigObject{}
-	obj.Add("Foo", NewConfigScalar("foo"))
-	obj.Add("Bar", NewConfigScalar("bar"))
-	obj.Add("Baz", NewConfigScalar("baz"))
+	obj = &Object{}
+	obj.Add("Foo", NewScalar("foo"))
+	obj.Add("Bar", NewScalar("bar"))
+	obj.Add("Baz", NewScalar("baz"))
 
-	list = &ConfigList{}
+	list = &List{}
 	list.Add(obj)
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("Object", list)
 
 	equal(t, root, `---
@@ -477,8 +477,8 @@ Object:
 `)
 
 	// Multi-line comments
-	root = &ConfigObject{}
-	scalar := NewConfigScalar("42")
+	root = &Object{}
+	scalar := NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	root.Add("Scalar", scalar)
 
@@ -490,16 +490,16 @@ Scalar: 42
 `)
 
 	// list of list
-	list1 = &ConfigList{}
-	scalar = NewConfigScalar("42")
+	list1 = &List{}
+	scalar = NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	list1.Add(scalar)
 
-	list2 = &ConfigList{}
+	list2 = &List{}
 	list2.Add(list1)
-	list2.Add(NewConfigScalar("foo"))
+	list2.Add(NewScalar("foo"))
 
-	root = &ConfigObject{}
+	root = &Object{}
 	root.Add("List", list2)
 
 	equal(t, root, `---
