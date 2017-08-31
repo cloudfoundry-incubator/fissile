@@ -6,53 +6,23 @@ import (
 	"strings"
 )
 
-// Node is the interface implemented by all config node types
-type Node interface {
-	apply([]func(*sharedFields))
-	getComment() string
-	getCondition() string
-	setComment(string)
-	setCondition(string)
-	write(enc Encoder, prefix string)
-}
-
-func useOnce(prefix *string) string {
-	result := *prefix
-	*prefix = strings.Repeat(" ", len(*prefix))
-	return result
-}
-
-func writeNode(enc Encoder, node Node, prefix *string, indent int, value string) {
-	if strings.HasSuffix(*prefix, ":") {
-		fmt.Fprintln(enc.w, *prefix)
-		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
-	} else if strings.HasSuffix(*prefix, "-") {
-		*prefix += " "
-	}
-	if comment := node.getComment(); comment != "" {
-		for _, line := range strings.Split(comment, "\n") {
-			if len(line) > 0 {
-				line = " " + line
-			}
-			fmt.Fprintf(enc.w, "%s#%s\n", useOnce(prefix), line)
-		}
-	}
-	condition := node.getCondition()
-	if condition != "" {
-		fmt.Fprintf(enc.w, "%s{{- %s }}\n", useOnce(prefix), condition)
-	}
-	node.write(enc, useOnce(prefix)+value)
-	if condition != "" {
-		fmt.Fprintln(enc.w, *prefix+"{{- end }}")
-	}
-}
-
 // sharedFields provides the shared metadata (comments & conditions) for all Node types
 type sharedFields struct {
 	comment   string
 	condition string
 }
 
+// Comment returns a modifier function to set the comment of a Node
+func Comment(comment string) func(*sharedFields) {
+	return func(shared *sharedFields) { shared.comment = comment }
+}
+
+// Condition returns a modifier function to set the condition of a Node
+func Condition(condition string) func(*sharedFields) {
+	return func(shared *sharedFields) { shared.condition = condition }
+}
+
+// apply sharedFields modifier functions that can be passed to the constructors of the nodes
 func (shared *sharedFields) apply(modifiers []func(*sharedFields)) {
 	for _, modifier := range modifiers {
 		modifier(shared)
@@ -64,14 +34,16 @@ func (shared sharedFields) getCondition() string           { return shared.condi
 func (shared *sharedFields) setComment(comment string)     { shared.comment = comment }
 func (shared *sharedFields) setCondition(condition string) { shared.condition = condition }
 
-// Comment returns modifier function to set the comment of a Node
-func Comment(comment string) func(*sharedFields) {
-	return func(shared *sharedFields) { shared.comment = comment }
-}
-
-// Condition returns modifier function to set the condition of a Node
-func Condition(condition string) func(*sharedFields) {
-	return func(shared *sharedFields) { shared.condition = condition }
+// Node is the interface implemented by all config node types
+type Node interface {
+	// Every node will embed a sharedFields struct and inherit these methods:
+	apply([]func(*sharedFields))
+	getComment() string
+	getCondition() string
+	setComment(string)
+	setCondition(string)
+	// The write() method is specific to each Node type
+	write(enc Encoder, prefix string)
 }
 
 // Scalar represents a scalar value inside a list or object
@@ -111,7 +83,7 @@ func (list *List) Add(nodes ...Node) {
 
 func (list List) write(enc Encoder, prefix string) {
 	for _, node := range list.nodes {
-		writeNode(enc, node, &prefix, 0, "-")
+		enc.writeNode(node, &prefix, 0, "-")
 	}
 }
 
@@ -140,12 +112,11 @@ func (object *Object) Add(name string, node Node) {
 
 func (object Object) write(enc Encoder, prefix string) {
 	for _, namedNode := range object.nodes {
-		name, node := namedNode.name, namedNode.node
-		writeNode(enc, node, &prefix, enc.indent, name+":")
+		enc.writeNode(namedNode.node, &prefix, enc.indent, namedNode.name+":")
 	}
 }
 
-//NewKubeConfig sets up generic a Kube config structure with minimal metadata
+// NewKubeConfig sets up generic a Kube config structure with minimal metadata (move this to "kube" package?)
 func NewKubeConfig(kind string, name string, modifiers ...func(*sharedFields)) *Object {
 	object := NewObject(modifiers...)
 	object.Add("apiVersion", NewScalar("v1"))
@@ -174,6 +145,37 @@ func NewEncoder(w io.Writer) *Encoder {
 func (enc Encoder) Encode(obj *Object) error {
 	fmt.Fprintln(enc.w, "---")
 	prefix := ""
-	writeNode(enc, obj, &prefix, 0, "")
+	enc.writeNode(obj, &prefix, 0, "")
 	return nil
+}
+
+func useOnce(prefix *string) string {
+	result := *prefix
+	*prefix = strings.Repeat(" ", len(*prefix))
+	return result
+}
+
+func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string) {
+	if strings.HasSuffix(*prefix, ":") {
+		fmt.Fprintln(enc.w, *prefix)
+		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
+	} else if strings.HasSuffix(*prefix, "-") {
+		*prefix += " "
+	}
+	if comment := node.getComment(); comment != "" {
+		for _, line := range strings.Split(comment, "\n") {
+			if len(line) > 0 {
+				line = " " + line
+			}
+			fmt.Fprintf(enc.w, "%s#%s\n", useOnce(prefix), line)
+		}
+	}
+	condition := node.getCondition()
+	if condition != "" {
+		fmt.Fprintf(enc.w, "%s{{- %s }}\n", useOnce(prefix), condition)
+	}
+	node.write(enc, useOnce(prefix)+value)
+	if condition != "" {
+		fmt.Fprintln(enc.w, *prefix+"{{- end }}")
+	}
 }
