@@ -889,7 +889,7 @@ func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Object, rolesM
 	}
 	defer outputFile.Close()
 
-	if err := secrets.WriteConfig(outputFile); err != nil {
+	if err := helm.NewEncoder(outputFile).Encode(secrets); err != nil {
 		return err
 	}
 	return nil
@@ -931,7 +931,7 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	}
 	values, err := helm.MakeValues(rolesManifest, defaults)
 	if err == nil {
-		err = values.WriteConfig(outputFile)
+		err = helm.NewEncoder(outputFile).Encode(values)
 	}
 	if err == nil {
 		return outputFile.Close()

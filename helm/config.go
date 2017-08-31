@@ -12,7 +12,7 @@ type Node interface {
 	getCondition() string
 	setComment(string)
 	setCondition(string)
-	write(w io.Writer, prefix string)
+	write(enc Encoder, prefix string)
 }
 
 func useOnce(prefix *string) string {
@@ -21,9 +21,9 @@ func useOnce(prefix *string) string {
 	return result
 }
 
-func writeNode(w io.Writer, node Node, prefix *string, indent int, value string) {
+func writeNode(enc Encoder, node Node, prefix *string, indent int, value string) {
 	if strings.HasSuffix(*prefix, ":") {
-		fmt.Fprintln(w, *prefix)
+		fmt.Fprintln(enc.w, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
@@ -33,16 +33,16 @@ func writeNode(w io.Writer, node Node, prefix *string, indent int, value string)
 			if len(line) > 0 {
 				line = " " + line
 			}
-			fmt.Fprintf(w, "%s#%s\n", useOnce(prefix), line)
+			fmt.Fprintf(enc.w, "%s#%s\n", useOnce(prefix), line)
 		}
 	}
 	condition := node.getCondition()
 	if condition != "" {
-		fmt.Fprintf(w, "%s{{- %s }}\n", useOnce(prefix), condition)
+		fmt.Fprintf(enc.w, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
-	node.write(w, useOnce(prefix)+value)
+	node.write(enc, useOnce(prefix)+value)
 	if condition != "" {
-		fmt.Fprintln(w, *prefix+"{{- end }}")
+		fmt.Fprintln(enc.w, *prefix+"{{- end }}")
 	}
 }
 
@@ -73,8 +73,8 @@ func NewScalarWithComment(value string, comment string) *Scalar {
 	return &Scalar{sharedFields{comment: comment}, value}
 }
 
-func (scalar Scalar) write(w io.Writer, prefix string) {
-	fmt.Fprintln(w, prefix+" "+scalar.value)
+func (scalar Scalar) write(enc Encoder, prefix string) {
+	fmt.Fprintln(enc.w, prefix+" "+scalar.value)
 }
 
 // List represents an ordered list of unnamed nodes
@@ -88,9 +88,9 @@ func (list *List) Add(nodes ...Node) {
 	list.nodes = append(list.nodes, nodes...)
 }
 
-func (list List) write(w io.Writer, prefix string) {
+func (list List) write(enc Encoder, prefix string) {
 	for _, node := range list.nodes {
-		writeNode(w, node, &prefix, 0, "-")
+		writeNode(enc, node, &prefix, 0, "-")
 	}
 }
 
@@ -110,19 +110,11 @@ func (object *Object) Add(name string, node Node) {
 	object.nodes = append(object.nodes, namedNode{name: name, node: node})
 }
 
-func (object Object) write(w io.Writer, prefix string) {
+func (object Object) write(enc Encoder, prefix string) {
 	for _, namedNode := range object.nodes {
 		name, node := namedNode.name, namedNode.node
-		writeNode(w, node, &prefix, 2, name+":")
+		writeNode(enc, node, &prefix, enc.indent, name+":")
 	}
-}
-
-// WriteConfig writes templatized YAML config to Writer
-func (object Object) WriteConfig(w io.Writer) error {
-	fmt.Fprintln(w, "---")
-	prefix := ""
-	writeNode(w, &object, &prefix, 0, "")
-	return nil
 }
 
 //NewKubeConfig sets up generic a Kube config structure with minimal metadata
@@ -136,4 +128,24 @@ func NewKubeConfig(kind string, name string) *Object {
 	obj.Add("metadata", &meta)
 
 	return obj
+}
+
+// Encoder writes the config data to an output stream
+type Encoder struct {
+	w      io.Writer
+	indent int
+}
+
+// NewEncoder returns an Encoder object wrapping the output stream and encoding options
+func NewEncoder(w io.Writer) *Encoder {
+	enc := &Encoder{w: w, indent: 2}
+	return enc
+}
+
+// Encode writes the config object to the stream
+func (enc Encoder) Encode(obj *Object) error {
+	fmt.Fprintln(enc.w, "---")
+	prefix := ""
+	writeNode(enc, obj, &prefix, 0, "")
+	return nil
 }

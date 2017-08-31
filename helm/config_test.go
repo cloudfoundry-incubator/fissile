@@ -33,7 +33,7 @@ func addConditions(node Node) { annotate(node, false, 0) }
 
 func equal(t *testing.T, config *Object, expect string) {
 	buffer := &bytes.Buffer{}
-	config.WriteConfig(buffer)
+	NewEncoder(buffer).Encode(config)
 	assert.Equal(t, expect, buffer.String())
 }
 
