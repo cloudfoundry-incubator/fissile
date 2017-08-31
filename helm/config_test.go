@@ -517,3 +517,50 @@ List:
 `)
 
 }
+
+func TestHelmIndent(t *testing.T) {
+	obj1 := NewObject()
+	obj1.Add("Foo", NewScalar("Bar", Comment("Baz")))
+
+	list1 := NewList()
+	list1.Add(obj1)
+	list1.Add(NewScalar("1"))
+
+	list2 := NewList()
+	list2.Add(NewScalar("abc"))
+	list2.Add(NewScalar("xyz"))
+
+	list1.Add(list2)
+	list1.Add(NewScalar("2"))
+	list1.Add(NewScalar("3"))
+
+	obj2 := NewObject()
+	obj2.Add("List", list1)
+
+	obj3 := NewObject()
+	obj3.Add("Foo", NewScalar("1"))
+	obj3.Add("Bar", NewScalar("2"))
+
+	obj2.Add("Meta", obj3)
+
+	root := NewObject()
+	root.Add("Object", obj2)
+
+	expect := `---
+Object:
+    List:
+      - # Baz
+        Foo: Bar
+      - 1
+      -   - abc
+          - xyz
+      - 2
+      - 3
+    Meta:
+        Foo: 1
+        Bar: 2
+`
+	buffer := &bytes.Buffer{}
+	NewEncoder(buffer, Indent(4)).Encode(root)
+	assert.Equal(t, expect, buffer.String())
+}

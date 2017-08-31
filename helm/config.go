@@ -83,7 +83,7 @@ func (list *List) Add(nodes ...Node) {
 
 func (list List) write(enc Encoder, prefix string) {
 	for _, node := range list.nodes {
-		enc.writeNode(node, &prefix, 0, "-")
+		enc.writeNode(node, &prefix, 0, strings.Repeat(" ", enc.indent-2)+"-")
 	}
 }
 
@@ -135,9 +135,22 @@ type Encoder struct {
 	indent int
 }
 
+// Indent sets the indentation amount for the generated YAML
+func Indent(indent int) func(*Encoder) {
+	return func(enc *Encoder) {
+		if indent < 2 {
+			panic("helm.Encoder indent must be at least 2")
+		}
+		enc.indent = indent
+	}
+}
+
 // NewEncoder returns an Encoder object wrapping the output stream and encoding options
-func NewEncoder(w io.Writer) *Encoder {
+func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{w: w, indent: 2}
+	for _, modifier := range modifiers {
+		modifier(enc)
+	}
 	return enc
 }
 
