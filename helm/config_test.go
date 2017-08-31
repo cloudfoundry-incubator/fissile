@@ -37,9 +37,7 @@ func equal(t *testing.T, config *Object, expect string) {
 	assert.Equal(t, expect, buffer.String())
 }
 
-func TestConfig(t *testing.T) {
-
-	// Simple scalar
+func TestHelmScalar(t *testing.T) {
 	root := NewObject()
 	root.Add("Scalar", NewScalar("42"))
 
@@ -64,14 +62,15 @@ Scalar: 42
 {{- end }}
 {{- end }}
 `)
+}
 
-	// Simple list
+func TestHelmList(t *testing.T) {
 	list := NewList()
 	list.Add(NewScalar("1"))
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("List", list)
 
 	equal(t, root, `---
@@ -116,14 +115,15 @@ List:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// Simple Object
+func TestHelmObject(t *testing.T) {
 	obj := NewObject()
 	obj.Add("foo", NewScalar("1"))
 	obj.Add("bar", NewScalar("2"))
 	obj.Add("baz", NewScalar("3"))
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -168,8 +168,9 @@ Object:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// list of list of list
+func TestHelmListOfList(t *testing.T) {
 	list1 := NewList()
 	list1.Add(NewScalar("1"))
 	list1.Add(NewScalar("2"))
@@ -184,7 +185,7 @@ Object:
 	list3.Add(NewScalar("foo"))
 	list3.Add(NewScalar("bar"))
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("List", list3)
 
 	equal(t, root, `---
@@ -258,8 +259,9 @@ List:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// Object of object of object
+func TestHelmObjectOfObject(t *testing.T) {
 	obj1 := NewObject()
 	obj1.Add("One", NewScalar("1"))
 	obj1.Add("Two", NewScalar("2"))
@@ -274,7 +276,7 @@ List:
 	obj3.Add("Foo", NewScalar("foo"))
 	obj3.Add("Bar", NewScalar("bar"))
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("Object", obj3)
 
 	equal(t, root, `---
@@ -354,17 +356,18 @@ Object:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// Object of list
-	list = NewList()
+func TestHelmObjectOfList(t *testing.T) {
+	list := NewList()
 	list.Add(NewScalar("1"))
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	obj = NewObject()
+	obj := NewObject()
 	obj.Add("List", list)
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("Object", obj)
 
 	equal(t, root, `---
@@ -416,17 +419,18 @@ Object:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// List of Object
-	obj = NewObject()
+func TestHelmListOfObject(t *testing.T) {
+	obj := NewObject()
 	obj.Add("Foo", NewScalar("foo"))
 	obj.Add("Bar", NewScalar("bar"))
 	obj.Add("Baz", NewScalar("baz"))
 
-	list = NewList()
+	list := NewList()
 	list.Add(obj)
 
-	root = NewObject()
+	root := NewObject()
 	root.Add("Object", list)
 
 	equal(t, root, `---
@@ -475,9 +479,10 @@ Object:
 {{- end }}
 {{- end }}
 `)
+}
 
-	// Multi-line comments
-	root = NewObject()
+func TestHelmMultiLineComment(t *testing.T) {
+	root := NewObject()
 	scalar := NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	root.Add("Scalar", scalar)
@@ -490,12 +495,12 @@ Scalar: 42
 `)
 
 	// list of list
-	list1 = NewList()
+	list1 := NewList()
 	scalar = NewScalar("42")
 	scalar.setComment("Many\n\nlines")
 	list1.Add(scalar)
 
-	list2 = NewList()
+	list2 := NewList()
 	list2.Add(list1)
 	list2.Add(NewScalar("foo"))
 
