@@ -23,25 +23,21 @@ func Condition(condition string) func(*sharedFields) {
 }
 
 // apply sharedFields modifier functions that can be passed to the constructors of the nodes
-func (shared *sharedFields) apply(modifiers []func(*sharedFields)) {
+func (shared *sharedFields) apply(modifiers ...func(*sharedFields)) {
 	for _, modifier := range modifiers {
 		modifier(shared)
 	}
 }
 
-func (shared sharedFields) getComment() string             { return shared.comment }
-func (shared sharedFields) getCondition() string           { return shared.condition }
-func (shared *sharedFields) setComment(comment string)     { shared.comment = comment }
-func (shared *sharedFields) setCondition(condition string) { shared.condition = condition }
+func (shared sharedFields) getComment() string   { return shared.comment }
+func (shared sharedFields) getCondition() string { return shared.condition }
 
 // Node is the interface implemented by all config node types
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
-	apply([]func(*sharedFields))
+	apply(...func(*sharedFields))
 	getComment() string
 	getCondition() string
-	setComment(string)
-	setCondition(string)
 	// The write() method is specific to each Node type
 	write(enc Encoder, prefix string)
 }
@@ -55,7 +51,7 @@ type Scalar struct {
 // NewScalar creates a scalar node and initializes shared fields
 func NewScalar(value string, modifiers ...func(*sharedFields)) *Scalar {
 	scalar := &Scalar{value: value}
-	scalar.apply(modifiers)
+	scalar.apply(modifiers...)
 	return scalar
 }
 
@@ -72,7 +68,7 @@ type List struct {
 // NewList creates an empty list node and initializes shared fields
 func NewList(modifiers ...func(*sharedFields)) *List {
 	list := &List{}
-	list.apply(modifiers)
+	list.apply(modifiers...)
 	return list
 }
 
@@ -101,7 +97,7 @@ type Object struct {
 // NewObject creates an empty object node and initializes shared fields
 func NewObject(modifiers ...func(*sharedFields)) *Object {
 	object := &Object{}
-	object.apply(modifiers)
+	object.apply(modifiers...)
 	return object
 }
 
