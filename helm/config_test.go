@@ -650,3 +650,28 @@ Object:
 	enc.Encode(root)
 	assert.Equal(t, expect, buffer.String())
 }
+
+func TestHelmMultiLineScalar(t *testing.T) {
+	root := NewObject()
+	root.Add("Scalar", NewScalar("foo\nbar\nbaz"))
+
+	list := NewList()
+	list.Add(NewScalar("one\ntwo\nthree"))
+	root.Add("List", list)
+
+	expect := `---
+Scalar: |-
+    foo
+    bar
+    baz
+List:
+  - |-
+    one
+    two
+    three
+`
+	buffer := &bytes.Buffer{}
+	enc := NewEncoder(buffer, Indent(4))
+	enc.Encode(root)
+	assert.Equal(t, expect, buffer.String())
+}

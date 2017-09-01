@@ -59,7 +59,19 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 }
 
 func (scalar Scalar) write(enc Encoder, prefix string) {
-	fmt.Fprintln(enc.w, prefix+" "+scalar.value)
+	if strings.ContainsAny(scalar.value, "\n") {
+		fmt.Fprintln(enc.w, prefix+" |-")
+		if strings.HasSuffix(prefix, ":") {
+			prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
+		} else {
+			prefix = strings.Repeat(" ", len(prefix)+1)
+		}
+		for _, line := range strings.Split(scalar.value, "\n") {
+			fmt.Fprintln(enc.w, prefix+line)
+		}
+	} else {
+		fmt.Fprintln(enc.w, prefix+" "+scalar.value)
+	}
 }
 
 // List represents an ordered list of unnamed nodes
