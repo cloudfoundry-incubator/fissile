@@ -133,12 +133,17 @@ func Indent(indent int) func(*Encoder) {
 	}
 }
 
-// NewEncoder returns an Encoder object wrapping the output stream and encoding options
-func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
-	enc := &Encoder{w: w, indent: 2}
+// Apply Encoder modifier functions to set options
+func (enc *Encoder) Apply(modifiers ...func(*Encoder)) {
 	for _, modifier := range modifiers {
 		modifier(enc)
 	}
+}
+
+// NewEncoder returns an Encoder object wrapping the output stream and encoding options
+func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
+	enc := &Encoder{w: w, indent: 2}
+	enc.Apply(modifiers...)
 	return enc
 }
 

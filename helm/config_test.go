@@ -564,3 +564,33 @@ Object:
 	NewEncoder(buffer, Indent(4)).Encode(root)
 	assert.Equal(t, expect, buffer.String())
 }
+
+func TestHelmEncoderModifier(t *testing.T) {
+	obj := NewObject()
+	obj.Add("foo", NewScalar("1"))
+	obj.Add("bar", NewScalar("2"))
+	obj.Add("baz", NewScalar("3"))
+
+	root := NewObject()
+	root.Add("Object", obj)
+
+	expect := `---
+Object:
+  foo: 1
+  bar: 2
+  baz: 3
+---
+Object:
+    foo: 1
+    bar: 2
+    baz: 3
+`
+
+	buffer := &bytes.Buffer{}
+	enc := NewEncoder(buffer)
+	enc.Encode(root)
+	enc.Apply(Indent(4))
+	enc.Encode(root)
+	assert.Equal(t, expect, buffer.String())
+
+}
