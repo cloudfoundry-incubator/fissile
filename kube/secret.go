@@ -57,7 +57,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		}
 	}
 
-	secret := helm.NewKubeConfig("Secret", "secret")
+	secret := newKubeConfig("Secret", "secret")
 	secret.Add("data", data)
 
 	return secret, refs, nil

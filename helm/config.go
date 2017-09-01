@@ -12,6 +12,9 @@ type sharedFields struct {
 	condition string
 }
 
+// NodeModifier functions can be used to set values of shared fields in a Node
+type NodeModifier func(*sharedFields)
+
 // Comment returns a modifier function to set the comment of a Node
 func Comment(comment string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.comment = comment }
@@ -23,7 +26,7 @@ func Condition(condition string) func(*sharedFields) {
 }
 
 // apply sharedFields modifier functions that can be passed to the constructors of the nodes
-func (shared *sharedFields) apply(modifiers ...func(*sharedFields)) {
+func (shared *sharedFields) apply(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
 		modifier(shared)
 	}
@@ -35,7 +38,7 @@ func (shared sharedFields) getCondition() string { return shared.condition }
 // Node is the interface implemented by all config node types
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
-	apply(...func(*sharedFields))
+	apply(...NodeModifier)
 	getComment() string
 	getCondition() string
 	// The write() method is specific to each Node type
@@ -49,7 +52,7 @@ type Scalar struct {
 }
 
 // NewScalar creates a scalar node and initializes shared fields
-func NewScalar(value string, modifiers ...func(*sharedFields)) *Scalar {
+func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 	scalar := &Scalar{value: value}
 	scalar.apply(modifiers...)
 	return scalar
@@ -66,7 +69,7 @@ type List struct {
 }
 
 // NewList creates an empty list node and initializes shared fields
-func NewList(modifiers ...func(*sharedFields)) *List {
+func NewList(modifiers ...NodeModifier) *List {
 	list := &List{}
 	list.apply(modifiers...)
 	return list
@@ -95,7 +98,7 @@ type Object struct {
 }
 
 // NewObject creates an empty object node and initializes shared fields
-func NewObject(modifiers ...func(*sharedFields)) *Object {
+func NewObject(modifiers ...NodeModifier) *Object {
 	object := &Object{}
 	object.apply(modifiers...)
 	return object
@@ -110,19 +113,6 @@ func (object Object) write(enc Encoder, prefix string) {
 	for _, namedNode := range object.nodes {
 		enc.writeNode(namedNode.node, &prefix, enc.indent, namedNode.name+":")
 	}
-}
-
-// NewKubeConfig sets up generic a Kube config structure with minimal metadata (move this to "kube" package?)
-func NewKubeConfig(kind string, name string, modifiers ...func(*sharedFields)) *Object {
-	object := NewObject(modifiers...)
-	object.Add("apiVersion", NewScalar("v1"))
-	object.Add("kind", NewScalar(kind))
-
-	meta := NewObject()
-	meta.Add("name", NewScalar(name))
-	object.Add("metadata", meta)
-
-	return object
 }
 
 // Encoder writes the config data to an output stream
