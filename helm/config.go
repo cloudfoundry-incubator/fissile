@@ -121,6 +121,7 @@ func (object Object) write(enc Encoder, prefix string) {
 type Encoder struct {
 	w      io.Writer
 	indent int
+	wrap   int
 }
 
 // Indent sets the indentation amount for the YAML encoding
@@ -133,6 +134,13 @@ func Indent(indent int) func(*Encoder) {
 	}
 }
 
+// Wrap sets the maximum line length for comments
+func Wrap(wrap int) func(*Encoder) {
+	return func(enc *Encoder) {
+		enc.wrap = wrap
+	}
+}
+
 // Apply Encoder modifier functions to set options
 func (enc *Encoder) Apply(modifiers ...func(*Encoder)) {
 	for _, modifier := range modifiers {
@@ -142,7 +150,7 @@ func (enc *Encoder) Apply(modifiers ...func(*Encoder)) {
 
 // NewEncoder returns an Encoder object wrapping the output stream and encoding options
 func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
-	enc := &Encoder{w: w, indent: 2}
+	enc := &Encoder{w: w, indent: 2, wrap: 80}
 	enc.Apply(modifiers...)
 	return enc
 }
@@ -161,6 +169,25 @@ func useOnce(prefix *string) string {
 	return result
 }
 
+func (enc Encoder) writeComment(prefix *string, comment string) {
+	for _, line := range strings.Split(comment, "\n") {
+		fmt.Fprintf(enc.w, "%s#", useOnce(prefix))
+		if len(line) > 0 {
+			written := 0
+			for _, field := range strings.Fields(line) {
+				if written > 0 && len(*prefix)+1+written+1+len(field) > enc.wrap {
+					fmt.Fprintf(enc.w, "\n%s#", useOnce(prefix))
+					written = 0
+				}
+				fmt.Fprint(enc.w, " "+field)
+				written += 1 + len(field)
+			}
+			line = " " + line
+		}
+		fmt.Fprint(enc.w, "\n")
+	}
+}
+
 func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string) {
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(enc.w, *prefix)
@@ -169,12 +196,7 @@ func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string
 		*prefix += " "
 	}
 	if comment := node.Comment(); comment != "" {
-		for _, line := range strings.Split(comment, "\n") {
-			if len(line) > 0 {
-				line = " " + line
-			}
-			fmt.Fprintf(enc.w, "%s#%s\n", useOnce(prefix), line)
-		}
+		enc.writeComment(prefix, comment)
 	}
 	condition := node.Condition()
 	if condition != "" {

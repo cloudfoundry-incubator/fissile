@@ -3,6 +3,8 @@ package helm
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -483,9 +485,7 @@ Object:
 
 func TestHelmMultiLineComment(t *testing.T) {
 	root := NewObject()
-	scalar := NewScalar("42")
-	scalar.Apply(Comment("Many\n\nlines"))
-	root.Add("Scalar", scalar)
+	root.Add("Scalar", NewScalar("42", Comment("Many\n\nlines")))
 
 	equal(t, root, `---
 # Many
@@ -496,9 +496,7 @@ Scalar: 42
 
 	// list of list
 	list1 := NewList()
-	scalar = NewScalar("42")
-	scalar.Apply(Comment("Many\n\nlines"))
-	list1.Add(scalar)
+	list1.Add(NewScalar("42", Comment("Many\n\nlines")))
 
 	list2 := NewList()
 	list2.Add(list1)
@@ -515,7 +513,66 @@ List:
   - 42
 - foo
 `)
+}
 
+func TestHelmWrapLongComments(t *testing.T) {
+	root := NewObject()
+	obj := NewObject()
+	word := "1"
+	for i := len(word) + 1; i < 7; i++ {
+		word += strconv.Itoa(i)
+		root.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 10))))
+		if i < 5 {
+			obj.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 5))))
+		}
+	}
+
+	obj.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	root.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	root.Add("Nested", obj)
+
+	expect := `---
+# 12 12 12 12 12 12 12
+# 12 12 12
+Key2: ~
+# 123 123 123 123 123
+# 123 123 123 123 123
+Key3: ~
+# 1234 1234 1234 1234
+# 1234 1234 1234 1234
+# 1234 1234
+Key4: ~
+# 12345 12345 12345
+# 12345 12345 12345
+# 12345 12345 12345
+# 12345
+Key5: ~
+# 123456 123456 123456
+# 123456 123456 123456
+# 123456 123456 123456
+# 123456
+Key6: ~
+# xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Very: Long
+Nested:
+          # 12 12 12 12
+          # 12
+          Key2: ~
+          # 123 123 123
+          # 123 123
+          Key3: ~
+          # 1234 1234
+          # 1234 1234
+          # 1234
+          Key4: ~
+          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          Very: Long
+`
+	buffer := &bytes.Buffer{}
+	NewEncoder(buffer, Indent(10), Wrap(24)).Encode(root)
+	assert.Equal(t, expect, buffer.String())
 }
 
 func TestHelmIndent(t *testing.T) {
@@ -592,5 +649,4 @@ Object:
 	enc.Apply(Indent(4))
 	enc.Encode(root)
 	assert.Equal(t, expect, buffer.String())
-
 }
