@@ -25,22 +25,22 @@ func Condition(condition string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.condition = condition }
 }
 
-// apply NodeModifier functions to set shared fields
-func (shared *sharedFields) apply(modifiers ...NodeModifier) {
+// Apply NodeModifier functions to set shared fields
+func (shared *sharedFields) Apply(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
 		modifier(shared)
 	}
 }
 
-func (shared sharedFields) getComment() string   { return shared.comment }
-func (shared sharedFields) getCondition() string { return shared.condition }
+func (shared sharedFields) Comment() string   { return shared.comment }
+func (shared sharedFields) Condition() string { return shared.condition }
 
 // Node is the interface implemented by all config node types
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
-	apply(...NodeModifier)
-	getComment() string
-	getCondition() string
+	Apply(...NodeModifier)
+	Comment() string
+	Condition() string
 	// The write() method is specific to each Node type
 	write(enc Encoder, prefix string)
 }
@@ -54,7 +54,7 @@ type Scalar struct {
 // NewScalar creates a scalar node and initializes shared fields
 func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 	scalar := &Scalar{value: value}
-	scalar.apply(modifiers...)
+	scalar.Apply(modifiers...)
 	return scalar
 }
 
@@ -71,7 +71,7 @@ type List struct {
 // NewList creates an empty list node and initializes shared fields
 func NewList(modifiers ...NodeModifier) *List {
 	list := &List{}
-	list.apply(modifiers...)
+	list.Apply(modifiers...)
 	return list
 }
 
@@ -102,7 +102,7 @@ type Object struct {
 // NewObject creates an empty object node and initializes shared fields
 func NewObject(modifiers ...NodeModifier) *Object {
 	object := &Object{}
-	object.apply(modifiers...)
+	object.Apply(modifiers...)
 	return object
 }
 
@@ -163,7 +163,7 @@ func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
 	}
-	if comment := node.getComment(); comment != "" {
+	if comment := node.Comment(); comment != "" {
 		for _, line := range strings.Split(comment, "\n") {
 			if len(line) > 0 {
 				line = " " + line
@@ -171,7 +171,7 @@ func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string
 			fmt.Fprintf(enc.w, "%s#%s\n", useOnce(prefix), line)
 		}
 	}
-	condition := node.getCondition()
+	condition := node.Condition()
 	if condition != "" {
 		fmt.Fprintf(enc.w, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}

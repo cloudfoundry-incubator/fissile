@@ -12,9 +12,9 @@ import (
 func annotate(node Node, comment bool, index int) int {
 	index++
 	if comment {
-		node.apply(Comment(fmt.Sprintf("comment %d", index)))
+		node.Apply(Comment(fmt.Sprintf("comment %d", index)))
 	} else {
-		node.apply(Condition(fmt.Sprintf("if condition %d", index)))
+		node.Apply(Condition(fmt.Sprintf("if condition %d", index)))
 	}
 	switch node.(type) {
 	case *List:
@@ -484,7 +484,7 @@ Object:
 func TestHelmMultiLineComment(t *testing.T) {
 	root := NewObject()
 	scalar := NewScalar("42")
-	scalar.apply(Comment("Many\n\nlines"))
+	scalar.Apply(Comment("Many\n\nlines"))
 	root.Add("Scalar", scalar)
 
 	equal(t, root, `---
@@ -497,7 +497,7 @@ Scalar: 42
 	// list of list
 	list1 := NewList()
 	scalar = NewScalar("42")
-	scalar.apply(Comment("Many\n\nlines"))
+	scalar.Apply(Comment("Many\n\nlines"))
 	list1.Add(scalar)
 
 	list2 := NewList()
