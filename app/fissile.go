@@ -887,12 +887,12 @@ func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Object, rolesM
 	if err != nil {
 		return err
 	}
-	defer outputFile.Close()
-
-	if err := helm.NewEncoder(outputFile).Encode(secrets); err != nil {
-		return err
+	err = helm.NewEncoder(outputFile).Encode(secrets)
+	if err == nil {
+		return outputFile.Close()
 	}
-	return nil
+	_ = outputFile.Close()
+	return err
 }
 
 func (f *Fissile) copyHelmChart(outputDir string, chartFilename string) error {
