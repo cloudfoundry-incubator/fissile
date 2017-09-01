@@ -25,7 +25,7 @@ func Condition(condition string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.condition = condition }
 }
 
-// apply sharedFields modifier functions that can be passed to the constructors of the nodes
+// apply NodeModifier functions to set shared fields
 func (shared *sharedFields) apply(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
 		modifier(shared)
@@ -86,6 +86,8 @@ func (list List) write(enc Encoder, prefix string) {
 	}
 }
 
+// Objects store nodes in a list of name/node pairs instead of using a map so that
+// the nodes will be encoded in the same order in which they were added to the object.
 type namedNode struct {
 	name string
 	node Node
@@ -121,7 +123,7 @@ type Encoder struct {
 	indent int
 }
 
-// Indent sets the indentation amount for the generated YAML
+// Indent sets the indentation amount for the YAML encoding
 func Indent(indent int) func(*Encoder) {
 	return func(enc *Encoder) {
 		if indent < 2 {

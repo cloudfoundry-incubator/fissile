@@ -106,7 +106,7 @@ func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
 	return results, nil
 }
 
-// newKubeConfig sets up generic a Kube config structure with minimal metadata (move this to "kube" package?)
+// newKubeConfig sets up generic a Kube config structure with minimal metadata
 func newKubeConfig(kind string, name string, modifiers ...helm.NodeModifier) *helm.Object {
 	object := helm.NewObject(modifiers...)
 	object.Add("apiVersion", helm.NewScalar("v1"))
