@@ -33,9 +33,9 @@ func annotate(node Node, comment bool, index int) int {
 func addComments(node Node)   { annotate(node, true, 0) }
 func addConditions(node Node) { annotate(node, false, 0) }
 
-func equal(t *testing.T, config *Object, expect string) {
+func equal(t *testing.T, config *Object, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
-	NewEncoder(buffer).Encode(config)
+	NewEncoder(buffer, modifiers...).Encode(config)
 	assert.Equal(t, expect, buffer.String())
 }
 
@@ -570,9 +570,7 @@ Nested:
           # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           Very: Long
 `
-	buffer := &bytes.Buffer{}
-	NewEncoder(buffer, Indent(10), Wrap(24)).Encode(root)
-	assert.Equal(t, expect, buffer.String())
+	equal(t, root, expect, Indent(10), Wrap(24))
 }
 
 func TestHelmIndent(t *testing.T) {
@@ -617,9 +615,7 @@ Object:
         Foo: 1
         Bar: 2
 `
-	buffer := &bytes.Buffer{}
-	NewEncoder(buffer, Indent(4)).Encode(root)
-	assert.Equal(t, expect, buffer.String())
+	equal(t, root, expect, Indent(4))
 }
 
 func TestHelmEncoderModifier(t *testing.T) {
@@ -670,8 +666,5 @@ List:
     two
     three
 `
-	buffer := &bytes.Buffer{}
-	enc := NewEncoder(buffer, Indent(4))
-	enc.Encode(root)
-	assert.Equal(t, expect, buffer.String())
+	equal(t, root, expect, Indent(4))
 }
