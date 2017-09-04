@@ -25,8 +25,8 @@ func Condition(condition string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.condition = condition }
 }
 
-// Apply NodeModifier functions to set shared fields
-func (shared *sharedFields) Apply(modifiers ...NodeModifier) {
+// Set NodeModifier functions to set shared fields
+func (shared *sharedFields) Set(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
 		modifier(shared)
 	}
@@ -38,7 +38,7 @@ func (shared sharedFields) Condition() string { return shared.condition }
 // Node is the interface implemented by all config node types
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
-	Apply(...NodeModifier)
+	Set(...NodeModifier)
 	Comment() string
 	Condition() string
 	// The write() method is specific to each Node type
@@ -54,7 +54,7 @@ type Scalar struct {
 // NewScalar creates a scalar node and initializes shared fields
 func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 	scalar := &Scalar{value: value}
-	scalar.Apply(modifiers...)
+	scalar.Set(modifiers...)
 	return scalar
 }
 
@@ -83,7 +83,7 @@ type List struct {
 // NewList creates an empty list node and initializes shared fields
 func NewList(modifiers ...NodeModifier) *List {
 	list := &List{}
-	list.Apply(modifiers...)
+	list.Set(modifiers...)
 	return list
 }
 
@@ -114,7 +114,7 @@ type Object struct {
 // NewObject creates an empty object node and initializes shared fields
 func NewObject(modifiers ...NodeModifier) *Object {
 	object := &Object{}
-	object.Apply(modifiers...)
+	object.Set(modifiers...)
 	return object
 }
 
@@ -153,8 +153,8 @@ func Wrap(wrap int) func(*Encoder) {
 	}
 }
 
-// Apply Encoder modifier functions to set options
-func (enc *Encoder) Apply(modifiers ...func(*Encoder)) {
+// Set Encoder modifier functions to set options
+func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 	for _, modifier := range modifiers {
 		modifier(enc)
 	}
@@ -163,7 +163,7 @@ func (enc *Encoder) Apply(modifiers ...func(*Encoder)) {
 // NewEncoder returns an Encoder object wrapping the output stream and encoding options
 func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{w: w, indent: 2, wrap: 80}
-	enc.Apply(modifiers...)
+	enc.Set(modifiers...)
 	return enc
 }
 

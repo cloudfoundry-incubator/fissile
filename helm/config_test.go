@@ -14,9 +14,9 @@ import (
 func annotate(node Node, comment bool, index int) int {
 	index++
 	if comment {
-		node.Apply(Comment(fmt.Sprintf("comment %d", index)))
+		node.Set(Comment(fmt.Sprintf("comment %d", index)))
 	} else {
-		node.Apply(Condition(fmt.Sprintf("if condition %d", index)))
+		node.Set(Condition(fmt.Sprintf("if condition %d", index)))
 	}
 	switch node.(type) {
 	case *List:
@@ -646,7 +646,7 @@ Object:
 	buffer := &bytes.Buffer{}
 	enc := NewEncoder(buffer)
 	enc.Encode(root)
-	enc.Apply(Indent(4))
+	enc.Set(Indent(4))
 	enc.Encode(root)
 	assert.Equal(t, expect, buffer.String())
 }
