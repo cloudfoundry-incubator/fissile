@@ -887,7 +887,7 @@ func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Object, rolesM
 	if err != nil {
 		return err
 	}
-	err = helm.NewEncoder(outputFile).Encode(secrets)
+	err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(secrets)
 	if err == nil {
 		return outputFile.Close()
 	}
@@ -931,7 +931,7 @@ func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.Role
 	}
 	values, err := kube.MakeValues(rolesManifest, defaults)
 	if err == nil {
-		err = helm.NewEncoder(outputFile).Encode(values)
+		err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(values)
 	}
 	if err == nil {
 		return outputFile.Close()

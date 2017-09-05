@@ -42,7 +42,7 @@ type Node interface {
 	Comment() string
 	Condition() string
 	// The write() method is specific to each Node type
-	write(enc Encoder, prefix string)
+	write(enc *Encoder, prefix string)
 }
 
 // Scalar represents a scalar value inside a list or object
@@ -58,7 +58,7 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 	return scalar
 }
 
-func (scalar Scalar) write(enc Encoder, prefix string) {
+func (scalar Scalar) write(enc *Encoder, prefix string) {
 	if strings.ContainsAny(scalar.value, "\n") {
 		fmt.Fprintln(enc.w, prefix+" |-")
 		if strings.HasSuffix(prefix, ":") {
@@ -92,7 +92,7 @@ func (list *List) Add(nodes ...Node) {
 	list.nodes = append(list.nodes, nodes...)
 }
 
-func (list List) write(enc Encoder, prefix string) {
+func (list List) write(enc *Encoder, prefix string) {
 	for _, node := range list.nodes {
 		enc.writeNode(node, &prefix, 0, strings.Repeat(" ", enc.indent-2)+"-")
 	}
@@ -123,7 +123,7 @@ func (object *Object) Add(name string, node Node) {
 	object.nodes = append(object.nodes, namedNode{name: name, node: node})
 }
 
-func (object Object) write(enc Encoder, prefix string) {
+func (object Object) write(enc *Encoder, prefix string) {
 	for _, namedNode := range object.nodes {
 		enc.writeNode(namedNode.node, &prefix, enc.indent, namedNode.name+":")
 	}
@@ -131,9 +131,20 @@ func (object Object) write(enc Encoder, prefix string) {
 
 // Encoder writes the config data to an output stream
 type Encoder struct {
-	w      io.Writer
+	w io.Writer
+
 	indent int
 	wrap   int
+
+	emptyLines     bool
+	pendingNewline bool
+}
+
+// EmptyLines switches generation of additional empty lines on or off
+func EmptyLines(emptyLines bool) func(*Encoder) {
+	return func(enc *Encoder) {
+		enc.emptyLines = emptyLines
+	}
 }
 
 // Indent sets the indentation amount for the YAML encoding
@@ -162,13 +173,14 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 
 // NewEncoder returns an Encoder object wrapping the output stream and encoding options
 func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
-	enc := &Encoder{w: w, indent: 2, wrap: 80}
+	enc := &Encoder{w: w, emptyLines: false, indent: 2, wrap: 80}
 	enc.Set(modifiers...)
 	return enc
 }
 
 // Encode writes the config object to the stream
-func (enc Encoder) Encode(obj *Object) error {
+func (enc *Encoder) Encode(obj *Object) error {
+	enc.pendingNewline = false
 	fmt.Fprintln(enc.w, "---")
 	prefix := ""
 	enc.writeNode(obj, &prefix, 0, "")
@@ -181,7 +193,7 @@ func useOnce(prefix *string) string {
 	return result
 }
 
-func (enc Encoder) writeComment(prefix *string, comment string) {
+func (enc *Encoder) writeComment(prefix *string, comment string) {
 	for _, line := range strings.Split(comment, "\n") {
 		fmt.Fprintf(enc.w, "%s#", useOnce(prefix))
 		if len(line) > 0 {
@@ -200,22 +212,39 @@ func (enc Encoder) writeComment(prefix *string, comment string) {
 	}
 }
 
-func (enc Encoder) writeNode(node Node, prefix *string, indent int, value string) {
+func (enc *Encoder) writeNode(node Node, prefix *string, indent int, value string) {
+	newline := enc.emptyLines
+	if enc.pendingNewline {
+		fmt.Fprint(enc.w, "\n")
+		enc.pendingNewline = false
+		newline = false
+	}
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(enc.w, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
+		newline = false
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
+		newline = false
+	} else if *prefix == "" && indent == 0 {
+		newline = false
 	}
-	if comment := node.Comment(); comment != "" {
+	comment := node.Comment()
+	condition := node.Condition()
+	if newline && (comment != "" || condition != "") {
+		fmt.Fprint(enc.w, "\n")
+	}
+	if comment != "" {
 		enc.writeComment(prefix, comment)
 	}
-	condition := node.Condition()
 	if condition != "" {
 		fmt.Fprintf(enc.w, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
 	node.write(enc, useOnce(prefix)+value)
 	if condition != "" {
 		fmt.Fprintln(enc.w, *prefix+"{{- end }}")
+	}
+	if comment != "" || condition != "" {
+		enc.pendingNewline = enc.emptyLines
 	}
 }

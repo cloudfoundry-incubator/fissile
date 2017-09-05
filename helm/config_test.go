@@ -668,3 +668,96 @@ List:
 `
 	equal(t, root, expect, Indent(4))
 }
+
+func TestHelmEmptyLines(t *testing.T) {
+	list := NewList()
+	list.Add(NewScalar("1", Comment("Some comment")))
+	list.Add(NewScalar("2"))
+	list.Add(NewScalar("3", Comment("Another comment")))
+	list.Add(NewScalar("4"))
+
+	obj := NewObject()
+	obj.Add("List", list)
+	obj.Add("One", NewScalar("1", Comment("First post")))
+	obj.Add("Two", NewScalar("2"))
+	obj.Add("Three", NewScalar("3", Condition(".Values.set")))
+
+	root := NewObject()
+	root.Add("Object", obj)
+
+	expect := `---
+Object:
+  List:
+  # Some comment
+  - 1
+
+  - 2
+
+  # Another comment
+  - 3
+
+  - 4
+
+  # First post
+  One: 1
+
+  Two: 2
+
+  {{- .Values.set }}
+  Three: 3
+  {{- end }}
+`
+	equal(t, root, expect, EmptyLines(true))
+
+	expect = `---
+# comment 1
+{{- if condition 1 }}
+
+# comment 2
+{{- if condition 2 }}
+Object:
+  # comment 3
+  {{- if condition 3 }}
+  List:
+  # comment 4
+  {{- if condition 4 }}
+  - 1
+  {{- end }}
+
+  # comment 5
+  {{- if condition 5 }}
+  - 2
+  {{- end }}
+
+  # comment 6
+  {{- if condition 6 }}
+  - 3
+  {{- end }}
+
+  # comment 7
+  {{- if condition 7 }}
+  - 4
+  {{- end }}
+  {{- end }}
+
+  # comment 8
+  {{- if condition 8 }}
+  One: 1
+  {{- end }}
+
+  # comment 9
+  {{- if condition 9 }}
+  Two: 2
+  {{- end }}
+
+  # comment 10
+  {{- if condition 10 }}
+  Three: 3
+  {{- end }}
+{{- end }}
+{{- end }}
+`
+	addComments(root)
+	addConditions(root)
+	equal(t, root, expect, EmptyLines(true))
+}
