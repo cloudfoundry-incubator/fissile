@@ -761,3 +761,21 @@ Object:
 	addConditions(root)
 	equal(t, root, expect, EmptyLines(true))
 }
+
+func TestHelmObjectSort(t *testing.T) {
+	obj := NewObject()
+	obj.Add("foo", NewScalar("1"))
+	obj.Add("bar", NewScalar("2"))
+	obj.Add("baz", NewScalar("3"))
+	obj.Sort()
+
+	root := NewObject()
+	root.Add("Object", obj)
+
+	equal(t, root, `---
+Object:
+  bar: 2
+  baz: 3
+  foo: 1
+`)
+}

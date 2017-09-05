@@ -56,6 +56,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 			Key:    key,
 		}
 	}
+	data.Sort()
 
 	secret := newKubeConfig("Secret", "secret")
 	secret.Add("data", data)

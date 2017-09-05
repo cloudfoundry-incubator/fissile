@@ -17,6 +17,7 @@ func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (
 			env.Add(name, helm.NewScalar(value, helm.Comment(cv.Description)))
 		}
 	}
+	env.Sort()
 
 	sc := helm.NewObject()
 	sc.Add("persistent", helm.NewScalar("persistent"))

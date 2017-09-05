@@ -3,6 +3,7 @@ package helm
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 )
 
@@ -121,6 +122,13 @@ func NewObject(modifiers ...NodeModifier) *Object {
 // Add a singled named node at the end of the list
 func (object *Object) Add(name string, node Node) {
 	object.nodes = append(object.nodes, namedNode{name: name, node: node})
+}
+
+// Sort all nodes of the object by name
+func (object *Object) Sort() {
+	sort.Slice(object.nodes[:], func(i, j int) bool {
+		return object.nodes[i].name < object.nodes[j].name
+	})
 }
 
 func (object Object) write(enc *Encoder, prefix string) {
