@@ -32,7 +32,7 @@ func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
 
 	return &extra.Job{
 		TypeMeta: meta.TypeMeta{
-			APIVersion: "extensions/v1beta1",
+			APIVersion: "batch/v1",
 			Kind:       "Job",
 		},
 		ObjectMeta: apiv1.ObjectMeta{
