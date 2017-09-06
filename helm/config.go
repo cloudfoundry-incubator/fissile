@@ -36,6 +36,7 @@ options, like the max line length for comments, or the YAML indentation level:
 */
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"sort"
@@ -235,7 +236,7 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 
 // NewEncoder returns an Encoder object wrapping the output stream and encoding options
 func NewEncoder(w io.Writer, modifiers ...func(*Encoder)) *Encoder {
-	enc := &Encoder{w: w, emptyLines: false, indent: 2, wrap: 80}
+	enc := &Encoder{w: bufio.NewWriter(w), emptyLines: false, indent: 2, wrap: 80}
 	enc.Set(modifiers...)
 	return enc
 }
@@ -246,7 +247,7 @@ func (enc *Encoder) Encode(obj *Object) error {
 	fmt.Fprintln(enc.w, "---")
 	prefix := ""
 	enc.writeNode(obj, &prefix, 0, "")
-	return nil
+	return enc.w.(*bufio.Writer).Flush()
 }
 
 func useOnce(prefix *string) string {
