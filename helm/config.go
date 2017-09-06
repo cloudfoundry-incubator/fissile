@@ -173,7 +173,7 @@ func (list *List) Add(nodes ...Node) {
 
 func (list List) write(enc *Encoder, prefix string) {
 	for _, node := range list.nodes {
-		enc.writeNode(node, &prefix, 0, strings.Repeat(" ", enc.indent-2)+"-")
+		enc.writeNode(node, &prefix, strings.Repeat(" ", enc.indent-2)+"-")
 	}
 }
 
@@ -211,7 +211,7 @@ func (object *Object) Sort() {
 
 func (object Object) write(enc *Encoder, prefix string) {
 	for _, namedNode := range object.nodes {
-		enc.writeNode(namedNode.node, &prefix, enc.indent, namedNode.name+":")
+		enc.writeNode(namedNode.node, &prefix, namedNode.name+":")
 	}
 }
 
@@ -284,7 +284,7 @@ func (enc *Encoder) Encode(object *Object) error {
 	enc.pendingNewline = false
 	fmt.Fprintln(enc.writer, "---")
 	prefix := ""
-	enc.writeNode(object, &prefix, 0, "")
+	enc.writeNode(object, &prefix, "")
 	return enc.writer.(*bufio.Writer).Flush()
 }
 
@@ -330,17 +330,21 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 //
 // indent specifies the number of additional columns to indent the value.
 //
-// value contains either the "name:" for object elements, or (a possibly
+// label contains either the "name:" for object elements, or (a possibly
 // stacked list of) " -" list element markers. Named prefix will be printed
 // immediately while list prefixes are accumulated until the first value is
 // printed that is not a list itself.
 //
-func (enc *Encoder) writeNode(node Node, prefix *string, indent int, value string) {
+func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	leadingNewline := enc.emptyLines
 	if enc.pendingNewline {
 		fmt.Fprint(enc.writer, "\n")
 		enc.pendingNewline = false
 		leadingNewline = false
+	}
+	indent := 0
+	if strings.HasSuffix(label, ":") {
+		indent = enc.indent
 	}
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(enc.writer, *prefix)
@@ -363,7 +367,7 @@ func (enc *Encoder) writeNode(node Node, prefix *string, indent int, value strin
 	if condition != "" {
 		fmt.Fprintf(enc.writer, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
-	node.write(enc, useOnce(prefix)+value)
+	node.write(enc, useOnce(prefix)+label)
 	if condition != "" {
 		fmt.Fprintln(enc.writer, *prefix+"{{- end }}")
 	}
