@@ -275,25 +275,25 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 }
 
 func (enc *Encoder) writeNode(node Node, prefix *string, indent int, value string) {
-	newline := enc.emptyLines
+	leadingNewline := enc.emptyLines
 	if enc.pendingNewline {
 		fmt.Fprint(enc.w, "\n")
 		enc.pendingNewline = false
-		newline = false
+		leadingNewline = false
 	}
 	if strings.HasSuffix(*prefix, ":") {
 		fmt.Fprintln(enc.w, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
-		newline = false
+		leadingNewline = false
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
-		newline = false
+		leadingNewline = false
 	} else if *prefix == "" && indent == 0 {
-		newline = false
+		leadingNewline = false
 	}
 	comment := node.Comment()
 	condition := node.Condition()
-	if newline && (comment != "" || condition != "") {
+	if leadingNewline && (comment != "" || condition != "") {
 		fmt.Fprint(enc.w, "\n")
 	}
 	if comment != "" {
