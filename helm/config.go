@@ -1,5 +1,40 @@
 package helm
 
+/*
+
+Package helm implements a generic config file writer, emitting templatized YAML
+documents. The documents are built up in memory from Scalar, List, and Object
+nodes, which all implement the Node interface.
+
+Each node can have an associated comment, and be wrapped by a template
+condition:
+
+  obj.Add("Answer", NewScalar("42", Comment("A comment"), Condition(".Values.enabled")))
+
+  # A comment
+  {{- .Values.enabled }}
+  Answer: 42
+  {{- end }}
+
+
+Scalar values are emitted as-is, that means the value needs to include quotes if
+it needs to be quoted to be valid YAML.  Liternal values are also not
+line-wrapped because that might break template expressions.
+
+The only exception are literal values including newlines. These values will be
+emitted with newlines intact, and subsequent lines indented to match the
+document structure. This means lines containing literal newlines characters
+should not be quoted (and conversely, newlines in quoted strings need to be
+escaped, e.g. "\"Multiple\nLines\"".
+
+An Encoder objects holds the io.Writer target as well as additional encoding
+options, like the max line length for comments, or the YAML indentation level:
+
+  NewEncoder(os.Stdout, Indent(4), Wrap(80)).Encode(documentRoot)
+
+
+*/
+
 import (
 	"fmt"
 	"io"
@@ -26,23 +61,33 @@ func Condition(condition string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.condition = condition }
 }
 
-// Set NodeModifier functions to set shared fields
+// Set applies NodeModifier functions to the embedded sharedFields struct
 func (shared *sharedFields) Set(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
 		modifier(shared)
 	}
 }
 
-func (shared sharedFields) Comment() string   { return shared.comment }
-func (shared sharedFields) Condition() string { return shared.condition }
+// Comment is a shared getter function for all Node types
+func (shared sharedFields) Comment() string {
+	return shared.comment
+}
+
+// Condition is a shared getter function for all Node types
+func (shared sharedFields) Condition() string {
+	return shared.condition
+}
 
 // Node is the interface implemented by all config node types
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
-	Set(...NodeModifier)
 	Comment() string
 	Condition() string
-	// The write() method is specific to each Node type
+	Set(...NodeModifier)
+
+	// The write() method is specific to each Node type. prefix will be the
+	// indented label, either "name:" or "-", depending on whether the node
+	// is part of an object or a list
 	write(enc *Encoder, prefix string)
 }
 
@@ -61,7 +106,9 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 
 func (scalar Scalar) write(enc *Encoder, prefix string) {
 	if strings.ContainsAny(scalar.value, "\n") {
+		// Scalars including newlines will be written using the "literal" YAML format
 		fmt.Fprintln(enc.w, prefix+" |-")
+		// Calculate proper indentation for all data lines
 		if strings.HasSuffix(prefix, ":") {
 			prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
 		} else {
@@ -148,7 +195,11 @@ type Encoder struct {
 	pendingNewline bool
 }
 
-// EmptyLines switches generation of additional empty lines on or off
+// EmptyLines switches generation of additional empty lines on or off. In
+// general each node that has a comment or a condition will be separate by
+// additional empty lines from the rest of the document. The leading empty line
+// will be omitted for the first element of a list of object, and the trailing
+// empty line will be omitted for the last element.
 func EmptyLines(emptyLines bool) func(*Encoder) {
 	return func(enc *Encoder) {
 		enc.emptyLines = emptyLines
@@ -165,14 +216,17 @@ func Indent(indent int) func(*Encoder) {
 	}
 }
 
-// Wrap sets the maximum line length for comments
+// Wrap sets the maximum line length for comments. This number includes the
+// columns needed for indentation, so comments on deeper nodes have more tightly
+// wrapped comments than outer nodes. Wrapping applies only to comments and not
+// to conditions or scalar values.
 func Wrap(wrap int) func(*Encoder) {
 	return func(enc *Encoder) {
 		enc.wrap = wrap
 	}
 }
 
-// Set Encoder modifier functions to set options
+// Set applies Encoder modifier functions to set options
 func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 	for _, modifier := range modifiers {
 		modifier(enc)
@@ -214,7 +268,6 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 				fmt.Fprint(enc.w, " "+field)
 				written += 1 + len(field)
 			}
-			line = " " + line
 		}
 		fmt.Fprint(enc.w, "\n")
 	}
