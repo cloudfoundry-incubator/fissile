@@ -72,9 +72,17 @@ fi
 # Write a couple of identification files for the stemcell
 mkdir -p /var/vcap/instance
 echo {{ .role.Name }} > /var/vcap/instance/name
-# TODO: we need to discover the index of the instance for HA
-# things to work
-echo 0 > /var/vcap/instance/id
+echo "${HOSTNAME##*-}" > /var/vcap/instance/id
+if test -n "$(tr -d 0-9 < /var/vcap/instance/id)" ; then
+  # The instance id wasn't a valid number; make it one
+  # We use the gawk expression to ensure we have a unique instance id across all
+  # active containers.  The name was generated via
+  # https://github.com/kubernetes/kubernetes/blob/v1.7.0/pkg/api/v1/generate.go#L59
+  # https://github.com/kubernetes/apimachinery/blob/b166f81f/pkg/util/rand/rand.go#L73
+  echo -n ${HOSTNAME##*-} \
+    | gawk -vRS=".|" ' BEGIN { chars="bcdfghjklmnpqrstvwxz0123456789" } { n = n * length(chars) + index(chars, RT) - 1 } END { print n }' \
+    > /var/vcap/instance/id
+fi
 
 # Note, any changes to this list of variables have to be replicated in
 # --> model/mustache.go, func builtins
