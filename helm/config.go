@@ -29,15 +29,14 @@ document structure. This means lines containing literal newlines characters
 should not be quoted (and conversely, newlines in quoted strings need to be
 escaped, e.g. "\"Multiple\nLines\"".
 
-An Encoder objects holds the io.Writer target as well as additional encoding
+An Encoder objects holds an io.Writer target as well as additional encoding
 options, like the max line length for comments, or the YAML indentation level:
 
   NewEncoder(os.Stdout, Indent(4), Wrap(80)).Encode(documentRoot)
 
+Tricks:
 
-Examples:
-
-* Throw an error if the the configuration can not possibly work
+* Throw an error if the the configuration cannot possibly work
 
     list.Add(NewScalar("{{ fail \"Cannot proceed\" }}", Condition(".count <= 0")))
 
@@ -249,9 +248,9 @@ func Indent(indent int) func(*Encoder) {
 }
 
 // Wrap sets the maximum line length for comments. This number includes the
-// columns needed for indentation, so comments on deeper nested nodes have more
-// tightly wrapped comments than outer level nodes. Wrapping applies only to
-// comments and not to conditions or scalar values. The default value is 80.
+// columns needed for indentation, so comments on more deeply nested nodes have
+// more tightly wrapped comments than outer level nodes. Wrapping applies only
+// to comments and not to conditions or scalar values. The default value is 80.
 func Wrap(wrap int) func(*Encoder) {
 	return func(enc *Encoder) {
 		enc.wrap = wrap
@@ -265,7 +264,7 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 	}
 }
 
-// NewEncoder returns an Encoder object wrapping the output stream and encoding options
+// NewEncoder returns an Encoder object holding the output stream and encoding options.
 func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
 		// Wrap io.Writer in a bufio.Writer so that we can check for
@@ -289,10 +288,10 @@ func (enc *Encoder) Encode(object *Object) error {
 }
 
 // useOnce returns the current value of the prefix parameter but replaces it
-// with a string of spaces of the same length as the original prefix fo
+// with a string of spaces of the same length as the original prefix for
 // subsequent use. This is done because for nested list elements the "- "
 // prefixes are being stacked, and should only be used in front of the first
-// element:
+// element of the innermost list:
 //
 //   [ [ [ 1, 2 ] ] ]   --->   " - - - 1\n    - 2\n"
 //
@@ -324,17 +323,18 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 	}
 }
 
-// writeNode is called for each element of a list or object node. It will print
-// the comment and condition for the element and then call node.write() to tell
-// the node to encode itself.
+// writeNode is called for each element of a container (list or object node). It
+// will print the comment and condition for the element and then call
+// node.write() to tell the node to encode itself.
 //
-// indent specifies the number of additional columns to indent the value.
+// prefix includes indentation and the label for the container of this element
+// (either "Name:" or a string of one or more "- "). It will only be printed in
+// front of the first element of the container and then be replaced with a
+// string of spaces for indentation of all latter line. The label is not printed
+// by the container itself because the list labels "- " stack up on a single line.
 //
-// label contains either the "name:" for object elements, or (a possibly
-// stacked list of) " -" list element markers. Named prefix will be printed
-// immediately while list prefixes are accumulated until the first value is
-// printed that is not a list itself.
-//
+// label contains either the "Name:" for object elements, or "-" for list
+// elements.
 func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	leadingNewline := enc.emptyLines
 	if enc.pendingNewline {
