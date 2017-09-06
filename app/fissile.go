@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -827,7 +826,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits bool, createHelmChart bool, chartFilename string, opinions *model.Opinions) error {
+func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
 
 	rolesManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
 	if err != nil {
@@ -858,9 +857,6 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	}
 
 	if createHelmChart {
-		if err = f.copyHelmChart(outputDir, chartFilename); err != nil {
-			return err
-		}
 		if err = f.generateHelmValues(outputDir, rolesManifest, defaults); err != nil {
 			return err
 		}
@@ -897,31 +893,6 @@ func (f *Fissile) generateSecrets(outputDir string, secrets []*kube.Secret, role
 		}
 	}
 	return nil
-}
-
-func (f *Fissile) copyHelmChart(outputDir string, chartFilename string) error {
-	// Copy Chart.yaml into helm chart
-	outputPath := filepath.Join(outputDir, "Chart.yaml")
-	f.UI.Printf("Copying %s to %s\n",
-		color.CyanString(chartFilename),
-		color.CyanString(outputPath),
-	)
-	inputFile, err := os.Open(chartFilename)
-	if err != nil {
-		return err
-	}
-	defer inputFile.Close()
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(outputFile, inputFile)
-	if err == nil {
-		return outputFile.Close()
-	}
-	_ = outputFile.Close()
-	return err
 }
 
 func (f *Fissile) generateHelmValues(outputDir string, rolesManifest *model.RoleManifest, defaults map[string]string) error {
