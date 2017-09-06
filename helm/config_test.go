@@ -640,7 +640,7 @@ Object:
 `
 
 	buffer := &bytes.Buffer{}
-	enc := NewEncoder(buffer)
+	enc := NewEncoder(buffer, Indent(0))
 	enc.Encode(root)
 	enc.Set(Indent(4))
 	enc.Encode(root)

@@ -211,7 +211,7 @@ func EmptyLines(emptyLines bool) func(*Encoder) {
 func Indent(indent int) func(*Encoder) {
 	return func(enc *Encoder) {
 		if indent < 2 {
-			panic("helm.Encoder indent must be at least 2")
+			indent = 2
 		}
 		enc.indent = indent
 	}
