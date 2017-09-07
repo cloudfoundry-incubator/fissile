@@ -353,7 +353,7 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	} else if strings.HasSuffix(*prefix, "-") {
 		*prefix += " "
 		leadingNewline = false
-	} else if *prefix == "" && indent == 0 {
+	} else if label == "" {
 		leadingNewline = false
 	}
 	comment := node.Comment()

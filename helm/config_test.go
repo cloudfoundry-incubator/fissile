@@ -760,6 +760,25 @@ Object:
 	addComments(root)
 	addConditions(root)
 	equal(t, root, expect, EmptyLines(true))
+
+	list = NewList()
+	list.Add(NewScalar("1"))
+	list.Add(NewScalar("2", Comment("A comment")))
+	list.Add(NewScalar("3"))
+
+	root = NewObject()
+	root.Add("List", list)
+
+	expect = `---
+List:
+- 1
+
+# A comment
+- 2
+
+- 3
+`
+	equal(t, root, expect, EmptyLines(true))
 }
 
 func TestHelmObjectSort(t *testing.T) {
