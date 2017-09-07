@@ -198,6 +198,8 @@ handle these for generic operation of `fissile`. These are:
    * `IP_ADDRESS`
    * `JWT_SIGNING_PEM`
    * `JWT_SIGNING_PUB`
+   * `KUBE_COMPONENT_INDEX`
+   * `KUBE_SERVICE_DOMAIN_SUFFIX`
    * `NO_PROXY`
    * `http_proxy`
    * `https_proxy`

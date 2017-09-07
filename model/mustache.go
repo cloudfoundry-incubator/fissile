@@ -123,5 +123,15 @@ func builtins() ConfigurationVariableSlice {
 			Type:     CVTypeEnv,
 			Internal: true,
 		},
+		&ConfigurationVariable{
+			Name:     "KUBE_COMPONENT_INDEX",
+			Type:     CVTypeEnv,
+			Internal: true,
+		},
+		&ConfigurationVariable{
+			Name:     "KUBE_SERVICE_DOMAIN_SUFFIX",
+			Type:     CVTypeUser, // The user can override this
+			Internal: true,
+		},
 	}
 }
