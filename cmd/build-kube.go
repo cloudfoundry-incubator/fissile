@@ -52,7 +52,6 @@ var buildKubeCmd = &cobra.Command{
 			flagBuildKubeDefaultEnvFiles,
 			flagBuildKubeUseMemoryLimits,
 			false,
-			"",
 			opinions,
 		)
 	},

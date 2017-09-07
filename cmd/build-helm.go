@@ -11,7 +11,6 @@ var (
 	flagBuildHelmOutputDir       string
 	flagBuildHelmDefaultEnvFiles []string
 	flagBuildHelmUseMemoryLimits bool
-	flagBuildHelmChartFilename   string
 )
 
 // buildHelmCmd represents the helm command
@@ -24,7 +23,6 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
-		flagBuildHelmChartFilename = buildHelmViper.GetString("chart-file")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -54,7 +52,6 @@ var buildHelmCmd = &cobra.Command{
 			flagBuildHelmDefaultEnvFiles,
 			flagBuildHelmUseMemoryLimits,
 			true,
-			flagBuildHelmChartFilename,
 			opinions,
 		)
 	},
@@ -85,13 +82,6 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating helm chart",
-	)
-
-	buildHelmCmd.PersistentFlags().StringP(
-		"chart-file",
-		"",
-		"Chart.yaml",
-		"Chart.yaml file that will be copied into the helm chart",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())
