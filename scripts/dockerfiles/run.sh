@@ -69,25 +69,30 @@ if [ -d /var/vcap/sys/run ]; then
     find /var/vcap/sys/run -name "*.pid" -delete
 fi
 
-# Write a couple of identification files for the stemcell
-mkdir -p /var/vcap/instance
-echo {{ .role.Name }} > /var/vcap/instance/name
-echo "${HOSTNAME##*-}" > /var/vcap/instance/id
-if test -n "$(tr -d 0-9 < /var/vcap/instance/id)" ; then
+# Note, any changes to this list of variables have to be replicated in
+# --> model/mustache.go, func builtins
+export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
+export DNS_RECORD_NAME=$(/bin/hostname)
+export KUBE_COMPONENT_INDEX="${HOSTNAME##*-}"
+if test -n "${KUBE_COMPONENT_INDEX//[0-9]/}" ; then
   # The instance id wasn't a valid number; make it one
   # We use the gawk expression to ensure we have a unique instance id across all
   # active containers.  The name was generated via
   # https://github.com/kubernetes/kubernetes/blob/v1.7.0/pkg/api/v1/generate.go#L59
   # https://github.com/kubernetes/apimachinery/blob/b166f81f/pkg/util/rand/rand.go#L73
-  echo -n ${HOSTNAME##*-} \
-    | gawk -vRS=".|" ' BEGIN { chars="bcdfghjklmnpqrstvwxz0123456789" } { n = n * length(chars) + index(chars, RT) - 1 } END { print n }' \
-    > /var/vcap/instance/id
+  export KUBE_COMPONENT_INDEX="$(
+    echo -n ${HOSTNAME##*-} \
+    | gawk -vRS=".|" ' BEGIN { chars="bcdfghjklmnpqrstvwxz0123456789" } { n = n * length(chars) + index(chars, RT) - 1 } END { print n }'
+  )"
+fi
+if test -z "${KUBE_SERVICE_DOMAIN_SUFFIX:-}" && grep -E --quiet '^search' /etc/resolv.conf ; then
+  export KUBE_SERVICE_DOMAIN_SUFFIX="$(awk '/^search/ { print $2 }' /etc/resolv.conf)"
 fi
 
-# Note, any changes to this list of variables have to be replicated in
-# --> model/mustache.go, func builtins
-export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
-export DNS_RECORD_NAME=$(/bin/hostname)
+# Write a couple of identification files for the stemcell
+mkdir -p /var/vcap/instance
+echo {{ .role.Name }} > /var/vcap/instance/name
+echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}

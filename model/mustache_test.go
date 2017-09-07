@@ -53,7 +53,7 @@ func TestRoleVariables(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(vars)
 
-	expected := []string{"HOME", "FOO", "BAR", "PELERINUL"}
+	expected := []string{"HOME", "FOO", "BAR", "KUBE_SERVICE_DOMAIN_SUFFIX", "PELERINUL"}
 	sort.Strings(expected)
 	var actual []string
 	for _, variable := range vars {

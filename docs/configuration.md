@@ -71,10 +71,19 @@ configuration:
     required: true
 ```
 
-Note that the variables `DNS_RECORD_NAME` and `IP_ADDRESS` are special and are
-automatically supplied to the container.  They are currently the only special
-variables.  There are also some fields not shown above (as the are not needed
-for NATS):
+Note that there are a few special variables that are automatically supplied to
+the container (via [run.sh]).  They are:
+
+Name | Description
+-- | --
+`DNS_RECORD_NAME` | Hostname of the container
+`IP_ADDRESS` | Primary IP address of the container
+`KUBE_COMPONENT_INDEX` | Numeric index for roles with multiple replicas
+`KUBE_SERVICE_DOMAIN_SUFFIX` | Kubernetes service domain for the deployment
+
+[run.sh]: https://github.com/SUSE/fissile/blob/master/scripts/dockerfiles/run.sh
+
+There are also some fields not shown above (as the are not needed for NATS):
 
 For the role:
 
