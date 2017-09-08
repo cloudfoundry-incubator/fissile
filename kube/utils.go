@@ -5,6 +5,8 @@ import (
 	"hash/crc32"
 	"strconv"
 	"strings"
+
+	"github.com/SUSE/fissile/helm"
 )
 
 // parsePortRange converts a port range string to a starting and an ending port number
@@ -102,4 +104,17 @@ func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
 	}
 
 	return results, nil
+}
+
+// newKubeConfig sets up generic a Kube config structure with minimal metadata
+func newKubeConfig(kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	mapping := helm.NewMapping(modifiers...)
+	mapping.Add("apiVersion", helm.NewScalar("v1"))
+	mapping.Add("kind", helm.NewScalar(kind))
+
+	meta := helm.NewMapping()
+	meta.Add("name", helm.NewScalar(name))
+	mapping.Add("metadata", meta)
+
+	return mapping
 }

@@ -250,7 +250,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			stringifiedValue = fmt.Sprintf("{{ %s.Values.env.%s | quote }}", required, config.Name)
 		} else {
 			var ok bool
-			ok, stringifiedValue = ConfigValue(config, defaults)
+			ok, stringifiedValue = config.Value(defaults)
 			if !ok {
 				continue
 			}
@@ -272,34 +272,6 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 	})
 
 	return result, nil
-}
-
-// ConfigValue fetches the value of config variable (should this live somewhere else?)
-func ConfigValue(config *model.ConfigurationVariable, defaults map[string]string) (bool, string) {
-	var value interface{}
-
-	value = config.Default
-
-	if defaultValue, ok := defaults[config.Name]; ok {
-		value = defaultValue
-	}
-
-	if value == nil {
-		return false, ""
-	}
-
-	var stringifiedValue string
-	if valueAsString, ok := value.(string); ok {
-		var err error
-		stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
-		if err != nil {
-			stringifiedValue = valueAsString
-		}
-	} else {
-		stringifiedValue = fmt.Sprintf("%v", value)
-	}
-
-	return true, stringifiedValue
 }
 
 func getSecurityContext(role *model.Role) *v1.SecurityContext {

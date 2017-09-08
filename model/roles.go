@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/validation"
@@ -164,6 +165,34 @@ type ConfigurationVariable struct {
 	Internal    bool                            `yaml:"internal,omitempty"`
 	Secret      bool                            `yaml:"secret,omitempty"`
 	Required    bool                            `yaml:"required,omitempty"`
+}
+
+// Value fetches the value of config variable
+func (config *ConfigurationVariable) Value(defaults map[string]string) (bool, string) {
+	var value interface{}
+
+	value = config.Default
+
+	if defaultValue, ok := defaults[config.Name]; ok {
+		value = defaultValue
+	}
+
+	if value == nil {
+		return false, ""
+	}
+
+	var stringifiedValue string
+	if valueAsString, ok := value.(string); ok {
+		var err error
+		stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
+		if err != nil {
+			stringifiedValue = valueAsString
+		}
+	} else {
+		stringifiedValue = fmt.Sprintf("%v", value)
+	}
+
+	return true, stringifiedValue
 }
 
 // CVType is the type of the configuration variable; see the constants below
