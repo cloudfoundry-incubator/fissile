@@ -7,18 +7,18 @@ nodes, which all implement the Node interface.
 Each node can have an associated comment, and be wrapped by a template
 condition. For example:
 
-  obj.Add("Answer", NewScalar("42", Comment("A comment"), Condition(".Values.enabled")))
+  obj.Add("Answer", NewScalar("42", Comment("A comment"), Condition("if .Values.enabled")))
 
 will generate:
 
   # A comment
-  {{- .Values.enabled }}
+  {{- if .Values.enabled }}
   Answer: 42
   {{- end }}
 
 
 Scalar values are emitted as-is, that means the value needs to include quotes if
-it needs to be quoted to be valid YAML.  Liternal values are also not
+it needs to be quoted to be valid YAML.  Literal values are also not
 line-wrapped because that might break template expressions.
 
 The only exception are literal values including newlines. These values will be
@@ -36,7 +36,7 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.Add(NewScalar("{{ fail \"Cannot proceed\" }}", Condition(".count <= 0")))
+    list.Add(NewScalar(`{{ fail "Cannot proceed" }}`, Condition("if .count <= 0")))
 
 * Use a condition to generate multiple list elements
 
@@ -219,10 +219,18 @@ func (object Object) write(enc *Encoder, prefix string) {
 type Encoder struct {
 	writer io.Writer
 
+	// indent specifies the number of columns per YAML nesting level.
 	indent int
-	wrap   int
 
-	emptyLines     bool
+	// wrap specifies the maximum line length for comments.
+	wrap int
+
+	// emptyLines specifies that values with comments/conditions should be
+	// surrounded by empty lines for easier grouping.
+	emptyLines bool
+
+	// pendingNewline is an internal flag to only emit a single empty line
+	// between blocks that both require surrounding empty lines.
 	pendingNewline bool
 }
 
@@ -331,11 +339,13 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 // prefix includes indentation and the label for the container of this element
 // (either "Name:" or a string of one or more "- "). It will only be printed in
 // front of the first element of the container and then be replaced with a
-// string of spaces for indentation of all latter line. The label is not printed
-// by the container itself because the list labels "- " stack up on a single line.
+// string of spaces for indentation of all remaining elements. The label is not
+// printed by the container itself because the list labels "- " stack up on a
+// single line.
 //
 // label contains either the "Name:" for object elements, or "-" for list
-// elements.
+// elements. The special value "" is used for the document root, which doesn't
+// have a label.
 func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	leadingNewline := enc.emptyLines
 	if enc.pendingNewline {

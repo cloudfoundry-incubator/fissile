@@ -672,7 +672,7 @@ List:
 func TestHelmEmptyLines(t *testing.T) {
 	list := NewList()
 	list.Add(NewScalar("1", Comment("Some comment")))
-	list.Add(NewScalar("2"))
+	list.Add(NewScalar("2", Comment("")))
 	list.Add(NewScalar("3", Comment("Another comment")))
 	list.Add(NewScalar("4"))
 
@@ -680,7 +680,7 @@ func TestHelmEmptyLines(t *testing.T) {
 	obj.Add("List", list)
 	obj.Add("One", NewScalar("1", Comment("First post")))
 	obj.Add("Two", NewScalar("2"))
-	obj.Add("Three", NewScalar("3", Condition(".Values.set")))
+	obj.Add("Three", NewScalar("3", Condition("if .Values.set")))
 
 	root := NewObject()
 	root.Add("Object", obj)
@@ -703,7 +703,7 @@ Object:
 
   Two: 2
 
-  {{- .Values.set }}
+  {{- if .Values.set }}
   Three: 3
   {{- end }}
 `
