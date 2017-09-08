@@ -63,7 +63,6 @@ Tricks:
 package helm
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"sort"
@@ -136,12 +135,12 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 
 func (scalar Scalar) write(enc *Encoder, prefix string) {
 	if !strings.ContainsRune(scalar.value, '\n') {
-		fmt.Fprintln(enc.writer, prefix+" "+scalar.value)
+		fmt.Fprintln(enc, prefix+" "+scalar.value)
 		return
 	}
 
 	// Scalars including newlines will be written using the "literal" YAML format.
-	fmt.Fprintln(enc.writer, prefix+" |-")
+	fmt.Fprintln(enc, prefix+" |-")
 	// Calculate proper indentation for data lines.
 	if strings.HasSuffix(prefix, ":") {
 		prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
@@ -149,7 +148,7 @@ func (scalar Scalar) write(enc *Encoder, prefix string) {
 		prefix = strings.Repeat(" ", len(prefix)+1)
 	}
 	for _, line := range strings.Split(scalar.value, "\n") {
-		fmt.Fprintln(enc.writer, prefix+line)
+		fmt.Fprintln(enc, prefix+line)
 	}
 }
 
@@ -218,6 +217,8 @@ func (object Object) write(enc *Encoder, prefix string) {
 // Encoder writes the config data to an output stream.
 type Encoder struct {
 	writer io.Writer
+	// err keeps track of any error being returned when writing to writer.
+	err error
 
 	// indent specifies the number of columns per YAML nesting level.
 	indent int
@@ -276,9 +277,8 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 // NewEncoder returns an Encoder object holding the output stream and encoding options.
 func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
-		// Wrap io.Writer in a bufio.Writer so that we can check for
-		// errors at the very end by calling bufio.Writer.Flush()
-		writer:     bufio.NewWriter(writer),
+		writer:     writer,
+		err:        nil,
 		emptyLines: false,
 		indent:     2,
 		wrap:       80,
@@ -290,10 +290,22 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 // Encode writes the config object to the stream.
 func (enc *Encoder) Encode(object *Object) error {
 	enc.pendingNewline = false
-	fmt.Fprintln(enc.writer, "---")
+	fmt.Fprintln(enc, "---")
 	prefix := ""
 	enc.writeNode(object, &prefix, "")
-	return enc.writer.(*bufio.Writer).Flush()
+	return enc.err
+}
+
+// Write implements the io.Writer interface. It just forwards to the embedded
+// writer until an error occurs. This allows for error checking just once at the
+// end of Encode().
+func (enc *Encoder) Write(buffer []byte) (int, error) {
+	if enc.err == nil {
+		var written int
+		written, enc.err = enc.writer.Write(buffer)
+		return written, enc.err
+	}
+	return 0, enc.err
 }
 
 // useOnce returns the current value of the prefix parameter but replaces it
@@ -316,19 +328,19 @@ func useOnce(prefix *string) string {
 // include at least a single word, even if it exceeds the wrapping column).
 func (enc *Encoder) writeComment(prefix *string, comment string) {
 	for _, line := range strings.Split(comment, "\n") {
-		fmt.Fprintf(enc.writer, "%s#", useOnce(prefix))
+		fmt.Fprintf(enc, "%s#", useOnce(prefix))
 		if len(line) > 0 {
 			written := 0
 			for _, word := range strings.Fields(line) {
 				if written > 0 && len(*prefix)+1+written+1+len(word) > enc.wrap {
-					fmt.Fprintf(enc.writer, "\n%s#", useOnce(prefix))
+					fmt.Fprintf(enc, "\n%s#", useOnce(prefix))
 					written = 0
 				}
-				fmt.Fprint(enc.writer, " "+word)
+				fmt.Fprint(enc, " "+word)
 				written += 1 + len(word)
 			}
 		}
-		fmt.Fprint(enc.writer, "\n")
+		fmt.Fprint(enc, "\n")
 	}
 }
 
@@ -349,7 +361,7 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	leadingNewline := enc.emptyLines
 	if enc.pendingNewline {
-		fmt.Fprint(enc.writer, "\n")
+		fmt.Fprint(enc, "\n")
 		enc.pendingNewline = false
 		leadingNewline = false
 	}
@@ -358,7 +370,7 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 		indent = enc.indent
 	}
 	if strings.HasSuffix(*prefix, ":") {
-		fmt.Fprintln(enc.writer, *prefix)
+		fmt.Fprintln(enc, *prefix)
 		*prefix = strings.Repeat(" ", strings.LastIndex(*prefix, " ")+1+indent)
 		leadingNewline = false
 	} else if strings.HasSuffix(*prefix, "-") {
@@ -370,17 +382,17 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 	comment := node.Comment()
 	condition := node.Condition()
 	if leadingNewline && (comment != "" || condition != "") {
-		fmt.Fprint(enc.writer, "\n")
+		fmt.Fprint(enc, "\n")
 	}
 	if comment != "" {
 		enc.writeComment(prefix, comment)
 	}
 	if condition != "" {
-		fmt.Fprintf(enc.writer, "%s{{- %s }}\n", useOnce(prefix), condition)
+		fmt.Fprintf(enc, "%s{{- %s }}\n", useOnce(prefix), condition)
 	}
 	node.write(enc, useOnce(prefix)+label)
 	if condition != "" {
-		fmt.Fprintln(enc.writer, *prefix+"{{- end }}")
+		fmt.Fprintln(enc, *prefix+"{{- end }}")
 	}
 	if comment != "" || condition != "" {
 		enc.pendingNewline = enc.emptyLines

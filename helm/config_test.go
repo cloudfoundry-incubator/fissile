@@ -2,6 +2,7 @@ package helm
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -35,7 +36,7 @@ func addConditions(node Node) { annotate(node, false, 0) }
 
 func equal(t *testing.T, config *Object, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
-	NewEncoder(buffer, modifiers...).Encode(config)
+	assert.Nil(t, NewEncoder(buffer, modifiers...).Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 
@@ -797,4 +798,16 @@ Object:
   baz: 3
   foo: 1
 `)
+}
+
+func TestHelmError(t *testing.T) {
+	root := NewObject()
+	root.Add("Foo", NewScalar("1"))
+
+	buffer := &bytes.Buffer{}
+	enc := NewEncoder(buffer)
+	enc.err = errors.New("monkey wrench")
+
+	assert.NotNil(t, enc.Encode(root))
+	assert.Equal(t, "", buffer.String())
 }
