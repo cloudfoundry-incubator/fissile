@@ -179,7 +179,8 @@ func (list List) write(enc *Encoder, prefix string) {
 
 // Mappings store nodes in a list of name/node pairs instead of using a map so
 // that the nodes will be encoded in the same order in which they were added to
-// the mapping.
+// the mapping. Names must be alphanumeric; they cannot contain whitespace or
+// special characters.
 type namedNode struct {
 	name string
 	node Node
