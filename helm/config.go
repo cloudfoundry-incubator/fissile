@@ -1,5 +1,3 @@
-package helm
-
 /*
 
 Package helm implements a generic config file writer, emitting templatized YAML
@@ -62,6 +60,7 @@ Tricks:
     {{- end }}
 
 */
+package helm
 
 import (
 	"bufio"
@@ -115,9 +114,10 @@ type Node interface {
 	Condition() string
 	Set(...NodeModifier)
 
-	// The write() method is specific to each node type. prefix will be the
-	// indented label, either "name:" or "-", depending on whether the node
-	// is part of an object or a list.
+	// The write() method implements the part of Encoder.writeNode() that
+	// needs to access the fields specific to each node type. prefix will be
+	// the indented label, either "name:" or "-", depending on whether the
+	// node is part of an object or a list.
 	write(enc *Encoder, prefix string)
 }
 
@@ -135,20 +135,21 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 }
 
 func (scalar Scalar) write(enc *Encoder, prefix string) {
-	if strings.ContainsAny(scalar.value, "\n") {
-		// Scalars including newlines will be written using the "literal" YAML format.
-		fmt.Fprintln(enc.writer, prefix+" |-")
-		// Calculate proper indentation for data lines.
-		if strings.HasSuffix(prefix, ":") {
-			prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
-		} else {
-			prefix = strings.Repeat(" ", len(prefix)+1)
-		}
-		for _, line := range strings.Split(scalar.value, "\n") {
-			fmt.Fprintln(enc.writer, prefix+line)
-		}
-	} else {
+	if !strings.ContainsRune(scalar.value, '\n') {
 		fmt.Fprintln(enc.writer, prefix+" "+scalar.value)
+		return
+	}
+
+	// Scalars including newlines will be written using the "literal" YAML format.
+	fmt.Fprintln(enc.writer, prefix+" |-")
+	// Calculate proper indentation for data lines.
+	if strings.HasSuffix(prefix, ":") {
+		prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
+	} else {
+		prefix = strings.Repeat(" ", len(prefix)+1)
+	}
+	for _, line := range strings.Split(scalar.value, "\n") {
+		fmt.Fprintln(enc.writer, prefix+line)
 	}
 }
 
