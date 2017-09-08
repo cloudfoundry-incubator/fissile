@@ -870,7 +870,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
-func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Object, rolesManifest *model.RoleManifest, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Mapping, rolesManifest *model.RoleManifest, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"

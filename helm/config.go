@@ -1,7 +1,7 @@
 /*
 
 Package helm implements a generic config file writer, emitting templatized YAML
-documents. The documents are built up in memory from Scalar, List, and Object
+documents. The documents are built up in memory from Scalar, List, and Mapping
 nodes, which all implement the Node interface.
 
 Each node can have an associated comment, and be wrapped by a template block
@@ -28,7 +28,7 @@ document structure. This means lines containing literal newlines characters
 should not be quoted (and conversely, newlines in quoted strings need to be
 escaped, e.g. "\"Multiple\nLines\"".
 
-An Encoder objects holds an io.Writer target as well as additional encoding
+An Encoder object holds an io.Writer target as well as additional encoding
 options, like the max line length for comments, or the YAML indentation level:
 
   NewEncoder(os.Stdout, Indent(4), Wrap(80)).Encode(documentRoot)
@@ -41,7 +41,7 @@ Tricks:
 
 * Use a block action to generate multiple list elements
 
-    tcp := NewObject(Block("range $key, $value := .Values.tcp"))
+    tcp := NewMapping(Block("range $key, $value := .Values.tcp"))
     tcp.Add("name", NewScalar("\"{{ $key }}-tcp\""))
     tcp.Add("containerPort", NewScalar("$key"))
     tcp.Add("protocol", NewScalar("TCP"))
@@ -117,11 +117,11 @@ type Node interface {
 	// The write() method implements the part of Encoder.writeNode() that
 	// needs to access the fields specific to each node type. prefix will be
 	// the indented label, either "name:" or "-", depending on whether the
-	// node is part of an object or a list.
+	// node is part of a mapping or a list.
 	write(enc *Encoder, prefix string)
 }
 
-// Scalar represents a scalar value inside a list or object.
+// Scalar represents a scalar value inside a list or mapping.
 type Scalar struct {
 	sharedFields
 	value string
@@ -177,40 +177,41 @@ func (list List) write(enc *Encoder, prefix string) {
 	}
 }
 
-// Objects store nodes in a list of name/node pairs instead of using a map so that
-// the nodes will be encoded in the same order in which they were added to the object.
+// Mappings store nodes in a list of name/node pairs instead of using a map so
+// that the nodes will be encoded in the same order in which they were added to
+// the mapping.
 type namedNode struct {
 	name string
 	node Node
 }
 
-// Object represents an ordered lst of named nodes.
-type Object struct {
+// Mapping represents an ordered lst of named nodes.
+type Mapping struct {
 	sharedFields
 	nodes []namedNode
 }
 
-// NewObject creates an empty object node and initializes shared fields.
-func NewObject(modifiers ...NodeModifier) *Object {
-	object := &Object{}
-	object.Set(modifiers...)
-	return object
+// NewMapping creates an empty mapping node and initializes shared fields.
+func NewMapping(modifiers ...NodeModifier) *Mapping {
+	mapping := &Mapping{}
+	mapping.Set(modifiers...)
+	return mapping
 }
 
 // Add a singled named node at the end of the list.
-func (object *Object) Add(name string, node Node) {
-	object.nodes = append(object.nodes, namedNode{name: name, node: node})
+func (mapping *Mapping) Add(name string, node Node) {
+	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
 }
 
-// Sort all nodes of the object by name.
-func (object *Object) Sort() {
-	sort.Slice(object.nodes[:], func(i, j int) bool {
-		return object.nodes[i].name < object.nodes[j].name
+// Sort all nodes of the mapping by name.
+func (mapping *Mapping) Sort() {
+	sort.Slice(mapping.nodes[:], func(i, j int) bool {
+		return mapping.nodes[i].name < mapping.nodes[j].name
 	})
 }
 
-func (object Object) write(enc *Encoder, prefix string) {
-	for _, namedNode := range object.nodes {
+func (mapping Mapping) write(enc *Encoder, prefix string) {
+	for _, namedNode := range mapping.nodes {
 		enc.writeNode(namedNode.node, &prefix, namedNode.name+":")
 	}
 }
@@ -239,7 +240,7 @@ type Encoder struct {
 // EmptyLines turns generation of additional empty lines on or off. In general
 // each node that has a comment or a block action will be separated by
 // additional empty lines from the rest of the document. The leading empty line
-// will be omitted for the first element of a list or object, and the trailing
+// will be omitted for the first element of a list or mapping, and the trailing
 // empty line will be omitted for the last element. The default value is false.
 func EmptyLines(emptyLines bool) func(*Encoder) {
 	return func(enc *Encoder) {
@@ -275,7 +276,7 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 	}
 }
 
-// NewEncoder returns an Encoder object holding the output stream and encoding options.
+// NewEncoder returns an Encoder mapping holding the output stream and encoding options.
 func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
 		writer:     writer,
@@ -288,12 +289,12 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	return enc
 }
 
-// Encode writes the config object to the stream.
-func (enc *Encoder) Encode(object *Object) error {
+// Encode writes the config mapping to the stream.
+func (enc *Encoder) Encode(mapping *Mapping) error {
 	enc.pendingNewline = false
 	fmt.Fprintln(enc, "---")
 	prefix := ""
-	enc.writeNode(object, &prefix, "")
+	enc.writeNode(mapping, &prefix, "")
 	return enc.err
 }
 
@@ -345,9 +346,9 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 	}
 }
 
-// writeNode is called for each element of a container (list or object node). It
-// will print the comment and block action for the element and then call
-// node.write() to tell the node to encode itself.
+// writeNode is called for each element of a container (list or mapping
+// node). It will print the comment and block action for the element and then
+// call node.write() to tell the node to encode itself.
 //
 // prefix includes indentation and the label for the container of this element
 // (either "Name:" or a string of one or more "- "). It will only be printed in
@@ -356,7 +357,7 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 // printed by the container itself because the list labels "- " stack up on a
 // single line.
 //
-// label contains either the "Name:" for object elements, or "-" for list
+// label contains either the "Name:" for mapping elements, or "-" for list
 // elements. The special value "" is used for the document root, which doesn't
 // have a label.
 func (enc *Encoder) writeNode(node Node, prefix *string, label string) {

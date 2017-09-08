@@ -107,14 +107,14 @@ func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(kind string, name string, modifiers ...helm.NodeModifier) *helm.Object {
-	object := helm.NewObject(modifiers...)
-	object.Add("apiVersion", helm.NewScalar("v1"))
-	object.Add("kind", helm.NewScalar(kind))
+func newKubeConfig(kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	mapping := helm.NewMapping(modifiers...)
+	mapping.Add("apiVersion", helm.NewScalar("v1"))
+	mapping.Add("kind", helm.NewScalar(kind))
 
-	meta := helm.NewObject()
+	meta := helm.NewMapping()
 	meta.Add("name", helm.NewScalar(name))
-	object.Add("metadata", meta)
+	mapping.Add("metadata", meta)
 
-	return object
+	return mapping
 }

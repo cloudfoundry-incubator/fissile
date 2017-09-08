@@ -24,8 +24,8 @@ func annotate(node Node, comment bool, index int) int {
 		for _, node := range node.(*List).nodes {
 			index = annotate(node, comment, index)
 		}
-	case *Object:
-		for _, namedNode := range node.(*Object).nodes {
+	case *Mapping:
+		for _, namedNode := range node.(*Mapping).nodes {
 			index = annotate(namedNode.node, comment, index)
 		}
 	}
@@ -34,14 +34,14 @@ func annotate(node Node, comment bool, index int) int {
 func addComments(node Node) { annotate(node, true, 0) }
 func addBlocks(node Node)   { annotate(node, false, 0) }
 
-func equal(t *testing.T, config *Object, expect string, modifiers ...func(*Encoder)) {
+func equal(t *testing.T, config *Mapping, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
 	assert.Nil(t, NewEncoder(buffer, modifiers...).Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 
 func TestHelmScalar(t *testing.T) {
-	root := NewObject()
+	root := NewMapping()
 	root.Add("Scalar", NewScalar("42"))
 
 	equal(t, root, `---
@@ -73,7 +73,7 @@ func TestHelmList(t *testing.T) {
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	root := NewObject()
+	root := NewMapping()
 	root.Add("List", list)
 
 	equal(t, root, `---
@@ -120,17 +120,17 @@ List:
 `)
 }
 
-func TestHelmObject(t *testing.T) {
-	obj := NewObject()
-	obj.Add("foo", NewScalar("1"))
-	obj.Add("bar", NewScalar("2"))
-	obj.Add("baz", NewScalar("3"))
+func TestHelmMapping(t *testing.T) {
+	mapping := NewMapping()
+	mapping.Add("foo", NewScalar("1"))
+	mapping.Add("bar", NewScalar("2"))
+	mapping.Add("baz", NewScalar("3"))
 
-	root := NewObject()
-	root.Add("Object", obj)
+	root := NewMapping()
+	root.Add("Mapping", mapping)
 
 	equal(t, root, `---
-Object:
+Mapping:
   foo: 1
   bar: 2
   baz: 3
@@ -140,7 +140,7 @@ Object:
 	equal(t, root, `---
 # comment 1
 # comment 2
-Object:
+Mapping:
   # comment 3
   foo: 1
   # comment 4
@@ -155,7 +155,7 @@ Object:
 {{- if block 1 }}
 # comment 2
 {{- if block 2 }}
-Object:
+Mapping:
   # comment 3
   {{- if block 3 }}
   foo: 1
@@ -188,7 +188,7 @@ func TestHelmListOfList(t *testing.T) {
 	list3.Add(NewScalar("foo"))
 	list3.Add(NewScalar("bar"))
 
-	root := NewObject()
+	root := NewMapping()
 	root.Add("List", list3)
 
 	equal(t, root, `---
@@ -264,26 +264,26 @@ List:
 `)
 }
 
-func TestHelmObjectOfObject(t *testing.T) {
-	obj1 := NewObject()
-	obj1.Add("One", NewScalar("1"))
-	obj1.Add("Two", NewScalar("2"))
+func TestHelmMappingOfMapping(t *testing.T) {
+	mapping1 := NewMapping()
+	mapping1.Add("One", NewScalar("1"))
+	mapping1.Add("Two", NewScalar("2"))
 
-	obj2 := NewObject()
-	obj2.Add("OneTwo", obj1)
-	obj2.Add("X", NewScalar("x"))
-	obj2.Add("Y", NewScalar("y"))
+	mapping2 := NewMapping()
+	mapping2.Add("OneTwo", mapping1)
+	mapping2.Add("X", NewScalar("x"))
+	mapping2.Add("Y", NewScalar("y"))
 
-	obj3 := NewObject()
-	obj3.Add("XY", obj2)
-	obj3.Add("Foo", NewScalar("foo"))
-	obj3.Add("Bar", NewScalar("bar"))
+	mapping3 := NewMapping()
+	mapping3.Add("XY", mapping2)
+	mapping3.Add("Foo", NewScalar("foo"))
+	mapping3.Add("Bar", NewScalar("bar"))
 
-	root := NewObject()
-	root.Add("Object", obj3)
+	root := NewMapping()
+	root.Add("Mapping", mapping3)
 
 	equal(t, root, `---
-Object:
+Mapping:
   XY:
     OneTwo:
       One: 1
@@ -298,7 +298,7 @@ Object:
 	equal(t, root, `---
 # comment 1
 # comment 2
-Object:
+Mapping:
   # comment 3
   XY:
     # comment 4
@@ -323,7 +323,7 @@ Object:
 {{- if block 1 }}
 # comment 2
 {{- if block 2 }}
-Object:
+Mapping:
   # comment 3
   {{- if block 3 }}
   XY:
@@ -361,20 +361,20 @@ Object:
 `)
 }
 
-func TestHelmObjectOfList(t *testing.T) {
+func TestHelmMappingOfList(t *testing.T) {
 	list := NewList()
 	list.Add(NewScalar("1"))
 	list.Add(NewScalar("2"))
 	list.Add(NewScalar("3"))
 
-	obj := NewObject()
-	obj.Add("List", list)
+	mapping := NewMapping()
+	mapping.Add("List", list)
 
-	root := NewObject()
-	root.Add("Object", obj)
+	root := NewMapping()
+	root.Add("Mapping", mapping)
 
 	equal(t, root, `---
-Object:
+Mapping:
   List:
   - 1
   - 2
@@ -385,7 +385,7 @@ Object:
 	equal(t, root, `---
 # comment 1
 # comment 2
-Object:
+Mapping:
   # comment 3
   List:
   # comment 4
@@ -402,7 +402,7 @@ Object:
 {{- if block 1 }}
 # comment 2
 {{- if block 2 }}
-Object:
+Mapping:
   # comment 3
   {{- if block 3 }}
   List:
@@ -424,20 +424,20 @@ Object:
 `)
 }
 
-func TestHelmListOfObject(t *testing.T) {
-	obj := NewObject()
-	obj.Add("Foo", NewScalar("foo"))
-	obj.Add("Bar", NewScalar("bar"))
-	obj.Add("Baz", NewScalar("baz"))
+func TestHelmListOfMapping(t *testing.T) {
+	mapping := NewMapping()
+	mapping.Add("Foo", NewScalar("foo"))
+	mapping.Add("Bar", NewScalar("bar"))
+	mapping.Add("Baz", NewScalar("baz"))
 
 	list := NewList()
-	list.Add(obj)
+	list.Add(mapping)
 
-	root := NewObject()
-	root.Add("Object", list)
+	root := NewMapping()
+	root.Add("Mapping", list)
 
 	equal(t, root, `---
-Object:
+Mapping:
 - Foo: foo
   Bar: bar
   Baz: baz
@@ -447,7 +447,7 @@ Object:
 	equal(t, root, `---
 # comment 1
 # comment 2
-Object:
+Mapping:
 # comment 3
 - # comment 4
   Foo: foo
@@ -463,7 +463,7 @@ Object:
 {{- if block 1 }}
 # comment 2
 {{- if block 2 }}
-Object:
+Mapping:
 # comment 3
 {{- if block 3 }}
 - # comment 4
@@ -485,7 +485,7 @@ Object:
 }
 
 func TestHelmMultiLineComment(t *testing.T) {
-	root := NewObject()
+	root := NewMapping()
 	root.Add("Scalar", NewScalar("42", Comment("Many\n\nlines")))
 
 	equal(t, root, `---
@@ -503,7 +503,7 @@ Scalar: 42
 	list2.Add(list1)
 	list2.Add(NewScalar("foo"))
 
-	root = NewObject()
+	root = NewMapping()
 	root.Add("List", list2)
 
 	equal(t, root, `---
@@ -517,20 +517,20 @@ List:
 }
 
 func TestHelmWrapLongComments(t *testing.T) {
-	root := NewObject()
-	obj := NewObject()
+	root := NewMapping()
+	mapping := NewMapping()
 	word := "1"
 	for i := len(word) + 1; i < 7; i++ {
 		word += strconv.Itoa(i)
 		root.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 10))))
 		if i < 5 {
-			obj.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 5))))
+			mapping.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 5))))
 		}
 	}
 
-	obj.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	mapping.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
 	root.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
-	root.Add("Nested", obj)
+	root.Add("Nested", mapping)
 
 	expect := `---
 # 12 12 12 12 12 12 12
@@ -575,11 +575,11 @@ Nested:
 }
 
 func TestHelmIndent(t *testing.T) {
-	obj1 := NewObject()
-	obj1.Add("Foo", NewScalar("Bar", Comment("Baz")))
+	mapping1 := NewMapping()
+	mapping1.Add("Foo", NewScalar("Bar", Comment("Baz")))
 
 	list1 := NewList()
-	list1.Add(obj1)
+	list1.Add(mapping1)
 	list1.Add(NewScalar("1"))
 
 	list2 := NewList()
@@ -590,20 +590,20 @@ func TestHelmIndent(t *testing.T) {
 	list1.Add(NewScalar("2"))
 	list1.Add(NewScalar("3"))
 
-	obj2 := NewObject()
-	obj2.Add("List", list1)
+	mapping2 := NewMapping()
+	mapping2.Add("List", list1)
 
-	obj3 := NewObject()
-	obj3.Add("Foo", NewScalar("1"))
-	obj3.Add("Bar", NewScalar("2"))
+	mapping3 := NewMapping()
+	mapping3.Add("Foo", NewScalar("1"))
+	mapping3.Add("Bar", NewScalar("2"))
 
-	obj2.Add("Meta", obj3)
+	mapping2.Add("Meta", mapping3)
 
-	root := NewObject()
-	root.Add("Object", obj2)
+	root := NewMapping()
+	root.Add("Mapping", mapping2)
 
 	expect := `---
-Object:
+Mapping:
     List:
       - # Baz
         Foo: Bar
@@ -620,21 +620,21 @@ Object:
 }
 
 func TestHelmEncoderModifier(t *testing.T) {
-	obj := NewObject()
-	obj.Add("foo", NewScalar("1"))
-	obj.Add("bar", NewScalar("2"))
-	obj.Add("baz", NewScalar("3"))
+	mapping := NewMapping()
+	mapping.Add("foo", NewScalar("1"))
+	mapping.Add("bar", NewScalar("2"))
+	mapping.Add("baz", NewScalar("3"))
 
-	root := NewObject()
-	root.Add("Object", obj)
+	root := NewMapping()
+	root.Add("Mapping", mapping)
 
 	expect := `---
-Object:
+Mapping:
   foo: 1
   bar: 2
   baz: 3
 ---
-Object:
+Mapping:
     foo: 1
     bar: 2
     baz: 3
@@ -649,7 +649,7 @@ Object:
 }
 
 func TestHelmMultiLineScalar(t *testing.T) {
-	root := NewObject()
+	root := NewMapping()
 	root.Add("Scalar", NewScalar("foo\nbar\nbaz"))
 
 	list := NewList()
@@ -677,17 +677,17 @@ func TestHelmEmptyLines(t *testing.T) {
 	list.Add(NewScalar("3", Comment("Another comment")))
 	list.Add(NewScalar("4"))
 
-	obj := NewObject()
-	obj.Add("List", list)
-	obj.Add("One", NewScalar("1", Comment("First post")))
-	obj.Add("Two", NewScalar("2"))
-	obj.Add("Three", NewScalar("3", Block("if .Values.set")))
+	mapping := NewMapping()
+	mapping.Add("List", list)
+	mapping.Add("One", NewScalar("1", Comment("First post")))
+	mapping.Add("Two", NewScalar("2"))
+	mapping.Add("Three", NewScalar("3", Block("if .Values.set")))
 
-	root := NewObject()
-	root.Add("Object", obj)
+	root := NewMapping()
+	root.Add("Mapping", mapping)
 
 	expect := `---
-Object:
+Mapping:
   List:
   # Some comment
   - 1
@@ -716,7 +716,7 @@ Object:
 
 # comment 2
 {{- if block 2 }}
-Object:
+Mapping:
   # comment 3
   {{- if block 3 }}
   List:
@@ -767,7 +767,7 @@ Object:
 	list.Add(NewScalar("2", Comment("A comment")))
 	list.Add(NewScalar("3"))
 
-	root = NewObject()
+	root = NewMapping()
 	root.Add("List", list)
 
 	expect = `---
@@ -782,18 +782,18 @@ List:
 	equal(t, root, expect, EmptyLines(true))
 }
 
-func TestHelmObjectSort(t *testing.T) {
-	obj := NewObject()
-	obj.Add("foo", NewScalar("1"))
-	obj.Add("bar", NewScalar("2"))
-	obj.Add("baz", NewScalar("3"))
-	obj.Sort()
+func TestHelmMappingSort(t *testing.T) {
+	mapping := NewMapping()
+	mapping.Add("foo", NewScalar("1"))
+	mapping.Add("bar", NewScalar("2"))
+	mapping.Add("baz", NewScalar("3"))
+	mapping.Sort()
 
-	root := NewObject()
-	root.Add("Object", obj)
+	root := NewMapping()
+	root.Add("Mapping", mapping)
 
 	equal(t, root, `---
-Object:
+Mapping:
   bar: 2
   baz: 3
   foo: 1
@@ -801,7 +801,7 @@ Object:
 }
 
 func TestHelmError(t *testing.T) {
-	root := NewObject()
+	root := NewMapping()
 	root.Add("Foo", NewScalar("1"))
 
 	buffer := &bytes.Buffer{}
