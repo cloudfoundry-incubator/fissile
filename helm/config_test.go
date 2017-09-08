@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// annotate by recursively adding comments or conditions to each node
+// annotate by recursively adding comments or block actions to each node
 func annotate(node Node, comment bool, index int) int {
 	index++
 	if comment {
 		node.Set(Comment(fmt.Sprintf("comment %d", index)))
 	} else {
-		node.Set(Condition(fmt.Sprintf("if condition %d", index)))
+		node.Set(Block(fmt.Sprintf("if block %d", index)))
 	}
 	switch node.(type) {
 	case *List:
@@ -31,8 +31,8 @@ func annotate(node Node, comment bool, index int) int {
 	}
 	return index
 }
-func addComments(node Node)   { annotate(node, true, 0) }
-func addConditions(node Node) { annotate(node, false, 0) }
+func addComments(node Node) { annotate(node, true, 0) }
+func addBlocks(node Node)   { annotate(node, false, 0) }
 
 func equal(t *testing.T, config *Object, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
@@ -55,12 +55,12 @@ Scalar: 42
 Scalar: 42
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Scalar: 42
 {{- end }}
 {{- end }}
@@ -96,23 +96,23 @@ List:
 - 3
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 List:
 # comment 3
-{{- if condition 3 }}
+{{- if block 3 }}
 - 1
 {{- end }}
 # comment 4
-{{- if condition 4 }}
+{{- if block 4 }}
 - 2
 {{- end }}
 # comment 5
-{{- if condition 5 }}
+{{- if block 5 }}
 - 3
 {{- end }}
 {{- end }}
@@ -149,23 +149,23 @@ Object:
   baz: 3
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Object:
   # comment 3
-  {{- if condition 3 }}
+  {{- if block 3 }}
   foo: 1
   {{- end }}
   # comment 4
-  {{- if condition 4 }}
+  {{- if block 4 }}
   bar: 2
   {{- end }}
   # comment 5
-  {{- if condition 5 }}
+  {{- if block 5 }}
   baz: 3
   {{- end }}
 {{- end }}
@@ -222,41 +222,41 @@ List:
 - bar
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 List:
 # comment 3
-{{- if condition 3 }}
+{{- if block 3 }}
 - # comment 4
-  {{- if condition 4 }}
+  {{- if block 4 }}
   - # comment 5
-    {{- if condition 5 }}
+    {{- if block 5 }}
     - 1
     {{- end }}
     # comment 6
-    {{- if condition 6 }}
+    {{- if block 6 }}
     - 2
     {{- end }}
   {{- end }}
   # comment 7
-  {{- if condition 7 }}
+  {{- if block 7 }}
   - x
   {{- end }}
   # comment 8
-  {{- if condition 8 }}
+  {{- if block 8 }}
   - y
   {{- end }}
 {{- end }}
 # comment 9
-{{- if condition 9 }}
+{{- if block 9 }}
 - foo
 {{- end }}
 # comment 10
-{{- if condition 10 }}
+{{- if block 10 }}
 - bar
 {{- end }}
 {{- end }}
@@ -317,43 +317,43 @@ Object:
   Bar: bar
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Object:
   # comment 3
-  {{- if condition 3 }}
+  {{- if block 3 }}
   XY:
     # comment 4
-    {{- if condition 4 }}
+    {{- if block 4 }}
     OneTwo:
       # comment 5
-      {{- if condition 5 }}
+      {{- if block 5 }}
       One: 1
       {{- end }}
       # comment 6
-      {{- if condition 6 }}
+      {{- if block 6 }}
       Two: 2
       {{- end }}
     {{- end }}
     # comment 7
-    {{- if condition 7 }}
+    {{- if block 7 }}
     X: x
     {{- end }}
     # comment 8
-    {{- if condition 8 }}
+    {{- if block 8 }}
     Y: y
     {{- end }}
   {{- end }}
   # comment 9
-  {{- if condition 9 }}
+  {{- if block 9 }}
   Foo: foo
   {{- end }}
   # comment 10
-  {{- if condition 10 }}
+  {{- if block 10 }}
   Bar: bar
   {{- end }}
 {{- end }}
@@ -396,26 +396,26 @@ Object:
   - 3
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Object:
   # comment 3
-  {{- if condition 3 }}
+  {{- if block 3 }}
   List:
   # comment 4
-  {{- if condition 4 }}
+  {{- if block 4 }}
   - 1
   {{- end }}
   # comment 5
-  {{- if condition 5 }}
+  {{- if block 5 }}
   - 2
   {{- end }}
   # comment 6
-  {{- if condition 6 }}
+  {{- if block 6 }}
   - 3
   {{- end }}
   {{- end }}
@@ -457,25 +457,25 @@ Object:
   Baz: baz
 `)
 
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Object:
 # comment 3
-{{- if condition 3 }}
+{{- if block 3 }}
 - # comment 4
-  {{- if condition 4 }}
+  {{- if block 4 }}
   Foo: foo
   {{- end }}
   # comment 5
-  {{- if condition 5 }}
+  {{- if block 5 }}
   Bar: bar
   {{- end }}
   # comment 6
-  {{- if condition 6 }}
+  {{- if block 6 }}
   Baz: baz
   {{- end }}
 {{- end }}
@@ -681,7 +681,7 @@ func TestHelmEmptyLines(t *testing.T) {
 	obj.Add("List", list)
 	obj.Add("One", NewScalar("1", Comment("First post")))
 	obj.Add("Two", NewScalar("2"))
-	obj.Add("Three", NewScalar("3", Condition("if .Values.set")))
+	obj.Add("Three", NewScalar("3", Block("if .Values.set")))
 
 	root := NewObject()
 	root.Add("Object", obj)
@@ -712,54 +712,54 @@ Object:
 
 	expect = `---
 # comment 1
-{{- if condition 1 }}
+{{- if block 1 }}
 
 # comment 2
-{{- if condition 2 }}
+{{- if block 2 }}
 Object:
   # comment 3
-  {{- if condition 3 }}
+  {{- if block 3 }}
   List:
   # comment 4
-  {{- if condition 4 }}
+  {{- if block 4 }}
   - 1
   {{- end }}
 
   # comment 5
-  {{- if condition 5 }}
+  {{- if block 5 }}
   - 2
   {{- end }}
 
   # comment 6
-  {{- if condition 6 }}
+  {{- if block 6 }}
   - 3
   {{- end }}
 
   # comment 7
-  {{- if condition 7 }}
+  {{- if block 7 }}
   - 4
   {{- end }}
   {{- end }}
 
   # comment 8
-  {{- if condition 8 }}
+  {{- if block 8 }}
   One: 1
   {{- end }}
 
   # comment 9
-  {{- if condition 9 }}
+  {{- if block 9 }}
   Two: 2
   {{- end }}
 
   # comment 10
-  {{- if condition 10 }}
+  {{- if block 10 }}
   Three: 3
   {{- end }}
 {{- end }}
 {{- end }}
 `
 	addComments(root)
-	addConditions(root)
+	addBlocks(root)
 	equal(t, root, expect, EmptyLines(true))
 
 	list = NewList()

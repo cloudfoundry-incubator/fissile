@@ -4,10 +4,11 @@ Package helm implements a generic config file writer, emitting templatized YAML
 documents. The documents are built up in memory from Scalar, List, and Object
 nodes, which all implement the Node interface.
 
-Each node can have an associated comment, and be wrapped by a template
-condition. For example:
+Each node can have an associated comment, and be wrapped by a template block
+(any template action that encloses text and terminates with an {{end}}). For
+example:
 
-  obj.Add("Answer", NewScalar("42", Comment("A comment"), Condition("if .Values.enabled")))
+  obj.Add("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
 
 will generate:
 
@@ -36,11 +37,11 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.Add(NewScalar(`{{ fail "Cannot proceed" }}`, Condition("if .count <= 0")))
+    list.Add(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
 
-* Use a condition to generate multiple list elements
+* Use a block action to generate multiple list elements
 
-    tcp := NewObject(Condition("range $key, $value := .Values.tcp"))
+    tcp := NewObject(Block("range $key, $value := .Values.tcp"))
     tcp.Add("name", NewScalar("\"{{ $key }}-tcp\""))
     tcp.Add("containerPort", NewScalar("$key"))
     tcp.Add("protocol", NewScalar("TCP"))
@@ -69,24 +70,24 @@ import (
 	"strings"
 )
 
-// sharedFields provides the shared metadata (comments & conditions) for all
+// sharedFields provides the shared metadata (comments & block actions) for all
 // node types.
 type sharedFields struct {
-	comment   string
-	condition string
+	block   string
+	comment string
 }
 
 // NodeModifier functions can be used to set values of shared fields in a node.
 type NodeModifier func(*sharedFields)
 
+// Block returns a modifier function to set the block action of a node.
+func Block(block string) func(*sharedFields) {
+	return func(shared *sharedFields) { shared.block = block }
+}
+
 // Comment returns a modifier function to set the comment of a node.
 func Comment(comment string) func(*sharedFields) {
 	return func(shared *sharedFields) { shared.comment = comment }
-}
-
-// Condition returns a modifier function to set the condition of a node.
-func Condition(condition string) func(*sharedFields) {
-	return func(shared *sharedFields) { shared.condition = condition }
 }
 
 // Set applies NodeModifier functions to the embedded sharedFields struct.
@@ -96,21 +97,21 @@ func (shared *sharedFields) Set(modifiers ...NodeModifier) {
 	}
 }
 
+// Block is a shared getter function for all node types.
+func (shared sharedFields) Block() string {
+	return shared.block
+}
+
 // Comment is a shared getter function for all node types.
 func (shared sharedFields) Comment() string {
 	return shared.comment
 }
 
-// Condition is a shared getter function for all node types.
-func (shared sharedFields) Condition() string {
-	return shared.condition
-}
-
 // Node is the interface implemented by all config node types.
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
+	Block() string
 	Comment() string
-	Condition() string
 	Set(...NodeModifier)
 
 	// The write() method implements the part of Encoder.writeNode() that
@@ -226,20 +227,20 @@ type Encoder struct {
 	// wrap specifies the maximum line length for comments.
 	wrap int
 
-	// emptyLines specifies that values with comments/conditions should be
+	// emptyLines specifies that values with comments/blocks should be
 	// surrounded by empty lines for easier grouping.
 	emptyLines bool
 
 	// pendingNewline is an internal flag to only emit a single empty line
-	// between blocks that both require surrounding empty lines.
+	// between elements that both require surrounding empty lines.
 	pendingNewline bool
 }
 
 // EmptyLines turns generation of additional empty lines on or off. In general
-// each node that has a comment or a condition will be separated by additional
-// empty lines from the rest of the document. The leading empty line will be
-// omitted for the first element of a list or object, and the trailing empty
-// line will be omitted for the last element. The default value is false.
+// each node that has a comment or a block action will be separated by
+// additional empty lines from the rest of the document. The leading empty line
+// will be omitted for the first element of a list or object, and the trailing
+// empty line will be omitted for the last element. The default value is false.
 func EmptyLines(emptyLines bool) func(*Encoder) {
 	return func(enc *Encoder) {
 		enc.emptyLines = emptyLines
@@ -260,7 +261,7 @@ func Indent(indent int) func(*Encoder) {
 // Wrap sets the maximum line length for comments. This number includes the
 // columns needed for indentation, so comments on more deeply nested nodes have
 // more tightly wrapped comments than outer level nodes. Wrapping applies only
-// to comments and not to conditions or scalar values. The default value is 80.
+// to comments and not to block actions or scalar values. The default value is 80.
 func Wrap(wrap int) func(*Encoder) {
 	return func(enc *Encoder) {
 		enc.wrap = wrap
@@ -322,7 +323,7 @@ func useOnce(prefix *string) string {
 	return result
 }
 
-// writeComment writes out the comment block for a node. Newline characters in
+// writeComment writes out the comment lines for a node. Newline characters in
 // the comment mark the beginning of a new paragraph. Each paragraph is
 // word-wrapped to fit within enc.wrap columns (except that each line will
 // include at least a single word, even if it exceeds the wrapping column).
@@ -345,7 +346,7 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 }
 
 // writeNode is called for each element of a container (list or object node). It
-// will print the comment and condition for the element and then call
+// will print the comment and block action for the element and then call
 // node.write() to tell the node to encode itself.
 //
 // prefix includes indentation and the label for the container of this element
@@ -380,21 +381,21 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 		leadingNewline = false
 	}
 	comment := node.Comment()
-	condition := node.Condition()
-	if leadingNewline && (comment != "" || condition != "") {
+	block := node.Block()
+	if leadingNewline && (comment != "" || block != "") {
 		fmt.Fprint(enc, "\n")
 	}
 	if comment != "" {
 		enc.writeComment(prefix, comment)
 	}
-	if condition != "" {
-		fmt.Fprintf(enc, "%s{{- %s }}\n", useOnce(prefix), condition)
+	if block != "" {
+		fmt.Fprintf(enc, "%s{{- %s }}\n", useOnce(prefix), block)
 	}
 	node.write(enc, useOnce(prefix)+label)
-	if condition != "" {
+	if block != "" {
 		fmt.Fprintln(enc, *prefix+"{{- end }}")
 	}
-	if comment != "" || condition != "" {
+	if comment != "" || block != "" {
 		enc.pendingNewline = enc.emptyLines
 	}
 }
