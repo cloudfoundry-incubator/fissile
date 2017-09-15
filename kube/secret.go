@@ -28,7 +28,7 @@ type SecretRefMap map[string]SecretRef
 func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (*helm.Mapping, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
-	data := helm.NewMapping()
+	data := helm.NewEmptyMapping()
 	for name, cv := range secrets {
 		var value string
 		if createHelmChart {
