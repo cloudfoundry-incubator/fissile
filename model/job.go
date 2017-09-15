@@ -31,7 +31,6 @@ type Job struct {
 	Release     *Release
 
 	jobReleaseInfo map[interface{}]interface{}
-	jobSpec        map[interface{}]interface{}
 }
 
 // Jobs is an array of Job*
@@ -154,76 +153,67 @@ func (j *Job) loadJobSpec() (err error) {
 		return err
 	}
 
-	if err := yaml.Unmarshal([]byte(specContents), &j.jobSpec); err != nil {
+	var jobSpec struct {
+		Description string
+		Packages    []string
+		Templates   map[string]string
+		Properties  map[string]struct {
+			Description string
+			Default     interface{}
+			Example     interface{}
+		}
+	}
+
+	if err := yaml.Unmarshal([]byte(specContents), &jobSpec); err != nil {
 		return err
 	}
 
-	if j.jobSpec["description"] != nil {
-		j.Description = j.jobSpec["description"].(string)
+	j.Description = jobSpec.Description
+
+	for _, pkgName := range jobSpec.Packages {
+		dependency, err := j.Release.LookupPackage(pkgName)
+		if err != nil {
+			return fmt.Errorf("Cannot find dependency for job %s: %v", j.Name, err.Error())
+		}
+
+		j.Packages = append(j.Packages, dependency)
 	}
 
-	if j.jobSpec["packages"] != nil {
-		for _, pkg := range j.jobSpec["packages"].([]interface{}) {
-			pkgName := pkg.(string)
-			dependency, err := j.Release.LookupPackage(pkgName)
-			if err != nil {
-				return fmt.Errorf("Cannot find dependency for job %s: %v", j.Name, err.Error())
-			}
+	for source, destination := range jobSpec.Templates {
+		templateFile := filepath.Join(jobDir, "templates", source)
 
-			j.Packages = append(j.Packages, dependency)
+		templateContent, err := ioutil.ReadFile(templateFile)
+		if err != nil {
+			return err
 		}
+
+		template := &JobTemplate{
+			SourcePath:      source,
+			DestinationPath: destination,
+			Job:             j,
+			Content:         string(templateContent),
+		}
+
+		j.Templates = append(j.Templates, template)
 	}
 
-	if j.jobSpec["templates"] != nil {
-		for source, destination := range j.jobSpec["templates"].(map[interface{}]interface{}) {
-			templateFile := filepath.Join(jobDir, "templates", source.(string))
-
-			templateContent, err := ioutil.ReadFile(templateFile)
-			if err != nil {
-				return err
-			}
-
-			template := &JobTemplate{
-				SourcePath:      source.(string),
-				DestinationPath: destination.(string),
-				Job:             j,
-				Content:         string(templateContent),
-			}
-
-			j.Templates = append(j.Templates, template)
-		}
+	// We want to load the properties in sorted order, so that we are
+	// consistent and avoid flaky tests
+	var propertyNames []string
+	for propertyName := range jobSpec.Properties {
+		propertyNames = append(propertyNames, propertyName)
 	}
+	sort.Strings(propertyNames)
+	for _, propertyName := range propertyNames {
 
-	if j.jobSpec["properties"] != nil {
-		// We want to load the properties in sorted order, so that we are
-		// consistent and avoid flaky tests
-		properties := j.jobSpec["properties"].(map[interface{}]interface{})
-		var propertyNames []string
-		for propertyName := range properties {
-			propertyNames = append(propertyNames, propertyName.(string))
+		property := &JobProperty{
+			Name:        propertyName,
+			Job:         j,
+			Description: jobSpec.Properties[propertyName].Description,
+			Default:     jobSpec.Properties[propertyName].Default,
 		}
-		sort.Strings(propertyNames)
-		for _, propertyName := range propertyNames {
 
-			property := &JobProperty{
-				Name: propertyName,
-				Job:  j,
-			}
-
-			propertyDefinition := properties[propertyName]
-			if propertyDefinition != nil {
-				propertyDefinitionMap := propertyDefinition.(map[interface{}]interface{})
-
-				if propertyDefinitionMap["description"] != nil {
-					property.Description = propertyDefinitionMap["description"].(string)
-				}
-				if propertyDefinitionMap["default"] != nil {
-					property.Default = propertyDefinitionMap["default"]
-				}
-			}
-
-			j.Properties = append(j.Properties, property)
-		}
+		j.Properties = append(j.Properties, property)
 	}
 
 	return nil
