@@ -7,13 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 
 	yaml "gopkg.in/yaml.v2"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/runtime"
 )
 
 func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
@@ -23,6 +22,7 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
 		return nil, nil
@@ -32,18 +32,10 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 		return nil, nil
 	}
 
-	var role *model.Role
-	for _, r := range manifest.Roles {
-		if r != nil {
-			if r.Name == "myrole" {
-				role = r
-			}
-		}
-	}
+	role := manifest.LookupRole("myrole")
 	if !assert.NotNil(role, "Failed to find role in manifest") {
 		return nil, nil
 	}
-
 	return manifest, role
 }
 
@@ -59,43 +51,42 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
+
 	statefulset, deps, err := NewStatefulSet(role, &ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
-	var endpointService, headlessService *apiv1.Service
 
-	if assert.Len(deps.Items, 3, "Should have three services per stateful role") {
-		for _, item := range deps.Items {
-			svc := item.Object.(*apiv1.Service)
-			if svc.Spec.ClusterIP == apiv1.ClusterIPNone {
-				headlessService = svc
+	var endpointService, headlessService helm.Node
+	items := deps.Get("items").Values()
+	if assert.Len(items, 3, "Should have three services per stateful role") {
+		for _, item := range items {
+			clusterIP := item.Get("spec").Get("clusterIP")
+			if clusterIP != nil && clusterIP.Value() == "None" {
+				headlessService = item
 			} else {
-				endpointService = svc
+				endpointService = item
 			}
 		}
 	}
 	if assert.NotNil(endpointService, "endpoint service not found") {
-		assert.Equal(role.Name+"-public", endpointService.ObjectMeta.Name, "unexpected endpoint service name")
+		assert.Equal(role.Name+"-public", endpointService.Get("metadata").Get("name").Value(), "unexpected endpoint service name")
 	}
 	if assert.NotNil(headlessService, "headless service not found") {
-		assert.Equal(role.Name+"-set", headlessService.ObjectMeta.Name, "unexpected headless service name")
+		assert.Equal(role.Name+"-set", headlessService.Get("metadata").Get("name").Value(), "unexpected headless service name")
 	}
 
-	objects := apiv1.List{
-		Items: append(deps.Items,
-			runtime.RawExtension{
-				Object: statefulset,
-			}),
-	}
-	yamlConfig := bytes.Buffer{}
-	if err := WriteYamlConfig(&objects, &yamlConfig); !assert.NoError(err) {
+	items = append(items, statefulset)
+	objects := helm.NewMapping("items", helm.NewList(items...))
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(objects); !assert.NoError(err) {
 		return
 	}
 	var expected, actual interface{}
 	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
+
 	expectedYAML := strings.Replace(`---
 		items:
 		-
@@ -175,7 +166,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
 func TestStatefulSetVolumes(t *testing.T) {
@@ -193,8 +184,8 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	yamlConfig := bytes.Buffer{}
-	err = WriteYamlConfig(statefulset, &yamlConfig)
+	yamlConfig := &bytes.Buffer{}
+	err = helm.NewEncoder(yamlConfig).Encode(statefulset)
 	if !assert.NoError(err) {
 		return
 	}
@@ -203,52 +194,53 @@ func TestStatefulSetVolumes(t *testing.T) {
 	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
+
 	expectedYAML := strings.Replace(`---
-	metadata:
-		name: myrole
-	spec:
-		replicas: 1
-		serviceName: myrole-set
-		template:
-			metadata:
-				labels:
-					skiff-role-name: myrole
-				name: myrole
-			spec:
-				containers:
-				-
+		metadata:
+			name: myrole
+		spec:
+			replicas: 1
+			serviceName: myrole-set
+			template:
+				metadata:
+					labels:
+						skiff-role-name: myrole
 					name: myrole
-					volumeMounts:
+				spec:
+					containers:
 					-
+						name: myrole
+						volumeMounts:
+						-
+							name: persistent-volume
+							mountPath: /mnt/persistent
+						-
+							name: shared-volume
+							mountPath: /mnt/shared
+			volumeClaimTemplates:
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: persistent
 						name: persistent-volume
-						mountPath: /mnt/persistent
-					-
+					spec:
+						accessModes: [ReadWriteOnce]
+						resources:
+							requests:
+								storage: 5G
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: shared
 						name: shared-volume
-						mountPath: /mnt/shared
-		volumeClaimTemplates:
-			-
-				metadata:
-					annotations:
-						volume.beta.kubernetes.io/storage-class: persistent
-					name: persistent-volume
-				spec:
-					accessModes: [ReadWriteOnce]
-					resources:
-						requests:
-							storage: 5G
-			-
-				metadata:
-					annotations:
-						volume.beta.kubernetes.io/storage-class: shared
-					name: shared-volume
-				spec:
-					accessModes: [ReadWriteMany]
-					resources:
-						requests:
-							storage: 40G
+					spec:
+						accessModes: [ReadWriteMany]
+						resources:
+							requests:
+								storage: 40G
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }

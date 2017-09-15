@@ -79,8 +79,8 @@ type RoleRun struct {
 
 // RoleRunScaling describes how a role should scale out at runtime
 type RoleRunScaling struct {
-	Min int32 `yaml:"min"`
-	Max int32 `yaml:"max"`
+	Min int `yaml:"min"`
+	Max int `yaml:"max"`
 }
 
 // RoleRunVolume describes a volume to be attached at runtime
@@ -111,12 +111,12 @@ type HealthProbe struct {
 	URL              string            `yaml:"url"`                         // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
 	Headers          map[string]string `yaml:"headers"`                     // Custom headers; only used for URL.
 	Command          []string          `yaml:"command"`                     // Custom command. Cannot be used with other checks.
-	Port             int32             `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
-	InitialDelay     int32             `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
-	Period           int32             `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
-	Timeout          int32             `yaml:"timeout,omitempty"`           // Timeout in seconds, default 3, minimum 1
-	SuccessThreshold int32             `yaml:"success_threshold,omitempty"` // Success threshold in seconds, default 1, minimum 1
-	FailureThreshold int32             `yaml:"failure_threshold,omitempty"` // Failure threshold in seconds, default 3, minimum 1
+	Port             int               `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
+	InitialDelay     int               `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
+	Period           int               `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
+	Timeout          int               `yaml:"timeout,omitempty"`           // Timeout in seconds, default 3, minimum 1
+	SuccessThreshold int               `yaml:"success_threshold,omitempty"` // Success threshold in seconds, default 1, minimum 1
+	FailureThreshold int               `yaml:"failure_threshold,omitempty"` // Failure threshold in seconds, default 3, minimum 1
 }
 
 // Roles is an array of Role*
@@ -261,7 +261,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	if err != nil {
 		return nil, err
 	}
-
 	mappedReleases := map[string]*Release{}
 
 	for _, release := range releases {
@@ -279,7 +278,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	if err := yaml.Unmarshal(manifestContents, &rolesManifest); err != nil {
 		return nil, err
 	}
-
 	if rolesManifest.Configuration == nil {
 		rolesManifest.Configuration = &Configuration{}
 	}

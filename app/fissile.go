@@ -866,7 +866,7 @@ func (f *Fissile) GenerateKube(rolesManifestPath, outputDir, repository, registr
 	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, rolesManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
-func (f *Fissile) generateSecrets(outputDir string, secrets *helm.Mapping, rolesManifest *model.RoleManifest, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(outputDir string, secrets helm.Node, rolesManifest *model.RoleManifest, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"
@@ -918,7 +918,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 			return err
 		}
 
-		if err := kube.WriteYamlConfig(pod, outputFile); err != nil {
+		if err := helm.NewEncoder(outputFile).Encode(pod); err != nil {
 			return err
 		}
 	} else {
@@ -927,7 +927,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 			return err
 		}
 
-		if err := kube.WriteYamlConfig(job, outputFile); err != nil {
+		if err := helm.NewEncoder(outputFile).Encode(job); err != nil {
 			return err
 		}
 	}
@@ -984,36 +984,32 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 			}
 
 		case model.RoleTypeBosh:
-			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
+			enc := helm.NewEncoder(outputFile)
 
+			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 			if role.HasTag("clustered") || needsStorage {
 				statefulSet, deps, err := kube.NewStatefulSet(role, settings)
 				if err != nil {
 					return err
 				}
-
-				if err := kube.WriteYamlConfig(statefulSet, outputFile); err != nil {
+				if err := enc.Encode(statefulSet); err != nil {
 					return err
 				}
-
-				if err := kube.WriteYamlConfig(deps, outputFile); err != nil {
+				if err := enc.Encode(deps); err != nil {
 					return err
 				}
 
 				continue
 			}
-
 			deployment, svc, err := kube.NewDeployment(role, settings)
 			if err != nil {
 				return err
 			}
-
-			if err := kube.WriteYamlConfig(deployment, outputFile); err != nil {
+			if err := enc.Encode(deployment); err != nil {
 				return err
 			}
-
 			if svc != nil {
-				if err := kube.WriteYamlConfig(svc, outputFile); err != nil {
+				if err := enc.Encode(svc); err != nil {
 					return err
 				}
 			}

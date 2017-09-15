@@ -3,15 +3,14 @@ package kube
 import (
 	"fmt"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
-	"k8s.io/client-go/pkg/api/resource"
-	meta "k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	v1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
-// NewStatefulSet returns a k8s stateful set for the given role
-func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.StatefulSet, *v1.List, error) {
+const volumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
+
+// NewStatefulSet returns a stateful set for the given role
+func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
@@ -19,90 +18,55 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (*v1beta1.Statef
 	}
 
 	podTemplate, err := NewPodTemplate(role, settings)
-
 	if err != nil {
 		return nil, nil, err
 	}
-
-	volumeClaimTemplates := getVolumeClaims(role, settings.CreateHelmChart)
 
 	svcList, err := NewClusterIPServiceList(role, true, settings)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return &v1beta1.StatefulSet{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "apps/v1beta1",
-			Kind:       "StatefulSet",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name: role.Name,
-			Labels: map[string]string{
-				RoleNameLabel: role.Name,
-			},
-		},
-		Spec: v1beta1.StatefulSetSpec{
-			Replicas:             &role.Run.Scaling.Min,
-			ServiceName:          fmt.Sprintf("%s-set", role.Name),
-			Template:             podTemplate,
-			VolumeClaimTemplates: volumeClaimTemplates,
-		},
-	}, svcList, nil
+	claims := getAllVolumeClaims(role, settings.CreateHelmChart)
+
+	spec := helm.NewIntMapping("replicas", role.Run.Scaling.Min)
+	spec.AddStr("serviceName", fmt.Sprintf("%s-set", role.Name))
+	spec.Add("template", podTemplate)
+	spec.Add("volumeClaimTemplates", helm.NewList(claims...))
+
+	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name)
+	statefulSet.Add("spec", spec)
+
+	return statefulSet.Sort(), svcList, nil
+}
+
+// getAllVolumeClaims returns the list of persistent and shared volume claims from a role
+func getAllVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
+	claims := getVolumeClaims(role.Run.PersistentVolumes, "persistent", "ReadWriteOnce", createHelmChart)
+	claims = append(claims, getVolumeClaims(role.Run.SharedVolumes, "shared", "ReadWriteMany", createHelmChart)...)
+	return claims
 }
 
 // getVolumeClaims returns the list of persistent volume claims from a role
-func getVolumeClaims(role *model.Role, createHealmChart bool) []v1.PersistentVolumeClaim {
-	totalLength := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
-	claims := make([]v1.PersistentVolumeClaim, 0, totalLength)
-
-	types := []struct {
-		volumeDefinitions []*model.RoleRunVolume
-		storageClass      string
-		accessMode        v1.PersistentVolumeAccessMode
-	}{
-		{
-			role.Run.PersistentVolumes,
-			"persistent",
-			v1.ReadWriteOnce,
-		},
-		{
-			role.Run.SharedVolumes,
-			"shared",
-			v1.ReadWriteMany,
-		},
-	}
-
+func getVolumeClaims(volumeDefinitions []*model.RoleRunVolume, storageClass string, accessMode string, createHealmChart bool) []helm.Node {
 	if createHealmChart {
-		for i := range types {
-			types[i].storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", types[i].storageClass)
-		}
+		storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", storageClass)
 	}
 
-	for _, volumeTypeInfo := range types {
-		for _, volume := range volumeTypeInfo.volumeDefinitions {
-			pvc := v1.PersistentVolumeClaim{
-				ObjectMeta: v1.ObjectMeta{
-					Name: volume.Tag,
-					Annotations: map[string]string{
-						"volume.beta.kubernetes.io/storage-class": volumeTypeInfo.storageClass,
-					},
-				},
-				Spec: v1.PersistentVolumeClaimSpec{
-					AccessModes: []v1.PersistentVolumeAccessMode{
-						volumeTypeInfo.accessMode,
-					},
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceStorage: *resource.NewScaledQuantity(int64(volume.Size), resource.Giga),
-						},
-					},
-				},
-			}
+	var claims []helm.Node
+	for _, volume := range volumeDefinitions {
+		meta := helm.NewStrMapping("name", volume.Tag)
+		meta.Add("annotations", helm.NewStrMapping(volumeStorageClassAnnotation, storageClass))
 
-			claims = append(claims, pvc)
-		}
+		size := fmt.Sprintf("%dG", volume.Size)
+
+		spec := helm.NewMapping("accessModes", helm.NewStrList(accessMode))
+		spec.Add("resources", helm.NewMapping("requests", helm.NewStrMapping("storage", size)))
+
+		claim := helm.NewMapping("metadata", meta)
+		claim.Add("spec", spec)
+
+		claims = append(claims, claim)
 	}
-
 	return claims
 }

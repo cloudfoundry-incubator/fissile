@@ -11,39 +11,36 @@ import (
 
 // parsePortRange converts a port range string to a starting and an ending port number
 // port ranges can be single integers (e.g. 8080) or they can be ranges (e.g. 10001-10010)
-func parsePortRange(portRange, name, description string) (int32, int32, error) {
+func parsePortRange(portRange, name, description string) (int, int, error) {
 	// Note that we do ParseInt with bitSize=16 because the max port number is 65535
-
 	idx := strings.Index(portRange, "-")
 	if idx < 0 {
-		portNum, err := strconv.ParseInt(portRange, 10, 16)
+		portNum, err := strconv.Atoi(portRange)
 		if err != nil {
 			return 0, 0, fmt.Errorf("Port %s has invalid %s port %s: %s", name, description, portRange, err)
 		}
-		return int32(portNum), int32(portNum), nil
+		return portNum, portNum, nil
 	}
-
-	minPort, err := strconv.ParseInt(portRange[:idx], 10, 16)
+	minPort, err := strconv.Atoi(portRange[:idx])
 	if err != nil {
 		return 0, 0, fmt.Errorf("Port %s has invalid %s starting port %s: %s", name, description, portRange[:idx], err)
 	}
-	maxPort, err := strconv.ParseInt(portRange[idx+1:], 10, 16)
+	maxPort, err := strconv.Atoi(portRange[idx+1:])
 	if err != nil {
 		return 0, 0, fmt.Errorf("Port %s has invalid %s ending port %s: %s", name, description, portRange[idx+1:], err)
 	}
 	if minPort > maxPort {
 		return 0, 0, fmt.Errorf("Port %s has invalid %s port range %s", name, description, portRange)
 	}
-	return int32(minPort), int32(maxPort), nil
+	return minPort, maxPort, nil
 }
 
 type portInfo struct {
 	name string
-	port int32
+	port int
 }
 
-func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
-
+func getPortInfo(name string, minPort, maxPort int) ([]portInfo, error) {
 	// We may need to fixup the port name.  It must:
 	// - not be empty
 	// - be no more than 15 characters long
@@ -92,7 +89,7 @@ func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
 	}
 
 	results := make([]portInfo, 0, maxPort-minPort+1)
-	for i := int32(0); i <= rangeSize; i++ {
+	for i := 0; i <= rangeSize; i++ {
 		singleName := fixedName
 		if suffixLength > 0 {
 			singleName = fmt.Sprintf("%s-%d", fixedName, i)
@@ -106,15 +103,27 @@ func getPortInfo(name string, minPort, maxPort int32) ([]portInfo, error) {
 	return results, nil
 }
 
-// newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
-	mapping := helm.NewEmptyMapping(modifiers...)
-	mapping.Add("apiVersion", helm.NewScalar("v1"))
-	mapping.Add("kind", helm.NewScalar(kind))
+func newTypeMeta(apiVersion, kind string) *helm.Mapping {
+	return helm.NewStrMapping("apiVersion", apiVersion, "kind", kind)
+}
 
+func newObjectMeta(name string) *helm.Mapping {
+	meta := helm.NewStrMapping("name", name)
+	meta.Add("labels", helm.NewStrMapping("skiff-role-name", name))
+	return meta
+}
+
+func newSelector(name string) *helm.Mapping {
 	meta := helm.NewEmptyMapping()
-	meta.Add("name", helm.NewScalar(name))
-	mapping.Add("metadata", meta)
+	meta.Add("matchLabels", helm.NewStrMapping("skiff-role-name", name))
+	return meta
+}
+
+// newKubeConfig sets up generic a Kube config structure with minimal metadata
+func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	mapping := newTypeMeta(apiVersion, kind)
+	mapping.Set(modifiers...)
+	mapping.Add("metadata", newObjectMeta(name))
 
 	return mapping
 }
