@@ -433,6 +433,7 @@ type RunInContainerOpts struct {
 	ContainerName string
 	ImageName     string
 	NetworkMode   string
+	EntryPoint    []string
 	Cmd           []string
 	// Mount points, src -> dest
 	// dest may be special values ContainerInPath, ContainerOutPath
@@ -497,6 +498,7 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 			AttachStderr: true,
 			Hostname:     "compiler",
 			Domainname:   "fissile",
+			Entrypoint:   opts.EntryPoint,
 			Cmd:          containerCmd,
 			WorkingDir:   "/",
 			Image:        opts.ImageName,

@@ -515,7 +515,8 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     c.stemcellImageName,
-		Cmd:           []string{"bash", containerScriptPath, pkg.Name, pkg.Version},
+		EntryPoint:    []string{},
+		Cmd:           []string{"/bin/bash", containerScriptPath, pkg.Name, pkg.Version},
 		Mounts:        mounts,
 		NetworkMode:   c.dockerNetworkMode,
 		Volumes:       map[string]map[string]string{sourceMountName: nil},
