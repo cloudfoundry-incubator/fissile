@@ -271,6 +271,20 @@ func TestWriteConfigs(t *testing.T) {
 				Default: "bar",
 			},
 		},
+		LinkProvides: map[string]JobLinkProvides{
+			"silly": JobLinkProvides{
+				Type: "silly-type",
+				Properties: []string{
+					"prop",
+				},
+			},
+		},
+		LinkConsumes: map[string]JobLinkConsumes{
+			"serious": JobLinkConsumes{
+				Type:     "serious-type",
+				Optional: true,
+			},
+		},
 	}
 
 	role := &Role{
@@ -306,6 +320,12 @@ func TestWriteConfigs(t *testing.T) {
 		},
 		"networks": {
 			"default": {}
+		},
+		"consumes": {
+			"serious": {
+				"role": "",
+				"job": ""
+			}
 		}
 	}`, string(json))
 }
