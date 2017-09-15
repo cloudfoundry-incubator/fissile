@@ -488,15 +488,16 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 
 	// in-memory buffer of the log
 	log := new(bytes.Buffer)
+	logWriter := util.NewSyncedWriter(log)
 
 	stdoutWriter := docker.NewFormattingWriter(
-		log,
+		logWriter,
 		func(line string) string {
 			return color.GreenString("compilation-%s > %s", color.MagentaString("%s", pkg.Name), color.WhiteString("%s", line))
 		},
 	)
 	stderrWriter := docker.NewFormattingWriter(
-		log,
+		logWriter,
 		func(line string) string {
 			return color.GreenString("compilation-%s > %s", color.MagentaString("%s", pkg.Name), color.RedString("%s", line))
 		},

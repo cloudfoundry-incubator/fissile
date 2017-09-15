@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/fatih/color"
@@ -77,6 +78,7 @@ type FormattingWriter struct {
 	io.Closer
 	colorizer StringFormatter
 	remainder *bytes.Buffer
+	mutex     sync.Mutex
 	isClosed  bool
 }
 
@@ -90,6 +92,8 @@ func NewFormattingWriter(writer io.Writer, aColorizer StringFormatter) *Formatti
 }
 
 func (w *FormattingWriter) Write(data []byte) (int, error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 	if w.isClosed {
 		return 0, fmt.Errorf("Attempt to write to a closed FormattingWriter")
 	}
@@ -117,6 +121,8 @@ func (w *FormattingWriter) Write(data []byte) (int, error) {
 
 // Close ensures the remaining data is written to the io.Writer
 func (w *FormattingWriter) Close() error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 	if w.isClosed {
 		return nil
 	}
