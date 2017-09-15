@@ -17,14 +17,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type jobLinkProvider struct {
+	role *Role
+	job  *Job
+}
+
 // JobLinkProvides describes the BOSH links a job provides
 type JobLinkProvides struct {
+	Name       string
+	Role       *Role
+	Job        *Job
 	Type       string   `json:"type"`
 	Properties []string `json:"properties"`
+	providers  []jobLinkProvider
 }
 
 // JobLinkConsumes describes the BOSH links a job consumes
 type JobLinkConsumes struct {
+	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Optional bool   `json:"optional"`
 	Role     *Role  `json:"-"` // Role in which the resolved job is running
@@ -43,8 +53,8 @@ type Job struct {
 	Properties   []*JobProperty
 	Version      string
 	Release      *Release
-	LinkProvides map[string]JobLinkProvides
-	LinkConsumes map[string]JobLinkConsumes
+	LinkProvides []*JobLinkProvides
+	LinkConsumes []*JobLinkConsumes
 
 	jobReleaseInfo map[interface{}]interface{}
 }
@@ -244,20 +254,23 @@ func (j *Job) loadJobSpec() (err error) {
 		j.Properties = append(j.Properties, property)
 	}
 
-	j.LinkProvides = make(map[string]JobLinkProvides, len(jobSpec.Provides))
+	j.LinkProvides = make([]*JobLinkProvides, 0, len(jobSpec.Provides))
 	for _, provides := range jobSpec.Provides {
-		j.LinkProvides[provides.Name] = JobLinkProvides{
+		j.LinkProvides = append(j.LinkProvides, &JobLinkProvides{
+			Name:       provides.Name,
 			Type:       provides.Type,
+			Job:        j,
 			Properties: provides.Properties,
-		}
+		})
 	}
 
-	j.LinkConsumes = make(map[string]JobLinkConsumes, len(jobSpec.Consumes))
+	j.LinkConsumes = make([]*JobLinkConsumes, 0, len(jobSpec.Consumes))
 	for _, consumes := range jobSpec.Consumes {
-		j.LinkConsumes[consumes.Name] = JobLinkConsumes{
+		j.LinkConsumes = append(j.LinkConsumes, &JobLinkConsumes{
+			Name:     consumes.Name,
 			Type:     consumes.Type,
 			Optional: consumes.Optional,
-		}
+		})
 	}
 
 	return nil
@@ -293,7 +306,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		Networks   struct {
 			Default map[string]string `json:"default"`
 		} `json:"networks"`
-		Consumes map[string]configConsumes `json:"consumes"`
+		ExportedProperties []string                  `json:"exported_properties"`
+		Consumes           map[string]configConsumes `json:"consumes"`
 	}
 
 	config.Job.Templates = make([]struct {
@@ -302,6 +316,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	config.Parameters = make(map[string]string)
 	config.Properties = make(map[string]interface{})
 	config.Networks.Default = make(map[string]string)
+	config.ExportedProperties = make([]string, 0)
 	config.Consumes = make(map[string]configConsumes, 0)
 
 	config.Job.Name = role.Name
@@ -322,15 +337,15 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	}
 	config.Properties = properties
 
-	for consumeName, consumeTarget := range j.LinkConsumes {
-		var roleName, jobName string
+	for _, provider := range j.LinkProvides {
+		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
+	}
+	for _, consumeTarget := range j.LinkConsumes {
 		if consumeTarget.Role != nil && consumeTarget.Job != nil {
-			roleName = consumeTarget.Role.Name
-			jobName = consumeTarget.Job.Name
-		}
-		config.Consumes[consumeName] = configConsumes{
-			Role: roleName,
-			Job:  jobName,
+			config.Consumes[consumeTarget.Name] = configConsumes{
+				Role: consumeTarget.Role.Name,
+				Job:  consumeTarget.Job.Name,
+			}
 		}
 	}
 

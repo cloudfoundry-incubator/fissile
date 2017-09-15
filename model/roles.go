@@ -345,6 +345,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		roleManifest.rolesByName[role.Name] = role
 	}
 
+	allErrs = append(allErrs, roleManifest.resolveLinks()...)
 	allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
 	allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
 	allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
@@ -381,6 +382,73 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *O
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
 	return m.rolesByName[roleName]
+}
+
+// resolveLinks examines the BOSH links specified in the job specs and maps
+// them to the correct role / job that can be looked up at runtime
+func (m *RoleManifest) resolveLinks() validation.ErrorList {
+	errors := make(validation.ErrorList, 0)
+
+	// The list of BOSH providers, by name
+	byName := make(map[string][]*JobLinkProvides)
+	// The list of BOSH providers, sorted by type
+	byType := make(map[string][]*JobLinkProvides)
+
+	// Fill out the provider mappings
+	for _, role := range m.Roles {
+		for _, job := range role.Jobs {
+			for _, provides := range job.LinkProvides {
+				provides.providers = append(provides.providers, jobLinkProvider{role, job})
+				byName[provides.Name] = append(byName[provides.Name], provides)
+				byType[provides.Type] = append(byType[provides.Type], provides)
+			}
+		}
+	}
+
+	// Resolve the consumers
+	for _, role := range m.Roles {
+		for _, job := range role.Jobs {
+		iterateOverConsumers:
+			for idx, consumes := range job.LinkConsumes {
+				var candidates []*JobLinkProvides
+				if consumes.Name != "" {
+					candidates = byName[consumes.Name]
+				} else if consumes.Type != "" {
+					candidates = byType[consumes.Type]
+				}
+				for _, candidate := range candidates {
+					if consumes.Type != "" && consumes.Type != candidate.Type {
+						continue // Incorrect type
+					}
+					if len(candidate.providers) < 1 {
+						continue // No providers
+					}
+					var selectedProvider *jobLinkProvider
+					for _, candidateProvider := range candidate.providers {
+						if candidate.Role == role {
+							selectedProvider = &candidateProvider
+							break
+						}
+					}
+					if selectedProvider == nil {
+						selectedProvider = &candidate.providers[0]
+					}
+					consumes.Role = selectedProvider.role
+					consumes.Job = selectedProvider.job
+					continue iterateOverConsumers
+				}
+				// No valid providers
+				if !consumes.Optional {
+					errors = append(errors, validation.NotFound(
+						fmt.Sprintf(`role[%s].job[%s].consumes[%d]`, role.Name, job.Name, idx),
+						consumes,
+					))
+				}
+			}
+		}
+	}
+
+	return errors
 }
 
 // SelectRoles will find only the given roles in the role manifest

@@ -323,7 +323,8 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 					"client_keys":null
 				}
 			},
-			"consumes": {}
+			"consumes": {},
+			"exported_properties": []
 		}`
 		assert.JSONEq(expectedString, string(buf))
 	}

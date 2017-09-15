@@ -271,18 +271,16 @@ func TestWriteConfigs(t *testing.T) {
 				Default: "bar",
 			},
 		},
-		LinkProvides: map[string]JobLinkProvides{
-			"silly": JobLinkProvides{
-				Type: "silly-type",
-				Properties: []string{
-					"prop",
-				},
+		LinkProvides: []*JobLinkProvides{
+			&JobLinkProvides{
+				Name:       "<not used>",
+				Properties: []string{"exported-prop"},
 			},
 		},
-		LinkConsumes: map[string]JobLinkConsumes{
-			"serious": JobLinkConsumes{
-				Type:     "serious-type",
-				Optional: true,
+		LinkConsumes: []*JobLinkConsumes{
+			&JobLinkConsumes{
+				Name: "serious",
+				Type: "serious-type",
 			},
 		},
 	}
@@ -291,6 +289,8 @@ func TestWriteConfigs(t *testing.T) {
 		Name: "dummy role",
 		Jobs: Jobs{job},
 	}
+	job.LinkConsumes[0].Role = role
+	job.LinkConsumes[0].Job = job
 
 	tempFile, err := ioutil.TempFile("", "fissile-job-test")
 	assert.NoError(err)
@@ -321,12 +321,18 @@ func TestWriteConfigs(t *testing.T) {
 		"networks": {
 			"default": {}
 		},
+		"exported_properties": [
+			"prop"
+		],
 		"consumes": {
 			"serious": {
-				"role": "",
-				"job": ""
+				"role": "dummy role",
+				"job": "silly job"
 			}
-		}
+		},
+		"exported_properties": [
+			"exported-prop"
+		]
 	}`, string(json))
 }
 
