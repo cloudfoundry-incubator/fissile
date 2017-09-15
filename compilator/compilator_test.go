@@ -588,6 +588,9 @@ func TestCompilePackageInDocker(t *testing.T) {
 func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 	assert := assert.New(t)
 
+	dockerClient, err := dockerclient.NewClientFromEnv()
+	assert.NoError(err)
+
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
@@ -606,6 +609,17 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", keepInContainer, ui)
 	assert.NoError(err)
 
+	containerName := comp.getPackageContainerName(release.Packages[0])
+	removeContainerOptions := dockerclient.RemoveContainerOptions{
+		ID:            containerName,
+		RemoveVolumes: true,
+		Force:         true,
+	}
+	err = dockerClient.RemoveContainer(removeContainerOptions)
+	if _, ok := err.(*dockerclient.NoSuchContainer); !ok {
+		assert.NoError(err, "Error removing container %s before test", containerName)
+	}
+
 	beforeCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 
@@ -614,6 +628,13 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 	afterCompileContainers, err := getContainerIDs(imageName)
 	assert.NoError(err)
 	assert.Equal(beforeCompileContainers, afterCompileContainers)
+
+	// Attempt to clean up by removing the container if it's around
+	// Ignore failure if the container is not found
+	err = dockerClient.RemoveContainer(removeContainerOptions)
+	if _, ok := err.(*dockerclient.NoSuchContainer); !ok {
+		assert.NoError(err, "Error removing container %s after test", containerName)
+	}
 }
 
 func TestCreateDepBuckets(t *testing.T) {
