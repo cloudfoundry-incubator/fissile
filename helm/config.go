@@ -318,13 +318,6 @@ func (mapping *Mapping) AddNode(name string, node Node) {
 	}
 }
 
-// AddBool adds a named boolean if the value is true.
-func (mapping *Mapping) AddBool(name string, value bool, modifiers ...NodeModifier) {
-	if value {
-		mapping.AddNode(name, NewScalar("true", modifiers...))
-	}
-}
-
 // AddInt adds a named integer if the value is not 0.
 func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
 	if value != 0 {

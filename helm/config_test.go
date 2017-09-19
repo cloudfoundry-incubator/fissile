@@ -132,16 +132,12 @@ func TestHelmMapping(t *testing.T) {
 	mapping.Add("bar", "two")
 	mapping.Add("str", "")
 
-	mapping.AddBool("boo", false)
-	mapping.AddBool("baz", true)
-
 	root := NewNodeMapping("Mapping", mapping)
 
 	equal(t, root, `---
 Mapping:
   foo: 1
   bar: two
-  baz: true
 `)
 
 	addComments(root)
@@ -153,8 +149,6 @@ Mapping:
   foo: 1
   # comment 4
   bar: two
-  # comment 5
-  baz: true
 `)
 
 	addBlocks(root)
@@ -171,10 +165,6 @@ Mapping:
   # comment 4
   {{- if block 4 }}
   bar: two
-  {{- end }}
-  # comment 5
-  {{- if block 5 }}
-  baz: true
   {{- end }}
 {{- end }}
 {{- end }}
