@@ -34,7 +34,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 
 	var resources helm.Node
 	if settings.UseMemoryLimits {
-		resources = helm.NewMapping("requests", helm.NewStrMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
+		resources = helm.NewNodeMapping("requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
 	}
 
 	securityContext := getSecurityContext(role)
@@ -56,26 +56,26 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 	}
 
 	container := helm.NewEmptyMapping()
-	container.AddStr("name", role.Name)
-	container.AddStr("image", image)
-	container.Add("ports", ports)
-	container.Add("volumeMounts", getVolumeMounts(role))
-	container.Add("env", vars)
-	container.Add("resources", resources)
-	container.Add("securityContext", securityContext)
-	container.Add("livenessProbe", livenessProbe)
-	container.Add("readinessProbe", readinessProbe)
+	container.Add("name", role.Name)
+	container.Add("image", image)
+	container.AddNode("ports", ports)
+	container.AddNode("volumeMounts", getVolumeMounts(role))
+	container.AddNode("env", vars)
+	container.AddNode("resources", resources)
+	container.AddNode("securityContext", securityContext)
+	container.AddNode("livenessProbe", livenessProbe)
+	container.AddNode("readinessProbe", readinessProbe)
 	container.Sort()
 
 	spec := helm.NewEmptyMapping()
-	spec.Add("containers", helm.NewList(container))
-	spec.AddStr("dnsPolicy", "ClusterFirst")
-	spec.AddStr("restartPolicy", "Always")
+	spec.AddNode("containers", helm.NewNodeList(container))
+	spec.Add("dnsPolicy", "ClusterFirst")
+	spec.Add("restartPolicy", "Always")
 	spec.Sort()
 
 	podTemplate := helm.NewEmptyMapping()
-	podTemplate.Add("metadata", newObjectMeta(role.Name))
-	podTemplate.Add("spec", spec)
+	podTemplate.AddNode("metadata", newObjectMeta(role.Name))
+	podTemplate.AddNode("spec", spec)
 
 	return podTemplate, nil
 }
@@ -98,7 +98,7 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	}
 
 	pod := newKubeConfig("v1", "Pod", role.Name)
-	pod.Add("spec", podTemplate.Get("spec"))
+	pod.AddNode("spec", podTemplate.Get("spec"))
 
 	return pod.Sort(), nil
 }
@@ -141,30 +141,30 @@ func getContainerPorts(role *model.Role) (helm.Node, error) {
 		for _, portInfo := range portInfos {
 			newPort := helm.NewEmptyMapping()
 			newPort.AddInt("containerPort", portInfo.port)
-			newPort.AddStr("name", portInfo.name)
-			newPort.AddStr("protocol", strings.ToUpper(port.Protocol))
+			newPort.Add("name", portInfo.name)
+			newPort.Add("protocol", strings.ToUpper(port.Protocol))
 			ports = append(ports, newPort)
 		}
 	}
 	if len(ports) == 0 {
 		return nil, nil
 	}
-	return helm.NewList(ports...), nil
+	return helm.NewNodeList(ports...), nil
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.PersistentVolumes {
-		mounts = append(mounts, helm.NewStrMapping("mountPath", volume.Path, "name", volume.Tag))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag))
 	}
 	for _, volume := range role.Run.SharedVolumes {
-		mounts = append(mounts, helm.NewStrMapping("mountPath", volume.Path, "name", volume.Tag))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag))
 	}
 	if len(mounts) == 0 {
 		return nil
 	}
-	return helm.NewList(mounts...)
+	return helm.NewNodeList(mounts...)
 }
 
 func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, createHelmChart bool) (helm.Node, error) {
@@ -176,10 +176,10 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 	var env []helm.Node
 	for _, config := range configs {
 		if config.Secret {
-			secretKeyRef := helm.NewStrMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
+			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
 
-			envVar := helm.NewStrMapping("name", config.Name)
-			envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+			envVar := helm.NewMapping("name", config.Name)
+			envVar.AddNode("valueFrom", helm.NewNodeMapping("secretKeyRef", secretKeyRef))
 
 			env = append(env, envVar)
 			continue
@@ -200,20 +200,20 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 				continue
 			}
 		}
-		env = append(env, helm.NewStrMapping("name", config.Name, "value", stringifiedValue))
+		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
 
-	fieldRef := helm.NewStrMapping("fieldPath", "metadata.namespace")
+	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
 
-	envVar := helm.NewStrMapping("name", "KUBERNETES_NAMESPACE")
-	envVar.Add("valueFrom", helm.NewMapping("fieldRef", fieldRef))
+	envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")
+	envVar.AddNode("valueFrom", helm.NewNodeMapping("fieldRef", fieldRef))
 
 	env = append(env, envVar)
 
 	sort.Slice(env[:], func(i, j int) bool {
 		return env[i].Get("name").Value() < env[j].Get("name").Value()
 	})
-	return helm.NewList(env...), nil
+	return helm.NewNodeList(env...), nil
 }
 
 func getSecurityContext(role *model.Role) helm.Node {
@@ -221,14 +221,14 @@ func getSecurityContext(role *model.Role) helm.Node {
 	for _, cap := range role.Run.Capabilities {
 		cap = strings.ToUpper(cap)
 		if cap == "ALL" {
-			return helm.NewStrMapping("privileged", "true")
+			return helm.NewMapping("privileged", "true")
 		}
 		capabilities = append(capabilities, cap)
 	}
 	if len(capabilities) == 0 {
 		return nil
 	}
-	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewStrList(capabilities...)))
+	return helm.NewNodeMapping("capabilities", helm.NewNodeMapping("add", helm.NewList(capabilities...)))
 }
 
 func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
@@ -259,7 +259,7 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 	if probe.Get("initialDelaySeconds") == nil {
 		probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
 	}
-	probe.Add("tcpSocket", helm.NewIntMapping("port", monitPort))
+	probe.AddNode("tcpSocket", helm.NewIntMapping("port", monitPort))
 	return probe.Sort(), nil
 }
 
@@ -299,7 +299,7 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	if probe == nil {
 		probe = helm.NewEmptyMapping()
 	}
-	probe.Add("tcpSocket", helm.NewIntMapping("port", probePort))
+	probe.AddNode("tcpSocket", helm.NewIntMapping("port", probePort))
 	return probe.Sort(), nil
 }
 
@@ -325,11 +325,11 @@ func configureContainerProbe(role *model.Role, probeName string, roleProbe *mode
 		return probe.Sort(), true, err
 	}
 	if roleProbe.Port != 0 {
-		probe.Add("tcpSocket", helm.NewIntMapping("port", roleProbe.Port))
+		probe.AddNode("tcpSocket", helm.NewIntMapping("port", roleProbe.Port))
 		return probe.Sort(), true, nil
 	}
 	if len(roleProbe.Command) > 0 {
-		probe.Add("exec", helm.NewMapping("command", helm.NewStrList(roleProbe.Command...)))
+		probe.AddNode("exec", helm.NewNodeMapping("command", helm.NewList(roleProbe.Command...)))
 		return probe.Sort(), true, nil
 	}
 
@@ -365,27 +365,27 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 		host = host[:colonIndex]
 	}
 
-	httpGet := helm.NewStrMapping("scheme", scheme, "port", strconv.Itoa(port))
+	httpGet := helm.NewMapping("scheme", scheme, "port", strconv.Itoa(port))
 	// Special case to use the pod IP instead; this is run from outside the pod
 	if host != "container-ip" {
-		httpGet.AddStr("host", host)
+		httpGet.Add("host", host)
 	}
 
 	var headers []helm.Node
 	if probeURL.User != nil {
-		headers = append(headers, helm.NewStrMapping(
+		headers = append(headers, helm.NewMapping(
 			"name", "Authorization",
 			"value", base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
 		))
 	}
 	for key, value := range roleProbe.Headers {
-		headers = append(headers, helm.NewStrMapping(
+		headers = append(headers, helm.NewMapping(
 			"name", http.CanonicalHeaderKey(key),
 			"value", value,
 		))
 	}
 	if len(headers) > 0 {
-		httpGet.Add("httpHeaders", helm.NewList(headers...))
+		httpGet.AddNode("httpHeaders", helm.NewNodeList(headers...))
 	}
 
 	path := probeURL.Path
@@ -393,8 +393,8 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 		path += "?" + probeURL.RawQuery
 	}
 	// probeURL.Fragment should not be sent to the server, so we ignore it here
-	httpGet.AddStr("path", path)
+	httpGet.Add("path", path)
 	httpGet.Sort()
 
-	return helm.NewMapping("httpGet", httpGet), nil
+	return helm.NewNodeMapping("httpGet", httpGet), nil
 }

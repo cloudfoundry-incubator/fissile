@@ -14,22 +14,22 @@ func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (
 			if !ok {
 				value = "~"
 			}
-			env.Add(name, helm.NewScalar(value, helm.Comment(cv.Description)))
+			env.AddNode(name, helm.NewScalar(value, helm.Comment(cv.Description)))
 		}
 	}
 	env.Sort()
 
 	storqageClass := helm.NewEmptyMapping()
-	storqageClass.Add("persistent", helm.NewScalar("persistent"))
-	storqageClass.Add("shared", helm.NewScalar("shared"))
+	storqageClass.AddNode("persistent", helm.NewScalar("persistent"))
+	storqageClass.AddNode("shared", helm.NewScalar("shared"))
 
 	kube := helm.NewEmptyMapping()
-	kube.Add("external_ip", helm.NewScalar("192.168.77.77"))
-	kube.Add("storage_class", storqageClass)
+	kube.AddNode("external_ip", helm.NewScalar("192.168.77.77"))
+	kube.AddNode("storage_class", storqageClass)
 
 	values := helm.NewEmptyMapping()
-	values.Add("env", env)
-	values.Add("kube", kube)
+	values.AddNode("env", env)
+	values.AddNode("kube", kube)
 
 	return values, nil
 }

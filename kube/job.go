@@ -25,8 +25,8 @@ func NewJob(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	}
 
 	job := newTypeMeta("extensions/v1beta1", "Job")
-	job.Add("metadata", helm.NewStrMapping("name", role.Name))
-	job.Add("spec", helm.NewMapping("template", podTemplate))
+	job.AddNode("metadata", helm.NewMapping("name", role.Name))
+	job.AddNode("spec", helm.NewNodeMapping("template", podTemplate))
 
 	return job.Sort(), nil
 }

@@ -45,7 +45,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSe
 	}
 
 	list := newTypeMeta("v1", "List")
-	list.Add("items", helm.NewList(items...))
+	list.AddNode("items", helm.NewNodeList(items...))
 
 	return list.Sort(), nil
 }
@@ -67,13 +67,13 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		}
 
 		for _, portInfoEntry := range portInfos {
-			port := helm.NewStrMapping(
+			port := helm.NewMapping(
 				"name", portInfoEntry.name,
 				"port", strconv.Itoa(portInfoEntry.port),
 				"protocol", strings.ToUpper(portDef.Protocol),
 			)
 			if !headless {
-				port.AddStr("targetPort", portInfoEntry.name)
+				port.Add("targetPort", portInfoEntry.name)
 			}
 			ports = append(ports, port)
 		}
@@ -85,19 +85,19 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	spec := helm.NewEmptyMapping()
-	spec.Add("selector", helm.NewStrMapping("skiff-role-name", role.Name))
-	spec.AddStr("type", "ClusterIP")
+	spec.AddNode("selector", helm.NewMapping("skiff-role-name", role.Name))
+	spec.Add("type", "ClusterIP")
 	if headless {
-		spec.AddStr("clusterIP", "None")
+		spec.Add("clusterIP", "None")
 	}
 	if public {
 		externalIP := "192.168.77.77"
 		if settings.CreateHelmChart {
 			externalIP = "{{ .Values.kube.external_ip | quote }}"
 		}
-		spec.Add("externalIPs", helm.NewList(helm.NewScalar(externalIP)))
+		spec.AddNode("externalIPs", helm.NewNodeList(helm.NewScalar(externalIP)))
 	}
-	spec.Add("ports", helm.NewList(ports...))
+	spec.AddNode("ports", helm.NewNodeList(ports...))
 
 	serviceName := role.Name
 	if headless {
@@ -107,8 +107,8 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	service := newTypeMeta("v1", "Service")
-	service.Add("metadata", helm.NewStrMapping("name", serviceName))
-	service.Add("spec", spec.Sort())
+	service.AddNode("metadata", helm.NewMapping("name", serviceName))
+	service.AddNode("spec", spec.Sort())
 
 	return service, nil
 }

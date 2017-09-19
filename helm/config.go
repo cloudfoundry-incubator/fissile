@@ -8,7 +8,7 @@ Each node can have an associated comment, and be wrapped by a template block
 (any template action that encloses text and terminates with an {{end}}). For
 example:
 
-  obj.Add("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
+  obj.AddNode("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
 
 will generate:
 
@@ -37,18 +37,18 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.Add(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
+    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
 
 * Use a block action to generate multiple list elements
 
-    tcp := NewMapping(Block("range $key, $value := .Values.tcp"))
-    tcp.Add("name", NewScalar("\"{{ $key }}-tcp\""))
-    tcp.Add("containerPort", NewScalar("$key"))
-    tcp.Add("protocol", NewScalar("TCP"))
+    tcp := NewNodeMapping(Block("range $key, $value := .Values.tcp"))
+    tcp.AddNode("name", NewScalar("\"{{ $key }}-tcp\""))
+    tcp.AddNode("containerPort", NewScalar("$key"))
+    tcp.AddNode("protocol", NewScalar("TCP"))
 
-    ports := NewList(Comment("List of TCP ports"))
-    ports.Add(tcp)
-    root.Add("ports", ports)
+    ports := NewNodeList(Comment("List of TCP ports"))
+    ports.AddNode(tcp)
+    root.AddNode("ports", ports)
 
   Generates this document:
 
@@ -214,17 +214,17 @@ func NewEmptyList(modifiers ...NodeModifier) *List {
 	return list
 }
 
-// NewList creates a list node initialized with nodes.
+// NewNodeList creates a list node initialized with nodes.
 // The list node will not have a comment or block action.
-func NewList(nodes ...Node) *List {
+func NewNodeList(nodes ...Node) *List {
 	list := &List{}
-	list.Add(nodes...)
+	list.AddNode(nodes...)
 	return list
 }
 
-// NewStrList creates a list node initialized with string scalars.
+// NewList creates a list node initialized with string scalars.
 // The list and scalar nodes will not have comments or block actions.
-func NewStrList(values ...string) *List {
+func NewList(values ...string) *List {
 	list := &List{}
 	for _, value := range values {
 		list.nodes = append(list.nodes, NewScalar(value))
@@ -232,8 +232,8 @@ func NewStrList(values ...string) *List {
 	return list
 }
 
-// Add one or more nodes at the end of the list.
-func (list *List) Add(nodes ...Node) {
+// AddNode one or more nodes at the end of the list.
+func (list *List) AddNode(nodes ...Node) {
 	for _, node := range nodes {
 		if node != nil {
 			list.nodes = append(list.nodes, node)
@@ -280,11 +280,11 @@ func NewEmptyMapping(modifiers ...NodeModifier) *Mapping {
 	return mapping
 }
 
-// NewMapping creates a single node mapping node and initializes shared fields.
-func NewMapping(name string, node Node, modifiers ...NodeModifier) *Mapping {
+// NewNodeMapping creates a single node mapping node and initializes shared fields.
+func NewNodeMapping(name string, node Node, modifiers ...NodeModifier) *Mapping {
 	mapping := &Mapping{}
 	mapping.Set(modifiers...)
-	mapping.Add(name, node)
+	mapping.AddNode(name, node)
 	return mapping
 }
 
@@ -297,22 +297,22 @@ func NewIntMapping(name string, value int, modifiers ...NodeModifier) *Mapping {
 	return mapping
 }
 
-// NewStrMapping creates a new mapping node initialzed with string scalars.
+// NewMapping creates a new mapping node initialzed with string scalars.
 // The mapping and scalar nodes will not have comments or block actions.
-func NewStrMapping(values ...string) *Mapping {
+func NewMapping(values ...string) *Mapping {
 	mapping := &Mapping{}
 	for i := 0; i < len(values); i += 2 {
 		value := "~"
 		if i+1 < len(values) {
 			value = values[i+1]
 		}
-		mapping.AddStr(values[i], value)
+		mapping.Add(values[i], value)
 	}
 	return mapping
 }
 
-// Add a singled named node at the end of the list.
-func (mapping *Mapping) Add(name string, node Node) {
+// AddNode a singled named node at the end of the list.
+func (mapping *Mapping) AddNode(name string, node Node) {
 	if node != nil {
 		mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
 	}
@@ -321,21 +321,21 @@ func (mapping *Mapping) Add(name string, node Node) {
 // AddBool adds a named boolean if the value is true.
 func (mapping *Mapping) AddBool(name string, value bool, modifiers ...NodeModifier) {
 	if value {
-		mapping.Add(name, NewScalar("true", modifiers...))
+		mapping.AddNode(name, NewScalar("true", modifiers...))
 	}
 }
 
 // AddInt adds a named integer if the value is not 0.
 func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
 	if value != 0 {
-		mapping.Add(name, NewScalar(strconv.Itoa(value), modifiers...))
+		mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
 	}
 }
 
-// AddStr adds a named string if the value is not the empty string.
-func (mapping *Mapping) AddStr(name string, value string, modifiers ...NodeModifier) {
+// Add adds a named string if the value is not the empty string.
+func (mapping *Mapping) Add(name string, value string, modifiers ...NodeModifier) {
 	if value != "" {
-		mapping.Add(name, NewScalar(value, modifiers...))
+		mapping.AddNode(name, NewScalar(value, modifiers...))
 	}
 }
 

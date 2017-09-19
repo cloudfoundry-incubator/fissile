@@ -19,11 +19,11 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 
 	spec := helm.NewEmptyMapping()
 	spec.AddInt("replicas", role.Run.Scaling.Min)
-	spec.Add("selector", newSelector(role.Name))
-	spec.Add("template", podTemplate)
+	spec.AddNode("selector", newSelector(role.Name))
+	spec.AddNode("template", podTemplate)
 
 	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name)
-	deployment.Add("spec", spec)
+	deployment.AddNode("spec", spec)
 
 	return deployment.Sort(), svc, nil
 }

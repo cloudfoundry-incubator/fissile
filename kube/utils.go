@@ -104,18 +104,18 @@ func getPortInfo(name string, minPort, maxPort int) ([]portInfo, error) {
 }
 
 func newTypeMeta(apiVersion, kind string) *helm.Mapping {
-	return helm.NewStrMapping("apiVersion", apiVersion, "kind", kind)
+	return helm.NewMapping("apiVersion", apiVersion, "kind", kind)
 }
 
 func newObjectMeta(name string) *helm.Mapping {
-	meta := helm.NewStrMapping("name", name)
-	meta.Add("labels", helm.NewStrMapping("skiff-role-name", name))
+	meta := helm.NewMapping("name", name)
+	meta.AddNode("labels", helm.NewMapping("skiff-role-name", name))
 	return meta
 }
 
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewEmptyMapping()
-	meta.Add("matchLabels", helm.NewStrMapping("skiff-role-name", name))
+	meta.AddNode("matchLabels", helm.NewMapping("skiff-role-name", name))
 	return meta
 }
 
@@ -123,7 +123,7 @@ func newSelector(name string) *helm.Mapping {
 func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	mapping := newTypeMeta(apiVersion, kind)
 	mapping.Set(modifiers...)
-	mapping.Add("metadata", newObjectMeta(name))
+	mapping.AddNode("metadata", newObjectMeta(name))
 
 	return mapping
 }
