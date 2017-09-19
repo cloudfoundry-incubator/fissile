@@ -72,7 +72,9 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 				"port", strconv.Itoa(portInfoEntry.port),
 				"protocol", strings.ToUpper(portDef.Protocol),
 			)
-			if !headless {
+			if headless {
+				port.AddInt("targetPort", 0)
+			} else {
 				port.Add("targetPort", portInfoEntry.name)
 			}
 			ports = append(ports, port)

@@ -82,7 +82,7 @@ func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
 				return
 			}
 			if !testhelpers.IsYAMLSubset(assert, expected, actual) {
-				assert.Fail("*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
+				assert.Fail("Not a proper YAML subset", "*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
 			}
 		}
 	}
@@ -160,10 +160,10 @@ func TestPodGetVolumeMounts(t *testing.T) {
 		switch mount.Get("name").Value() {
 		case "persistent-volume":
 			assert.Equal("/mnt/persistent", mount.Get("mountPath").Value())
-			assert.Nil(mount.Get("readOnly"))
+			assert.Equal(mount.Get("readOnly").Value(), "false")
 		case "shared-volume":
 			assert.Equal("/mnt/shared", mount.Get("mountPath").Value())
-			assert.Nil(mount.Get("readOnly"))
+			assert.Equal(mount.Get("readOnly").Value(), "false")
 		default:
 			assert.Fail("Got unexpected volume mount", "%s", mount)
 		}

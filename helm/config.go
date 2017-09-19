@@ -320,16 +320,12 @@ func (mapping *Mapping) AddNode(name string, node Node) {
 
 // AddInt adds a named integer if the value is not 0.
 func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
-	if value != 0 {
-		mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
-	}
+	mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
 }
 
 // Add adds a named string if the value is not the empty string.
 func (mapping *Mapping) Add(name string, value string, modifiers ...NodeModifier) {
-	if value != "" {
-		mapping.AddNode(name, NewScalar(value, modifiers...))
-	}
+	mapping.AddNode(name, NewScalar(value, modifiers...))
 }
 
 // Get returns the named node, or nil if the name cannot be found.

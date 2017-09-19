@@ -156,10 +156,10 @@ func getContainerPorts(role *model.Role) (helm.Node, error) {
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.PersistentVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
 	}
 	for _, volume := range role.Run.SharedVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
 	}
 	if len(mounts) == 0 {
 		return nil
@@ -242,7 +242,7 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 		var err error
 		probe, complete, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
-		if probe.Get("initialDelaySeconds") == nil {
+		if probe.Get("initialDelaySeconds").Value() == "0" {
 			probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
 		}
 		if complete || err != nil {

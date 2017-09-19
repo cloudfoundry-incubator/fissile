@@ -126,11 +126,8 @@ List:
 }
 
 func TestHelmMapping(t *testing.T) {
-	mapping := NewIntMapping("not", 0)
-	mapping.AddInt("foo", 1)
-
+	mapping := NewIntMapping("foo", 1)
 	mapping.Add("bar", "two")
-	mapping.Add("str", "")
 
 	root := NewNodeMapping("Mapping", mapping)
 
