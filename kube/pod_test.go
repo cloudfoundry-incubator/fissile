@@ -61,30 +61,33 @@ func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
 	assert := assert.New(t)
 	if sample.err != "" {
 		assert.EqualError(err, sample.err, sample.desc)
-	} else if assert.NoError(err, sample.desc) {
-		if sample.expected == "" {
-			assert.Nil(helmConfig)
-		} else {
-			actualYAML := &bytes.Buffer{}
-			if helmConfig != nil && !assert.NoError(helm.NewEncoder(actualYAML).Encode(helmConfig)) {
-				return
-			}
-			expectedYAML := strings.Replace(sample.expected, "-\t", "-   ", -1)
-			expectedYAML = strings.Replace(expectedYAML, "\t", "    ", -1)
+		return
+	}
+	if !assert.NoError(err, sample.desc) {
+		return
+	}
+	if sample.expected == "" {
+		assert.Nil(helmConfig)
+		return
+	}
+	actualYAML := &bytes.Buffer{}
+	if helmConfig != nil && !assert.NoError(helm.NewEncoder(actualYAML).Encode(helmConfig)) {
+		return
+	}
+	expectedYAML := strings.Replace(sample.expected, "-\t", "-   ", -1)
+	expectedYAML = strings.Replace(expectedYAML, "\t", "    ", -1)
 
-			var expected, actual interface{}
-			if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-				assert.Fail(expectedYAML)
-				return
-			}
-			if !assert.NoError(yaml.Unmarshal(actualYAML.Bytes(), &actual)) {
-				assert.Fail(actualYAML.String())
-				return
-			}
-			if !testhelpers.IsYAMLSubset(assert, expected, actual) {
-				assert.Fail("Not a proper YAML subset", "*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
-			}
-		}
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		assert.Fail(expectedYAML)
+		return
+	}
+	if !assert.NoError(yaml.Unmarshal(actualYAML.Bytes(), &actual)) {
+		assert.Fail(actualYAML.String())
+		return
+	}
+	if !testhelpers.IsYAMLSubset(assert, expected, actual) {
+		assert.Fail("Not a proper YAML subset", "*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
 	}
 }
 
