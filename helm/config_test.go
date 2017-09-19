@@ -71,9 +71,7 @@ Scalar: 42
 }
 
 func TestHelmList(t *testing.T) {
-	list := NewEmptyList()
-	list.AddNode(NewScalar("1"))
-	list.AddNode(NewScalar("2"))
+	list := NewList("1", "2")
 	list.AddNode(NewScalar("3"))
 
 	root := NewNodeMapping("List", list)
@@ -776,10 +774,10 @@ Mapping:
   baz: 3
   foo: 1
 `)
-	keys := mapping.Keys()
-	assert.Equal(t, 3, len(keys))
-	assert.Equal(t, "foo", keys[2])
-	assert.Equal(t, "1", mapping.Get(keys[2]).Value())
+	names := mapping.Names()
+	assert.Equal(t, 3, len(names))
+	assert.Equal(t, "foo", names[2])
+	assert.Equal(t, "1", mapping.Get(names[2]).Value())
 }
 
 func TestHelmError(t *testing.T) {

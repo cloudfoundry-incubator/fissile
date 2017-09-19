@@ -227,7 +227,7 @@ func NewNodeList(nodes ...Node) *List {
 func NewList(values ...string) *List {
 	list := &List{}
 	for _, value := range values {
-		list.nodes = append(list.nodes, NewScalar(value))
+		list.AddNode(NewScalar(value))
 	}
 	return list
 }
@@ -338,13 +338,13 @@ func (mapping *Mapping) Get(name string) Node {
 	return nil
 }
 
-// Keys returns the the ordered list of node names in the mapping.
-func (mapping *Mapping) Keys() []string {
-	var keys []string
+// Names returns the the ordered list of node names in the mapping.
+func (mapping *Mapping) Names() []string {
+	names := make([]string, 0, len(mapping.nodes))
 	for _, namedNode := range mapping.nodes {
-		keys = append(keys, namedNode.name)
+		names = append(names, namedNode.name)
 	}
-	return keys
+	return names
 }
 
 // Merge appends all named nodes from another mapping.
