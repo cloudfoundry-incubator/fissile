@@ -50,6 +50,7 @@ type RoleManifest struct {
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
 	Name              string         `yaml:"name"`
+	Description       string         `yaml:"description"`
 	Jobs              Jobs           `yaml:"_,omitempty"`
 	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`
@@ -403,6 +404,29 @@ func (m *RoleManifest) SelectRoles(roleNames []string) (Roles, error) {
 	}
 
 	return results, nil
+}
+
+// GetLongDescription returns the description of the role plus a list of all included jobs
+func (r *Role) GetLongDescription() string {
+	desc := r.Description
+	if len(desc) > 0 {
+		desc += "\n\n"
+	}
+	desc += fmt.Sprintf("The %s role contains the following jobs:", r.Name)
+	var noDesc []string
+	also := ""
+	for _, job := range r.Jobs {
+		if job.Description == "" {
+			noDesc = append(noDesc, job.Name)
+		} else {
+			desc += fmt.Sprintf("\n\n- %s: %s", job.Name, job.Description)
+			also = "Also: "
+		}
+	}
+	if len(noDesc) > 0 {
+		desc += fmt.Sprintf("\n\n%s%s", also, strings.Join(noDesc, ", "))
+	}
+	return desc
 }
 
 // GetScriptPaths returns the paths to the startup / post configgin scripts for a role

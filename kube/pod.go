@@ -98,7 +98,7 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	pod := newKubeConfig("v1", "Pod", role.Name)
+	pod := newKubeConfig("v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
 	pod.AddNode("spec", podTemplate.Get("spec"))
 
 	return pod.Sort(), nil

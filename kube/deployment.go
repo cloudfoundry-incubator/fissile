@@ -28,7 +28,7 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	spec.AddNode("selector", newSelector(role.Name))
 	spec.AddNode("template", podTemplate)
 
-	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name)
+	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name, helm.Comment(role.GetLongDescription()))
 	deployment.AddNode("spec", spec)
 
 	return deployment.Sort(), svc, nil

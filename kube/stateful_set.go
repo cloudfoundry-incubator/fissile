@@ -37,7 +37,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 	spec.AddNode("template", podTemplate)
 	spec.AddNode("volumeClaimTemplates", helm.NewNodeList(claims...))
 
-	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name)
+	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.AddNode("spec", spec)
 
 	return statefulSet.Sort(), svcList, nil

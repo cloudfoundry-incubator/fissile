@@ -30,15 +30,14 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
-		comment := fmt.Sprintf("This is dummy description for the %s role.", role.Name)
-		comment += " It should come from the role manifest (which currently doesn't have one)."
-		comment += " This is dummy text."
-		entry := helm.NewEmptyMapping(helm.Comment(comment))
 
+		entry := helm.NewEmptyMapping(helm.Comment(role.GetLongDescription()))
+
+		var comment string
 		if role.Run.Scaling.Min == role.Run.Scaling.Max {
-			comment = fmt.Sprintf("The %s role cannot be scaled", role.Name)
+			comment = fmt.Sprintf("The %s role cannot be scaled.", role.Name)
 		} else {
-			comment = fmt.Sprintf("The %s role can scale between %d and %d instance",
+			comment = fmt.Sprintf("The %s role can scale between %d and %d instances.",
 				role.Name, role.Run.Scaling.Min, role.Run.Scaling.Max)
 		}
 		entry.AddInt("count", role.Run.Scaling.Min, helm.Comment(comment))
