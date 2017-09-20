@@ -87,7 +87,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	spec := helm.NewEmptyMapping()
-	spec.AddNode("selector", helm.NewMapping("skiff-role-name", role.Name))
+	spec.AddNode("selector", helm.NewMapping(RoleNameLabel, role.Name))
 	spec.Add("type", "ClusterIP")
 	if headless {
 		spec.Add("clusterIP", "None")

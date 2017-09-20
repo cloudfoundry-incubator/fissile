@@ -9,6 +9,13 @@ import (
 	"github.com/SUSE/fissile/helm"
 )
 
+const (
+	// RoleNameLabel is a thing
+	RoleNameLabel = "skiff-role-name"
+	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
+	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
+)
+
 // parsePortRange converts a port range string to a starting and an ending port number
 // port ranges can be single integers (e.g. 8080) or they can be ranges (e.g. 10001-10010)
 func parsePortRange(portRange, name, description string) (int, int, error) {
@@ -109,13 +116,13 @@ func newTypeMeta(apiVersion, kind string) *helm.Mapping {
 
 func newObjectMeta(name string) *helm.Mapping {
 	meta := helm.NewMapping("name", name)
-	meta.AddNode("labels", helm.NewMapping("skiff-role-name", name))
+	meta.AddNode("labels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewEmptyMapping()
-	meta.AddNode("matchLabels", helm.NewMapping("skiff-role-name", name))
+	meta.AddNode("matchLabels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 

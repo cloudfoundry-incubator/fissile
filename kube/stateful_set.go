@@ -7,8 +7,6 @@ import (
 	"github.com/SUSE/fissile/model"
 )
 
-const volumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
-
 // NewStatefulSet returns a stateful set and a list of services for the given role
 func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
@@ -56,7 +54,7 @@ func getVolumeClaims(volumeDefinitions []*model.RoleRunVolume, storageClass stri
 	var claims []helm.Node
 	for _, volume := range volumeDefinitions {
 		meta := helm.NewMapping("name", volume.Tag)
-		meta.AddNode("annotations", helm.NewMapping(volumeStorageClassAnnotation, storageClass))
+		meta.AddNode("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
 
 		size := fmt.Sprintf("%dG", volume.Size)
 
