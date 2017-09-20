@@ -10,10 +10,10 @@ import (
 
 // MakeMapOfVariables converts the sequence of configuration variables
 // into a map we can manipulate more directly by name.
-func MakeMapOfVariables(rolesManifest *RoleManifest) CVMap {
+func MakeMapOfVariables(roleManifest *RoleManifest) CVMap {
 	configsDictionary := CVMap{}
 
-	for _, config := range rolesManifest.Configuration.Variables {
+	for _, config := range roleManifest.Configuration.Variables {
 		configsDictionary[config.Name] = config
 	}
 
@@ -28,7 +28,7 @@ func MakeMapOfVariables(rolesManifest *RoleManifest) CVMap {
 // calculating all the templates for the role
 func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
-	configsDictionary := MakeMapOfVariables(r.rolesManifest)
+	configsDictionary := MakeMapOfVariables(r.roleManifest)
 
 	configs := CVMap{}
 

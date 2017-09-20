@@ -6,9 +6,9 @@ import (
 )
 
 // MakeValues returns a Mapping with all default values for the Helm chart
-func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
+func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
 	env := helm.NewEmptyMapping()
-	for name, cv := range model.MakeMapOfVariables(rolesManifest) {
+	for name, cv := range model.MakeMapOfVariables(roleManifest) {
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
 			ok, value := cv.Value(defaults)
 			if !ok {
