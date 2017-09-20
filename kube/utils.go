@@ -134,3 +134,7 @@ func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeM
 
 	return mapping
 }
+
+func makeVarName(name string) string {
+	return strings.Replace(name, "-", "_", -1)
+}

@@ -939,6 +939,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 		Repository:      repository,
 		UseMemoryLimits: useMemoryLimits,
 		FissileVersion:  fissileVersion,
+		RoleManifest:    roleManifest,
 		Opinions:        opinions,
 		Secrets:         refs,
 		CreateHelmChart: createHelmChart,

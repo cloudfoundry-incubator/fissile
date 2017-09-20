@@ -37,7 +37,7 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
+    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if le (int .count) 0")))
 
 * Use a block action to generate multiple list elements
 
@@ -253,8 +253,9 @@ func (list *List) Values() []Node {
 }
 
 func (list List) write(enc *Encoder, prefix string) {
+	emptyLines := enc.useEmptyLines(prefix, list.nodes)
 	for _, node := range list.nodes {
-		enc.writeNode(node, &prefix, strings.Repeat(" ", enc.indent-2)+"-")
+		enc.writeNode(node, &prefix, strings.Repeat(" ", enc.indent-2)+"-", emptyLines)
 	}
 }
 
@@ -367,8 +368,13 @@ func (mapping *Mapping) String() string {
 }
 
 func (mapping Mapping) write(enc *Encoder, prefix string) {
+	var nodes []Node
 	for _, namedNode := range mapping.nodes {
-		enc.writeNode(namedNode.node, &prefix, namedNode.name+":")
+		nodes = append(nodes, namedNode.node)
+	}
+	emptyLines := enc.useEmptyLines(prefix, nodes)
+	for _, namedNode := range mapping.nodes {
+		enc.writeNode(namedNode.node, &prefix, namedNode.name+":", emptyLines)
 	}
 }
 
@@ -437,7 +443,7 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
 		writer:     writer,
 		err:        nil,
-		emptyLines: false,
+		emptyLines: true,
 		indent:     2,
 		wrap:       80,
 	}
@@ -450,7 +456,7 @@ func (enc *Encoder) Encode(node Node) error {
 	enc.pendingNewline = false
 	fmt.Fprintln(enc, "---")
 	prefix := ""
-	enc.writeNode(node, &prefix, "")
+	enc.writeNode(node, &prefix, "", enc.emptyLines)
 	return enc.err
 }
 
@@ -464,6 +470,27 @@ func (enc *Encoder) Write(buffer []byte) (int, error) {
 		return written, enc.err
 	}
 	return 0, enc.err
+}
+
+// useEmptyLines determines if the elements of a list or mapping should use
+// empty lines. It uses the encoder setting, but disables it for nodes where
+// only a single element has a comment or block action. It is not disabled for
+// the top-level document, so that there can be an empty line between the
+// document comment and the comment of the only element of a document root.
+func (enc *Encoder) useEmptyLines(prefix string, nodes []Node) bool {
+	emptyLines := enc.emptyLines
+	if prefix != "" {
+		specialElements := 0
+		for _, node := range nodes {
+			if node.Block() != "" || node.Comment() != "" {
+				specialElements++
+			}
+		}
+		if specialElements <= 1 {
+			emptyLines = false
+		}
+	}
+	return emptyLines
 }
 
 // useOnce returns the current value of the prefix parameter but replaces it
@@ -481,18 +508,29 @@ func useOnce(prefix *string) string {
 }
 
 // writeComment writes out the comment lines for a node. Newline characters in
-// the comment mark the beginning of a new paragraph. Each paragraph is
-// word-wrapped to fit within enc.wrap columns (except that each line will
-// include at least a single word, even if it exceeds the wrapping column).
+// the comment mark the beginning of a new paragraph (but trailing newlines are
+// ignored).
+//
+// Each paragraph is word-wrapped to fit within enc.wrap columns (except that
+// each line will include at least a single word, even if it exceeds the
+// wrapping column).
+//
+// Paragraphs starting with "* " or "- " are treated as bullet points, so
+// wrapped lines will be indented by 2 spaces.
 func (enc *Encoder) writeComment(prefix *string, comment string) {
-	for _, line := range strings.Split(comment, "\n") {
+	for _, line := range strings.Split(strings.TrimRight(comment, "\n"), "\n") {
 		fmt.Fprintf(enc, "%s#", useOnce(prefix))
 		if len(line) > 0 {
 			written := 0
+			bullet := strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "- ")
 			for _, word := range strings.Fields(line) {
 				if written > 0 && len(*prefix)+1+written+1+len(word) > enc.wrap {
 					fmt.Fprintf(enc, "\n%s#", useOnce(prefix))
 					written = 0
+					if bullet {
+						fmt.Fprint(enc, "  ")
+						written = 2
+					}
 				}
 				fmt.Fprint(enc, " "+word)
 				written += 1 + len(word)
@@ -516,8 +554,12 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 // label contains either the "Name:" for mapping elements, or "-" for list
 // elements. The special value "" is used for the document root, which doesn't
 // have a label.
-func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
-	leadingNewline := enc.emptyLines
+//
+// EmptyLines is set by the caller (via Encode.useEmptyLines) to enc.emptyLines,
+// except when there is only a single element with a comment or block action, in
+// which case it will be `false`.
+func (enc *Encoder) writeNode(node Node, prefix *string, label string, emptyLines bool) {
+	leadingNewline := emptyLines
 	if enc.pendingNewline {
 		fmt.Fprint(enc, "\n")
 		enc.pendingNewline = false
@@ -553,6 +595,6 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string) {
 		fmt.Fprintln(enc, *prefix+"{{- end }}")
 	}
 	if comment != "" || block != "" {
-		enc.pendingNewline = enc.emptyLines
+		enc.pendingNewline = emptyLines
 	}
 }

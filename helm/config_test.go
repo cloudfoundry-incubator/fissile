@@ -36,7 +36,9 @@ func addBlocks(node Node)   { annotate(node, false, 0) }
 
 func equal(t *testing.T, config Node, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
-	assert.Nil(t, NewEncoder(buffer, modifiers...).Encode(config))
+	enc := NewEncoder(buffer, EmptyLines(false))
+	enc.Set(modifiers...)
+	assert.NoError(t, enc.Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 
@@ -502,6 +504,8 @@ List:
 
 func TestHelmWrapLongComments(t *testing.T) {
 	root := NewEmptyMapping()
+	root.AddNode("Bullet", NewScalar("~", Comment("* "+strings.Repeat("abc 12345 ", 5)+"\n\n- "+strings.Repeat("abcd 12345 ", 5))))
+
 	mapping := NewEmptyMapping()
 	word := "1"
 	for i := len(word) + 1; i < 7; i++ {
@@ -517,6 +521,15 @@ func TestHelmWrapLongComments(t *testing.T) {
 	root.AddNode("Nested", mapping)
 
 	expect := `---
+# * abc 12345 abc 12345
+#   abc 12345 abc 12345
+#   abc 12345
+#
+# - abcd 12345 abcd
+#   12345 abcd 12345
+#   abcd 12345 abcd
+#   12345
+Bullet: ~
 # 12 12 12 12 12 12 12
 # 12 12 12
 Key2: ~
@@ -657,15 +670,18 @@ func TestHelmEmptyLines(t *testing.T) {
 	list.AddNode(NewScalar("3", Comment("Another comment")))
 	list.AddNode(NewScalar("4"))
 
-	mapping := NewEmptyMapping()
+	mapping := NewEmptyMapping(Comment("Mapping comment"))
 	mapping.AddNode("List", list)
 	mapping.AddNode("One", NewScalar("1", Comment("First post")))
 	mapping.AddNode("Two", NewScalar("2"))
 	mapping.AddNode("Three", NewScalar("3", Block("if .Values.set")))
 
-	root := NewNodeMapping("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping, Comment("Top level comment"))
 
 	expect := `---
+# Top level comment
+
+# Mapping comment
 Mapping:
   List:
   # Some comment
@@ -751,11 +767,26 @@ Mapping:
 	expect = `---
 List:
 - 1
+# A comment
+- 2
+- 3
+`
+	equal(t, root, expect, EmptyLines(true))
+
+	list.AddNode(NewScalar("4", Comment("Another comment")))
+	root = NewNodeMapping("List", list)
+
+	expect = `---
+List:
+- 1
 
 # A comment
 - 2
 
 - 3
+
+# Another comment
+- 4
 `
 	equal(t, root, expect, EmptyLines(true))
 }
