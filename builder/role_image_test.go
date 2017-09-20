@@ -43,7 +43,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -54,7 +54,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 
 	var dockerfileContents bytes.Buffer
 	baseImage := roleImageBuilder.repository
-	err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0], baseImage, &dockerfileContents)
+	err = roleImageBuilder.generateDockerfile(roleManifest.Roles[0], baseImage, &dockerfileContents)
 	assert.NoError(err)
 
 	dockerfileString := dockerfileContents.String()
@@ -62,12 +62,12 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.Contains(dockerfileString, "MAINTAINER", "release images should contain maintainer information")
 	assert.Contains(
 		dockerfileString,
-		fmt.Sprintf(`LABEL "role"="%s"`, rolesManifest.Roles[0].Name),
+		fmt.Sprintf(`LABEL "role"="%s"`, roleManifest.Roles[0].Name),
 		"Expected role label",
 	)
 
 	dockerfileContents.Reset()
-	err = roleImageBuilder.generateDockerfile(rolesManifest.Roles[0], baseImage, &dockerfileContents)
+	err = roleImageBuilder.generateDockerfile(roleManifest.Roles[0], baseImage, &dockerfileContents)
 	assert.NoError(err)
 	dockerfileString = dockerfileContents.String()
 	assert.Contains(dockerfileString, "MAINTAINER", "dev mode should generate a maintainer layer")
@@ -96,7 +96,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
@@ -105,7 +105,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
-	runScriptContents, err := roleImageBuilder.generateRunScript(rolesManifest.Roles[0])
+	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0])
 	assert.NoError(err)
 	assert.Contains(string(runScriptContents), "source /opt/scf/startup/environ.sh")
 	assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
@@ -121,7 +121,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.NotContains(string(runScriptContents), "/opt/scf//startup/var/vcap/jobs/myrole/pre-start")
 	assert.Contains(string(runScriptContents), "monit -vI &")
 
-	runScriptContents, err = roleImageBuilder.generateRunScript(rolesManifest.Roles[1])
+	runScriptContents, err = roleImageBuilder.generateRunScript(roleManifest.Roles[1])
 	assert.NoError(err)
 	assert.NotContains(string(runScriptContents), "monit -vI")
 	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
@@ -150,7 +150,7 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -159,14 +159,14 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
-	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(rolesManifest.Roles[0])
+	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(roleManifest.Roles[0])
 	assert.NoError(err)
 	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/tor/bin/tor_ctl")
 	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
 	assert.Contains(string(jobsConfigContents), "/etc/monitrc")
 	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/new_hostname/bin/run")
 
-	jobsConfigContents, err = roleImageBuilder.generateJobsConfig(rolesManifest.Roles[1])
+	jobsConfigContents, err = roleImageBuilder.generateJobsConfig(roleManifest.Roles[1])
 	assert.NoError(err)
 	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs/tor/bin/tor_ctl")
 	assert.Contains(string(jobsConfigContents), "/var/vcap/jobs-src/tor/templates/data/properties.sh.erb")
@@ -199,7 +199,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -209,7 +209,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "6.28.30", ui)
 	assert.NoError(err)
 
-	torPkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
+	torPkg := getPackage(roleManifest.Roles, "myrole", "tor", "tor")
 
 	const TypeMissing byte = tar.TypeCont // flag to indicate an expected missing file
 	expected := map[string]struct {
@@ -230,7 +230,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	}
 	actual := make(map[string][]byte)
 
-	populator := roleImageBuilder.NewDockerPopulator(rolesManifest.Roles[0], releasePathConfigSpec)
+	populator := roleImageBuilder.NewDockerPopulator(roleManifest.Roles[0], releasePathConfigSpec)
 
 	pipeR, pipeW, err := os.Pipe()
 	assert.NoError(err, "Failed to create a pipe")
@@ -417,7 +417,7 @@ func TestBuildRoleImages(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
@@ -451,7 +451,7 @@ func TestBuildRoleImages(t *testing.T) {
 	}
 
 	err = roleImageBuilder.BuildRoleImages(
-		rolesManifest.Roles,
+		roleManifest.Roles,
 		"test-registry.com:9000",
 		"test-organization",
 		"test-repository",
@@ -473,7 +473,7 @@ func TestBuildRoleImages(t *testing.T) {
 
 	// Should not allow invalid worker counts
 	err = roleImageBuilder.BuildRoleImages(
-		rolesManifest.Roles,
+		roleManifest.Roles,
 		"test-registry.com:9000",
 		"test-organization",
 		"test-repository",
@@ -501,7 +501,7 @@ func TestBuildRoleImages(t *testing.T) {
 	}
 
 	err = roleImageBuilder.BuildRoleImages(
-		rolesManifest.Roles,
+		roleManifest.Roles,
 		"test-registry.com:9000",
 		"test-organization",
 		"test-repository",
@@ -527,7 +527,7 @@ func TestBuildRoleImages(t *testing.T) {
 		return nil
 	}
 	err = roleImageBuilder.BuildRoleImages(
-		rolesManifest.Roles,
+		roleManifest.Roles,
 		"test-registry.com:9000",
 		"test-organization",
 		"test-repository",
@@ -535,7 +535,7 @@ func TestBuildRoleImages(t *testing.T) {
 		"",
 		false,
 		false,
-		len(rolesManifest.Roles),
+		len(roleManifest.Roles),
 	)
 	assert.NoError(err)
 	assert.Empty(buildersRan, "should not have ran any builders")
@@ -561,7 +561,7 @@ func TestBuildRoleImages(t *testing.T) {
 		return nil
 	}
 	err = roleImageBuilder.BuildRoleImages(
-		rolesManifest.Roles,
+		roleManifest.Roles,
 		"test-registry.com:9000",
 		"test-organization",
 		"test-repository",

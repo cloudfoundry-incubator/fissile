@@ -21,7 +21,7 @@ func TestValidation(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-issues.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-issues.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 	f := NewFissileApplication(".", ui)
@@ -29,7 +29,7 @@ func TestValidation(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
@@ -78,7 +78,7 @@ func TestValidationOk(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-ok.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-ok.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
 
@@ -87,7 +87,7 @@ func TestValidationOk(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
@@ -107,7 +107,7 @@ func TestValidationHash(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	rolesManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/hashmat.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/hashmat.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-light.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-dark.yml")
 	f := NewFissileApplication(".", ui)
@@ -115,7 +115,7 @@ func TestValidationHash(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(rolesManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)

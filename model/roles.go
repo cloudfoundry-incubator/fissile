@@ -60,7 +60,7 @@ type Role struct {
 	Run               *RoleRun       `yaml:"run"`
 	Tags              []string       `yaml:"tags"`
 
-	rolesManifest *RoleManifest
+	roleManifest *RoleManifest
 }
 
 // RoleRun describes how a role should behave at runtime
@@ -273,25 +273,25 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		mappedReleases[release.Name] = release
 	}
 
-	rolesManifest := RoleManifest{}
-	rolesManifest.manifestFilePath = manifestFilePath
-	if err := yaml.Unmarshal(manifestContents, &rolesManifest); err != nil {
+	roleManifest := RoleManifest{}
+	roleManifest.manifestFilePath = manifestFilePath
+	if err := yaml.Unmarshal(manifestContents, &roleManifest); err != nil {
 		return nil, err
 	}
-	if rolesManifest.Configuration == nil {
-		rolesManifest.Configuration = &Configuration{}
+	if roleManifest.Configuration == nil {
+		roleManifest.Configuration = &Configuration{}
 	}
-	if rolesManifest.Configuration.Templates == nil {
-		rolesManifest.Configuration.Templates = map[string]string{}
+	if roleManifest.Configuration.Templates == nil {
+		roleManifest.Configuration.Templates = map[string]string{}
 	}
 
 	// See also 'GetVariablesForRole' (mustache.go).
-	declaredConfigs := MakeMapOfVariables(&rolesManifest)
+	declaredConfigs := MakeMapOfVariables(&roleManifest)
 
 	allErrs := validation.ErrorList{}
 
-	for i := len(rolesManifest.Roles) - 1; i >= 0; i-- {
-		role := rolesManifest.Roles[i]
+	for i := len(roleManifest.Roles) - 1; i >= 0; i-- {
+		role := roleManifest.Roles[i]
 
 		// Remove all roles that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
@@ -301,20 +301,20 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		case RoleTypeBosh, RoleTypeBoshTask:
 			continue
 		case RoleTypeDocker:
-			rolesManifest.Roles = append(rolesManifest.Roles[:i], rolesManifest.Roles[i+1:]...)
+			roleManifest.Roles = append(roleManifest.Roles[:i], roleManifest.Roles[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
 				role.Type, "Expected one of bosh, bosh-task, or docker"))
 		}
 
-		allErrs = append(allErrs, validateRoleRun(role, &rolesManifest, declaredConfigs)...)
+		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
 	}
 
-	rolesManifest.rolesByName = make(map[string]*Role, len(rolesManifest.Roles))
+	roleManifest.rolesByName = make(map[string]*Role, len(roleManifest.Roles))
 
-	for _, role := range rolesManifest.Roles {
-		role.rolesManifest = &rolesManifest
+	for _, role := range roleManifest.Roles {
+		role.roleManifest = &roleManifest
 		role.Jobs = make(Jobs, 0, len(role.JobNameList))
 
 		for _, roleJob := range role.JobNameList {
@@ -340,20 +340,20 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		role.calculateRoleConfigurationTemplates()
-		rolesManifest.rolesByName[role.Name] = role
+		roleManifest.rolesByName[role.Name] = role
 	}
 
-	allErrs = append(allErrs, validateVariableType(rolesManifest.Configuration.Variables)...)
-	allErrs = append(allErrs, validateVariableSorting(rolesManifest.Configuration.Variables)...)
-	allErrs = append(allErrs, validateVariableUsage(&rolesManifest)...)
-	allErrs = append(allErrs, validateTemplateUsage(&rolesManifest)...)
-	allErrs = append(allErrs, validateNonTemplates(&rolesManifest)...)
+	allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
+	allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
+	allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
+	allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
+	allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
 
 	if len(allErrs) != 0 {
 		return nil, fmt.Errorf(allErrs.Errors())
 	}
 
-	return &rolesManifest, nil
+	return &roleManifest, nil
 }
 
 // GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
@@ -415,7 +415,7 @@ func (r *Role) GetScriptPaths() map[string]string {
 				// Absolute paths _inside_ the container; there is nothing to copy
 				continue
 			}
-			result[script] = filepath.Join(filepath.Dir(r.rolesManifest.manifestFilePath), script)
+			result[script] = filepath.Join(filepath.Dir(r.roleManifest.manifestFilePath), script)
 		}
 	}
 
@@ -588,7 +588,7 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	}
 
 	roleConfigs := map[string]string{}
-	for k, v := range r.rolesManifest.Configuration.Templates {
+	for k, v := range r.roleManifest.Configuration.Templates {
 		roleConfigs[k] = v
 	}
 
@@ -803,7 +803,7 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 // validateRoleRun tests whether required fields in the RoleRun are
 // set. Note, some of the fields have type-dependent checks. Some
 // issues are fixed silently.
-func validateRoleRun(role *Role, rolesManifest *RoleManifest, declared CVMap) validation.ErrorList {
+func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	if role.Run == nil {

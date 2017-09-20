@@ -111,7 +111,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	rolesManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
 	assert.NoError(err)
 
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
@@ -119,12 +119,12 @@ func TestNewDockerPopulator(t *testing.T) {
 
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(rolesManifest.Roles, false)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest.Roles, false)
 	tarWriter := tar.NewWriter(tarFile)
 	assert.NoError(tarPopulator(tarWriter))
 	assert.NoError(tarWriter.Close())
 
-	pkg := getPackage(rolesManifest.Roles, "myrole", "tor", "tor")
+	pkg := getPackage(roleManifest.Roles, "myrole", "tor", "tor")
 	if !assert.NotNil(pkg) {
 		return
 	}
@@ -153,8 +153,8 @@ func TestNewDockerPopulator(t *testing.T) {
 				func() {
 					expected := []string{
 						"LABEL",
-						fmt.Sprintf(`"fingerprint.%s"="libevent"`, getPackage(rolesManifest.Roles, "myrole", "tor", "libevent").Fingerprint),
-						fmt.Sprintf(`"fingerprint.%s"="tor"`, getPackage(rolesManifest.Roles, "myrole", "tor", "tor").Fingerprint),
+						fmt.Sprintf(`"fingerprint.%s"="libevent"`, getPackage(roleManifest.Roles, "myrole", "tor", "libevent").Fingerprint),
+						fmt.Sprintf(`"fingerprint.%s"="tor"`, getPackage(roleManifest.Roles, "myrole", "tor", "tor").Fingerprint),
 					}
 					actual := strings.Fields(line)
 					sort.Strings(expected[1:])
