@@ -597,11 +597,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	if err := roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount); err != nil {
-		return err
-	}
-
-	return nil
+	return roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount)
 }
 
 // ListRoleImages lists all dev role images

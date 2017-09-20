@@ -207,11 +207,7 @@ func (r *Release) validatePathStructure() error {
 		return err
 	}
 
-	if err := util.ValidatePath(r.jobsDirPath(), true, "jobs directory"); err != nil {
-		return err
-	}
-
-	return nil
+	return util.ValidatePath(r.jobsDirPath(), true, "jobs directory")
 }
 
 func (r *Release) licensePath() string {
