@@ -522,7 +522,7 @@ func (enc *Encoder) writeComment(prefix *string, comment string) {
 		fmt.Fprintf(enc, "%s#", useOnce(prefix))
 		if len(line) > 0 {
 			written := 0
-			bullet := len(line) >= 2 && (line[:2] == "* " || line[:2] == "- ")
+			bullet := strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "- ")
 			for _, word := range strings.Fields(line) {
 				if written > 0 && len(*prefix)+1+written+1+len(word) > enc.wrap {
 					fmt.Fprintf(enc, "\n%s#", useOnce(prefix))

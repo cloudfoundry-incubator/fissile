@@ -38,7 +38,7 @@ func equal(t *testing.T, config Node, expect string, modifiers ...func(*Encoder)
 	buffer := &bytes.Buffer{}
 	enc := NewEncoder(buffer, EmptyLines(false))
 	enc.Set(modifiers...)
-	assert.Nil(t, enc.Encode(config))
+	assert.NoError(t, enc.Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 
