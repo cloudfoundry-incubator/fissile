@@ -28,17 +28,13 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 	claims := getAllVolumeClaims(role, settings.CreateHelmChart)
 
 	spec := helm.NewEmptyMapping()
-	if settings.CreateHelmChart {
-		spec.Add("replicas", fmt.Sprintf("{{ .Values.sizing.%s.count }}", makeVarName(role.Name)))
-	} else {
-		spec.AddInt("replicas", role.Run.Scaling.Min)
-	}
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
 	spec.AddNode("template", podTemplate)
 	spec.AddNode("volumeClaimTemplates", helm.NewNodeList(claims...))
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
-	statefulSet.AddNode("spec", spec)
+	replicaCheck(role, statefulSet, spec, svcList, settings)
+	statefulSet.AddNode("spec", spec.Sort())
 
 	return statefulSet.Sort(), svcList, nil
 }
