@@ -25,10 +25,10 @@ type SecretRefMap map[string]SecretRef
 // MakeSecrets creates Secret KubeConfig filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (*helm.Mapping, SecretRefMap, error) {
+func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (helm.Node, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
-	data := helm.NewMapping()
+	data := helm.NewEmptyMapping()
 	for name, cv := range secrets {
 		var value string
 		if createHelmChart {
@@ -50,7 +50,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		key := strings.ToLower(strings.Replace(name, "_", "-", -1))
 
-		data.Add(key, helm.NewScalar(value, helm.Comment(cv.Description)))
+		data.AddNode(key, helm.NewScalar(value, helm.Comment(cv.Description)))
 		refs[name] = SecretRef{
 			Secret: "secret",
 			Key:    key,
@@ -58,8 +58,8 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 	}
 	data.Sort()
 
-	secret := newKubeConfig("Secret", "secret")
-	secret.Add("data", data)
+	secret := newKubeConfig("v1", "Secret", "secret")
+	secret.AddNode("data", data)
 
-	return secret, refs, nil
+	return secret.Sort(), refs, nil
 }

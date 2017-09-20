@@ -3,43 +3,30 @@ package kube
 import (
 	"fmt"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
-	meta "k8s.io/client-go/pkg/api/unversioned"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	extra "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on
-func NewJob(role *model.Role, settings *ExportSettings) (*extra.Job, error) {
+func NewJob(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err
 	}
 
-	if role.Run == nil {
-		return nil, fmt.Errorf("Role %s has no run information", role.Name)
-	}
-
 	// Jobs must have a restart policy that isn't "always"
 	switch role.Run.FlightStage {
 	case model.FlightStageManual:
-		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyNever
+		podTemplate.Get("spec").Get("restartPolicy").SetValue("Never")
 	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Spec.RestartPolicy = apiv1.RestartPolicyOnFailure
+		podTemplate.Get("spec").Get("restartPolicy").SetValue("OnFailure")
 	default:
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	return &extra.Job{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "extensions/v1beta1",
-			Kind:       "Job",
-		},
-		ObjectMeta: apiv1.ObjectMeta{
-			Name: role.Name,
-		},
-		Spec: extra.JobSpec{
-			Template: podTemplate,
-		},
-	}, nil
+	job := newTypeMeta("extensions/v1beta1", "Job")
+	job.AddNode("metadata", helm.NewMapping("name", role.Name))
+	job.AddNode("spec", helm.NewNodeMapping("template", podTemplate))
+
+	return job.Sort(), nil
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
@@ -22,6 +23,7 @@ func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
 		return nil, nil
@@ -30,19 +32,10 @@ func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model
 	if !assert.NoError(err) {
 		return nil, nil
 	}
-
-	var role *model.Role
-	for _, r := range manifest.Roles {
-		if r != nil {
-			if r.Name == "myrole" {
-				role = r
-			}
-		}
-	}
+	role := manifest.LookupRole("myrole")
 	if !assert.NotNil(role, "Failed to find role in manifest") {
 		return nil, nil
 	}
-
 	return manifest, role
 }
 
@@ -62,13 +55,12 @@ func TestServiceOK(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", string(service.Spec.Type))
-	assert.Equal("", service.Spec.ClusterIP)
+	assert.Equal("ClusterIP", service.Get("spec").Get("type").Value())
+	assert.Nil(service.Get("spec").Get("clusterIP"))
 
-	yamlConfig := bytes.Buffer{}
-	if err := WriteYamlConfig(service, &yamlConfig); !assert.NoError(err) {
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {
 		return
 	}
 	var expected, actual interface{}
@@ -76,26 +68,26 @@ func TestServiceOK(t *testing.T) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
-			metadata:
-				name: myrole
-			spec:
-				ports:
-				-
-						name: http
-						port: 80
-						targetPort: http
-				-
-						name: https
-						port: 443
-						targetPort: https
-				selector:
-					skiff-role-name: myrole
-				type: ClusterIP
+		metadata:
+			name: myrole
+		spec:
+			ports:
+			-
+				name: http
+				port: 80
+				targetPort: http
+			-
+				name: https
+				port: 443
+				targetPort: https
+			selector:
+				skiff-role-name: myrole
+			type: ClusterIP
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
 func TestHeadlessServiceOK(t *testing.T) {
@@ -114,13 +106,12 @@ func TestHeadlessServiceOK(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", string(service.Spec.Type))
-	assert.Equal("None", service.Spec.ClusterIP)
+	assert.Equal("ClusterIP", service.Get("spec").Get("type").Value())
+	assert.Equal("None", service.Get("spec").Get("clusterIP").Value())
 
-	yamlConfig := bytes.Buffer{}
-	if err := WriteYamlConfig(service, &yamlConfig); !assert.NoError(err) {
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {
 		return
 	}
 	var expected, actual interface{}
@@ -128,27 +119,27 @@ func TestHeadlessServiceOK(t *testing.T) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
-			metadata:
-				name: myrole-set
-			spec:
-				ports:
-				-
-					name: http
-					port: 80
-					# targetPort must be undefined for headless services
-					targetPort: 0
-				-
-					name: https
-					port: 443
-					# targetPort must be undefined for headless services
-					targetPort: 0
-				selector:
-					skiff-role-name: myrole
-				type: ClusterIP
-				clusterIP: None
+		metadata:
+			name: myrole-set
+		spec:
+			ports:
+			-
+				name: http
+				port: 80
+				# targetPort must be undefined for headless services
+				targetPort: 0
+			-
+				name: https
+				port: 443
+				# targetPort must be undefined for headless services
+				targetPort: 0
+			selector:
+				skiff-role-name: myrole
+			type: ClusterIP
+			clusterIP: None
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }

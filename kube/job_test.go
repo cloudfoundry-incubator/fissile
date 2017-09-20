@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
@@ -21,10 +22,12 @@ func jobTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/jobs.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
 		return nil
 	}
+
 	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
 	if !assert.NoError(err) {
 		return nil
@@ -34,9 +37,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	if !assert.NotNil(role, "Failed to find role %s", roleName) {
 		return nil
 	}
-
 	return role
-
 }
 
 func TestJobPreFlight(t *testing.T) {
@@ -54,8 +55,8 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig := bytes.Buffer{}
-	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
 		return
 	}
 
@@ -63,25 +64,26 @@ func TestJobPreFlight(t *testing.T) {
 	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
 		return
 	}
+
 	expectedYAML := strings.Replace(`---
-	apiVersion: extensions/v1beta1
-	kind: Job
-	metadata:
-		name: pre-role
-	spec:
-		template:
-			metadata:
-				name: pre-role
-			spec:
-				containers:
-				-
+		apiVersion: extensions/v1beta1
+		kind: Job
+		metadata:
+			name: pre-role
+		spec:
+			template:
+				metadata:
 					name: pre-role
-				restartPolicy: OnFailure
+				spec:
+					containers:
+					-
+						name: pre-role
+					restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
 func TestJobPostFlight(t *testing.T) {
@@ -99,8 +101,8 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig := bytes.Buffer{}
-	if err := WriteYamlConfig(job, &yamlConfig); !assert.NoError(err) {
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
 		return
 	}
 
@@ -109,22 +111,22 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 	expectedYAML := strings.Replace(`---
-	apiVersion: extensions/v1beta1
-	kind: Job
-	metadata:
-		name: post-role
-	spec:
-		template:
-			metadata:
-				name: post-role
-			spec:
-				containers:
-				-
+		apiVersion: extensions/v1beta1
+		kind: Job
+		metadata:
+			name: post-role
+		spec:
+			template:
+				metadata:
 					name: post-role
-				restartPolicy: OnFailure
+				spec:
+					containers:
+					-
+						name: post-role
+					restartPolicy: OnFailure
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
-	_ = testhelpers.IsYAMLSubset(assert, expected, actual)
+	testhelpers.IsYAMLSubset(assert, expected, actual)
 }

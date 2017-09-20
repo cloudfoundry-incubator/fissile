@@ -641,11 +641,7 @@ func (c *Compilator) createCompilationDirStructure(pkg *model.Package) error {
 		return err
 	}
 
-	if err := os.MkdirAll(sourcePackageDir, 0755); err != nil {
-		return err
-	}
-
-	return nil
+	return os.MkdirAll(sourcePackageDir, 0755)
 }
 
 func (c *Compilator) getDependenciesPackageDir(pkg *model.Package) string {

@@ -80,10 +80,7 @@ func writeHeaderToTarStream(stream *tar.Writer, header tar.Header) error {
 	if header.Typeflag == 0 {
 		header.Typeflag = tar.TypeReg
 	}
-	if err := stream.WriteHeader(&header); err != nil {
-		return err
-	}
-	return nil
+	return stream.WriteHeader(&header)
 }
 
 // WriteToTarStream writes a byte array of data into a tar stream

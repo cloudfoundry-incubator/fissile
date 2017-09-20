@@ -8,7 +8,7 @@ Each node can have an associated comment, and be wrapped by a template block
 (any template action that encloses text and terminates with an {{end}}). For
 example:
 
-  obj.Add("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
+  obj.AddNode("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
 
 will generate:
 
@@ -37,18 +37,18 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.Add(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
+    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
 
 * Use a block action to generate multiple list elements
 
-    tcp := NewMapping(Block("range $key, $value := .Values.tcp"))
-    tcp.Add("name", NewScalar("\"{{ $key }}-tcp\""))
-    tcp.Add("containerPort", NewScalar("$key"))
-    tcp.Add("protocol", NewScalar("TCP"))
+    tcp := NewNodeMapping(Block("range $key, $value := .Values.tcp"))
+    tcp.AddNode("name", NewScalar("\"{{ $key }}-tcp\""))
+    tcp.AddNode("containerPort", NewScalar("$key"))
+    tcp.AddNode("protocol", NewScalar("TCP"))
 
-    ports := NewList(Comment("List of TCP ports"))
-    ports.Add(tcp)
-    root.Add("ports", ports)
+    ports := NewNodeList(Comment("List of TCP ports"))
+    ports.AddNode(tcp)
+    root.AddNode("ports", ports)
 
   Generates this document:
 
@@ -64,9 +64,11 @@ Tricks:
 package helm
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -107,12 +109,42 @@ func (shared sharedFields) Comment() string {
 	return shared.comment
 }
 
+// SetValue updates the value of a scalar node.
+func (shared *sharedFields) SetValue(string) {
+	panic("SetValue can only be called on helm.Scalar nodes")
+}
+
+// Value returns the value of a scalar node.
+func (shared *sharedFields) Value() string {
+	panic("Value can only be called on helm.Scalar nodes")
+}
+
+// Values returns all the elements of a list node.
+func (shared *sharedFields) Values() []Node {
+	panic("Values can only be called on helm.List nodes")
+}
+
+// Get returns a named node from a mapping node.
+func (shared *sharedFields) Get(string) Node {
+	panic("Get can only be called on helm.Mapping nodes")
+}
+
 // Node is the interface implemented by all config node types.
 type Node interface {
 	// Every node will embed a sharedFields struct and inherit these methods:
 	Block() string
 	Comment() string
 	Set(...NodeModifier)
+
+	// Scalar node methods:
+	SetValue(string)
+	Value() string
+
+	// List node methods:
+	Values() []Node
+
+	// Mapping node methods:
+	Get(string) Node
 
 	// The write() method implements the part of Encoder.writeNode() that
 	// needs to access the fields specific to each node type. prefix will be
@@ -132,6 +164,22 @@ func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
 	scalar := &Scalar{value: value}
 	scalar.Set(modifiers...)
 	return scalar
+}
+
+// SetValue updates the value of a scalar node.
+func (scalar *Scalar) SetValue(value string) {
+	scalar.value = value
+}
+
+func (scalar *Scalar) String() string {
+	buffer := &bytes.Buffer{}
+	NewEncoder(buffer).Encode(scalar)
+	return buffer.String()
+}
+
+// Value returns the value of a scalar node.
+func (scalar *Scalar) Value() string {
+	return scalar.value
 }
 
 func (scalar Scalar) write(enc *Encoder, prefix string) {
@@ -159,16 +207,49 @@ type List struct {
 	nodes []Node
 }
 
-// NewList creates an empty list node and initializes shared fields.
-func NewList(modifiers ...NodeModifier) *List {
+// NewEmptyList creates an empty list node and initializes shared fields.
+func NewEmptyList(modifiers ...NodeModifier) *List {
 	list := &List{}
 	list.Set(modifiers...)
 	return list
 }
 
-// Add one or more nodes at the end of the list.
-func (list *List) Add(nodes ...Node) {
-	list.nodes = append(list.nodes, nodes...)
+// NewNodeList creates a list node initialized with nodes.
+// The list node will not have a comment or block action.
+func NewNodeList(nodes ...Node) *List {
+	list := &List{}
+	list.AddNode(nodes...)
+	return list
+}
+
+// NewList creates a list node initialized with string scalars.
+// The list and scalar nodes will not have comments or block actions.
+func NewList(values ...string) *List {
+	list := &List{}
+	for _, value := range values {
+		list.AddNode(NewScalar(value))
+	}
+	return list
+}
+
+// AddNode one or more nodes at the end of the list.
+func (list *List) AddNode(nodes ...Node) {
+	for _, node := range nodes {
+		if node != nil {
+			list.nodes = append(list.nodes, node)
+		}
+	}
+}
+
+func (list *List) String() string {
+	buffer := &bytes.Buffer{}
+	NewEncoder(buffer).Encode(list)
+	return buffer.String()
+}
+
+// Values returns a slice of all the elements of the list.
+func (list *List) Values() []Node {
+	return list.nodes
 }
 
 func (list List) write(enc *Encoder, prefix string) {
@@ -192,23 +273,97 @@ type Mapping struct {
 	nodes []namedNode
 }
 
-// NewMapping creates an empty mapping node and initializes shared fields.
-func NewMapping(modifiers ...NodeModifier) *Mapping {
+// NewEmptyMapping creates an empty mapping node and initializes shared fields.
+func NewEmptyMapping(modifiers ...NodeModifier) *Mapping {
 	mapping := &Mapping{}
 	mapping.Set(modifiers...)
 	return mapping
 }
 
-// Add a singled named node at the end of the list.
-func (mapping *Mapping) Add(name string, node Node) {
-	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
+// NewNodeMapping creates a single node mapping node and initializes shared fields.
+func NewNodeMapping(name string, node Node, modifiers ...NodeModifier) *Mapping {
+	mapping := &Mapping{}
+	mapping.Set(modifiers...)
+	mapping.AddNode(name, node)
+	return mapping
+}
+
+// NewIntMapping creates a new mapping containing a single named integer scalar.
+// The scalar node will not have a comment or block action.
+func NewIntMapping(name string, value int, modifiers ...NodeModifier) *Mapping {
+	mapping := &Mapping{}
+	mapping.Set(modifiers...)
+	mapping.AddInt(name, value)
+	return mapping
+}
+
+// NewMapping creates a new mapping node initialzed with string scalars.
+// The mapping and scalar nodes will not have comments or block actions.
+func NewMapping(values ...string) *Mapping {
+	mapping := &Mapping{}
+	for i := 0; i < len(values); i += 2 {
+		value := "~"
+		if i+1 < len(values) {
+			value = values[i+1]
+		}
+		mapping.Add(values[i], value)
+	}
+	return mapping
+}
+
+// AddNode a singled named node at the end of the list.
+func (mapping *Mapping) AddNode(name string, node Node) {
+	if node != nil {
+		mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
+	}
+}
+
+// AddInt adds a named integer if the value is not 0.
+func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
+	mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
+}
+
+// Add adds a named string if the value is not the empty string.
+func (mapping *Mapping) Add(name string, value string, modifiers ...NodeModifier) {
+	mapping.AddNode(name, NewScalar(value, modifiers...))
+}
+
+// Get returns the named node, or nil if the name cannot be found.
+func (mapping *Mapping) Get(name string) Node {
+	for _, namedNode := range mapping.nodes {
+		if name == namedNode.name {
+			return namedNode.node
+		}
+	}
+	return nil
+}
+
+// Names returns the the ordered list of node names in the mapping.
+func (mapping *Mapping) Names() []string {
+	names := make([]string, 0, len(mapping.nodes))
+	for _, namedNode := range mapping.nodes {
+		names = append(names, namedNode.name)
+	}
+	return names
+}
+
+// Merge appends all named nodes from another mapping.
+func (mapping *Mapping) Merge(merge *Mapping) {
+	mapping.nodes = append(mapping.nodes, merge.nodes...)
 }
 
 // Sort all nodes of the mapping by name.
-func (mapping *Mapping) Sort() {
+func (mapping *Mapping) Sort() *Mapping {
 	sort.Slice(mapping.nodes[:], func(i, j int) bool {
 		return mapping.nodes[i].name < mapping.nodes[j].name
 	})
+	return mapping
+}
+
+func (mapping *Mapping) String() string {
+	buffer := &bytes.Buffer{}
+	NewEncoder(buffer).Encode(mapping)
+	return buffer.String()
 }
 
 func (mapping Mapping) write(enc *Encoder, prefix string) {
@@ -291,11 +446,11 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 }
 
 // Encode writes the config mapping to the stream.
-func (enc *Encoder) Encode(mapping *Mapping) error {
+func (enc *Encoder) Encode(node Node) error {
 	enc.pendingNewline = false
 	fmt.Fprintln(enc, "---")
 	prefix := ""
-	enc.writeNode(mapping, &prefix, "")
+	enc.writeNode(node, &prefix, "")
 	return enc.err
 }
 

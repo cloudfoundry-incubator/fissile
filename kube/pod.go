@@ -5,128 +5,102 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/builder"
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
-
-	"k8s.io/client-go/pkg/api/resource"
-	meta "k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/util/intstr"
 )
 
 // monitPort is the port monit runs on in the pods
 const monitPort = 2289
 
+// defaultInitialDelaySeconds is the default initial delay for liveness probes
+const defaultInitialDelaySeconds = 600
+
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings *ExportSettings) (v1.PodTemplateSpec, error) {
+func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, error) {
+	if role.Run == nil {
+		return nil, fmt.Errorf("Role %s has no run information", role.Name)
+	}
 
 	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings.CreateHelmChart)
 	if err != nil {
-		return v1.PodTemplateSpec{}, err
+		return nil, err
 	}
 
-	var resources v1.ResourceRequirements
-
+	var resources helm.Node
 	if settings.UseMemoryLimits {
-		resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceMemory: resource.MustParse(fmt.Sprintf("%dMi", role.Run.Memory)),
-			},
-		}
+		resources = helm.NewNodeMapping("requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
 	}
 
 	securityContext := getSecurityContext(role)
-
 	ports, err := getContainerPorts(role)
 	if err != nil {
-		return v1.PodTemplateSpec{}, err
+		return nil, err
 	}
-
 	image, err := getContainerImageName(role, settings)
 	if err != nil {
-		return v1.PodTemplateSpec{}, err
+		return nil, err
 	}
-
-	podSpec := v1.PodTemplateSpec{
-		ObjectMeta: v1.ObjectMeta{
-			Name: role.Name,
-			Labels: map[string]string{
-				RoleNameLabel: role.Name,
-			},
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				v1.Container{
-					Name:            role.Name,
-					Image:           image,
-					Ports:           ports,
-					VolumeMounts:    getVolumeMounts(role),
-					Env:             vars,
-					Resources:       resources,
-					SecurityContext: securityContext,
-				},
-			},
-			RestartPolicy: v1.RestartPolicyAlways,
-			DNSPolicy:     v1.DNSClusterFirst,
-		},
-	}
-
 	livenessProbe, err := getContainerLivenessProbe(role)
 	if err != nil {
-		return v1.PodTemplateSpec{}, err
+		return nil, err
 	}
 	readinessProbe, err := getContainerReadinessProbe(role)
 	if err != nil {
-		return v1.PodTemplateSpec{}, err
-	}
-	if livenessProbe != nil || readinessProbe != nil {
-		for i := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].LivenessProbe = livenessProbe
-			podSpec.Spec.Containers[i].ReadinessProbe = readinessProbe
-		}
+		return nil, err
 	}
 
-	return podSpec, nil
+	container := helm.NewEmptyMapping()
+	container.Add("name", role.Name)
+	container.Add("image", image)
+	container.AddNode("ports", ports)
+	container.AddNode("volumeMounts", getVolumeMounts(role))
+	container.AddNode("env", vars)
+	container.AddNode("resources", resources)
+	container.AddNode("securityContext", securityContext)
+	container.AddNode("livenessProbe", livenessProbe)
+	container.AddNode("readinessProbe", readinessProbe)
+	container.Sort()
+
+	spec := helm.NewEmptyMapping()
+	spec.AddNode("containers", helm.NewNodeList(container))
+	spec.Add("dnsPolicy", "ClusterFirst")
+	spec.Add("restartPolicy", "Always")
+	spec.Sort()
+
+	podTemplate := helm.NewEmptyMapping()
+	podTemplate.AddNode("metadata", newObjectMeta(role.Name))
+	podTemplate.AddNode("spec", spec)
+
+	return podTemplate, nil
 }
 
 // NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings *ExportSettings) (*v1.Pod, error) {
+func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err
 	}
 
-	if role.Run == nil {
-		return nil, fmt.Errorf("Role %s has no run information", role.Name)
-	}
-
 	// Pod must have a restart policy that isn't "always"
 	switch role.Run.FlightStage {
 	case model.FlightStageManual:
-		podTemplate.Spec.RestartPolicy = v1.RestartPolicyNever
+		podTemplate.Get("spec").Get("restartPolicy").SetValue("Never")
 	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+		podTemplate.Get("spec").Get("restartPolicy").SetValue("OnFailure")
 	default:
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	return &v1.Pod{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Pod",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name: role.Name,
-			Labels: map[string]string{
-				RoleNameLabel: role.Name,
-			},
-		},
-		Spec: podTemplate.Spec,
-	}, nil
+	pod := newKubeConfig("v1", "Pod", role.Name)
+	pod.AddNode("spec", podTemplate.Get("spec"))
+
+	return pod.Sort(), nil
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
@@ -135,33 +109,21 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 	if err != nil {
 		return "", err
 	}
-
 	imageName := builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
-
 	return imageName, nil
 }
 
 // getContainerPorts returns a list of ports for a role
-func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
-	result := make([]v1.ContainerPort, 0, len(role.Run.ExposedPorts))
-
+func getContainerPorts(role *model.Role) (helm.Node, error) {
+	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
-		var protocol v1.Protocol
-
-		switch strings.ToLower(port.Protocol) {
-		case "tcp":
-			protocol = v1.ProtocolTCP
-		case "udp":
-			protocol = v1.ProtocolUDP
-		}
-
 		// Convert port range specifications to port numbers
 		minInternalPort, maxInternalPort, err := parsePortRange(port.Internal, port.Name, "internal")
 		if err != nil {
 			return nil, err
 		}
 		// The external port is optional here; we only need it if it's public
-		var minExternalPort, maxExternalPort int32
+		var minExternalPort, maxExternalPort int
 		if port.External != "" {
 			minExternalPort, maxExternalPort, err = parsePortRange(port.External, port.Name, "external")
 			if err != nil {
@@ -172,72 +134,54 @@ func getContainerPorts(role *model.Role) ([]v1.ContainerPort, error) {
 			return nil, fmt.Errorf("Port %s has mismatched internal and external port ranges %s and %s",
 				port.Name, port.Internal, port.External)
 		}
-
 		portInfos, err := getPortInfo(port.Name, minInternalPort, maxInternalPort)
 		if err != nil {
 			return nil, err
 		}
 		for _, portInfo := range portInfos {
-			result = append(result, v1.ContainerPort{
-				Name:          portInfo.name,
-				ContainerPort: portInfo.port,
-				Protocol:      protocol,
-			})
+			newPort := helm.NewEmptyMapping()
+			newPort.AddInt("containerPort", portInfo.port)
+			newPort.Add("name", portInfo.name)
+			newPort.Add("protocol", strings.ToUpper(port.Protocol))
+			ports = append(ports, newPort)
 		}
 	}
-
-	return result, nil
+	if len(ports) == 0 {
+		return nil, nil
+	}
+	return helm.NewNodeList(ports...), nil
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
-func getVolumeMounts(role *model.Role) []v1.VolumeMount {
-	resultLen := len(role.Run.PersistentVolumes) + len(role.Run.SharedVolumes)
-	result := make([]v1.VolumeMount, 0, resultLen)
-
+func getVolumeMounts(role *model.Role) helm.Node {
+	var mounts []helm.Node
 	for _, volume := range role.Run.PersistentVolumes {
-		result = append(result, v1.VolumeMount{
-			Name:      volume.Tag,
-			MountPath: volume.Path,
-			ReadOnly:  false,
-		})
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
 	}
-
 	for _, volume := range role.Run.SharedVolumes {
-		result = append(result, v1.VolumeMount{
-			Name:      volume.Tag,
-			MountPath: volume.Path,
-			ReadOnly:  false,
-		})
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
 	}
-
-	return result
+	if len(mounts) == 0 {
+		return nil
+	}
+	return helm.NewNodeList(mounts...)
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, createHelmChart bool) ([]v1.EnvVar, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, createHelmChart bool) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
-
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]v1.EnvVar, 0, len(configs))
-
+	var env []helm.Node
 	for _, config := range configs {
-		// Secret CVs have special output, they refer to a K8s
-		// secret for their value instead of storing it
-		// directly.
 		if config.Secret {
-			result = append(result, v1.EnvVar{
-				Name: config.Name,
-				ValueFrom: &v1.EnvVarSource{
-					SecretKeyRef: &v1.SecretKeySelector{
-						LocalObjectReference: v1.LocalObjectReference{
-							Name: secrets[config.Name].Secret,
-						},
-						Key: secrets[config.Name].Key,
-					},
-				},
-			})
+			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
+
+			envVar := helm.NewMapping("name", config.Name)
+			envVar.AddNode("valueFrom", helm.NewNodeMapping("secretKeyRef", secretKeyRef))
+
+			env = append(env, envVar)
 			continue
 		}
 
@@ -252,217 +196,161 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			var ok bool
 			ok, stringifiedValue = config.Value(defaults)
 			if !ok {
+				// Ignore config vars that don't have a default value
 				continue
 			}
 		}
-
-		result = append(result, v1.EnvVar{
-			Name:  config.Name,
-			Value: stringifiedValue,
-		})
+		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
 
-	result = append(result, v1.EnvVar{
-		Name: "KUBERNETES_NAMESPACE",
-		ValueFrom: &v1.EnvVarSource{
-			FieldRef: &v1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
-			},
-		},
-	})
+	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
 
-	return result, nil
+	envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")
+	envVar.AddNode("valueFrom", helm.NewNodeMapping("fieldRef", fieldRef))
+
+	env = append(env, envVar)
+
+	sort.Slice(env[:], func(i, j int) bool {
+		return env[i].Get("name").Value() < env[j].Get("name").Value()
+	})
+	return helm.NewNodeList(env...), nil
 }
 
-func getSecurityContext(role *model.Role) *v1.SecurityContext {
-	privileged := true
-
-	sc := &v1.SecurityContext{}
-	for _, c := range role.Run.Capabilities {
-		c = strings.ToUpper(c)
-		if c == "ALL" {
-			sc.Privileged = &privileged
-			return sc
+func getSecurityContext(role *model.Role) helm.Node {
+	var capabilities []string
+	for _, cap := range role.Run.Capabilities {
+		cap = strings.ToUpper(cap)
+		if cap == "ALL" {
+			return helm.NewMapping("privileged", "true")
 		}
-		if sc.Capabilities == nil {
-			sc.Capabilities = &v1.Capabilities{}
-		}
-		sc.Capabilities.Add = append(sc.Capabilities.Add, v1.Capability(c))
+		capabilities = append(capabilities, cap)
 	}
-
-	if sc.Capabilities == nil {
+	if len(capabilities) == 0 {
 		return nil
 	}
-	return sc
+	return helm.NewNodeMapping("capabilities", helm.NewNodeMapping("add", helm.NewList(capabilities...)))
 }
 
-func getContainerLivenessProbe(role *model.Role) (*v1.Probe, error) {
-	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
-	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
-	//
-	// InitialDelaySeconds -
-	// TimeoutSeconds      - 1, min 1
-	// PeriodSeconds       - 10, min 1 (interval between probes)
-	// SuccessThreshold    - 1 (default, must be this value for liveness probe)
-	// FailureThreshold    - 3, min 1
-
+func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
 
-	probe := &v1.Probe{}
+	var probe *helm.Mapping
+	if role.Run.HealthCheck != nil && role.Run.HealthCheck.Liveness != nil {
+		var complete bool
+		var err error
+		probe, complete, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
-	if role.Run.HealthCheck != nil &&
-		role.Run.HealthCheck.Liveness != nil {
-
-		p, err := configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness, probe)
-
-		// Liveness-specific post-processing of fields.
-
-		// The SuccessThreshold defaults to and cannot be
-		// anything but 1 for a liveness probe according to
-		// k8s docs. Force this default over anything the
-		// manifest may have done in configureCotnainerProbe.
-		probe.SuccessThreshold = 0
-
-		if probe.InitialDelaySeconds == 0 {
-			// Our standard default
-			probe.InitialDelaySeconds = 600
+		if probe.Get("initialDelaySeconds").Value() == "0" {
+			probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
 		}
-
-		// Bail early on error or when configured with custom action
-		if p != nil || err != nil {
-			return p, err
+		if complete || err != nil {
+			return probe, err
 		}
-
-		// p not set => probe is configured witohut custom action.
-		// Fall through to the type-specific action setup below.
 	}
-
-	switch role.Type {
-	case model.RoleTypeBosh:
-		if probe.InitialDelaySeconds == 0 {
-			// Our standard default
-			probe.InitialDelaySeconds = 600
-		}
-		probe.Handler = v1.Handler{
-			TCPSocket: &v1.TCPSocketAction{
-				Port: intstr.FromInt(monitPort),
-			},
-		}
-
-		return probe, nil
-	default:
+	if role.Type != model.RoleTypeBosh {
 		return nil, nil
 	}
+
+	if probe == nil {
+		probe = helm.NewEmptyMapping()
+	}
+	if probe.Get("initialDelaySeconds") == nil {
+		probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
+	}
+	probe.AddNode("tcpSocket", helm.NewIntMapping("port", monitPort))
+	return probe.Sort(), nil
 }
 
-func getContainerReadinessProbe(role *model.Role) (*v1.Probe, error) {
+func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
 
-	probe := &v1.Probe{}
-
-	if role.Run.HealthCheck != nil &&
-		role.Run.HealthCheck.Readiness != nil {
-
-		p, err := configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness, probe)
-
-		// Bail early on error or when configured with custom action
-		if p != nil || err != nil {
-			return p, err
+	var probe *helm.Mapping
+	if role.Run.HealthCheck != nil && role.Run.HealthCheck.Readiness != nil {
+		var complete bool
+		var err error
+		probe, complete, err = configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness)
+		if complete || err != nil {
+			return probe, err
 		}
-
-		// p not set => probe is configured without custom action.
-		// Fall through to the type-specific action setup below.
 	}
-	switch role.Type {
-	case model.RoleTypeBosh:
-		var readinessPort *model.RoleRunExposedPort
-		for _, port := range role.Run.ExposedPorts {
-			if strings.ToUpper(port.Protocol) != "TCP" {
-				continue
-			}
-			if readinessPort == nil {
-				readinessPort = port
-			}
-		}
-		if readinessPort == nil {
-			return nil, nil
-		}
-		probePort, _, err := parsePortRange(readinessPort.Internal, readinessPort.Name, "internal")
-		if err != nil {
-			return nil, err
-		}
-		probe.Handler = v1.Handler{
-			TCPSocket: &v1.TCPSocketAction{
-				Port: intstr.FromInt(int(probePort)),
-			},
-		}
-		return probe, nil
-	default:
+	if role.Type != model.RoleTypeBosh {
 		return nil, nil
 	}
+
+	var readinessPort *model.RoleRunExposedPort
+	for _, port := range role.Run.ExposedPorts {
+		if strings.ToUpper(port.Protocol) == "TCP" {
+			readinessPort = port
+			break
+		}
+	}
+	if readinessPort == nil {
+		return nil, nil
+	}
+	probePort, _, err := parsePortRange(readinessPort.Internal, readinessPort.Name, "internal")
+	if err != nil {
+		return nil, err
+	}
+
+	if probe == nil {
+		probe = helm.NewEmptyMapping()
+	}
+	probe.AddNode("tcpSocket", helm.NewIntMapping("port", probePort))
+	return probe.Sort(), nil
 }
 
-func configureContainerProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe, probe *v1.Probe) (*v1.Probe, error) {
-	// Ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configuring-probes
-	// Ref vendor/k8s.io/client-go/pkg/api/v1/types.go (1297ff)
-	//
+func configureContainerProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe) (*helm.Mapping, bool, error) {
 	// InitialDelaySeconds -
 	// TimeoutSeconds      - 1, min 1
 	// PeriodSeconds       - 10, min 1 (interval between probes)
 	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
 	// FailureThreshold    - 3, min 1
 
-	probe.InitialDelaySeconds = roleProbe.InitialDelay
-	probe.TimeoutSeconds = roleProbe.Timeout
-	probe.PeriodSeconds = roleProbe.Period
-	probe.SuccessThreshold = roleProbe.SuccessThreshold
-	probe.FailureThreshold = roleProbe.FailureThreshold
+	probe := helm.NewEmptyMapping()
+	probe.AddInt("initialDelaySeconds", roleProbe.InitialDelay)
+	probe.AddInt("timeoutSeconds", roleProbe.Timeout)
+	probe.AddInt("periodSeconds", roleProbe.Period)
+	probe.AddInt("successThreshold", roleProbe.SuccessThreshold)
+	probe.AddInt("failureThreshold", roleProbe.FailureThreshold)
 
 	if roleProbe.URL != "" {
-		return getContainerURLProbe(role, probeName, roleProbe, probe)
+		urlProbe, err := getContainerURLProbe(role, probeName, roleProbe)
+		if err == nil {
+			probe.Merge(urlProbe.(*helm.Mapping))
+		}
+		return probe.Sort(), true, err
 	}
-
 	if roleProbe.Port != 0 {
-		probe.Handler = v1.Handler{
-			TCPSocket: &v1.TCPSocketAction{
-				Port: intstr.FromInt(int(roleProbe.Port)),
-			},
-		}
-		return probe, nil
+		probe.AddNode("tcpSocket", helm.NewIntMapping("port", roleProbe.Port))
+		return probe.Sort(), true, nil
 	}
-
 	if len(roleProbe.Command) > 0 {
-		probe.Handler = v1.Handler{
-			Exec: &v1.ExecAction{
-				Command: roleProbe.Command,
-			},
-		}
-		return probe, nil
+		probe.AddNode("exec", helm.NewNodeMapping("command", helm.NewList(roleProbe.Command...)))
+		return probe.Sort(), true, nil
 	}
 
 	// Configured, but not a custom action.
-	return nil, nil
+	return probe.Sort(), false, nil
 }
 
-func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe, probe *v1.Probe) (*v1.Probe, error) {
+func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe) (helm.Node, error) {
 	probeURL, err := url.Parse(roleProbe.URL)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid %s URL health check for %s: %s", probeName, role.Name, err)
 	}
 
-	var scheme v1.URIScheme
-	var port intstr.IntOrString
-	switch strings.ToUpper(probeURL.Scheme) {
-	case string(v1.URISchemeHTTP):
-		scheme = v1.URISchemeHTTP
-		port = intstr.FromInt(80)
-	case string(v1.URISchemeHTTPS):
-		scheme = v1.URISchemeHTTPS
-		port = intstr.FromInt(443)
+	var port int
+	scheme := strings.ToUpper(probeURL.Scheme)
+
+	switch scheme {
+	case "HTTP":
+		port = 80
+	case "HTTPS":
+		port = 443
 	default:
 		return nil, fmt.Errorf("Health check for %s has unsupported URI scheme \"%s\"", role.Name, probeURL.Scheme)
 	}
@@ -470,83 +358,43 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 	host := probeURL.Host
 	// url.URL will have a `Host` of `example.com:8080`, but kubernetes takes a separate `Port` field
 	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
-		portNum, err := strconv.Atoi(host[colonIndex+1:])
+		port, err = strconv.Atoi(host[colonIndex+1:])
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get URL port for health check for %s: invalid host \"%s\"", role.Name, probeURL.Host)
 		}
-		port = intstr.FromInt(portNum)
 		host = host[:colonIndex]
 	}
-	if host == "container-ip" {
-		// Special case to use the pod IP instead; this is run from outside the pod
-		host = ""
+
+	httpGet := helm.NewMapping("scheme", scheme, "port", strconv.Itoa(port))
+	// Set the host address, unless it's the special case to use the pod IP instead
+	if host != "container-ip" {
+		httpGet.Add("host", host)
 	}
 
-	var headers []v1.HTTPHeader
+	var headers []helm.Node
 	if probeURL.User != nil {
-		headers = append(headers, v1.HTTPHeader{
-			Name:  "Authorization",
-			Value: base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
-		})
+		headers = append(headers, helm.NewMapping(
+			"name", "Authorization",
+			"value", base64.StdEncoding.EncodeToString([]byte(probeURL.User.String())),
+		))
 	}
 	for key, value := range roleProbe.Headers {
-		headers = append(headers, v1.HTTPHeader{
-			Name:  http.CanonicalHeaderKey(key),
-			Value: value,
-		})
+		headers = append(headers, helm.NewMapping(
+			"name", http.CanonicalHeaderKey(key),
+			"value", value,
+		))
+	}
+	if len(headers) > 0 {
+		httpGet.AddNode("httpHeaders", helm.NewNodeList(headers...))
 	}
 
 	path := probeURL.Path
-
 	if probeURL.RawQuery != "" {
 		path += "?" + probeURL.RawQuery
 	}
 	// probeURL.Fragment should not be sent to the server, so we ignore it here
+	httpGet.Add("path", path)
+	httpGet.Sort()
 
-	probe.Handler = v1.Handler{
-		HTTPGet: &v1.HTTPGetAction{
-			Host:        host,
-			Port:        port,
-			Path:        path,
-			Scheme:      scheme,
-			HTTPHeaders: headers,
-		},
-	}
-
-	return probe, nil
+	return helm.NewNodeMapping("httpGet", httpGet), nil
 }
-
-//metadata:
-//  name: wordpress-mysql
-//  labels:
-//    app: wordpress
-//spec:
-//  strategy:
-//    type: Recreate
-//  template:
-//    metadata:
-//      labels:
-//        app: wordpress
-//        tier: mysql
-//    spec:
-//      containers:
-//      - image: mysql:5.6
-//        name: mysql
-//        env:
-//          # $ kubectl create secret generic mysql-pass --from-file=password.txt
-//          # make sure password.txt does not have a trailing newline
-//        - name: MYSQL_ROOT_PASSWORD
-//          valueFrom:
-//            secretKeyRef:
-//              name: mysql-pass
-//              key: password.txt
-//        ports:
-//        - containerPort: 3306
-//          name: mysql
-//        volumeMounts:
-//        - name: mysql-persistent-storage
-//          mountPath: /var/lib/mysql
-//      volumes:
-//      - name: mysql-persistent-storage
-//        persistentVolumeClaim:
-//          claimName: mysql-pv-claim

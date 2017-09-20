@@ -36,8 +36,9 @@ func isYAMLSubsetInner(assert *assert.Assertions, expected, actual interface{}, 
 			}
 			expectedValueValue := expectedValue.MapIndex(keyValue)
 			actualValueValue := actualValue.MapIndex(convertedKeyValue)
-			thisPrefix := append(prefix, keyValue.String())
-			if assert.True(actualValueValue.IsValid(), "missing key %s in YAML path %s", keyValue.String(), yamlPath) {
+			// keyValue.String() does *not* return the contained value, but fmt has magic for reflect.Value types
+			thisPrefix := append(prefix, fmt.Sprintf("%s", keyValue))
+			if assert.True(actualValueValue.IsValid(), "missing key %s in YAML path %s", keyValue, yamlPath) {
 				if !isYAMLSubsetInner(assert, expectedValueValue.Interface(), actualValueValue.Interface(), thisPrefix) {
 					success = false
 				}

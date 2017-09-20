@@ -254,11 +254,7 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 		return err
 	}
 
-	if err := dockerfileTemplate.Execute(outputFile, context); err != nil {
-		return err
-	}
-
-	return nil
+	return dockerfileTemplate.Execute(outputFile, context)
 }
 
 // GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified roles

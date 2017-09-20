@@ -318,11 +318,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 		return err
 	}
 
-	if err := dockerfileTemplate.Execute(outputFile, context); err != nil {
-		return err
-	}
-
-	return nil
+	return dockerfileTemplate.Execute(outputFile, context)
 }
 
 type roleBuildJob struct {

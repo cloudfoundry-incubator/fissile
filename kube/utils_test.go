@@ -12,8 +12,8 @@ func TestParsePortRange(t *testing.T) {
 	samples := []struct {
 		name  string
 		input string
-		min   int32
-		max   int32
+		min   int
+		max   int
 		err   string
 	}{
 		{
@@ -31,22 +31,22 @@ func TestParsePortRange(t *testing.T) {
 		{
 			name:  "invalid number",
 			input: "garbage",
-			err:   `Port invalid number has invalid description port garbage: strconv.ParseInt: parsing "garbage": invalid syntax`,
+			err:   `Port invalid number has invalid description port garbage: strconv.Atoi: parsing "garbage": invalid syntax`,
 		},
 		{
 			name:  "empty port range",
 			input: "",
-			err:   `Port empty port range has invalid description port : strconv.ParseInt: parsing "": invalid syntax`,
+			err:   `Port empty port range has invalid description port : strconv.Atoi: parsing "": invalid syntax`,
 		},
 		{
 			name:  "invalid start port",
 			input: "trash-1",
-			err:   `Port invalid start port has invalid description starting port trash: strconv.ParseInt: parsing "trash": invalid syntax`,
+			err:   `Port invalid start port has invalid description starting port trash: strconv.Atoi: parsing "trash": invalid syntax`,
 		},
 		{
 			name:  "invalid end port",
 			input: "1-junk",
-			err:   `Port invalid end port has invalid description ending port junk: strconv.ParseInt: parsing "junk": invalid syntax`,
+			err:   `Port invalid end port has invalid description ending port junk: strconv.Atoi: parsing "junk": invalid syntax`,
 		},
 		{
 			name:  "inverted port range",
@@ -72,8 +72,8 @@ func TestGetPortInfo(t *testing.T) {
 	samples := []struct {
 		desc     string
 		name     string
-		min      int32
-		max      int32
+		min      int
+		max      int
 		err      string
 		expected []portInfo
 	}{

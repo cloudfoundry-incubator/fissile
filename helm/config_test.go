@@ -34,19 +34,22 @@ func annotate(node Node, comment bool, index int) int {
 func addComments(node Node) { annotate(node, true, 0) }
 func addBlocks(node Node)   { annotate(node, false, 0) }
 
-func equal(t *testing.T, config *Mapping, expect string, modifiers ...func(*Encoder)) {
+func equal(t *testing.T, config Node, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
 	assert.Nil(t, NewEncoder(buffer, modifiers...).Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 
 func TestHelmScalar(t *testing.T) {
-	root := NewMapping()
-	root.Add("Scalar", NewScalar("42"))
+	scalar := NewScalar("42")
+	equal(t, scalar, fmt.Sprintf("%s", scalar))
+
+	root := NewNodeMapping("Scalar", scalar)
 
 	equal(t, root, `---
 Scalar: 42
 `)
+	equal(t, root, fmt.Sprintf("%s", root))
 
 	addComments(root)
 	equal(t, root, `---
@@ -68,13 +71,10 @@ Scalar: 42
 }
 
 func TestHelmList(t *testing.T) {
-	list := NewList()
-	list.Add(NewScalar("1"))
-	list.Add(NewScalar("2"))
-	list.Add(NewScalar("3"))
+	list := NewList("1", "2")
+	list.AddNode(NewScalar("3"))
 
-	root := NewMapping()
-	root.Add("List", list)
+	root := NewNodeMapping("List", list)
 
 	equal(t, root, `---
 List:
@@ -118,22 +118,21 @@ List:
 {{- end }}
 {{- end }}
 `)
+	values := list.Values()
+	assert.Equal(t, 3, len(values))
+	assert.Equal(t, "3", values[2].Value())
 }
 
 func TestHelmMapping(t *testing.T) {
-	mapping := NewMapping()
-	mapping.Add("foo", NewScalar("1"))
-	mapping.Add("bar", NewScalar("2"))
-	mapping.Add("baz", NewScalar("3"))
+	mapping := NewIntMapping("foo", 1)
+	mapping.Add("bar", "two")
 
-	root := NewMapping()
-	root.Add("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping)
 
 	equal(t, root, `---
 Mapping:
   foo: 1
-  bar: 2
-  baz: 3
+  bar: two
 `)
 
 	addComments(root)
@@ -144,9 +143,7 @@ Mapping:
   # comment 3
   foo: 1
   # comment 4
-  bar: 2
-  # comment 5
-  baz: 3
+  bar: two
 `)
 
 	addBlocks(root)
@@ -162,11 +159,7 @@ Mapping:
   {{- end }}
   # comment 4
   {{- if block 4 }}
-  bar: 2
-  {{- end }}
-  # comment 5
-  {{- if block 5 }}
-  baz: 3
+  bar: two
   {{- end }}
 {{- end }}
 {{- end }}
@@ -174,22 +167,21 @@ Mapping:
 }
 
 func TestHelmListOfList(t *testing.T) {
-	list1 := NewList()
-	list1.Add(NewScalar("1"))
-	list1.Add(NewScalar("2"))
+	list1 := NewEmptyList()
+	list1.AddNode(NewScalar("1"))
+	list1.AddNode(NewScalar("2"))
 
-	list2 := NewList()
-	list2.Add(list1)
-	list2.Add(NewScalar("x"))
-	list2.Add(NewScalar("y"))
+	list2 := NewEmptyList()
+	list2.AddNode(list1)
+	list2.AddNode(NewScalar("x"))
+	list2.AddNode(NewScalar("y"))
 
-	list3 := NewList()
-	list3.Add(list2)
-	list3.Add(NewScalar("foo"))
-	list3.Add(NewScalar("bar"))
+	list3 := NewEmptyList()
+	list3.AddNode(list2)
+	list3.AddNode(NewScalar("foo"))
+	list3.AddNode(NewScalar("bar"))
 
-	root := NewMapping()
-	root.Add("List", list3)
+	root := NewNodeMapping("List", list3)
 
 	equal(t, root, `---
 List:
@@ -265,22 +257,21 @@ List:
 }
 
 func TestHelmMappingOfMapping(t *testing.T) {
-	mapping1 := NewMapping()
-	mapping1.Add("One", NewScalar("1"))
-	mapping1.Add("Two", NewScalar("2"))
+	mapping1 := NewEmptyMapping()
+	mapping1.AddNode("One", NewScalar("1"))
+	mapping1.AddNode("Two", NewScalar("2"))
 
-	mapping2 := NewMapping()
-	mapping2.Add("OneTwo", mapping1)
-	mapping2.Add("X", NewScalar("x"))
-	mapping2.Add("Y", NewScalar("y"))
+	mapping2 := NewEmptyMapping()
+	mapping2.AddNode("OneTwo", mapping1)
+	mapping2.AddNode("X", NewScalar("x"))
+	mapping2.AddNode("Y", NewScalar("y"))
 
-	mapping3 := NewMapping()
-	mapping3.Add("XY", mapping2)
-	mapping3.Add("Foo", NewScalar("foo"))
-	mapping3.Add("Bar", NewScalar("bar"))
+	mapping3 := NewEmptyMapping()
+	mapping3.AddNode("XY", mapping2)
+	mapping3.AddNode("Foo", NewScalar("foo"))
+	mapping3.AddNode("Bar", NewScalar("bar"))
 
-	root := NewMapping()
-	root.Add("Mapping", mapping3)
+	root := NewNodeMapping("Mapping", mapping3)
 
 	equal(t, root, `---
 Mapping:
@@ -362,16 +353,12 @@ Mapping:
 }
 
 func TestHelmMappingOfList(t *testing.T) {
-	list := NewList()
-	list.Add(NewScalar("1"))
-	list.Add(NewScalar("2"))
-	list.Add(NewScalar("3"))
+	list := NewEmptyList()
+	list.AddNode(NewScalar("1"))
+	list.AddNode(NewScalar("2"))
+	list.AddNode(NewScalar("3"))
 
-	mapping := NewMapping()
-	mapping.Add("List", list)
-
-	root := NewMapping()
-	root.Add("Mapping", mapping)
+	root := NewNodeMapping("Mapping", NewNodeMapping("List", list))
 
 	equal(t, root, `---
 Mapping:
@@ -425,16 +412,15 @@ Mapping:
 }
 
 func TestHelmListOfMapping(t *testing.T) {
-	mapping := NewMapping()
-	mapping.Add("Foo", NewScalar("foo"))
-	mapping.Add("Bar", NewScalar("bar"))
-	mapping.Add("Baz", NewScalar("baz"))
+	mapping := NewEmptyMapping()
+	mapping.AddNode("Foo", NewScalar("foo"))
+	mapping.AddNode("Bar", NewScalar("bar"))
+	mapping.AddNode("Baz", NewScalar("baz"))
 
-	list := NewList()
-	list.Add(mapping)
+	list := NewEmptyList()
+	list.AddNode(mapping)
 
-	root := NewMapping()
-	root.Add("Mapping", list)
+	root := NewNodeMapping("Mapping", list)
 
 	equal(t, root, `---
 Mapping:
@@ -485,8 +471,7 @@ Mapping:
 }
 
 func TestHelmMultiLineComment(t *testing.T) {
-	root := NewMapping()
-	root.Add("Scalar", NewScalar("42", Comment("Many\n\nlines")))
+	root := NewNodeMapping("Scalar", NewScalar("42", Comment("Many\n\nlines")))
 
 	equal(t, root, `---
 # Many
@@ -496,15 +481,14 @@ Scalar: 42
 `)
 
 	// list of list
-	list1 := NewList()
-	list1.Add(NewScalar("42", Comment("Many\n\nlines")))
+	list1 := NewEmptyList()
+	list1.AddNode(NewScalar("42", Comment("Many\n\nlines")))
 
-	list2 := NewList()
-	list2.Add(list1)
-	list2.Add(NewScalar("foo"))
+	list2 := NewEmptyList()
+	list2.AddNode(list1)
+	list2.AddNode(NewScalar("foo"))
 
-	root = NewMapping()
-	root.Add("List", list2)
+	root = NewNodeMapping("List", list2)
 
 	equal(t, root, `---
 List:
@@ -517,20 +501,20 @@ List:
 }
 
 func TestHelmWrapLongComments(t *testing.T) {
-	root := NewMapping()
-	mapping := NewMapping()
+	root := NewEmptyMapping()
+	mapping := NewEmptyMapping()
 	word := "1"
 	for i := len(word) + 1; i < 7; i++ {
 		word += strconv.Itoa(i)
-		root.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 10))))
+		root.AddNode(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 10))))
 		if i < 5 {
-			mapping.Add(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 5))))
+			mapping.AddNode(fmt.Sprintf("Key%d", i), NewScalar("~", Comment(strings.Repeat(word+" ", 5))))
 		}
 	}
 
-	mapping.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
-	root.Add("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
-	root.Add("Nested", mapping)
+	mapping.AddNode("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	root.AddNode("Very", NewScalar("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	root.AddNode("Nested", mapping)
 
 	expect := `---
 # 12 12 12 12 12 12 12
@@ -575,32 +559,32 @@ Nested:
 }
 
 func TestHelmIndent(t *testing.T) {
-	mapping1 := NewMapping()
-	mapping1.Add("Foo", NewScalar("Bar", Comment("Baz")))
+	mapping1 := NewEmptyMapping()
+	mapping1.AddNode("Foo", NewScalar("Bar", Comment("Baz")))
 
-	list1 := NewList()
-	list1.Add(mapping1)
-	list1.Add(NewScalar("1"))
+	list1 := NewEmptyList()
+	list1.AddNode(mapping1)
+	list1.AddNode(NewScalar("1"))
 
-	list2 := NewList()
-	list2.Add(NewScalar("abc"))
-	list2.Add(NewScalar("xyz"))
+	list2 := NewEmptyList()
+	list2.AddNode(NewScalar("abc"))
+	list2.AddNode(NewScalar("xyz"))
 
-	list1.Add(list2)
-	list1.Add(NewScalar("2"))
-	list1.Add(NewScalar("3"))
+	list1.AddNode(list2)
+	list1.AddNode(NewScalar("2"))
+	list1.AddNode(NewScalar("3"))
 
-	mapping2 := NewMapping()
-	mapping2.Add("List", list1)
+	mapping2 := NewEmptyMapping()
+	mapping2.AddNode("List", list1)
 
-	mapping3 := NewMapping()
-	mapping3.Add("Foo", NewScalar("1"))
-	mapping3.Add("Bar", NewScalar("2"))
+	mapping3 := NewEmptyMapping()
+	mapping3.AddNode("Foo", NewScalar("1"))
+	mapping3.AddNode("Bar", NewScalar("2"))
 
-	mapping2.Add("Meta", mapping3)
+	mapping2.AddNode("Meta", mapping3)
 
-	root := NewMapping()
-	root.Add("Mapping", mapping2)
+	root := NewEmptyMapping()
+	root.AddNode("Mapping", mapping2)
 
 	expect := `---
 Mapping:
@@ -620,13 +604,12 @@ Mapping:
 }
 
 func TestHelmEncoderModifier(t *testing.T) {
-	mapping := NewMapping()
-	mapping.Add("foo", NewScalar("1"))
-	mapping.Add("bar", NewScalar("2"))
-	mapping.Add("baz", NewScalar("3"))
+	mapping := NewEmptyMapping()
+	mapping.AddNode("foo", NewScalar("1"))
+	mapping.AddNode("bar", NewScalar("2"))
+	mapping.AddNode("baz", NewScalar("3"))
 
-	root := NewMapping()
-	root.Add("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping)
 
 	expect := `---
 Mapping:
@@ -649,12 +632,9 @@ Mapping:
 }
 
 func TestHelmMultiLineScalar(t *testing.T) {
-	root := NewMapping()
-	root.Add("Scalar", NewScalar("foo\nbar\nbaz"))
-
-	list := NewList()
-	list.Add(NewScalar("one\ntwo\nthree"))
-	root.Add("List", list)
+	root := NewNodeMapping("Scalar", NewScalar("foo\nbar\nbaz"))
+	list := NewNodeList(NewScalar("one\ntwo\nthree"))
+	root.AddNode("List", list)
 
 	expect := `---
 Scalar: |-
@@ -671,20 +651,19 @@ List:
 }
 
 func TestHelmEmptyLines(t *testing.T) {
-	list := NewList()
-	list.Add(NewScalar("1", Comment("Some comment")))
-	list.Add(NewScalar("2", Comment("")))
-	list.Add(NewScalar("3", Comment("Another comment")))
-	list.Add(NewScalar("4"))
+	list := NewEmptyList()
+	list.AddNode(NewScalar("1", Comment("Some comment")))
+	list.AddNode(NewScalar("2", Comment("")))
+	list.AddNode(NewScalar("3", Comment("Another comment")))
+	list.AddNode(NewScalar("4"))
 
-	mapping := NewMapping()
-	mapping.Add("List", list)
-	mapping.Add("One", NewScalar("1", Comment("First post")))
-	mapping.Add("Two", NewScalar("2"))
-	mapping.Add("Three", NewScalar("3", Block("if .Values.set")))
+	mapping := NewEmptyMapping()
+	mapping.AddNode("List", list)
+	mapping.AddNode("One", NewScalar("1", Comment("First post")))
+	mapping.AddNode("Two", NewScalar("2"))
+	mapping.AddNode("Three", NewScalar("3", Block("if .Values.set")))
 
-	root := NewMapping()
-	root.Add("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping)
 
 	expect := `---
 Mapping:
@@ -762,13 +741,12 @@ Mapping:
 	addBlocks(root)
 	equal(t, root, expect, EmptyLines(true))
 
-	list = NewList()
-	list.Add(NewScalar("1"))
-	list.Add(NewScalar("2", Comment("A comment")))
-	list.Add(NewScalar("3"))
+	list = NewEmptyList()
+	list.AddNode(NewScalar("1"))
+	list.AddNode(NewScalar("2", Comment("A comment")))
+	list.AddNode(NewScalar("3"))
 
-	root = NewMapping()
-	root.Add("List", list)
+	root = NewNodeMapping("List", list)
 
 	expect = `---
 List:
@@ -783,14 +761,12 @@ List:
 }
 
 func TestHelmMappingSort(t *testing.T) {
-	mapping := NewMapping()
-	mapping.Add("foo", NewScalar("1"))
-	mapping.Add("bar", NewScalar("2"))
-	mapping.Add("baz", NewScalar("3"))
-	mapping.Sort()
+	mapping := NewEmptyMapping()
+	mapping.AddNode("foo", NewScalar("1"))
+	mapping.AddNode("bar", NewScalar("2"))
+	mapping.AddNode("baz", NewScalar("3"))
 
-	root := NewMapping()
-	root.Add("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping.Sort())
 
 	equal(t, root, `---
 Mapping:
@@ -798,11 +774,14 @@ Mapping:
   baz: 3
   foo: 1
 `)
+	names := mapping.Names()
+	assert.Equal(t, 3, len(names))
+	assert.Equal(t, "foo", names[2])
+	assert.Equal(t, "1", mapping.Get(names[2]).Value())
 }
 
 func TestHelmError(t *testing.T) {
-	root := NewMapping()
-	root.Add("Foo", NewScalar("1"))
+	root := NewNodeMapping("Foo", NewScalar("1"))
 
 	buffer := &bytes.Buffer{}
 	enc := NewEncoder(buffer)
@@ -810,4 +789,111 @@ func TestHelmError(t *testing.T) {
 
 	assert.NotNil(t, enc.Encode(root))
 	assert.Equal(t, "", buffer.String())
+}
+
+func TestHelmMerge(t *testing.T) {
+	root := NewNodeMapping("One", NewScalar("1"))
+	root.Merge(NewNodeMapping("Foo", NewScalar("2")))
+
+	equal(t, root, `---
+One: 1
+Foo: 2
+`)
+}
+
+func TestHelmAddValues(t *testing.T) {
+	root := NewMapping("One", "1", "Two", "2", "Three")
+	root.AddNode("List", NewList("X", "Y"))
+	root.AddInt("Int", 42, Block("if condition"))
+	root.AddNode("Nodes", NewNodeList(NewScalar("foo"), NewScalar("bar")))
+	equal(t, root, `---
+One: 1
+Two: 2
+Three: ~
+List:
+- X
+- Y
+{{- if condition }}
+Int: 42
+{{- end }}
+Nodes:
+- foo
+- bar
+`)
+}
+
+func TestHelmAddNilNodes(t *testing.T) {
+	root := NewEmptyMapping()
+	root.AddNode("Foo", NewScalar("X"))
+	root.AddNode("Bar", nil)
+	root.AddNode("Baz", NewScalar("Y"))
+	root.AddNode("List", NewNodeList(NewScalar("1"), nil, NewScalar("2")))
+	equal(t, root, `---
+Foo: X
+Baz: Y
+List:
+- 1
+- 2
+`)
+}
+
+func TestHelmGetNode(t *testing.T) {
+	root := NewMapping("Foo", "1", "Bar", "2")
+	assert.Nil(t, root.Get("Baz"))
+
+	bar := root.Get("Bar")
+	assert.NotNil(t, bar)
+
+	if bar != nil {
+		assert.Equal(t, bar.Value(), "2")
+		bar.SetValue("3")
+	}
+
+	root.AddNode("Baz", NewMapping("xyzzy", "plugh"))
+	assert.Equal(t, "plugh", root.Get("Baz").Get("xyzzy").Value())
+
+	equal(t, root, `---
+Foo: 1
+Bar: 3
+Baz:
+  xyzzy: plugh
+`)
+}
+
+func TestHelmEncodeList(t *testing.T) {
+	root := NewList("One", "Two")
+	equal(t, root, `---
+- One
+- Two
+`)
+	equal(t, root, fmt.Sprintf("%s", root))
+}
+
+func hasPanicked(test func()) (panicked bool) {
+	panicked = false
+	defer func() {
+		if r := recover(); r != nil {
+			panicked = true
+		}
+	}()
+	test()
+	return
+}
+
+func TestHelmPanic(t *testing.T) {
+	assert.False(t, hasPanicked(func() { NewScalar("foo").Value() }))
+	assert.True(t, hasPanicked(func() { NewEmptyMapping().Value() }))
+	assert.True(t, hasPanicked(func() { NewEmptyMapping().Value() }))
+
+	assert.False(t, hasPanicked(func() { NewScalar("foo").SetValue("new") }))
+	assert.True(t, hasPanicked(func() { NewEmptyList().SetValue("new") }))
+	assert.True(t, hasPanicked(func() { NewEmptyMapping().SetValue("new") }))
+
+	assert.True(t, hasPanicked(func() { NewScalar("foo").Values() }))
+	assert.False(t, hasPanicked(func() { NewEmptyList().Values() }))
+	assert.True(t, hasPanicked(func() { NewEmptyMapping().Values() }))
+
+	assert.True(t, hasPanicked(func() { NewScalar("foo").Get("key") }))
+	assert.True(t, hasPanicked(func() { NewEmptyList().Get("key") }))
+	assert.False(t, hasPanicked(func() { NewEmptyMapping().Get("key") }))
 }

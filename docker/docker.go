@@ -162,11 +162,7 @@ func (d *ImageManager) BuildImage(dockerfileDirPath, name string, stdoutWriter i
 		}()
 	}
 
-	if err := d.client.BuildImage(bio); err != nil {
-		return err
-	}
-
-	return nil
+	return d.client.BuildImage(bio)
 }
 
 // BuildImageFromCallback builds a docker image by letting a callback populate

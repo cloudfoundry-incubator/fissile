@@ -179,11 +179,7 @@ func (r *Release) validateDevPathStructure() error {
 		return err
 	}
 
-	if err := util.ValidatePath(r.getDevReleaseDevConfigFile(), false, "release dev config file"); err != nil {
-		return err
-	}
-
-	return nil
+	return util.ValidatePath(r.getDevReleaseDevConfigFile(), false, "release dev config file")
 }
 
 func (r *Release) validateSpecificDevReleasePathStructure() error {
@@ -191,11 +187,7 @@ func (r *Release) validateSpecificDevReleasePathStructure() error {
 		return err
 	}
 
-	if err := util.ValidatePath(r.getDevReleaseIndexPath(), false, "release index file"); err != nil {
-		return err
-	}
-
-	return nil
+	return util.ValidatePath(r.getDevReleaseIndexPath(), false, "release index file")
 }
 
 func (r *Release) getDevReleaseManifestFilename() string {

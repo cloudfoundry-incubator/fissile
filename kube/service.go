@@ -2,24 +2,17 @@ package kube
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
-	meta "k8s.io/client-go/pkg/api/unversioned"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/runtime"
-	"k8s.io/client-go/pkg/util/intstr"
 )
 
 // NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSettings) (*apiv1.List, error) {
-	list := &apiv1.List{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "List",
-		},
-		Items: []runtime.RawExtension{},
-	}
+func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSettings) (helm.Node, error) {
+	var items []helm.Node
+
 	if headless {
 		// Create headless, private service
 		svc, err := NewClusterIPService(role, true, false, settings)
@@ -27,16 +20,17 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSe
 			return nil, err
 		}
 		if svc != nil {
-			list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+			items = append(items, svc)
 		}
 	}
+
 	// Create private service
 	svc, err := NewClusterIPService(role, false, false, settings)
 	if err != nil {
 		return nil, err
 	}
 	if svc != nil {
-		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+		items = append(items, svc)
 	}
 	// Create public service
 	svc, err = NewClusterIPService(role, false, true, settings)
@@ -44,50 +38,25 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSe
 		return nil, err
 	}
 	if svc != nil {
-		list.Items = append(list.Items, runtime.RawExtension{Object: svc})
+		items = append(items, svc)
 	}
-	if len(list.Items) == 0 {
+	if len(items) == 0 {
 		return nil, nil
 	}
-	return list, nil
+
+	list := newTypeMeta("v1", "List")
+	list.AddNode("items", helm.NewNodeList(items...))
+
+	return list.Sort(), nil
 }
 
 // NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool, public bool, settings *ExportSettings) (*apiv1.Service, error) {
-	service := &apiv1.Service{
-		TypeMeta: meta.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
-		},
-		ObjectMeta: apiv1.ObjectMeta{
-			Name: role.Name,
-		},
-		Spec: apiv1.ServiceSpec{
-			Type: apiv1.ServiceTypeClusterIP,
-			Selector: map[string]string{
-				RoleNameLabel: role.Name,
-			},
-			Ports: make([]apiv1.ServicePort, 0, len(role.Run.ExposedPorts)),
-		},
-	}
-	if headless {
-		service.ObjectMeta.Name = fmt.Sprintf("%s-set", role.Name)
-		service.Spec.ClusterIP = apiv1.ClusterIPNone
-	} else if public {
-		service.ObjectMeta.Name = fmt.Sprintf("%s-public", role.Name)
-	}
+func NewClusterIPService(role *model.Role, headless bool, public bool, settings *ExportSettings) (helm.Node, error) {
+	var ports []helm.Node
 	for _, portDef := range role.Run.ExposedPorts {
 		if public && !portDef.Public {
 			continue
 		}
-		protocol := apiv1.ProtocolTCP
-		switch strings.ToLower(portDef.Protocol) {
-		case "tcp":
-			protocol = apiv1.ProtocolTCP
-		case "udp":
-			protocol = apiv1.ProtocolUDP
-		}
-
 		minPort, maxPort, err := parsePortRange(portDef.External, portDef.Name, "external")
 		if err != nil {
 			return nil, err
@@ -98,28 +67,50 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		}
 
 		for _, portInfoEntry := range portInfos {
-			svcPort := apiv1.ServicePort{
-				Name:     portInfoEntry.name,
-				Port:     portInfoEntry.port,
-				Protocol: protocol,
-			}
-			if !headless {
-				svcPort.TargetPort = intstr.FromString(portInfoEntry.name)
-			}
-			service.Spec.Ports = append(service.Spec.Ports, svcPort)
-		}
-		if public {
-			if settings.CreateHelmChart {
-				service.Spec.ExternalIPs = []string{"{{ .Values.kube.external_ip | quote }}"}
+			port := helm.NewMapping(
+				"name", portInfoEntry.name,
+				"port", strconv.Itoa(portInfoEntry.port),
+				"protocol", strings.ToUpper(portDef.Protocol),
+			)
+			if headless {
+				port.AddInt("targetPort", 0)
 			} else {
-				service.Spec.ExternalIPs = []string{"192.168.77.77"}
+				port.Add("targetPort", portInfoEntry.name)
 			}
+			ports = append(ports, port)
 		}
 	}
-	if len(service.Spec.Ports) == 0 {
+	if len(ports) == 0 {
 		// Kubernetes refuses to create services with no ports, so we should
 		// not return anything at all in this case
 		return nil, nil
 	}
+
+	spec := helm.NewEmptyMapping()
+	spec.AddNode("selector", helm.NewMapping(RoleNameLabel, role.Name))
+	spec.Add("type", "ClusterIP")
+	if headless {
+		spec.Add("clusterIP", "None")
+	}
+	if public {
+		externalIP := "192.168.77.77"
+		if settings.CreateHelmChart {
+			externalIP = "{{ .Values.kube.external_ip | quote }}"
+		}
+		spec.AddNode("externalIPs", helm.NewNodeList(helm.NewScalar(externalIP)))
+	}
+	spec.AddNode("ports", helm.NewNodeList(ports...))
+
+	serviceName := role.Name
+	if headless {
+		serviceName = fmt.Sprintf("%s-set", role.Name)
+	} else if public {
+		serviceName = fmt.Sprintf("%s-public", role.Name)
+	}
+
+	service := newTypeMeta("v1", "Service")
+	service.AddNode("metadata", helm.NewMapping("name", serviceName))
+	service.AddNode("spec", spec.Sort())
+
 	return service, nil
 }
