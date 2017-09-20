@@ -159,18 +159,22 @@ func TestPodGetVolumeMounts(t *testing.T) {
 
 	volumeMounts := getVolumeMounts(role).Values()
 	assert.Len(volumeMounts, 2)
+
+	var persistentMount, sharedMount helm.Node
 	for _, mount := range volumeMounts {
 		switch mount.Get("name").Value() {
 		case "persistent-volume":
-			assert.Equal("/mnt/persistent", mount.Get("mountPath").Value())
-			assert.Equal(mount.Get("readOnly").Value(), "false")
+			persistentMount = mount
 		case "shared-volume":
-			assert.Equal("/mnt/shared", mount.Get("mountPath").Value())
-			assert.Equal(mount.Get("readOnly").Value(), "false")
+			sharedMount = mount
 		default:
-			assert.Fail("Got unexpected volume mount", "%s", mount)
+			assert.Fail("Got unexpected volume mount", "%+v", mount)
 		}
 	}
+	assert.Equal("/mnt/persistent", persistentMount.Get("mountPath").Value())
+	assert.Equal("false", persistentMount.Get("readOnly").Value())
+	assert.Equal("/mnt/shared", sharedMount.Get("mountPath").Value())
+	assert.Equal("false", sharedMount.Get("readOnly").Value())
 }
 
 func TestPodGetEnvVars(t *testing.T) {
@@ -226,15 +230,13 @@ func TestPodGetEnvVars(t *testing.T) {
 		foundb := false
 		foundc := false
 		for _, result := range vars.Values() {
-			name := result.Get("name").Value()
-			if name == "SOME_VAR" {
+			switch result.Get("name").Value() {
+			case "SOME_VAR":
 				founda = true
 				assert.Equal(sample.expected, result.Get("value").Value())
-			}
-			if name == "ALL_VAR" {
+			case "ALL_VAR":
 				foundb = true
-			}
-			if name == "SECRET_VAR" {
+			case "SECRET_VAR":
 				foundc = true
 				assert.Equal("secret-var", result.Get("valueFrom").Get("secretKeyRef").Get("key").Value())
 				assert.Equal("secret-1", result.Get("valueFrom").Get("secretKeyRef").Get("name").Value())
@@ -372,11 +374,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 			expected: `---
 				initialDelaySeconds: 600
 				exec:
-					command:
-					-	rm
-					-	"-rf"
-					-	"--no-preserve-root"
-					-	/`,
+					command: [ rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple)",
@@ -517,11 +515,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 				timeoutSeconds:      20
 				initialDelaySeconds: 600
 				exec:
-					command:
-					-	rm
-					-	"-rf"
-					-	"--no-preserve-root"
-					-	/`,
+					command: [ rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple), liveness timeout",
@@ -623,11 +617,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 			},
 			expected: `---
 				exec:
-					command:
-					-	rm
-					-	"-rf"
-					-	"--no-preserve-root"
-					-	/`,
+					command: [ rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple)",
@@ -748,11 +738,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 			expected: `---
 				timeoutSeconds: 20
 				exec:
-					command:
-					-	rm
-					-	"-rf"
-					-	"--no-preserve-root"
-					-	/`,
+					command: [ rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple), readiness timeout",

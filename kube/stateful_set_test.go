@@ -57,13 +57,15 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	var endpointService, headlessService helm.Node
+	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
 	if assert.Len(items, 3, "Should have three services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec").Get("clusterIP")
 			if clusterIP != nil && clusterIP.Value() == "None" {
 				headlessService = item
+			} else if item.Get("spec").Get("externalIPs") == nil {
+				privateService = item
 			} else {
 				endpointService = item
 			}
@@ -74,6 +76,9 @@ func TestStatefulSetPorts(t *testing.T) {
 	}
 	if assert.NotNil(headlessService, "headless service not found") {
 		assert.Equal(role.Name+"-set", headlessService.Get("metadata").Get("name").Value(), "unexpected headless service name")
+	}
+	if assert.NotNil(privateService, "private service not found") {
+		assert.Equal(role.Name, privateService.Get("metadata").Get("name").Value(), "unexpected private service name")
 	}
 
 	items = append(items, statefulset)

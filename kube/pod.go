@@ -196,7 +196,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			var ok bool
 			ok, stringifiedValue = config.Value(defaults)
 			if !ok {
-				// XXX When is this valid?  If never, why don't we throw an error?
+				// Ignore config vars that don't have a default value
 				continue
 			}
 		}
@@ -366,7 +366,7 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 	}
 
 	httpGet := helm.NewMapping("scheme", scheme, "port", strconv.Itoa(port))
-	// Special case to use the pod IP instead; this is run from outside the pod
+	// Set the host address, unless it's the special case to use the pod IP instead
 	if host != "container-ip" {
 		httpGet.Add("host", host)
 	}

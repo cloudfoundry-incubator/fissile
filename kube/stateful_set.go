@@ -9,7 +9,7 @@ import (
 
 const volumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 
-// NewStatefulSet returns a stateful set for the given role
+// NewStatefulSet returns a stateful set and a list of services for the given role
 func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.

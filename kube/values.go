@@ -19,13 +19,13 @@ func MakeValues(rolesManifest *model.RoleManifest, defaults map[string]string) (
 	}
 	env.Sort()
 
-	storqageClass := helm.NewEmptyMapping()
-	storqageClass.AddNode("persistent", helm.NewScalar("persistent"))
-	storqageClass.AddNode("shared", helm.NewScalar("shared"))
+	storageClass := helm.NewEmptyMapping()
+	storageClass.AddNode("persistent", helm.NewScalar("persistent"))
+	storageClass.AddNode("shared", helm.NewScalar("shared"))
 
 	kube := helm.NewEmptyMapping()
 	kube.AddNode("external_ip", helm.NewScalar("192.168.77.77"))
-	kube.AddNode("storage_class", storqageClass)
+	kube.AddNode("storage_class", storageClass)
 
 	values := helm.NewEmptyMapping()
 	values.AddNode("env", env)
