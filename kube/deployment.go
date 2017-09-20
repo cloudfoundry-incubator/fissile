@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"fmt"
+
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 )
@@ -18,7 +20,11 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	}
 
 	spec := helm.NewEmptyMapping()
-	spec.AddInt("replicas", role.Run.Scaling.Min)
+	if settings.CreateHelmChart {
+		spec.Add("replicas", fmt.Sprintf("{{ .Values.sizing.%s.count }}", makeVarName(role.Name)))
+	} else {
+		spec.AddInt("replicas", role.Run.Scaling.Min)
+	}
 	spec.AddNode("selector", newSelector(role.Name))
 	spec.AddNode("template", podTemplate)
 

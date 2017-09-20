@@ -27,7 +27,12 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 
 	claims := getAllVolumeClaims(role, settings.CreateHelmChart)
 
-	spec := helm.NewIntMapping("replicas", role.Run.Scaling.Min)
+	spec := helm.NewEmptyMapping()
+	if settings.CreateHelmChart {
+		spec.Add("replicas", fmt.Sprintf("{{ .Values.sizing.%s.count }}", makeVarName(role.Name)))
+	} else {
+		spec.AddInt("replicas", role.Run.Scaling.Min)
+	}
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
 	spec.AddNode("template", podTemplate)
 	spec.AddNode("volumeClaimTemplates", helm.NewNodeList(claims...))
@@ -40,14 +45,14 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 
 // getAllVolumeClaims returns the list of persistent and shared volume claims from a role
 func getAllVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
-	claims := getVolumeClaims(role.Run.PersistentVolumes, "persistent", "ReadWriteOnce", createHelmChart)
-	claims = append(claims, getVolumeClaims(role.Run.SharedVolumes, "shared", "ReadWriteMany", createHelmChart)...)
+	claims := getVolumeClaims(role, role.Run.PersistentVolumes, "persistent", "ReadWriteOnce", createHelmChart)
+	claims = append(claims, getVolumeClaims(role, role.Run.SharedVolumes, "shared", "ReadWriteMany", createHelmChart)...)
 	return claims
 }
 
 // getVolumeClaims returns the list of persistent volume claims from a role
-func getVolumeClaims(volumeDefinitions []*model.RoleRunVolume, storageClass string, accessMode string, createHealmChart bool) []helm.Node {
-	if createHealmChart {
+func getVolumeClaims(role *model.Role, volumeDefinitions []*model.RoleRunVolume, storageClass string, accessMode string, createHelmChart bool) []helm.Node {
+	if createHelmChart {
 		storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", storageClass)
 	}
 
@@ -56,7 +61,12 @@ func getVolumeClaims(volumeDefinitions []*model.RoleRunVolume, storageClass stri
 		meta := helm.NewMapping("name", volume.Tag)
 		meta.AddNode("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
 
-		size := fmt.Sprintf("%dG", volume.Size)
+		var size string
+		if createHelmChart {
+			size = fmt.Sprintf("{{ .Values.sizing.%s.disk_sizes.%s }}G", makeVarName(role.Name), makeVarName(volume.Tag))
+		} else {
+			size = fmt.Sprintf("%dG", volume.Size)
+		}
 
 		spec := helm.NewNodeMapping("accessModes", helm.NewList(accessMode))
 		spec.AddNode("resources", helm.NewNodeMapping("requests", helm.NewMapping("storage", size)))
