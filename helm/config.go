@@ -37,7 +37,7 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if .count <= 0")))
+    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if le (int .count) 0")))
 
 * Use a block action to generate multiple list elements
 
