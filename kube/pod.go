@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
 
-	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings.CreateHelmChart)
+	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -167,14 +168,37 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNodeList(mounts...)
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, createHelmChart bool) (helm.Node, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, settings *ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
 		return nil, err
 	}
 
+	re := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
+
 	var env []helm.Node
 	for _, config := range configs {
+		match := re.FindStringSubmatch(config.Name)
+		if match != nil {
+			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
+			role := settings.RoleManifest.LookupRole(roleName)
+			if role == nil {
+				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
+			}
+			if config.Secret {
+				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
+			}
+			if settings.CreateHelmChart {
+				value := fmt.Sprintf("{{ .Values.sizing.%s.count | quote }}", makeVarName(roleName))
+				envVar := helm.NewMapping("name", config.Name, "value", value)
+				env = append(env, envVar)
+			} else {
+				envVar := helm.NewMapping("name", config.Name, "value", strconv.Itoa(role.Run.Scaling.Min))
+				env = append(env, envVar)
+			}
+			continue
+		}
+
 		if config.Secret {
 			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
 
@@ -186,7 +210,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		}
 
 		var stringifiedValue string
-		if createHelmChart {
+		if settings.CreateHelmChart {
 			required := ""
 			if config.Required {
 				required = fmt.Sprintf(`required "%s configuration missing" `, config.Name)

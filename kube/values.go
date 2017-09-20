@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -11,6 +12,9 @@ import (
 func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
 	env := helm.NewEmptyMapping()
 	for name, cv := range model.MakeMapOfVariables(roleManifest) {
+		if strings.HasPrefix(name, "KUBE_SIZING_") {
+			continue
+		}
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
 			ok, value := cv.Value(defaults)
 			if !ok {
