@@ -657,15 +657,18 @@ func TestHelmEmptyLines(t *testing.T) {
 	list.AddNode(NewScalar("3", Comment("Another comment")))
 	list.AddNode(NewScalar("4"))
 
-	mapping := NewEmptyMapping()
+	mapping := NewEmptyMapping(Comment("Mapping comment"))
 	mapping.AddNode("List", list)
 	mapping.AddNode("One", NewScalar("1", Comment("First post")))
 	mapping.AddNode("Two", NewScalar("2"))
 	mapping.AddNode("Three", NewScalar("3", Block("if .Values.set")))
 
-	root := NewNodeMapping("Mapping", mapping)
+	root := NewNodeMapping("Mapping", mapping, Comment("Top level comment"))
 
 	expect := `---
+# Top level comment
+
+# Mapping comment
 Mapping:
   List:
   # Some comment
@@ -751,11 +754,26 @@ Mapping:
 	expect = `---
 List:
 - 1
+# A comment
+- 2
+- 3
+`
+	equal(t, root, expect, EmptyLines(true))
+
+	list.AddNode(NewScalar("4", Comment("Another comment")))
+	root = NewNodeMapping("List", list)
+
+	expect = `---
+List:
+- 1
 
 # A comment
 - 2
 
 - 3
+
+# Another comment
+- 4
 `
 	equal(t, root, expect, EmptyLines(true))
 }
