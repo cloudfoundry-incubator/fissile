@@ -36,7 +36,9 @@ func addBlocks(node Node)   { annotate(node, false, 0) }
 
 func equal(t *testing.T, config Node, expect string, modifiers ...func(*Encoder)) {
 	buffer := &bytes.Buffer{}
-	assert.Nil(t, NewEncoder(buffer, modifiers...).Encode(config))
+	enc := NewEncoder(buffer, EmptyLines(false))
+	enc.Set(modifiers...)
+	assert.Nil(t, enc.Encode(config))
 	assert.Equal(t, expect, buffer.String())
 }
 

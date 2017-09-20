@@ -443,7 +443,7 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
 		writer:     writer,
 		err:        nil,
-		emptyLines: false,
+		emptyLines: true,
 		indent:     2,
 		wrap:       80,
 	}
