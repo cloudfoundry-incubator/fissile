@@ -20,7 +20,11 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 			if !ok {
 				value = "~"
 			}
-			env.AddNode(name, helm.NewScalar(value, helm.Comment(cv.Description)))
+			comment := cv.Description
+			if cv.Example != "" && cv.Example != value {
+				comment += fmt.Sprintf("\nExample: %s", cv.Example)
+			}
+			env.AddNode(name, helm.NewScalar(value, helm.Comment(comment)))
 		}
 	}
 	env.Sort()

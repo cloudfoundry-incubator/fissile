@@ -161,6 +161,7 @@ type ConfigurationVariable struct {
 	Name        string                          `yaml:"name"`
 	Default     interface{}                     `yaml:"default"`
 	Description string                          `yaml:"description"`
+	Example     string                          `yaml:"example"`
 	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
 	Type        CVType                          `yaml:"type"`
 	Internal    bool                            `yaml:"internal,omitempty"`
