@@ -508,18 +508,29 @@ func useOnce(prefix *string) string {
 }
 
 // writeComment writes out the comment lines for a node. Newline characters in
-// the comment mark the beginning of a new paragraph. Each paragraph is
-// word-wrapped to fit within enc.wrap columns (except that each line will
-// include at least a single word, even if it exceeds the wrapping column).
+// the comment mark the beginning of a new paragraph (but trailing newlines are
+// ignored).
+//
+// Each paragraph is word-wrapped to fit within enc.wrap columns (except that
+// each line will include at least a single word, even if it exceeds the
+// wrapping column).
+//
+// Paragraphs starting with "* " or "- " are treated as bullet points, so
+// wrapped lines will be indented by 2 spaces.
 func (enc *Encoder) writeComment(prefix *string, comment string) {
-	for _, line := range strings.Split(comment, "\n") {
+	for _, line := range strings.Split(strings.TrimRight(comment, "\n"), "\n") {
 		fmt.Fprintf(enc, "%s#", useOnce(prefix))
 		if len(line) > 0 {
 			written := 0
+			bullet := len(line) >= 2 && (line[:2] == "* " || line[:2] == "- ")
 			for _, word := range strings.Fields(line) {
 				if written > 0 && len(*prefix)+1+written+1+len(word) > enc.wrap {
 					fmt.Fprintf(enc, "\n%s#", useOnce(prefix))
 					written = 0
+					if bullet {
+						fmt.Fprint(enc, "  ")
+						written = 2
+					}
 				}
 				fmt.Fprint(enc, " "+word)
 				written += 1 + len(word)

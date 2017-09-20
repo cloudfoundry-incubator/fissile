@@ -502,6 +502,8 @@ List:
 
 func TestHelmWrapLongComments(t *testing.T) {
 	root := NewEmptyMapping()
+	root.AddNode("Bullet", NewScalar("~", Comment("* "+strings.Repeat("abc 12345 ", 5)+"\n\n- "+strings.Repeat("abcd 12345 ", 5))))
+
 	mapping := NewEmptyMapping()
 	word := "1"
 	for i := len(word) + 1; i < 7; i++ {
@@ -517,6 +519,15 @@ func TestHelmWrapLongComments(t *testing.T) {
 	root.AddNode("Nested", mapping)
 
 	expect := `---
+# * abc 12345 abc 12345
+#   abc 12345 abc 12345
+#   abc 12345
+#
+# - abcd 12345 abcd
+#   12345 abcd 12345
+#   abcd 12345 abcd
+#   12345
+Bullet: ~
 # 12 12 12 12 12 12 12
 # 12 12 12
 Key2: ~
