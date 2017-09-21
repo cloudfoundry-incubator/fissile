@@ -183,22 +183,7 @@ func (scalar *Scalar) Value() string {
 }
 
 func (scalar Scalar) write(enc *Encoder, prefix string) {
-	if !strings.ContainsRune(scalar.value, '\n') {
-		fmt.Fprintln(enc, prefix+" "+scalar.value)
-		return
-	}
-
-	// Scalars including newlines will be written using the "literal" YAML format.
-	fmt.Fprintln(enc, prefix+" |-")
-	// Calculate proper indentation for data lines.
-	if strings.HasSuffix(prefix, ":") {
-		prefix = strings.Repeat(" ", strings.LastIndex(prefix, " ")+1+enc.indent)
-	} else {
-		prefix = strings.Repeat(" ", len(prefix)+1)
-	}
-	for _, line := range strings.Split(scalar.value, "\n") {
-		fmt.Fprintln(enc, prefix+line)
-	}
+	fmt.Fprintln(enc, prefix+" "+strings.Replace(scalar.value, "\n", "\\n", -1))
 }
 
 // List represents an ordered list of unnamed nodes.

@@ -198,14 +198,40 @@ func TestPodGetEnvVars(t *testing.T) {
 
 	samples := []Sample{
 		{
-			desc:     "Simple string",
-			input:    "simple string",
-			expected: "simple string",
+			desc:  "Simple string",
+			input: "simple string",
+			expected: `---
+				-	name: ALL_VAR
+					value: placeholder
+				-	name: KUBERNETES_NAMESPACE
+					valueFrom:
+						fieldRef:
+							fieldPath: metadata.namespace
+				-	name:	SECRET_VAR
+					valueFrom:
+						secretKeyRef:
+							key: "secret-var"
+							name: "secret-1"
+				-	name: SOME_VAR
+					value: "simple string"`,
 		},
 		{
-			desc:     "string with newline",
-			input:    `hello\nworld`,
-			expected: "hello\nworld",
+			desc:  "string with newline",
+			input: `hello\nworld`,
+			expected: `---
+				-	name: ALL_VAR
+					value: placeholder
+				-	name: KUBERNETES_NAMESPACE
+					valueFrom:
+						fieldRef:
+							fieldPath: metadata.namespace
+				-	name:	SECRET_VAR
+					valueFrom:
+						secretKeyRef:
+							key: "secret-var"
+							name: "secret-1"
+				-	name: SOME_VAR
+					value: "hello\nworld"`,
 		},
 	}
 
@@ -223,28 +249,7 @@ func TestPodGetEnvVars(t *testing.T) {
 		}
 
 		vars, err := getEnvVars(role, defaults, secrets, &ExportSettings{})
-		assert.NoError(err)
-		assert.NotEmpty(vars)
-
-		founda := false
-		foundb := false
-		foundc := false
-		for _, result := range vars.Values() {
-			switch result.Get("name").Value() {
-			case "SOME_VAR":
-				founda = true
-				assert.Equal(sample.expected, result.Get("value").Value())
-			case "ALL_VAR":
-				foundb = true
-			case "SECRET_VAR":
-				foundc = true
-				assert.Equal("secret-var", result.Get("valueFrom").Get("secretKeyRef").Get("key").Value())
-				assert.Equal("secret-1", result.Get("valueFrom").Get("secretKeyRef").Get("name").Value())
-			}
-		}
-		assert.True(founda, "failed to find expected variable SOME_VAR")
-		assert.True(foundb, "failed to find expected variable ALL_VAR")
-		assert.True(foundc, "failed to find secret variable SECRET_VAR")
+		sample.check(t, vars, err)
 	}
 }
 
