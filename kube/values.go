@@ -17,7 +17,9 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		}
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
 			ok, value := cv.Value(defaults)
-			if !ok {
+			if ok {
+				value = fmt.Sprintf(`"%s"`, value)
+			} else {
 				value = "~"
 			}
 			comment := cv.Description

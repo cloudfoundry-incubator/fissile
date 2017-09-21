@@ -645,20 +645,14 @@ Mapping:
 }
 
 func TestHelmMultiLineScalar(t *testing.T) {
-	root := NewNodeMapping("Scalar", NewScalar("foo\nbar\nbaz"))
-	list := NewNodeList(NewScalar("one\ntwo\nthree"))
+	root := NewNodeMapping("Scalar", NewScalar("\"foo\nbar\nbaz\""))
+	list := NewNodeList(NewScalar("\"one\ntwo\nthree\""))
 	root.AddNode("List", list)
 
 	expect := `---
-Scalar: |-
-    foo
-    bar
-    baz
+Scalar: "foo\nbar\nbaz"
 List:
-  - |-
-    one
-    two
-    three
+  - "one\ntwo\nthree"
 `
 	equal(t, root, expect, Indent(4))
 }
