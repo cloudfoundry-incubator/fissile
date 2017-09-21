@@ -200,12 +200,12 @@ func TestPodGetEnvVars(t *testing.T) {
 		{
 			desc:     "Simple string",
 			input:    "simple string",
-			expected: "simple string",
+			expected: "\"simple string\"",
 		},
 		{
 			desc:     "string with newline",
 			input:    `hello\nworld`,
-			expected: "hello\nworld",
+			expected: "\"hello\nworld\"",
 		},
 	}
 

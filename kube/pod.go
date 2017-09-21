@@ -193,7 +193,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 				envVar := helm.NewMapping("name", config.Name, "value", value)
 				env = append(env, envVar)
 			} else {
-				envVar := helm.NewMapping("name", config.Name, "value", strconv.Itoa(role.Run.Scaling.Min))
+				envVar := helm.NewMapping("name", config.Name, "value", fmt.Sprintf(`"%d"`, role.Run.Scaling.Min))
 				env = append(env, envVar)
 			}
 			continue
@@ -223,6 +223,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 				// Ignore config vars that don't have a default value
 				continue
 			}
+			stringifiedValue = fmt.Sprintf(`"%s"`, stringifiedValue)
 		}
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
