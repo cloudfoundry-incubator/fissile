@@ -855,7 +855,7 @@ func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry
 	}
 
 	if createHelmChart {
-		if err = f.generateHelmValues(outputDir, roleManifest, defaults); err != nil {
+		if err = f.generateHelmValues(outputDir, roleManifest, defaults, registry, organization); err != nil {
 			return err
 		}
 	}
@@ -888,7 +888,7 @@ func (f *Fissile) generateSecrets(outputDir string, secrets helm.Node, roleManif
 	return err
 }
 
-func (f *Fissile) generateHelmValues(outputDir string, roleManifest *model.RoleManifest, defaults map[string]string) error {
+func (f *Fissile) generateHelmValues(outputDir string, roleManifest *model.RoleManifest, defaults map[string]string, registry, organization string) error {
 	// Export the default values for variables
 	outputPath := filepath.Join(outputDir, "values.yaml")
 	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
@@ -897,7 +897,7 @@ func (f *Fissile) generateHelmValues(outputDir string, roleManifest *model.RoleM
 	if err != nil {
 		return err
 	}
-	values, err := kube.MakeValues(roleManifest, defaults)
+	values, err := kube.MakeValues(roleManifest, defaults, registry, organization)
 	if err == nil {
 		err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(values)
 	}
