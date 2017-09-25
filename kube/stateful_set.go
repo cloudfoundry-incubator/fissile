@@ -33,10 +33,10 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 	spec.Add("volumeClaimTemplates", helm.NewNode(claims))
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
-	replicaCheck(role, statefulSet, spec, svcList, settings)
+	err = replicaCheck(role, statefulSet, spec, svcList, settings)
 	statefulSet.Add("spec", spec.Sort())
 
-	return statefulSet.Sort(), svcList, nil
+	return statefulSet.Sort(), svcList, err
 }
 
 // getAllVolumeClaims returns the list of persistent and shared volume claims from a role

@@ -75,6 +75,7 @@ type RoleRun struct {
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
+	Affinity          interface{}           `yaml:"affinity,omitempty"`
 	Environment       []string              `yaml:"env"`
 }
 

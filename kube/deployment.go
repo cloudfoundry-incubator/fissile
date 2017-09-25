@@ -5,6 +5,7 @@ import (
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached services
@@ -23,16 +24,44 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	spec.Add("template", podTemplate)
 
 	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name, helm.Comment(role.GetLongDescription()))
-	replicaCheck(role, deployment, spec, svc, settings)
+	err = replicaCheck(role, deployment, spec, svc, settings)
 	deployment.Add("spec", spec.Sort())
 
-	return deployment.Sort(), svc, nil
+	return deployment.Sort(), svc, err
 }
 
-func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping, service helm.Node, settings *ExportSettings) {
+func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping, service helm.Node, settings *ExportSettings) error {
+	if role.Run.Affinity != nil {
+		var cond string
+		if settings.CreateHelmChart {
+			podSpec := spec.Get("template").Get("spec").(*helm.Mapping)
+
+			// affinity spec is only supported in kube 1.6 and later
+			cond = "if or (gt (int .Capabilities.KubeVersion.Major) 1) (gt (int .Capabilities.KubeVersion.Minor) 5)"
+			podSpec.Add("affinity", role.Run.Affinity, helm.Block(cond))
+			podSpec.Sort()
+
+			// in kube 1.5 affinity is declared via annotation
+			cond = "if and (eq (int .Capabilities.KubeVersion.Major) 1) (le (int .Capabilities.KubeVersion.Minor) 5)"
+		}
+
+		meta := spec.Get("template").Get("metadata").(*helm.Mapping)
+		if meta.Get("annotations") == nil {
+			meta.Add("annotations", helm.NewEmptyMapping())
+			meta.Sort()
+		}
+		annotations := meta.Get("annotations").(*helm.Mapping)
+
+		affinity, err := util.JSONMarshal(role.Run.Affinity)
+		if err != nil {
+			return err
+		}
+		annotations.Add("scheduler.alpha.kubernetes.io/affinity", string(affinity), helm.Block(cond))
+	}
+
 	if !settings.CreateHelmChart {
 		spec.Add("replicas", role.Run.Scaling.Min)
-		return
+		return nil
 	}
 
 	roleName := makeVarName(role.Name)
@@ -52,4 +81,6 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping
 	fail := fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, role.Run.Scaling.Max)
 	block := fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, role.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
+
+	return nil
 }
