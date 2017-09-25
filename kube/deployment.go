@@ -19,19 +19,19 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 		return nil, nil, err
 	}
 	spec := helm.NewEmptyMapping()
-	spec.AddNode("selector", newSelector(role.Name))
-	spec.AddNode("template", podTemplate)
+	spec.Add("selector", newSelector(role.Name))
+	spec.Add("template", podTemplate)
 
 	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name, helm.Comment(role.GetLongDescription()))
 	replicaCheck(role, deployment, spec, svc, settings)
-	deployment.AddNode("spec", spec.Sort())
+	deployment.Add("spec", spec.Sort())
 
 	return deployment.Sort(), svc, nil
 }
 
 func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping, service helm.Node, settings *ExportSettings) {
 	if !settings.CreateHelmChart {
-		spec.AddInt("replicas", role.Run.Scaling.Min)
+		spec.Add("replicas", role.Run.Scaling.Min)
 		return
 	}
 

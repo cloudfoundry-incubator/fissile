@@ -116,13 +116,13 @@ func newTypeMeta(apiVersion, kind string) *helm.Mapping {
 
 func newObjectMeta(name string) *helm.Mapping {
 	meta := helm.NewMapping("name", name)
-	meta.AddNode("labels", helm.NewMapping(RoleNameLabel, name))
+	meta.Add("labels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewEmptyMapping()
-	meta.AddNode("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 
@@ -130,7 +130,7 @@ func newSelector(name string) *helm.Mapping {
 func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	mapping := newTypeMeta(apiVersion, kind)
 	mapping.Set(modifiers...)
-	mapping.AddNode("metadata", newObjectMeta(name))
+	mapping.Add("metadata", newObjectMeta(name))
 
 	return mapping
 }

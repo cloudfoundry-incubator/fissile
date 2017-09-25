@@ -50,7 +50,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
 		key := strings.ToLower(strings.Replace(name, "_", "-", -1))
 
-		data.AddNode(key, helm.NewScalar(value, helm.Comment(cv.Description)))
+		data.Add(key, helm.NewNode(value, helm.Comment(cv.Description)))
 		refs[name] = SecretRef{
 			Secret: "secret",
 			Key:    key,
@@ -59,7 +59,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 	data.Sort()
 
 	secret := newKubeConfig("v1", "Secret", "secret")
-	secret.AddNode("data", data)
+	secret.Add("data", data)
 
 	return secret.Sort(), refs, nil
 }

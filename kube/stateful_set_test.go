@@ -82,7 +82,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	}
 
 	items = append(items, statefulset)
-	objects := helm.NewNodeMapping("items", helm.NewNodeList(items...))
+	objects := helm.NewMapping("items", helm.NewNode(items))
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(objects); !assert.NoError(err) {
 		return

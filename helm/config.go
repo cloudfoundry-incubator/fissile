@@ -67,6 +67,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -153,17 +154,54 @@ type Node interface {
 	write(enc *Encoder, prefix string)
 }
 
+// NewNode creates a new scalar node.
+func NewNode(value interface{}, modifiers ...NodeModifier) Node {
+	var node Node
+	if value == nil {
+		node = &Scalar{value: "~"}
+	} else if _, ok := value.(Node); ok {
+		node = value.(Node)
+	} else {
+		switch reflect.TypeOf(value).Kind() {
+		case reflect.Map:
+			valueOf := reflect.ValueOf(value)
+			mapping := NewEmptyMapping()
+			for _, key := range valueOf.MapKeys() {
+				mapping.Add(key.Interface().(string), valueOf.MapIndex(key).Interface())
+			}
+			node = mapping.Sort()
+		case reflect.Slice:
+			valueOf := reflect.ValueOf(value)
+			list := NewEmptyList()
+			for i := 0; i < valueOf.Len(); i++ {
+				list.Add(valueOf.Index(i).Interface())
+			}
+			node = list
+		case reflect.Bool:
+			node = &Scalar{value: strconv.FormatBool(value.(bool))}
+		case reflect.Int:
+			node = &Scalar{value: strconv.FormatInt(int64(value.(int)), 10)}
+		case reflect.Float64:
+			node = &Scalar{value: strconv.FormatFloat(value.(float64), 'G', -1, 64)}
+		case reflect.String:
+			str := value.(string)
+			// don't quote values that are templates from start to end
+			if !(strings.HasPrefix(str, "{{") && strings.HasSuffix(str, "}}")) {
+				str = strconv.Quote(str)
+			}
+			node = &Scalar{value: str}
+		default:
+			panic(fmt.Sprintf("Unexpected type: %s", reflect.TypeOf(value).Kind()))
+		}
+	}
+	node.Set(modifiers...)
+	return node
+}
+
 // Scalar represents a scalar value inside a list or mapping.
 type Scalar struct {
 	sharedFields
 	value string
-}
-
-// NewScalar creates a scalar node and initializes shared fields.
-func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
-	scalar := &Scalar{value: value}
-	scalar.Set(modifiers...)
-	return scalar
 }
 
 // SetValue updates the value of a scalar node.
@@ -179,6 +217,10 @@ func (scalar *Scalar) String() string {
 
 // Value returns the value of a scalar node.
 func (scalar *Scalar) Value() string {
+	if strings.HasPrefix(scalar.value, `"`) && strings.HasSuffix(scalar.value, `"`) {
+		unquoted, _ := strconv.Unquote(scalar.value)
+		return unquoted
+	}
 	return scalar.value
 }
 
@@ -199,30 +241,18 @@ func NewEmptyList(modifiers ...NodeModifier) *List {
 	return list
 }
 
-// NewNodeList creates a list node initialized with nodes.
-// The list node will not have a comment or block action.
-func NewNodeList(nodes ...Node) *List {
-	list := &List{}
-	list.AddNode(nodes...)
-	return list
-}
-
 // NewList creates a list node initialized with string scalars.
 // The list and scalar nodes will not have comments or block actions.
-func NewList(values ...string) *List {
+func NewList(values ...interface{}) *List {
 	list := &List{}
-	for _, value := range values {
-		list.AddNode(NewScalar(value))
-	}
+	list.Add(values...)
 	return list
 }
 
-// AddNode one or more nodes at the end of the list.
-func (list *List) AddNode(nodes ...Node) {
-	for _, node := range nodes {
-		if node != nil {
-			list.nodes = append(list.nodes, node)
-		}
+// Add one or more nodes at the end of the list.
+func (list *List) Add(values ...interface{}) {
+	for _, value := range values {
+		list.nodes = append(list.nodes, NewNode(value))
 	}
 }
 
@@ -266,52 +296,23 @@ func NewEmptyMapping(modifiers ...NodeModifier) *Mapping {
 	return mapping
 }
 
-// NewNodeMapping creates a single node mapping node and initializes shared fields.
-func NewNodeMapping(name string, node Node, modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	mapping.AddNode(name, node)
-	return mapping
-}
-
-// NewIntMapping creates a new mapping containing a single named integer scalar.
-// The scalar node will not have a comment or block action.
-func NewIntMapping(name string, value int, modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	mapping.AddInt(name, value)
-	return mapping
-}
-
 // NewMapping creates a new mapping node initialzed with string scalars.
 // The mapping and scalar nodes will not have comments or block actions.
-func NewMapping(values ...string) *Mapping {
+func NewMapping(values ...interface{}) *Mapping {
 	mapping := &Mapping{}
 	for i := 0; i < len(values); i += 2 {
-		value := "~"
+		var value interface{}
 		if i+1 < len(values) {
 			value = values[i+1]
 		}
-		mapping.Add(values[i], value)
+		mapping.Add(values[i].(string), value)
 	}
 	return mapping
 }
 
-// AddNode a singled named node at the end of the list.
-func (mapping *Mapping) AddNode(name string, node Node) {
-	if node != nil {
-		mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
-	}
-}
-
-// AddInt adds a named integer if the value is not 0.
-func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
-	mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
-}
-
-// Add adds a named string if the value is not the empty string.
-func (mapping *Mapping) Add(name string, value string, modifiers ...NodeModifier) {
-	mapping.AddNode(name, NewScalar(value, modifiers...))
+// Add a single named node at the end of the list.
+func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeModifier) {
+	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: NewNode(value, modifiers...)})
 }
 
 // Get returns the named node, or nil if the name cannot be found.

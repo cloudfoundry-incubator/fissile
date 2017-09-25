@@ -29,12 +29,12 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 
 	spec := helm.NewEmptyMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
-	spec.AddNode("template", podTemplate)
-	spec.AddNode("volumeClaimTemplates", helm.NewNodeList(claims...))
+	spec.Add("template", podTemplate)
+	spec.Add("volumeClaimTemplates", helm.NewNode(claims))
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	replicaCheck(role, statefulSet, spec, svcList, settings)
-	statefulSet.AddNode("spec", spec.Sort())
+	statefulSet.Add("spec", spec.Sort())
 
 	return statefulSet.Sort(), svcList, nil
 }
@@ -55,7 +55,7 @@ func getVolumeClaims(role *model.Role, volumeDefinitions []*model.RoleRunVolume,
 	var claims []helm.Node
 	for _, volume := range volumeDefinitions {
 		meta := helm.NewMapping("name", volume.Tag)
-		meta.AddNode("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
+		meta.Add("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
 
 		var size string
 		if createHelmChart {
@@ -64,11 +64,11 @@ func getVolumeClaims(role *model.Role, volumeDefinitions []*model.RoleRunVolume,
 			size = fmt.Sprintf("%dG", volume.Size)
 		}
 
-		spec := helm.NewNodeMapping("accessModes", helm.NewList(accessMode))
-		spec.AddNode("resources", helm.NewNodeMapping("requests", helm.NewMapping("storage", size)))
+		spec := helm.NewMapping("accessModes", helm.NewList(accessMode))
+		spec.Add("resources", helm.NewMapping("requests", helm.NewMapping("storage", size)))
 
-		claim := helm.NewNodeMapping("metadata", meta)
-		claim.AddNode("spec", spec)
+		claim := helm.NewMapping("metadata", meta)
+		claim.Add("spec", spec)
 
 		claims = append(claims, claim)
 	}

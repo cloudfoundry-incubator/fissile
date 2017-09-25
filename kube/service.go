@@ -2,7 +2,6 @@ package kube
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/helm"
@@ -45,7 +44,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSe
 	}
 
 	list := newTypeMeta("v1", "List")
-	list.AddNode("items", helm.NewNodeList(items...))
+	list.Add("items", helm.NewNode(items))
 
 	return list.Sort(), nil
 }
@@ -69,11 +68,11 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		for _, portInfoEntry := range portInfos {
 			port := helm.NewMapping(
 				"name", portInfoEntry.name,
-				"port", strconv.Itoa(portInfoEntry.port),
+				"port", portInfoEntry.port,
 				"protocol", strings.ToUpper(portDef.Protocol),
 			)
 			if headless {
-				port.AddInt("targetPort", 0)
+				port.Add("targetPort", 0)
 			} else {
 				port.Add("targetPort", portInfoEntry.name)
 			}
@@ -87,7 +86,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	spec := helm.NewEmptyMapping()
-	spec.AddNode("selector", helm.NewMapping(RoleNameLabel, role.Name))
+	spec.Add("selector", helm.NewMapping(RoleNameLabel, role.Name))
 	spec.Add("type", "ClusterIP")
 	if headless {
 		spec.Add("clusterIP", "None")
@@ -97,9 +96,9 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if settings.CreateHelmChart {
 			externalIP = "{{ .Values.kube.external_ip | quote }}"
 		}
-		spec.AddNode("externalIPs", helm.NewNodeList(helm.NewScalar(externalIP)))
+		spec.Add("externalIPs", helm.NewList(externalIP))
 	}
-	spec.AddNode("ports", helm.NewNodeList(ports...))
+	spec.Add("ports", helm.NewNode(ports))
 
 	serviceName := role.Name
 	if headless {
@@ -109,8 +108,8 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	service := newTypeMeta("v1", "Service")
-	service.AddNode("metadata", helm.NewMapping("name", serviceName))
-	service.AddNode("spec", spec.Sort())
+	service.Add("metadata", helm.NewMapping("name", serviceName))
+	service.Add("spec", spec.Sort())
 
 	return service, nil
 }
