@@ -111,12 +111,8 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 		return "", err
 	}
 	imageName := builder.GetRoleDevImageName("", "", settings.Repository, role, devVersion)
-	value := "{{ if .Values.kube.registry -}}"
-	value += "{{- .Values.kube.registry -}}/"
-	value += "{{- end -}}"
-	value += "{{- if .Values.kube.organization -}}"
+	value := "{{ default \"docker.io\" .Values.kube.registry -}}/"
 	value += "{{- .Values.kube.organization -}}/"
-	value += "{{- end -}}"
 	value += imageName
 	return value, nil
 }
