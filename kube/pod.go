@@ -111,14 +111,14 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 		return "", err
 	}
 	imageName := builder.GetRoleDevImageName("", "", settings.Repository, role, devVersion)
-	value := "{{ if .Values.kube.registry -}}\n"
-	value += "{{- .Values.kube.registry -}}/\n"
-	value += "{{- end -}}\n"
-	value += "{{ if .Values.kube.organization -}}\n"
-	value += "{{- .Values.kube.organization }}/\n"
-	value += "{{- end -}}\n"
+	value := "{{ if .Values.kube.registry -}}"
+	value += "{{- .Values.kube.registry -}}/"
+	value += "{{- end -}}"
+	value += "{{- if .Values.kube.organization -}}"
+	value += "{{- .Values.kube.organization -}}/"
+	value += "{{- end -}}"
 	value += imageName
-	return imageName, nil
+	return value, nil
 }
 
 // getContainerPorts returns a list of ports for a role
