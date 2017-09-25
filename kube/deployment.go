@@ -34,7 +34,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping
 	if role.Run.Affinity != nil {
 		var cond string
 		if settings.CreateHelmChart {
-			podSpec := spec.Get("template").Get("spec").(*helm.Mapping)
+			podSpec := spec.Get("template/spec").(*helm.Mapping)
 
 			// affinity spec is only supported in kube 1.6 and later
 			cond = "if or (gt (int .Capabilities.KubeVersion.Major) 1) (gt (int .Capabilities.KubeVersion.Minor) 5)"
@@ -45,7 +45,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping
 			cond = "if and (eq (int .Capabilities.KubeVersion.Major) 1) (le (int .Capabilities.KubeVersion.Minor) 5)"
 		}
 
-		meta := spec.Get("template").Get("metadata").(*helm.Mapping)
+		meta := spec.Get("template/metadata").(*helm.Mapping)
 		if meta.Get("annotations") == nil {
 			meta.Add("annotations", helm.NewEmptyMapping())
 			meta.Sort()

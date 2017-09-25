@@ -907,7 +907,7 @@ func TestHelmGetNode(t *testing.T) {
 	}
 
 	root.Add("Baz", NewMapping("xyzzy", "plugh"))
-	assert.Equal(t, "plugh", root.Get("Baz").Get("xyzzy").Value())
+	assert.Equal(t, "plugh", root.Get("Baz/xyzzy").Value())
 
 	equal(t, root, `---
 Foo: 1

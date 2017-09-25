@@ -103,7 +103,7 @@ func TestPodGetVolumes(t *testing.T) {
 
 	var persistentClaim, sharedClaim helm.Node
 	for _, claim := range claims {
-		switch claim.Get("metadata").Get("name").Value() {
+		switch claim.Get("metadata/name").Value() {
 		case role.Run.PersistentVolumes[0].Tag:
 			persistentClaim = claim
 		case role.Run.SharedVolumes[0].Tag:

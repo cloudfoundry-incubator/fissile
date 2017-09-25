@@ -315,10 +315,17 @@ func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeMod
 	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: NewNode(value, modifiers...)})
 }
 
-// Get returns the named node, or nil if the name cannot be found.
+// Get returns the named node, or nil if the name cannot be found. Name may be
+// a "/" separated "path" of nested names, which will be treated as a string of
+// Get() calls, but with the advantage of not crashing if any intermediate node
+// does not exist.
 func (mapping *Mapping) Get(name string) Node {
+	path := strings.SplitN(name, "/", 2)
 	for _, namedNode := range mapping.nodes {
-		if name == namedNode.name {
+		if path[0] == namedNode.name {
+			if len(path) > 1 {
+				return namedNode.node.Get(path[1])
+			}
 			return namedNode.node
 		}
 	}
