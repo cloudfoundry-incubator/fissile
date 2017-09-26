@@ -103,7 +103,7 @@ func TestPodGetVolumes(t *testing.T) {
 
 	var persistentClaim, sharedClaim helm.Node
 	for _, claim := range claims {
-		switch claim.Get("metadata").Get("name").Value() {
+		switch claim.Get("metadata", "name").String() {
 		case role.Run.PersistentVolumes[0].Tag:
 			persistentClaim = claim
 		case role.Run.SharedVolumes[0].Tag:
@@ -162,7 +162,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 
 	var persistentMount, sharedMount helm.Node
 	for _, mount := range volumeMounts {
-		switch mount.Get("name").Value() {
+		switch mount.Get("name").String() {
 		case "persistent-volume":
 			persistentMount = mount
 		case "shared-volume":
@@ -171,10 +171,10 @@ func TestPodGetVolumeMounts(t *testing.T) {
 			assert.Fail("Got unexpected volume mount", "%+v", mount)
 		}
 	}
-	assert.Equal("/mnt/persistent", persistentMount.Get("mountPath").Value())
-	assert.Equal("false", persistentMount.Get("readOnly").Value())
-	assert.Equal("/mnt/shared", sharedMount.Get("mountPath").Value())
-	assert.Equal("false", sharedMount.Get("readOnly").Value())
+	assert.Equal("/mnt/persistent", persistentMount.Get("mountPath").String())
+	assert.Equal("false", persistentMount.Get("readOnly").String())
+	assert.Equal("/mnt/shared", sharedMount.Get("mountPath").String())
+	assert.Equal("false", sharedMount.Get("readOnly").String())
 }
 
 func TestPodGetEnvVars(t *testing.T) {

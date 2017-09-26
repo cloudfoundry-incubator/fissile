@@ -67,6 +67,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -110,13 +111,8 @@ func (shared sharedFields) Comment() string {
 }
 
 // SetValue updates the value of a scalar node.
-func (shared *sharedFields) SetValue(string) {
+func (shared *sharedFields) SetValue(interface{}) {
 	panic("SetValue can only be called on helm.Scalar nodes")
-}
-
-// Value returns the value of a scalar node.
-func (shared *sharedFields) Value() string {
-	panic("Value can only be called on helm.Scalar nodes")
 }
 
 // Values returns all the elements of a list node.
@@ -125,7 +121,7 @@ func (shared *sharedFields) Values() []Node {
 }
 
 // Get returns a named node from a mapping node.
-func (shared *sharedFields) Get(string) Node {
+func (shared *sharedFields) Get(...string) Node {
 	panic("Get can only be called on helm.Mapping nodes")
 }
 
@@ -137,14 +133,14 @@ type Node interface {
 	Set(...NodeModifier)
 
 	// Scalar node methods:
-	SetValue(string)
-	Value() string
+	SetValue(interface{})
+	String() string
 
 	// List node methods:
 	Values() []Node
 
 	// Mapping node methods:
-	Get(string) Node
+	Get(...string) Node
 
 	// The write() method implements the part of Encoder.writeNode() that
 	// needs to access the fields specific to each node type. prefix will be
@@ -153,32 +149,69 @@ type Node interface {
 	write(enc *Encoder, prefix string)
 }
 
+// NewNode creates a new scalar node.
+func NewNode(value interface{}, modifiers ...NodeModifier) Node {
+	var node Node
+	if value == nil {
+		node = &Scalar{value: "~"}
+	} else if _, ok := value.(Node); ok {
+		node = value.(Node)
+	} else {
+		switch reflect.TypeOf(value).Kind() {
+		case reflect.Map:
+			valueOf := reflect.ValueOf(value)
+			mapping := NewMapping()
+			for _, key := range valueOf.MapKeys() {
+				mapping.Add(fmt.Sprintf("%s", key.Interface()), valueOf.MapIndex(key).Interface())
+			}
+			node = mapping.Sort()
+		case reflect.Slice:
+			valueOf := reflect.ValueOf(value)
+			list := NewList()
+			for i := 0; i < valueOf.Len(); i++ {
+				list.Add(valueOf.Index(i).Interface())
+			}
+			node = list
+		case reflect.Bool:
+			node = &Scalar{value: strconv.FormatBool(value.(bool))}
+		case reflect.Int:
+			node = &Scalar{value: strconv.FormatInt(int64(value.(int)), 10)}
+		case reflect.Float64:
+			node = &Scalar{value: strconv.FormatFloat(value.(float64), 'G', -1, 64)}
+		case reflect.String:
+			str := value.(string)
+			// don't quote values that are templates from start to end
+			if !(strings.HasPrefix(str, "{{") && strings.HasSuffix(str, "}}")) {
+				str = strconv.Quote(str)
+			}
+			node = &Scalar{value: str}
+		default:
+			panic(fmt.Sprintf("Unexpected type: %s", reflect.TypeOf(value).Kind()))
+		}
+	}
+	node.Set(modifiers...)
+	return node
+}
+
 // Scalar represents a scalar value inside a list or mapping.
 type Scalar struct {
 	sharedFields
 	value string
 }
 
-// NewScalar creates a scalar node and initializes shared fields.
-func NewScalar(value string, modifiers ...NodeModifier) *Scalar {
-	scalar := &Scalar{value: value}
-	scalar.Set(modifiers...)
-	return scalar
-}
-
 // SetValue updates the value of a scalar node.
-func (scalar *Scalar) SetValue(value string) {
-	scalar.value = value
+func (scalar *Scalar) SetValue(value interface{}) {
+	node := NewNode(value)
+	scalar.value = node.(*Scalar).value
 }
 
+// String returns the string value of a scalar node. This value will *not*
+// include the surrounding quotes used for literal YAML strings.
 func (scalar *Scalar) String() string {
-	buffer := &bytes.Buffer{}
-	NewEncoder(buffer).Encode(scalar)
-	return buffer.String()
-}
-
-// Value returns the value of a scalar node.
-func (scalar *Scalar) Value() string {
+	if strings.HasPrefix(scalar.value, `"`) && strings.HasSuffix(scalar.value, `"`) {
+		unquoted, _ := strconv.Unquote(scalar.value)
+		return unquoted
+	}
 	return scalar.value
 }
 
@@ -192,37 +225,18 @@ type List struct {
 	nodes []Node
 }
 
-// NewEmptyList creates an empty list node and initializes shared fields.
-func NewEmptyList(modifiers ...NodeModifier) *List {
-	list := &List{}
-	list.Set(modifiers...)
-	return list
-}
-
-// NewNodeList creates a list node initialized with nodes.
-// The list node will not have a comment or block action.
-func NewNodeList(nodes ...Node) *List {
-	list := &List{}
-	list.AddNode(nodes...)
-	return list
-}
-
 // NewList creates a list node initialized with string scalars.
 // The list and scalar nodes will not have comments or block actions.
-func NewList(values ...string) *List {
+func NewList(values ...interface{}) *List {
 	list := &List{}
-	for _, value := range values {
-		list.AddNode(NewScalar(value))
-	}
+	list.Add(values...)
 	return list
 }
 
-// AddNode one or more nodes at the end of the list.
-func (list *List) AddNode(nodes ...Node) {
-	for _, node := range nodes {
-		if node != nil {
-			list.nodes = append(list.nodes, node)
-		}
+// Add one or more nodes at the end of the list.
+func (list *List) Add(values ...interface{}) {
+	for _, value := range values {
+		list.nodes = append(list.nodes, NewNode(value))
 	}
 }
 
@@ -259,66 +273,38 @@ type Mapping struct {
 	nodes []namedNode
 }
 
-// NewEmptyMapping creates an empty mapping node and initializes shared fields.
-func NewEmptyMapping(modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	return mapping
-}
-
-// NewNodeMapping creates a single node mapping node and initializes shared fields.
-func NewNodeMapping(name string, node Node, modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	mapping.AddNode(name, node)
-	return mapping
-}
-
-// NewIntMapping creates a new mapping containing a single named integer scalar.
-// The scalar node will not have a comment or block action.
-func NewIntMapping(name string, value int, modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	mapping.AddInt(name, value)
-	return mapping
-}
-
 // NewMapping creates a new mapping node initialzed with string scalars.
 // The mapping and scalar nodes will not have comments or block actions.
-func NewMapping(values ...string) *Mapping {
+func NewMapping(values ...interface{}) *Mapping {
 	mapping := &Mapping{}
 	for i := 0; i < len(values); i += 2 {
-		value := "~"
+		var value interface{}
 		if i+1 < len(values) {
 			value = values[i+1]
 		}
-		mapping.Add(values[i], value)
+		mapping.Add(values[i].(string), value)
 	}
 	return mapping
 }
 
-// AddNode a singled named node at the end of the list.
-func (mapping *Mapping) AddNode(name string, node Node) {
-	if node != nil {
-		mapping.nodes = append(mapping.nodes, namedNode{name: name, node: node})
-	}
+// Add a single named node at the end of the list.
+func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeModifier) {
+	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: NewNode(value, modifiers...)})
 }
 
-// AddInt adds a named integer if the value is not 0.
-func (mapping *Mapping) AddInt(name string, value int, modifiers ...NodeModifier) {
-	mapping.AddNode(name, NewScalar(strconv.Itoa(value), modifiers...))
-}
-
-// Add adds a named string if the value is not the empty string.
-func (mapping *Mapping) Add(name string, value string, modifiers ...NodeModifier) {
-	mapping.AddNode(name, NewScalar(value, modifiers...))
-}
-
-// Get returns the named node, or nil if the name cannot be found.
-func (mapping *Mapping) Get(name string) Node {
-	for _, namedNode := range mapping.nodes {
-		if name == namedNode.name {
-			return namedNode.node
+// Get returns the named node, or nil if the name cannot be found. Name may be
+// a "/" separated "path" of nested names, which will be treated as a string of
+// Get() calls, but with the advantage of not crashing if any intermediate node
+// does not exist.
+func (mapping *Mapping) Get(names ...string) Node {
+	if len(names) > 0 {
+		for _, namedNode := range mapping.nodes {
+			if names[0] == namedNode.name {
+				if len(names) > 1 {
+					return namedNode.node.Get(names[1:]...)
+				}
+				return namedNode.node
+			}
 		}
 	}
 	return nil

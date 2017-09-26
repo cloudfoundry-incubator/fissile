@@ -116,13 +116,13 @@ func newTypeMeta(apiVersion, kind string) *helm.Mapping {
 
 func newObjectMeta(name string) *helm.Mapping {
 	meta := helm.NewMapping("name", name)
-	meta.AddNode("labels", helm.NewMapping(RoleNameLabel, name))
+	meta.Add("labels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 
 func newSelector(name string) *helm.Mapping {
-	meta := helm.NewEmptyMapping()
-	meta.AddNode("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	meta := helm.NewMapping()
+	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }
 
@@ -130,11 +130,18 @@ func newSelector(name string) *helm.Mapping {
 func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	mapping := newTypeMeta(apiVersion, kind)
 	mapping.Set(modifiers...)
-	mapping.AddNode("metadata", newObjectMeta(name))
+	mapping.Add("metadata", newObjectMeta(name))
 
 	return mapping
 }
 
 func makeVarName(name string) string {
 	return strings.Replace(name, "-", "_", -1)
+}
+
+func minKubeVersion(major, minor int) string {
+	ver := ".Capabilities.KubeVersion"
+	// "Major > major || (Major == major && Minor >= minor)"
+	// The int conversions are necessary because Major/Minor in KubeVersion are strings
+	return fmt.Sprintf("or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (int %s.Minor) %d))", ver, major, ver, major, ver, minor)
 }

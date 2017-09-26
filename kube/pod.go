@@ -35,7 +35,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 
 	var resources helm.Node
 	if settings.UseMemoryLimits {
-		resources = helm.NewNodeMapping("requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
+		resources = helm.NewMapping("requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
 	}
 
 	securityContext := getSecurityContext(role)
@@ -56,27 +56,27 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 		return nil, err
 	}
 
-	container := helm.NewEmptyMapping()
+	container := helm.NewMapping()
 	container.Add("name", role.Name)
 	container.Add("image", image)
-	container.AddNode("ports", ports)
-	container.AddNode("volumeMounts", getVolumeMounts(role))
-	container.AddNode("env", vars)
-	container.AddNode("resources", resources)
-	container.AddNode("securityContext", securityContext)
-	container.AddNode("livenessProbe", livenessProbe)
-	container.AddNode("readinessProbe", readinessProbe)
+	container.Add("ports", ports)
+	container.Add("volumeMounts", getVolumeMounts(role))
+	container.Add("env", vars)
+	container.Add("resources", resources)
+	container.Add("securityContext", securityContext)
+	container.Add("livenessProbe", livenessProbe)
+	container.Add("readinessProbe", readinessProbe)
 	container.Sort()
 
-	spec := helm.NewEmptyMapping()
-	spec.AddNode("containers", helm.NewNodeList(container))
+	spec := helm.NewMapping()
+	spec.Add("containers", helm.NewList(container))
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("restartPolicy", "Always")
 	spec.Sort()
 
-	podTemplate := helm.NewEmptyMapping()
-	podTemplate.AddNode("metadata", newObjectMeta(role.Name))
-	podTemplate.AddNode("spec", spec)
+	podTemplate := helm.NewMapping()
+	podTemplate.Add("metadata", newObjectMeta(role.Name))
+	podTemplate.Add("spec", spec)
 
 	return podTemplate, nil
 }
@@ -91,15 +91,15 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	// Pod must have a restart policy that isn't "always"
 	switch role.Run.FlightStage {
 	case model.FlightStageManual:
-		podTemplate.Get("spec").Get("restartPolicy").SetValue("Never")
+		podTemplate.Get("spec", "restartPolicy").SetValue("Never")
 	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Get("spec").Get("restartPolicy").SetValue("OnFailure")
+		podTemplate.Get("spec", "restartPolicy").SetValue("OnFailure")
 	default:
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
 	pod := newKubeConfig("v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
-	pod.AddNode("spec", podTemplate.Get("spec"))
+	pod.Add("spec", podTemplate.Get("spec"))
 
 	return pod.Sort(), nil
 }
@@ -140,8 +140,8 @@ func getContainerPorts(role *model.Role) (helm.Node, error) {
 			return nil, err
 		}
 		for _, portInfo := range portInfos {
-			newPort := helm.NewEmptyMapping()
-			newPort.AddInt("containerPort", portInfo.port)
+			newPort := helm.NewMapping()
+			newPort.Add("containerPort", portInfo.port)
 			newPort.Add("name", portInfo.name)
 			newPort.Add("protocol", strings.ToUpper(port.Protocol))
 			ports = append(ports, newPort)
@@ -150,22 +150,22 @@ func getContainerPorts(role *model.Role) (helm.Node, error) {
 	if len(ports) == 0 {
 		return nil, nil
 	}
-	return helm.NewNodeList(ports...), nil
+	return helm.NewNode(ports), nil
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.PersistentVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
 	}
 	for _, volume := range role.Run.SharedVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", "false"))
+		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
 	}
 	if len(mounts) == 0 {
 		return nil
 	}
-	return helm.NewNodeList(mounts...)
+	return helm.NewNode(mounts)
 }
 
 func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, settings *ExportSettings) (helm.Node, error) {
@@ -193,7 +193,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 				envVar := helm.NewMapping("name", config.Name, "value", value)
 				env = append(env, envVar)
 			} else {
-				envVar := helm.NewMapping("name", config.Name, "value", fmt.Sprintf(`"%d"`, role.Run.Scaling.Min))
+				envVar := helm.NewMapping("name", config.Name, "value", strconv.Itoa(role.Run.Scaling.Min))
 				env = append(env, envVar)
 			}
 			continue
@@ -203,7 +203,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
 
 			envVar := helm.NewMapping("name", config.Name)
-			envVar.AddNode("valueFrom", helm.NewNodeMapping("secretKeyRef", secretKeyRef))
+			envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
 
 			env = append(env, envVar)
 			continue
@@ -223,7 +223,6 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 				// Ignore config vars that don't have a default value
 				continue
 			}
-			stringifiedValue = fmt.Sprintf(`"%s"`, stringifiedValue)
 		}
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
@@ -231,14 +230,14 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
 
 	envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")
-	envVar.AddNode("valueFrom", helm.NewNodeMapping("fieldRef", fieldRef))
+	envVar.Add("valueFrom", helm.NewMapping("fieldRef", fieldRef))
 
 	env = append(env, envVar)
 
 	sort.Slice(env[:], func(i, j int) bool {
-		return env[i].Get("name").Value() < env[j].Get("name").Value()
+		return env[i].Get("name").String() < env[j].Get("name").String()
 	})
-	return helm.NewNodeList(env...), nil
+	return helm.NewNode(env), nil
 }
 
 func getSecurityContext(role *model.Role) helm.Node {
@@ -246,14 +245,14 @@ func getSecurityContext(role *model.Role) helm.Node {
 	for _, cap := range role.Run.Capabilities {
 		cap = strings.ToUpper(cap)
 		if cap == "ALL" {
-			return helm.NewMapping("privileged", "true")
+			return helm.NewMapping("privileged", true)
 		}
 		capabilities = append(capabilities, cap)
 	}
 	if len(capabilities) == 0 {
 		return nil
 	}
-	return helm.NewNodeMapping("capabilities", helm.NewNodeMapping("add", helm.NewList(capabilities...)))
+	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
 }
 
 func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
@@ -267,8 +266,8 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 		var err error
 		probe, complete, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
-		if probe.Get("initialDelaySeconds").Value() == "0" {
-			probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
+		if probe.Get("initialDelaySeconds").String() == "0" {
+			probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
 		}
 		if complete || err != nil {
 			return probe, err
@@ -279,12 +278,12 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 	}
 
 	if probe == nil {
-		probe = helm.NewEmptyMapping()
+		probe = helm.NewMapping()
 	}
 	if probe.Get("initialDelaySeconds") == nil {
-		probe.AddInt("initialDelaySeconds", defaultInitialDelaySeconds)
+		probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
 	}
-	probe.AddNode("tcpSocket", helm.NewIntMapping("port", monitPort))
+	probe.Add("tcpSocket", helm.NewMapping("port", monitPort))
 	return probe.Sort(), nil
 }
 
@@ -322,9 +321,9 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	}
 
 	if probe == nil {
-		probe = helm.NewEmptyMapping()
+		probe = helm.NewMapping()
 	}
-	probe.AddNode("tcpSocket", helm.NewIntMapping("port", probePort))
+	probe.Add("tcpSocket", helm.NewMapping("port", probePort))
 	return probe.Sort(), nil
 }
 
@@ -335,12 +334,12 @@ func configureContainerProbe(role *model.Role, probeName string, roleProbe *mode
 	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
 	// FailureThreshold    - 3, min 1
 
-	probe := helm.NewEmptyMapping()
-	probe.AddInt("initialDelaySeconds", roleProbe.InitialDelay)
-	probe.AddInt("timeoutSeconds", roleProbe.Timeout)
-	probe.AddInt("periodSeconds", roleProbe.Period)
-	probe.AddInt("successThreshold", roleProbe.SuccessThreshold)
-	probe.AddInt("failureThreshold", roleProbe.FailureThreshold)
+	probe := helm.NewMapping()
+	probe.Add("initialDelaySeconds", roleProbe.InitialDelay)
+	probe.Add("timeoutSeconds", roleProbe.Timeout)
+	probe.Add("periodSeconds", roleProbe.Period)
+	probe.Add("successThreshold", roleProbe.SuccessThreshold)
+	probe.Add("failureThreshold", roleProbe.FailureThreshold)
 
 	if roleProbe.URL != "" {
 		urlProbe, err := getContainerURLProbe(role, probeName, roleProbe)
@@ -350,11 +349,11 @@ func configureContainerProbe(role *model.Role, probeName string, roleProbe *mode
 		return probe.Sort(), true, err
 	}
 	if roleProbe.Port != 0 {
-		probe.AddNode("tcpSocket", helm.NewIntMapping("port", roleProbe.Port))
+		probe.Add("tcpSocket", helm.NewMapping("port", roleProbe.Port))
 		return probe.Sort(), true, nil
 	}
 	if len(roleProbe.Command) > 0 {
-		probe.AddNode("exec", helm.NewNodeMapping("command", helm.NewList(roleProbe.Command...)))
+		probe.Add("exec", helm.NewMapping("command", helm.NewNode(roleProbe.Command)))
 		return probe.Sort(), true, nil
 	}
 
@@ -390,7 +389,7 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 		host = host[:colonIndex]
 	}
 
-	httpGet := helm.NewMapping("scheme", scheme, "port", strconv.Itoa(port))
+	httpGet := helm.NewMapping("scheme", scheme, "port", port)
 	// Set the host address, unless it's the special case to use the pod IP instead
 	if host != "container-ip" {
 		httpGet.Add("host", host)
@@ -410,7 +409,7 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 		))
 	}
 	if len(headers) > 0 {
-		httpGet.AddNode("httpHeaders", helm.NewNodeList(headers...))
+		httpGet.Add("httpHeaders", helm.NewNode(headers))
 	}
 
 	path := probeURL.Path
@@ -421,5 +420,5 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 	httpGet.Add("path", path)
 	httpGet.Sort()
 
-	return helm.NewNodeMapping("httpGet", httpGet), nil
+	return helm.NewMapping("httpGet", httpGet), nil
 }
