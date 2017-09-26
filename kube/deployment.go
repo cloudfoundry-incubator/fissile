@@ -37,12 +37,12 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 			podSpec := spec.Get("template", "spec").(*helm.Mapping)
 
 			// affinity spec is only supported in kube 1.6 and later
-			cond = "if or (gt (int .Capabilities.KubeVersion.Major) 1) (gt (int .Capabilities.KubeVersion.Minor) 5)"
+			cond = fmt.Sprintf("if %s", minKubeVersion(1, 6))
 			podSpec.Add("affinity", role.Run.Affinity, helm.Block(cond))
 			podSpec.Sort()
 
 			// in kube 1.5 affinity is declared via annotation
-			cond = "if and (eq (int .Capabilities.KubeVersion.Major) 1) (le (int .Capabilities.KubeVersion.Minor) 5)"
+			cond = fmt.Sprintf("if not (%s)", minKubeVersion(1, 6))
 		}
 
 		meta := spec.Get("template", "metadata").(*helm.Mapping)

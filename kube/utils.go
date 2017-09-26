@@ -138,3 +138,10 @@ func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeM
 func makeVarName(name string) string {
 	return strings.Replace(name, "-", "_", -1)
 }
+
+func minKubeVersion(major, minor int) string {
+	ver := ".Capabilities.KubeVersion"
+	// "Major > major || (Major == major && Minor >= minor)"
+	// The int conversions are necessary because Major/Minor in KubeVersion are strings
+	return fmt.Sprintf("or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (int %s.Minor) %d))", ver, major, ver, major, ver, minor)
+}
