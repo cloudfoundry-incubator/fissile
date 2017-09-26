@@ -24,13 +24,13 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	spec.Add("template", podTemplate)
 
 	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name, helm.Comment(role.GetLongDescription()))
-	err = replicaCheck(role, deployment, spec, svc, settings)
-	deployment.Add("spec", spec.Sort())
-
-	return deployment.Sort(), svc, err
+	deployment.Add("spec", spec)
+	err = replicaCheck(role, deployment, svc, settings)
+	return deployment, svc, err
 }
 
-func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping, service helm.Node, settings *ExportSettings) error {
+func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings *ExportSettings) error {
+	spec := controller.Get("spec").(*helm.Mapping)
 	if role.Run.Affinity != nil {
 		var cond string
 		if settings.CreateHelmChart {
@@ -57,15 +57,18 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping
 			return err
 		}
 		annotations.Add("scheduler.alpha.kubernetes.io/affinity", string(affinity), helm.Block(cond))
+		annotations.Sort()
 	}
 
 	if !settings.CreateHelmChart {
 		spec.Add("replicas", role.Run.Scaling.Min)
+		spec.Sort()
 		return nil
 	}
 
 	roleName := makeVarName(role.Name)
 	spec.Add("replicas", fmt.Sprintf("{{ .Values.sizing.%s.count }}", roleName))
+	spec.Sort()
 	if role.Run.Scaling.Min == 0 {
 		block := helm.Block(fmt.Sprintf("if gt (int .Values.sizing.%s.count) 0", roleName))
 		controller.Set(block)

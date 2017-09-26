@@ -33,8 +33,8 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 	spec.Add("volumeClaimTemplates", helm.NewNode(claims))
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
-	err = replicaCheck(role, statefulSet, spec, svcList, settings)
-	statefulSet.Add("spec", spec.Sort())
+	statefulSet.Add("spec", spec)
+	err = replicaCheck(role, statefulSet, svcList, settings)
 
 	return statefulSet.Sort(), svcList, err
 }
