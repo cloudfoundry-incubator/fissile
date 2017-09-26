@@ -56,7 +56,7 @@ func TestServiceOK(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", service.Get("spec", "type").Value())
+	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
 	yamlConfig := &bytes.Buffer{}
@@ -107,8 +107,8 @@ func TestHeadlessServiceOK(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", service.Get("spec", "type").Value())
-	assert.Equal("None", service.Get("spec", "clusterIP").Value())
+	assert.Equal("ClusterIP", service.Get("spec", "type").String())
+	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {

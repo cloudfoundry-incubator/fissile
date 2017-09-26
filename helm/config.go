@@ -115,11 +115,6 @@ func (shared *sharedFields) SetValue(interface{}) {
 	panic("SetValue can only be called on helm.Scalar nodes")
 }
 
-// Value returns the value of a scalar node.
-func (shared *sharedFields) Value() string {
-	panic("Value can only be called on helm.Scalar nodes")
-}
-
 // Values returns all the elements of a list node.
 func (shared *sharedFields) Values() []Node {
 	panic("Values can only be called on helm.List nodes")
@@ -138,8 +133,8 @@ type Node interface {
 	Set(...NodeModifier)
 
 	// Scalar node methods:
-	Value() string
 	SetValue(interface{})
+	String() string
 
 	// List node methods:
 	Values() []Node
@@ -213,13 +208,6 @@ func (scalar *Scalar) SetValue(value interface{}) {
 // String returns the string value of a scalar node. This value will *not*
 // include the surrounding quotes used for literal YAML strings.
 func (scalar *Scalar) String() string {
-	buffer := &bytes.Buffer{}
-	NewEncoder(buffer).Encode(scalar)
-	return buffer.String()
-}
-
-// Value returns the value of a scalar node.
-func (scalar *Scalar) Value() string {
 	if strings.HasPrefix(scalar.value, `"`) && strings.HasSuffix(scalar.value, `"`) {
 		unquoted, _ := strconv.Unquote(scalar.value)
 		return unquoted

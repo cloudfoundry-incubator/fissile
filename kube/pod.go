@@ -235,7 +235,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 	env = append(env, envVar)
 
 	sort.Slice(env[:], func(i, j int) bool {
-		return env[i].Get("name").Value() < env[j].Get("name").Value()
+		return env[i].Get("name").String() < env[j].Get("name").String()
 	})
 	return helm.NewNode(env), nil
 }
@@ -266,7 +266,7 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 		var err error
 		probe, complete, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
-		if probe.Get("initialDelaySeconds").Value() == "0" {
+		if probe.Get("initialDelaySeconds").String() == "0" {
 			probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
 		}
 		if complete || err != nil {

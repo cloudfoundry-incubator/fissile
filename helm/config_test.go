@@ -44,13 +44,13 @@ func equal(t *testing.T, config Node, expect string, modifiers ...func(*Encoder)
 }
 
 func TestHelmScalar(t *testing.T) {
-	scalar := NewNode(42)
-	equal(t, scalar, fmt.Sprintf("%s", scalar))
+	scalar := NewNode("Foo\nBar")
+	equal(t, scalar, fmt.Sprintf("---\n %q\n", scalar))
 
 	root := NewMapping("Scalar", scalar)
 
 	equal(t, root, `---
-Scalar: 42
+Scalar: "Foo\nBar"
 `)
 	equal(t, root, fmt.Sprintf("%s", root))
 
@@ -58,7 +58,7 @@ Scalar: 42
 	equal(t, root, `---
 # comment 1
 # comment 2
-Scalar: 42
+Scalar: "Foo\nBar"
 `)
 
 	addBlocks(root)
@@ -67,7 +67,7 @@ Scalar: 42
 {{- if block 1 }}
 # comment 2
 {{- if block 2 }}
-Scalar: 42
+Scalar: "Foo\nBar"
 {{- end }}
 {{- end }}
 `)
@@ -151,7 +151,7 @@ List:
 `)
 	values := list.Values()
 	assert.Equal(t, 7, len(values))
-	assert.Equal(t, "3.1415", values[2].Value())
+	assert.Equal(t, "3.1415", values[2].String())
 }
 
 func TestHelmMapping(t *testing.T) {
@@ -833,7 +833,7 @@ Mapping:
 	names := mapping.Names()
 	assert.Equal(t, 3, len(names))
 	assert.Equal(t, "foo", names[2])
-	assert.Equal(t, "1", mapping.Get(names[2]).Value())
+	assert.Equal(t, "1", mapping.Get(names[2]).String())
 }
 
 func TestHelmError(t *testing.T) {
@@ -903,12 +903,12 @@ func TestHelmGetNode(t *testing.T) {
 	assert.NotNil(t, bar)
 
 	if bar != nil {
-		assert.Equal(t, bar.Value(), "2")
+		assert.Equal(t, bar.String(), "2")
 		bar.SetValue(3)
 	}
 
 	root.Add("Baz", NewMapping("xyzzy", "plugh"))
-	assert.Equal(t, "plugh", root.Get("Baz", "xyzzy").Value())
+	assert.Equal(t, "plugh", root.Get("Baz", "xyzzy").String())
 
 	equal(t, root, `---
 Foo: 1
@@ -939,10 +939,6 @@ func hasPanicked(test func()) (panicked bool) {
 }
 
 func TestHelmPanic(t *testing.T) {
-	assert.False(t, hasPanicked(func() { NewNode("foo").Value() }))
-	assert.True(t, hasPanicked(func() { NewMapping().Value() }))
-	assert.True(t, hasPanicked(func() { NewMapping().Value() }))
-
 	assert.False(t, hasPanicked(func() { NewNode("foo").SetValue("new") }))
 	assert.True(t, hasPanicked(func() { NewList().SetValue("new") }))
 	assert.True(t, hasPanicked(func() { NewMapping().SetValue("new") }))
