@@ -30,7 +30,7 @@ func TestJobInfoOk(t *testing.T) {
 	assert.Len(release.Jobs, 1)
 	const ntpdFingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
 	const ntpdVersion = ntpdFingerprint
-	const ntpdSHA1 = "aab8da0094ac318f790ca40c53f7a5f4e137f841"
+	const ntpdSHA1 = "8eeef09ae67e65aeb3257df402336de04822efc5"
 
 	assert.Equal("ntpd", release.Jobs[0].Name)
 	assert.Equal(ntpdFingerprint, release.Jobs[0].Version)
@@ -205,6 +205,35 @@ func TestGetJobPropertyNotOk(t *testing.T) {
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "not found in job")
+}
+
+func TestJobLinksOk(t *testing.T) {
+	assert := assert.New(t)
+	workDir, err := os.Getwd()
+
+	assert.NoError(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
+	assert.NoError(err)
+
+	if !assert.Len(release.Jobs, 1) {
+		return
+	}
+
+	job, err := release.LookupJob("ntpd")
+	if assert.NoError(err, "Failed to find ntpd job") {
+		assert.Equal([]*JobLinkConsumes{
+			&JobLinkConsumes{Name: "ntp-server", Type: "ntpd"},
+			&JobLinkConsumes{Type: "ntp", Optional: true},
+			&JobLinkConsumes{Type: "missing", Optional: true},
+		}, job.LinkConsumes)
+		assert.Equal([]*JobLinkProvides{
+			&JobLinkProvides{Name: "ntp-server", Type: "ntpd", Job: job},
+			&JobLinkProvides{Name: "ntp-client", Type: "ntp", Job: job},
+		}, job.LinkProvides)
+	}
 }
 
 func TestJobsSort(t *testing.T) {

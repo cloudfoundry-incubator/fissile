@@ -526,3 +526,69 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		assert.Nil(err)
 	}
 }
+
+func TestResolveLinks(t *testing.T) {
+	workDir, err := os.Getwd()
+
+	assert.NoError(t, err)
+
+	var releases []*Release
+
+	for _, dirName := range []string{"ntp-release", "tor-boshrelease"} {
+		releasePath := filepath.Join(workDir, "../test-assets", dirName)
+		releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+		release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
+		if assert.NoError(t, err) {
+			releases = append(releases, release)
+		}
+	}
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, releases)
+	assert.NoError(t, err)
+
+	errList := roleManifest.resolveLinks()
+	assert.Empty(t, errList)
+
+	role := roleManifest.LookupRole("myrole")
+	var job *Job
+	for _, j := range role.Jobs {
+		if j.Name == "ntpd" {
+			job = j
+			break
+		}
+	}
+	if !assert.NotNil(t, job) {
+		return
+	}
+	// Comparing things with assert.Equal() just gives us impossible-to-read dumps
+	samples := []struct {
+		Name     string
+		Type     string
+		Optional bool
+		Missing  bool
+	}{
+		{Name: "ntp-server", Type: "ntpd"},
+		{Name: "ntp-client", Type: "ntp", Optional: true},
+		{Type: "missing", Optional: true, Missing: true},
+	}
+
+	if !assert.Len(t, job.LinkConsumes, len(samples)) {
+		return
+	}
+	for i, expected := range samples {
+		t.Run("", func(t *testing.T) {
+			actual := job.LinkConsumes[i]
+			assert.Equal(t, expected.Name, actual.Name)
+			assert.Equal(t, expected.Type, actual.Type)
+			assert.Equal(t, expected.Optional, actual.Optional)
+			if expected.Missing {
+				assert.Nil(t, actual.Role)
+				assert.Nil(t, actual.Job)
+			} else {
+				assert.Equal(t, role, actual.Role)
+				assert.Equal(t, job, actual.Job)
+			}
+		})
+	}
+}

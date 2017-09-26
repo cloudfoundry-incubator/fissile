@@ -425,13 +425,16 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					}
 					var selectedProvider *jobLinkProvider
 					for _, candidateProvider := range candidate.providers {
-						if candidate.Role == role {
+						if candidateProvider.role == role {
 							selectedProvider = &candidateProvider
 							break
 						}
 					}
 					if selectedProvider == nil {
 						selectedProvider = &candidate.providers[0]
+					}
+					if consumes.Name == "" {
+						consumes.Name = candidate.Name
 					}
 					consumes.Role = selectedProvider.role
 					consumes.Job = selectedProvider.job
