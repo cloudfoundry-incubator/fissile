@@ -162,7 +162,7 @@ func NewNode(value interface{}, modifiers ...NodeModifier) Node {
 			valueOf := reflect.ValueOf(value)
 			mapping := NewMapping()
 			for _, key := range valueOf.MapKeys() {
-				mapping.Add(key.Interface().(string), valueOf.MapIndex(key).Interface())
+				mapping.Add(fmt.Sprintf("%s", key.Interface()), valueOf.MapIndex(key).Interface())
 			}
 			node = mapping.Sort()
 		case reflect.Slice:
