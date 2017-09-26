@@ -24,12 +24,12 @@ func NewJob(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	kind := "extensions/v1beta1"
+	apiVersion := "extensions/v1beta1"
 	if settings.CreateHelmChart {
-		kind = "{{ if and (eq (int .Capabilities.KubeVersion.Major) 1) (le (int .Capabilities.KubeVersion.Minor) 5) }}"
-		kind += "extensions/v1beta1{{ else }}batch/v1{{ end }}"
+		apiVersion = "{{ if and (eq (int .Capabilities.KubeVersion.Major) 1) (le (int .Capabilities.KubeVersion.Minor) 5) }}"
+		apiVersion += "extensions/v1beta1{{ else }}batch/v1{{ end }}"
 	}
-	job := newTypeMeta(kind, "Job")
+	job := newTypeMeta(apiVersion, "Job")
 	job.Add("metadata", helm.NewMapping("name", role.Name))
 	job.Add("spec", helm.NewMapping("template", podTemplate))
 
