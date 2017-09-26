@@ -126,7 +126,7 @@ func (shared *sharedFields) Values() []Node {
 }
 
 // Get returns a named node from a mapping node.
-func (shared *sharedFields) Get(string) Node {
+func (shared *sharedFields) Get(...string) Node {
 	panic("Get can only be called on helm.Mapping nodes")
 }
 
@@ -145,7 +145,7 @@ type Node interface {
 	Values() []Node
 
 	// Mapping node methods:
-	Get(string) Node
+	Get(...string) Node
 
 	// The write() method implements the part of Encoder.writeNode() that
 	// needs to access the fields specific to each node type. prefix will be
@@ -305,14 +305,15 @@ func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeMod
 // a "/" separated "path" of nested names, which will be treated as a string of
 // Get() calls, but with the advantage of not crashing if any intermediate node
 // does not exist.
-func (mapping *Mapping) Get(name string) Node {
-	path := strings.SplitN(name, "/", 2)
-	for _, namedNode := range mapping.nodes {
-		if path[0] == namedNode.name {
-			if len(path) > 1 {
-				return namedNode.node.Get(path[1])
+func (mapping *Mapping) Get(names ...string) Node {
+	if len(names) > 0 {
+		for _, namedNode := range mapping.nodes {
+			if names[0] == namedNode.name {
+				if len(names) > 1 {
+					return namedNode.node.Get(names[1:]...)
+				}
+				return namedNode.node
 			}
-			return namedNode.node
 		}
 	}
 	return nil

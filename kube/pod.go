@@ -91,9 +91,9 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 	// Pod must have a restart policy that isn't "always"
 	switch role.Run.FlightStage {
 	case model.FlightStageManual:
-		podTemplate.Get("spec/restartPolicy").SetValue("Never")
+		podTemplate.Get("spec", "restartPolicy").SetValue("Never")
 	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Get("spec/restartPolicy").SetValue("OnFailure")
+		podTemplate.Get("spec", "restartPolicy").SetValue("OnFailure")
 	default:
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
