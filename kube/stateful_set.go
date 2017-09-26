@@ -27,7 +27,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 
 	claims := getAllVolumeClaims(role, settings.CreateHelmChart)
 
-	spec := helm.NewEmptyMapping()
+	spec := helm.NewMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
 	spec.Add("template", podTemplate)
 	spec.Add("volumeClaimTemplates", helm.NewNode(claims))

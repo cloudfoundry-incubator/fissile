@@ -85,7 +85,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		return nil, nil
 	}
 
-	spec := helm.NewEmptyMapping()
+	spec := helm.NewMapping()
 	spec.Add("selector", helm.NewMapping(RoleNameLabel, role.Name))
 	spec.Add("type", "ClusterIP")
 	if headless {

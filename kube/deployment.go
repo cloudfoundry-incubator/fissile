@@ -19,7 +19,7 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	if err != nil {
 		return nil, nil, err
 	}
-	spec := helm.NewEmptyMapping()
+	spec := helm.NewMapping()
 	spec.Add("selector", newSelector(role.Name))
 	spec.Add("template", podTemplate)
 
@@ -47,7 +47,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, spec *helm.Mapping
 
 		meta := spec.Get("template/metadata").(*helm.Mapping)
 		if meta.Get("annotations") == nil {
-			meta.Add("annotations", helm.NewEmptyMapping())
+			meta.Add("annotations", helm.NewMapping())
 			meta.Sort()
 		}
 		annotations := meta.Get("annotations").(*helm.Mapping)

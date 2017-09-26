@@ -10,7 +10,7 @@ import (
 
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
-	env := helm.NewEmptyMapping()
+	env := helm.NewMapping()
 	for name, cv := range model.MakeMapOfVariables(roleManifest) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") {
 			continue
@@ -30,14 +30,13 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 	}
 	env.Sort()
 
-	sizing := helm.NewEmptyMapping()
+	sizing := helm.NewMapping()
 	for _, role := range roleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
-		entry := helm.NewEmptyMapping(helm.Comment(role.GetLongDescription()))
-
+		entry := helm.NewMapping()
 		var comment string
 		if role.Run.Scaling.Min == role.Run.Scaling.Max {
 			comment = fmt.Sprintf("The %s role cannot be scaled.", role.Name)
@@ -49,7 +48,7 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		entry.Add("memory", role.Run.Memory)
 		entry.Add("vcpu_count", role.Run.VirtualCPUs)
 
-		diskSizes := helm.NewEmptyMapping()
+		diskSizes := helm.NewMapping()
 		for _, volume := range role.Run.PersistentVolumes {
 			diskSizes.Add(makeVarName(volume.Tag), volume.Size)
 		}
@@ -59,14 +58,14 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		if len(diskSizes.Names()) > 0 {
 			entry.Add("disk_sizes", diskSizes.Sort())
 		}
-		sizing.Add(makeVarName(role.Name), entry)
+		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
 
-	kube := helm.NewEmptyMapping()
+	kube := helm.NewMapping()
 	kube.Add("external_ip", "192.168.77.77")
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
 
-	values := helm.NewEmptyMapping()
+	values := helm.NewMapping()
 	values.Add("env", env)
 	values.Add("sizing", sizing.Sort())
 	values.Add("kube", kube)

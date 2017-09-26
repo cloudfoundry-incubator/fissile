@@ -198,16 +198,16 @@ Mapping:
 }
 
 func TestHelmListOfList(t *testing.T) {
-	list1 := NewEmptyList()
+	list1 := NewList()
 	list1.Add(1)
 	list1.Add(2)
 
-	list2 := NewEmptyList()
+	list2 := NewList()
 	list2.Add(list1)
 	list2.Add("x")
 	list2.Add("y")
 
-	list3 := NewEmptyList()
+	list3 := NewList()
 	list3.Add(list2)
 	list3.Add("foo")
 	list3.Add("bar")
@@ -288,16 +288,16 @@ List:
 }
 
 func TestHelmMappingOfMapping(t *testing.T) {
-	mapping1 := NewEmptyMapping()
+	mapping1 := NewMapping()
 	mapping1.Add("One", 1)
 	mapping1.Add("Two", 2)
 
-	mapping2 := NewEmptyMapping()
+	mapping2 := NewMapping()
 	mapping2.Add("OneTwo", mapping1)
 	mapping2.Add("X", "x")
 	mapping2.Add("Y", "y")
 
-	mapping3 := NewEmptyMapping()
+	mapping3 := NewMapping()
 	mapping3.Add("XY", mapping2)
 	mapping3.Add("Foo", "foo")
 	mapping3.Add("Bar", "bar")
@@ -384,7 +384,7 @@ Mapping:
 }
 
 func TestHelmMappingOfList(t *testing.T) {
-	list := NewEmptyList()
+	list := NewList()
 	list.Add(1)
 	list.Add(2)
 	list.Add(3)
@@ -443,12 +443,12 @@ Mapping:
 }
 
 func TestHelmListOfMapping(t *testing.T) {
-	mapping := NewEmptyMapping()
+	mapping := NewMapping()
 	mapping.Add("Foo", "foo")
 	mapping.Add("Bar", "bar")
 	mapping.Add("Baz", "baz")
 
-	list := NewEmptyList()
+	list := NewList()
 	list.Add(mapping)
 
 	root := NewMapping("Mapping", list)
@@ -512,10 +512,10 @@ Scalar: 42
 `)
 
 	// list of list
-	list1 := NewEmptyList()
+	list1 := NewList()
 	list1.Add(NewNode(42, Comment("Many\n\nlines")))
 
-	list2 := NewEmptyList()
+	list2 := NewList()
 	list2.Add(list1)
 	list2.Add("foo")
 
@@ -532,10 +532,10 @@ List:
 }
 
 func TestHelmWrapLongComments(t *testing.T) {
-	root := NewEmptyMapping()
+	root := NewMapping()
 	root.Add("Bullet", NewNode(nil, Comment("* "+strings.Repeat("abc 12345 ", 5)+"\n\n- "+strings.Repeat("abcd 12345 ", 5))))
 
-	mapping := NewEmptyMapping()
+	mapping := NewMapping()
 	word := "1"
 	for i := len(word) + 1; i < 7; i++ {
 		word += strconv.Itoa(i)
@@ -601,14 +601,14 @@ Nested:
 }
 
 func TestHelmIndent(t *testing.T) {
-	mapping1 := NewEmptyMapping()
+	mapping1 := NewMapping()
 	mapping1.Add("Foo", NewNode("Bar", Comment("Baz")))
 
-	list1 := NewEmptyList()
+	list1 := NewList()
 	list1.Add(mapping1)
 	list1.Add(1)
 
-	list2 := NewEmptyList()
+	list2 := NewList()
 	list2.Add("abc")
 	list2.Add("xyz")
 
@@ -616,16 +616,16 @@ func TestHelmIndent(t *testing.T) {
 	list1.Add(2)
 	list1.Add(3)
 
-	mapping2 := NewEmptyMapping()
+	mapping2 := NewMapping()
 	mapping2.Add("List", list1)
 
-	mapping3 := NewEmptyMapping()
+	mapping3 := NewMapping()
 	mapping3.Add("Foo", 1)
 	mapping3.Add("Bar", 2)
 
 	mapping2.Add("Meta", mapping3)
 
-	root := NewEmptyMapping()
+	root := NewMapping()
 	root.Add("Mapping", mapping2)
 
 	expect := `---
@@ -646,7 +646,7 @@ Mapping:
 }
 
 func TestHelmEncoderModifier(t *testing.T) {
-	mapping := NewEmptyMapping()
+	mapping := NewMapping()
 	mapping.Add("foo", 1)
 	mapping.Add("bar", 2)
 	mapping.Add("baz", 3)
@@ -687,13 +687,14 @@ List:
 }
 
 func TestHelmEmptyLines(t *testing.T) {
-	list := NewEmptyList()
+	list := NewList()
 	list.Add(NewNode(1, Comment("Some comment")))
 	list.Add(NewNode(2, Comment("")))
 	list.Add(NewNode(3, Comment("Another comment")))
 	list.Add(4)
 
-	mapping := NewEmptyMapping(Comment("Mapping comment"))
+	mapping := NewMapping()
+	mapping.Set(Comment("Mapping comment"))
 	mapping.Add("List", list)
 	mapping.Add("One", NewNode(1, Comment("First post")))
 	mapping.Add("Two", 2)
@@ -781,7 +782,7 @@ Mapping:
 	addBlocks(root)
 	equal(t, root, expect, EmptyLines(true))
 
-	list = NewEmptyList()
+	list = NewList()
 	list.Add(1)
 	list.Add(NewNode(2, Comment("A comment")))
 	list.Add(3)
@@ -816,7 +817,7 @@ List:
 }
 
 func TestHelmMappingSort(t *testing.T) {
-	mapping := NewEmptyMapping()
+	mapping := NewMapping()
 	mapping.Add("foo", 1)
 	mapping.Add("bar", 2)
 	mapping.Add("baz", 3)
@@ -878,7 +879,7 @@ Nodes:
 }
 
 func TestHelmAddNilNodes(t *testing.T) {
-	root := NewEmptyMapping()
+	root := NewMapping()
 	root.Add("Foo", "X")
 	root.Add("Bar", nil)
 	root.Add("Baz", "Y")
@@ -939,20 +940,20 @@ func hasPanicked(test func()) (panicked bool) {
 
 func TestHelmPanic(t *testing.T) {
 	assert.False(t, hasPanicked(func() { NewNode("foo").Value() }))
-	assert.True(t, hasPanicked(func() { NewEmptyMapping().Value() }))
-	assert.True(t, hasPanicked(func() { NewEmptyMapping().Value() }))
+	assert.True(t, hasPanicked(func() { NewMapping().Value() }))
+	assert.True(t, hasPanicked(func() { NewMapping().Value() }))
 
 	assert.False(t, hasPanicked(func() { NewNode("foo").SetValue("new") }))
-	assert.True(t, hasPanicked(func() { NewEmptyList().SetValue("new") }))
-	assert.True(t, hasPanicked(func() { NewEmptyMapping().SetValue("new") }))
+	assert.True(t, hasPanicked(func() { NewList().SetValue("new") }))
+	assert.True(t, hasPanicked(func() { NewMapping().SetValue("new") }))
 
 	assert.True(t, hasPanicked(func() { NewNode("foo").Values() }))
-	assert.False(t, hasPanicked(func() { NewEmptyList().Values() }))
-	assert.True(t, hasPanicked(func() { NewEmptyMapping().Values() }))
+	assert.False(t, hasPanicked(func() { NewList().Values() }))
+	assert.True(t, hasPanicked(func() { NewMapping().Values() }))
 
 	assert.True(t, hasPanicked(func() { NewNode("foo").Get("key") }))
-	assert.True(t, hasPanicked(func() { NewEmptyList().Get("key") }))
-	assert.False(t, hasPanicked(func() { NewEmptyMapping().Get("key") }))
+	assert.True(t, hasPanicked(func() { NewList().Get("key") }))
+	assert.False(t, hasPanicked(func() { NewMapping().Get("key") }))
 
 	assert.True(t, hasPanicked(func() { NewNode(func() { return }) }))
 }

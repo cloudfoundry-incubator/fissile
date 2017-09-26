@@ -165,14 +165,14 @@ func NewNode(value interface{}, modifiers ...NodeModifier) Node {
 		switch reflect.TypeOf(value).Kind() {
 		case reflect.Map:
 			valueOf := reflect.ValueOf(value)
-			mapping := NewEmptyMapping()
+			mapping := NewMapping()
 			for _, key := range valueOf.MapKeys() {
 				mapping.Add(key.Interface().(string), valueOf.MapIndex(key).Interface())
 			}
 			node = mapping.Sort()
 		case reflect.Slice:
 			valueOf := reflect.ValueOf(value)
-			list := NewEmptyList()
+			list := NewList()
 			for i := 0; i < valueOf.Len(); i++ {
 				list.Add(valueOf.Index(i).Interface())
 			}
@@ -234,13 +234,6 @@ type List struct {
 	nodes []Node
 }
 
-// NewEmptyList creates an empty list node and initializes shared fields.
-func NewEmptyList(modifiers ...NodeModifier) *List {
-	list := &List{}
-	list.Set(modifiers...)
-	return list
-}
-
 // NewList creates a list node initialized with string scalars.
 // The list and scalar nodes will not have comments or block actions.
 func NewList(values ...interface{}) *List {
@@ -287,13 +280,6 @@ type namedNode struct {
 type Mapping struct {
 	sharedFields
 	nodes []namedNode
-}
-
-// NewEmptyMapping creates an empty mapping node and initializes shared fields.
-func NewEmptyMapping(modifiers ...NodeModifier) *Mapping {
-	mapping := &Mapping{}
-	mapping.Set(modifiers...)
-	return mapping
 }
 
 // NewMapping creates a new mapping node initialzed with string scalars.

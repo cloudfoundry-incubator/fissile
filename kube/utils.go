@@ -121,7 +121,7 @@ func newObjectMeta(name string) *helm.Mapping {
 }
 
 func newSelector(name string) *helm.Mapping {
-	meta := helm.NewEmptyMapping()
+	meta := helm.NewMapping()
 	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
 	return meta
 }

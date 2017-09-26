@@ -56,7 +56,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 		return nil, err
 	}
 
-	container := helm.NewEmptyMapping()
+	container := helm.NewMapping()
 	container.Add("name", role.Name)
 	container.Add("image", image)
 	container.Add("ports", ports)
@@ -68,13 +68,13 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 	container.Add("readinessProbe", readinessProbe)
 	container.Sort()
 
-	spec := helm.NewEmptyMapping()
+	spec := helm.NewMapping()
 	spec.Add("containers", helm.NewList(container))
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("restartPolicy", "Always")
 	spec.Sort()
 
-	podTemplate := helm.NewEmptyMapping()
+	podTemplate := helm.NewMapping()
 	podTemplate.Add("metadata", newObjectMeta(role.Name))
 	podTemplate.Add("spec", spec)
 
@@ -140,7 +140,7 @@ func getContainerPorts(role *model.Role) (helm.Node, error) {
 			return nil, err
 		}
 		for _, portInfo := range portInfos {
-			newPort := helm.NewEmptyMapping()
+			newPort := helm.NewMapping()
 			newPort.Add("containerPort", portInfo.port)
 			newPort.Add("name", portInfo.name)
 			newPort.Add("protocol", strings.ToUpper(port.Protocol))
@@ -278,7 +278,7 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 	}
 
 	if probe == nil {
-		probe = helm.NewEmptyMapping()
+		probe = helm.NewMapping()
 	}
 	if probe.Get("initialDelaySeconds") == nil {
 		probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
@@ -321,7 +321,7 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	}
 
 	if probe == nil {
-		probe = helm.NewEmptyMapping()
+		probe = helm.NewMapping()
 	}
 	probe.Add("tcpSocket", helm.NewMapping("port", probePort))
 	return probe.Sort(), nil
@@ -334,7 +334,7 @@ func configureContainerProbe(role *model.Role, probeName string, roleProbe *mode
 	// SuccessThreshold    - 1, min 1 (must be 1 for liveness probe)
 	// FailureThreshold    - 3, min 1
 
-	probe := helm.NewEmptyMapping()
+	probe := helm.NewMapping()
 	probe.Add("initialDelaySeconds", roleProbe.InitialDelay)
 	probe.Add("timeoutSeconds", roleProbe.Timeout)
 	probe.Add("periodSeconds", roleProbe.Period)
