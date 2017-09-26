@@ -111,7 +111,7 @@ func (shared sharedFields) Comment() string {
 }
 
 // SetValue updates the value of a scalar node.
-func (shared *sharedFields) SetValue(string) {
+func (shared *sharedFields) SetValue(interface{}) {
 	panic("SetValue can only be called on helm.Scalar nodes")
 }
 
@@ -138,8 +138,8 @@ type Node interface {
 	Set(...NodeModifier)
 
 	// Scalar node methods:
-	SetValue(string)
 	Value() string
+	SetValue(interface{})
 
 	// List node methods:
 	Values() []Node
@@ -205,10 +205,13 @@ type Scalar struct {
 }
 
 // SetValue updates the value of a scalar node.
-func (scalar *Scalar) SetValue(value string) {
-	scalar.value = value
+func (scalar *Scalar) SetValue(value interface{}) {
+	node := NewNode(value)
+	scalar.value = node.(*Scalar).value
 }
 
+// String returns the string value of a scalar node. This value will *not*
+// include the surrounding quotes used for literal YAML strings.
 func (scalar *Scalar) String() string {
 	buffer := &bytes.Buffer{}
 	NewEncoder(buffer).Encode(scalar)

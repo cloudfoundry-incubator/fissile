@@ -904,7 +904,7 @@ func TestHelmGetNode(t *testing.T) {
 
 	if bar != nil {
 		assert.Equal(t, bar.Value(), "2")
-		bar.SetValue("3")
+		bar.SetValue(3)
 	}
 
 	root.Add("Baz", NewMapping("xyzzy", "plugh"))
