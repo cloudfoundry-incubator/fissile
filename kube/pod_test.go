@@ -851,6 +851,9 @@ func TestPodPreFlight(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
+	// Remove the templated image name so this is valid YAML
+	pod.Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
+
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
 		return
@@ -893,6 +896,9 @@ func TestPodPostFlight(t *testing.T) {
 		return
 	}
 	assert.NotNil(pod)
+
+	// Remove the templated image name so this is valid YAML
+	pod.Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
 
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
