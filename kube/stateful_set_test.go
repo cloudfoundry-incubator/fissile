@@ -57,6 +57,9 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
+	// Remove the templated image name so this is valid YAML
+	statefulset.Get("spec").Get("template").Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
+
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
 	if assert.Len(items, 3, "Should have three services per stateful role") {
@@ -188,6 +191,9 @@ func TestStatefulSetVolumes(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
+
+	// Remove the templated image name so this is valid YAML
+	statefulset.Get("spec").Get("template").Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
 
 	yamlConfig := &bytes.Buffer{}
 	err = helm.NewEncoder(yamlConfig).Encode(statefulset)
