@@ -44,7 +44,6 @@ type RoleManifest struct {
 	Configuration *Configuration `yaml:"configuration"`
 
 	manifestFilePath string
-	rolesByName      map[string]*Role
 }
 
 // Role represents a collection of jobs that are colocated on a container
@@ -313,8 +312,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
 	}
 
-	roleManifest.rolesByName = make(map[string]*Role, len(roleManifest.Roles))
-
 	for _, role := range roleManifest.Roles {
 		role.roleManifest = &roleManifest
 		role.Jobs = make(Jobs, 0, len(role.JobNameList))
@@ -342,7 +339,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		role.calculateRoleConfigurationTemplates()
-		roleManifest.rolesByName[role.Name] = role
 	}
 
 	allErrs = append(allErrs, roleManifest.resolveLinks()...)
@@ -381,14 +377,12 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *O
 
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
-	if m.rolesByName == nil {
-		// This should only happen in tests where we manually build a manifest
-		m.rolesByName = make(map[string]*Role)
-		for _, role := range m.Roles {
-			m.rolesByName[role.Name] = role
+	for _, role := range m.Roles {
+		if role.Name == roleName {
+			return role
 		}
 	}
-	return m.rolesByName[roleName]
+	return nil
 }
 
 // resolveLinks examines the BOSH links specified in the job specs and maps
@@ -447,7 +441,7 @@ func (m *RoleManifest) SelectRoles(roleNames []string) (Roles, error) {
 	var missingRoles []string
 
 	for _, roleName := range roleNames {
-		if role, ok := m.rolesByName[roleName]; ok {
+		if role := m.LookupRole(roleName); role != nil {
 			results = append(results, role)
 		} else {
 			missingRoles = append(missingRoles, roleName)
