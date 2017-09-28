@@ -55,9 +55,6 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	// Remove the templated image name so this is valid YAML
-	job.Get("spec").Get("template").Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
-
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
 		return
@@ -104,8 +101,6 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	// Remove the templated image name so this is valid YAML
-	job.Get("spec").Get("template").Get("spec").Get("containers").Values()[0].Get("image").SetValue("foo:1234")
 	yamlConfig := &bytes.Buffer{}
 	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
 		return
