@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadRoleManifestOK(t *testing.T) {
@@ -592,4 +593,108 @@ func TestResolveLinks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRoleResolveLinksMultipleProvider(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	roleManifest := &RoleManifest{
+		Roles: Roles{
+			&Role{
+				Name: "role-1",
+				Jobs: Jobs{
+					&Job{
+						Name: "role-1-job-1",
+						LinkProvides: []*JobLinkProvides{
+							&JobLinkProvides{
+								Name: "role-1-job-1-provider-1",
+								Type: "link-1",
+							},
+							&JobLinkProvides{
+								Name: "role-1-job-1-provider-2",
+								Type: "link-2",
+							},
+						},
+						LinkConsumes: []*JobLinkConsumes{
+							&JobLinkConsumes{
+								Name: "role-1-job-1-provider-1",
+								Type: "link-1",
+							},
+						},
+					},
+					&Job{
+						Name: "role-1-job-2",
+						LinkProvides: []*JobLinkProvides{
+							&JobLinkProvides{
+								Name: "role-1-job-2-provider-1",
+								Type: "link-3",
+							},
+						},
+					},
+				},
+			},
+			&Role{
+				Name: "role-2",
+				Jobs: Jobs{
+					&Job{
+						Name: "role-2-job-1",
+						LinkProvides: []*JobLinkProvides{
+							&JobLinkProvides{
+								Name: "role-2-job-1-provider-1",
+								Type: "link-2",
+							},
+							&JobLinkProvides{
+								Name: "role-2-job-1-provider-2",
+								Type: "link-3",
+							},
+							&JobLinkProvides{
+								Name: "role-2-job-1-provider-3",
+								Type: "link-4",
+							},
+						},
+						LinkConsumes: []*JobLinkConsumes{
+							&JobLinkConsumes{
+								Type: "link-1", // r1j1p1
+							},
+							&JobLinkConsumes{
+								Type: "link-2", // r2j1p1
+							},
+							&JobLinkConsumes{
+								Name: "role-3-job-1-provider-1",
+								Type: "link-3", // r3j1p1
+							},
+							&JobLinkConsumes{
+								Type:     "missing",
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			&Role{
+				Name: "role-3",
+				Jobs: Jobs{
+					&Job{
+						Name: "role-3-job-1",
+						LinkProvides: []*JobLinkProvides{
+							&JobLinkProvides{
+								Name: "role-3-job-1-provider-1",
+								Type: "link-3",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	errors := roleManifest.resolveLinks()
+	assert.Empty(errors)
+	role := roleManifest.LookupRole("role-2")
+	require.NotNil(role, "Failed to find role")
+	job := role.LookupJob("role-2-job-1")
+	require.NotNil(job, "Failed to find job")
+	assert.Equal("role-1-job-1-provider-1", job.LinkConsumes[0].Name, "Failed to find role by type")
+	assert.Equal("role-2-job-1-provider-1", job.LinkConsumes[1].Name, "Did not prefer providers in same role")
+	assert.Equal("role-3-job-1-provider-1", job.LinkConsumes[2].Name, "Did not find explicitly named provider")
+	assert.Empty(job.LinkConsumes[3].Name, "Should not have found provider")
 }

@@ -381,6 +381,13 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *O
 
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
+	if m.rolesByName == nil {
+		// This should only happen in tests where we manually build a manifest
+		m.rolesByName = make(map[string]*Role)
+		for _, role := range m.Roles {
+			m.rolesByName[role.Name] = role
+		}
+	}
 	return m.rolesByName[roleName]
 }
 
@@ -389,18 +396,28 @@ func (m *RoleManifest) LookupRole(roleName string) *Role {
 func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	errors := make(validation.ErrorList, 0)
 
-	// The list of BOSH providers, by name
-	byName := make(map[string][]*JobLinkProvides)
-	// The list of BOSH providers, sorted by type
-	byType := make(map[string][]*JobLinkProvides)
+	// The list of BOSH providers, by name, then by role name
+	byName := make(map[string]map[string][]*JobLinkProvides)
+	// The list of BOSH providers, sorted by type, then by role name
+	byType := make(map[string]map[string][]*JobLinkProvides)
 
 	// Fill out the provider mappings
 	for _, role := range m.Roles {
 		for _, job := range role.Jobs {
 			for _, provides := range job.LinkProvides {
 				provides.Roles = append(provides.Roles, role)
-				byName[provides.Name] = append(byName[provides.Name], provides)
-				byType[provides.Type] = append(byType[provides.Type], provides)
+				var m map[string][]*JobLinkProvides
+				var ok bool
+				if m, ok = byName[provides.Name]; !ok {
+					m = make(map[string][]*JobLinkProvides)
+					byName[provides.Name] = m
+				}
+				m[role.Name] = append(m[role.Name], provides)
+				if m, ok = byType[provides.Type]; !ok {
+					m = make(map[string][]*JobLinkProvides)
+					byType[provides.Type] = m
+				}
+				m[role.Name] = append(m[role.Name], provides)
 			}
 		}
 	}
@@ -410,25 +427,37 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 		for _, job := range role.Jobs {
 		iterateOverConsumers:
 			for idx, consumes := range job.LinkConsumes {
-				var candidates []*JobLinkProvides
+				var candidates map[string][]*JobLinkProvides
 				if consumes.Name != "" {
 					candidates = byName[consumes.Name]
 				} else if consumes.Type != "" {
 					candidates = byType[consumes.Type]
 				}
-				for _, candidate := range candidates {
-					if consumes.Type != "" && consumes.Type != candidate.Type {
+				var providers []*JobLinkProvides
+				// Prefer providers in the same role, if available
+				if roleProviders, ok := candidates[role.Name]; ok {
+					providers = append(providers, roleProviders...)
+				}
+				for _, otherProviders := range candidates {
+					providers = append(providers, otherProviders...)
+				}
+				for _, provider := range providers {
+					if consumes.Type != "" && consumes.Type != provider.Type {
 						continue // Incorrect type
 					}
-					if len(candidate.Roles) < 1 {
-						continue // This job appears in no roles, it can't be used
+					if len(provider.Roles) < 1 {
+						// The loop that filled byName/byType should have set this
+						panic("Did not set roles on provider")
 					}
 					if consumes.Name == "" {
-						consumes.Name = candidate.Name
+						consumes.Name = provider.Name
+					} else if consumes.Name != provider.Name {
+						// Explicit name request not matched
+						continue
 					}
 					consumes.Job = job.Name
-					consumes.Role = candidate.Roles[0].Name
-					for _, candidateRole := range candidate.Roles {
+					consumes.Role = provider.Roles[0].Name
+					for _, candidateRole := range provider.Roles {
 						if candidateRole == role {
 							consumes.Role = role.Name
 							break
@@ -1048,6 +1077,16 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 	}
 
 	return allErrs
+}
+
+// LookupJob will find the given job in this role, or nil if not found
+func (r *Role) LookupJob(name string) *Job {
+	for _, j := range r.Jobs {
+		if j.Name == name {
+			return j
+		}
+	}
+	return nil
 }
 
 // IsDevRole tests if the role is tagged for development, or not. It
