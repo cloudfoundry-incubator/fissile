@@ -568,6 +568,7 @@ func TestResolveLinks(t *testing.T) {
 		Optional bool
 		Missing  bool
 	}{
+		// These should match the order in the ntp-release ntp job.MF
 		{Name: "ntp-server", Type: "ntpd"},
 		{Name: "ntp-client", Type: "ntp", Optional: true},
 		{Type: "missing", Optional: true, Missing: true},

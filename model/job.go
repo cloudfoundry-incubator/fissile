@@ -17,11 +17,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type jobLinkProvider struct {
-	role *Role
-	job  *Job
-}
-
 // JobLinkProvides describes the BOSH links a job provides
 type JobLinkProvides struct {
 	Name       string
