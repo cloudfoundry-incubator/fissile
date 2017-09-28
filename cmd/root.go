@@ -137,7 +137,7 @@ func init() {
 	RootCmd.PersistentFlags().StringP(
 		"docker-registry",
 		"",
-		"",
+		"docker.io",
 		"Docker registry used when referencing image names",
 	)
 

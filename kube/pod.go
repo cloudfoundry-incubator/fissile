@@ -113,10 +113,9 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 
 	var imageName string
 	if settings.CreateHelmChart {
-		name := builder.GetRoleDevImageName("", "", settings.Repository, role, devVersion)
-		imageName = "{{ default \"docker.io\" .Values.kube.registry -}}/"
-		imageName += "{{- .Values.kube.organization -}}/"
-		imageName += name
+		registry := "{{ .Values.kube.registry }}"
+		org := "{{ .Values.kube.organization }}"
+		imageName = builder.GetRoleDevImageName(registry, org, settings.Repository, role, devVersion)
 	} else {
 		imageName = builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
 	}
