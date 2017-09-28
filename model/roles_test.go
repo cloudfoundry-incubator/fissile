@@ -552,13 +552,7 @@ func TestResolveLinks(t *testing.T) {
 	assert.Empty(t, errList)
 
 	role := roleManifest.LookupRole("myrole")
-	var job *Job
-	for _, j := range role.Jobs {
-		if j.Name == "ntpd" {
-			job = j
-			break
-		}
-	}
+	job := role.LookupJob("ntpd")
 	if !assert.NotNil(t, job) {
 		return
 	}
