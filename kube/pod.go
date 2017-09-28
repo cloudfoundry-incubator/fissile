@@ -110,11 +110,18 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 	if err != nil {
 		return "", err
 	}
-	imageName := builder.GetRoleDevImageName("", "", settings.Repository, role, devVersion)
-	value := "{{ default \"docker.io\" .Values.kube.registry -}}/"
-	value += "{{- .Values.kube.organization -}}/"
-	value += imageName
-	return value, nil
+
+	var imageName string
+	if settings.CreateHelmChart {
+		name := builder.GetRoleDevImageName("", "", settings.Repository, role, devVersion)
+		imageName = "{{ default \"docker.io\" .Values.kube.registry -}}/"
+		imageName += "{{- .Values.kube.organization -}}/"
+		imageName += name
+	} else {
+		imageName = builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
+	}
+
+	return imageName, nil
 }
 
 // getContainerPorts returns a list of ports for a role
