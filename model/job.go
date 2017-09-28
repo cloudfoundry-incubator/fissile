@@ -26,17 +26,17 @@ type jobLinkProvider struct {
 type JobLinkProvides struct {
 	Name       string
 	Roles      []*Role
-	Type       string   `json:"type"`
-	Properties []string `json:"properties"`
+	Type       string
+	Properties []string
 }
 
 // JobLinkConsumes describes the BOSH links a job consumes
 type JobLinkConsumes struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Optional bool   `json:"optional"`
-	Role     *Role  `json:"-"` // Role in which the resolved job is running
-	Job      *Job   `json:"-"` // Job that this resolves to
+	Name     string `json:"-"`
+	Type     string `json:"-"`
+	Optional bool   `json:"-"`
+	Role     string `json:"role"` // Name of role in which the resolved job is running
+	Job      string `json:"job"`  // Name of job that this resolves to
 }
 
 // Job represents a BOSH job
@@ -284,11 +284,6 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
-type configConsumes struct {
-	Role string `json:"role"`
-	Job  string `json:"job"`
-}
-
 // WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
 func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
 	var config struct {
@@ -303,8 +298,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		Networks   struct {
 			Default map[string]string `json:"default"`
 		} `json:"networks"`
-		ExportedProperties []string                  `json:"exported_properties"`
-		Consumes           map[string]configConsumes `json:"consumes"`
+		ExportedProperties []string                    `json:"exported_properties"`
+		Consumes           map[string]*JobLinkConsumes `json:"consumes"`
 	}
 
 	config.Job.Templates = make([]struct {
@@ -314,7 +309,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	config.Properties = make(map[string]interface{})
 	config.Networks.Default = make(map[string]string)
 	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]configConsumes, 0)
+	config.Consumes = make(map[string]*JobLinkConsumes, 0)
 
 	config.Job.Name = role.Name
 
@@ -338,11 +333,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
 	}
 	for _, consumeTarget := range j.LinkConsumes {
-		if consumeTarget.Role != nil && consumeTarget.Job != nil {
-			config.Consumes[consumeTarget.Name] = configConsumes{
-				Role: consumeTarget.Role.Name,
-				Job:  consumeTarget.Job.Name,
-			}
+		if consumeTarget.Role != "" && consumeTarget.Job != "" {
+			config.Consumes[consumeTarget.Name] = consumeTarget
 		}
 	}
 

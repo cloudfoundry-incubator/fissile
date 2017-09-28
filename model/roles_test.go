@@ -583,11 +583,11 @@ func TestResolveLinks(t *testing.T) {
 			assert.Equal(t, expected.Type, actual.Type)
 			assert.Equal(t, expected.Optional, actual.Optional)
 			if expected.Missing {
-				assert.Nil(t, actual.Role)
-				assert.Nil(t, actual.Job)
+				assert.Empty(t, actual.Role)
+				assert.Empty(t, actual.Job)
 			} else {
-				assert.Equal(t, role, actual.Role)
-				assert.Equal(t, job, actual.Job)
+				assert.Equal(t, role.Name, actual.Role)
+				assert.Equal(t, job.Name, actual.Job)
 			}
 		})
 	}

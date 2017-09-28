@@ -426,11 +426,11 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					if consumes.Name == "" {
 						consumes.Name = candidate.Name
 					}
-					consumes.Job = job
-					consumes.Role = candidate.Roles[0]
+					consumes.Job = job.Name
+					consumes.Role = candidate.Roles[0].Name
 					for _, candidateRole := range candidate.Roles {
 						if candidateRole == role {
-							consumes.Role = role
+							consumes.Role = role.Name
 							break
 						}
 					}
