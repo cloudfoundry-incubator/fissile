@@ -279,14 +279,17 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
+// jobConfigTemplate is one "templates:" entry in the job config output
+type jobConfigTemplate struct {
+	Name string `json:"name"`
+}
+
 // WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
 func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
 	var config struct {
 		Job struct {
-			Name      string `json:"name"`
-			Templates []struct {
-				Name string `json:"name"`
-			} `json:"templates"`
+			Name      string              `json:"name"`
+			Templates []jobConfigTemplate `json:"templates"`
 		} `json:"job"`
 		Parameters map[string]string      `json:"parameters"`
 		Properties map[string]interface{} `json:"properties"`
@@ -297,9 +300,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		Consumes           map[string]*JobLinkConsumes `json:"consumes"`
 	}
 
-	config.Job.Templates = make([]struct {
-		Name string `json:"name"`
-	}, 0)
+	config.Job.Templates = make([]jobConfigTemplate, 0)
 	config.Parameters = make(map[string]string)
 	config.Properties = make(map[string]interface{})
 	config.Networks.Default = make(map[string]string)
@@ -309,9 +310,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	config.Job.Name = role.Name
 
 	for _, roleJob := range role.Jobs {
-		config.Job.Templates = append(config.Job.Templates, struct {
-			Name string `json:"name"`
-		}{roleJob.Name})
+		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
 	}
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
