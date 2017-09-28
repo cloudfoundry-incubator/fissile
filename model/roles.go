@@ -396,74 +396,37 @@ func (m *RoleManifest) LookupRole(roleName string) *Role {
 func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	errors := make(validation.ErrorList, 0)
 
-	// The list of BOSH providers, by name, then by role name
-	byName := make(map[string]map[string][]*JobLinkProvides)
-	// The list of BOSH providers, sorted by type, then by role name
-	byType := make(map[string]map[string][]*JobLinkProvides)
-
-	// Fill out the provider mappings
-	for _, role := range m.Roles {
-		for _, job := range role.Jobs {
-			for _, provides := range job.LinkProvides {
-				provides.providers = append(provides.providers, jobLinkProvider{role: role.Name, job: job.Name})
-				var m map[string][]*JobLinkProvides
-				var ok bool
-				if m, ok = byName[provides.Name]; !ok {
-					m = make(map[string][]*JobLinkProvides)
-					byName[provides.Name] = m
-				}
-				m[role.Name] = append(m[role.Name], provides)
-				if m, ok = byType[provides.Type]; !ok {
-					m = make(map[string][]*JobLinkProvides)
-					byType[provides.Type] = m
-				}
-				m[role.Name] = append(m[role.Name], provides)
-			}
-		}
-	}
-
 	// Resolve the consumers
 	for _, role := range m.Roles {
+		// Prefer finding providers in the same role
+		providingRoles := append(Roles{role}, m.Roles...)
 		for _, job := range role.Jobs {
 		iterateOverConsumers:
-			for idx, consumes := range job.LinkConsumes {
-				var candidates map[string][]*JobLinkProvides
-				if consumes.Name != "" {
-					candidates = byName[consumes.Name]
-				} else if consumes.Type != "" {
-					candidates = byType[consumes.Type]
-				}
-				var providers []*JobLinkProvides
-				// Prefer providers in the same role, if available
-				if roleProviders, ok := candidates[role.Name]; ok {
-					providers = append(providers, roleProviders...)
-				}
-				for _, otherProviders := range candidates {
-					providers = append(providers, otherProviders...)
-				}
-				for _, provider := range providers {
-					if consumes.Type != "" && consumes.Type != provider.Type {
-						continue // Incorrect type
+			for idx, consumer := range job.LinkConsumes {
+				for _, providingRole := range providingRoles {
+					for _, providingJob := range providingRole.Jobs {
+						for _, provider := range providingJob.LinkProvides {
+							if consumer.Type != "" && consumer.Type != provider.Type {
+								continue
+							}
+							if consumer.Name != "" && consumer.Name != provider.Name {
+								continue
+							}
+							if consumer.Name == "" {
+								consumer.Name = provider.Name
+							}
+							consumer.Role = providingRole.Name
+							consumer.Job = providingJob.Name
+							continue iterateOverConsumers
+						}
 					}
-					if len(provider.providers) < 1 {
-						// The loop that filled byName/byType should have set this
-						panic("Did not set roles on provider")
-					}
-					if consumes.Name == "" {
-						consumes.Name = provider.Name
-					} else if consumes.Name != provider.Name {
-						// Explicit name request not matched
-						continue
-					}
-					consumes.Job = provider.providers[0].job
-					consumes.Role = provider.providers[0].role
-					continue iterateOverConsumers
 				}
+
 				// No valid providers
-				if !consumes.Optional {
+				if !consumer.Optional {
 					errors = append(errors, validation.NotFound(
 						fmt.Sprintf(`role[%s].job[%s].consumes[%d]`, role.Name, job.Name, idx),
-						consumes,
+						consumer,
 					))
 				}
 			}

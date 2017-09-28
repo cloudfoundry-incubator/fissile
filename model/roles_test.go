@@ -661,7 +661,6 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 							},
 							&JobLinkConsumes{
 								Name: "role-3-job-1-provider-1",
-								Type: "link-3", // r3j1p1
 							},
 							&JobLinkConsumes{
 								Type:     "missing",
