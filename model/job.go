@@ -25,11 +25,9 @@ type jobLinkProvider struct {
 // JobLinkProvides describes the BOSH links a job provides
 type JobLinkProvides struct {
 	Name       string
-	Role       *Role
-	Job        *Job
+	Roles      []*Role
 	Type       string   `json:"type"`
 	Properties []string `json:"properties"`
-	providers  []jobLinkProvider
 }
 
 // JobLinkConsumes describes the BOSH links a job consumes
@@ -259,7 +257,6 @@ func (j *Job) loadJobSpec() (err error) {
 		j.LinkProvides = append(j.LinkProvides, &JobLinkProvides{
 			Name:       provides.Name,
 			Type:       provides.Type,
-			Job:        j,
 			Properties: provides.Properties,
 		})
 	}

@@ -398,7 +398,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	for _, role := range m.Roles {
 		for _, job := range role.Jobs {
 			for _, provides := range job.LinkProvides {
-				provides.providers = append(provides.providers, jobLinkProvider{role, job})
+				provides.Roles = append(provides.Roles, role)
 				byName[provides.Name] = append(byName[provides.Name], provides)
 				byType[provides.Type] = append(byType[provides.Type], provides)
 			}
@@ -420,24 +420,20 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					if consumes.Type != "" && consumes.Type != candidate.Type {
 						continue // Incorrect type
 					}
-					if len(candidate.providers) < 1 {
-						continue // No providers
-					}
-					var selectedProvider *jobLinkProvider
-					for _, candidateProvider := range candidate.providers {
-						if candidateProvider.role == role {
-							selectedProvider = &candidateProvider
-							break
-						}
-					}
-					if selectedProvider == nil {
-						selectedProvider = &candidate.providers[0]
+					if len(candidate.Roles) < 1 {
+						continue // This job appears in no roles, it can't be used
 					}
 					if consumes.Name == "" {
 						consumes.Name = candidate.Name
 					}
-					consumes.Role = selectedProvider.role
-					consumes.Job = selectedProvider.job
+					consumes.Job = job
+					consumes.Role = candidate.Roles[0]
+					for _, candidateRole := range candidate.Roles {
+						if candidateRole == role {
+							consumes.Role = role
+							break
+						}
+					}
 					continue iterateOverConsumers
 				}
 				// No valid providers

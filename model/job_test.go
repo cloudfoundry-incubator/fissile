@@ -230,8 +230,8 @@ func TestJobLinksOk(t *testing.T) {
 			&JobLinkConsumes{Type: "missing", Optional: true},
 		}, job.LinkConsumes)
 		assert.Equal([]*JobLinkProvides{
-			&JobLinkProvides{Name: "ntp-server", Type: "ntpd", Job: job},
-			&JobLinkProvides{Name: "ntp-client", Type: "ntp", Job: job},
+			&JobLinkProvides{Name: "ntp-server", Type: "ntpd"},
+			&JobLinkProvides{Name: "ntp-client", Type: "ntp"},
 		}, job.LinkProvides)
 	}
 }
