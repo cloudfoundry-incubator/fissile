@@ -318,8 +318,8 @@ func TestWriteConfigs(t *testing.T) {
 		Name: "dummy role",
 		Jobs: Jobs{job},
 	}
-	job.LinkConsumes[0].Role = role.Name
-	job.LinkConsumes[0].Job = job.Name
+	job.LinkConsumes[0].RoleName = role.Name
+	job.LinkConsumes[0].JobName = job.Name
 
 	tempFile, err := ioutil.TempFile("", "fissile-job-test")
 	assert.NoError(err)

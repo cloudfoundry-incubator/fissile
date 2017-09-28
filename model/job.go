@@ -29,8 +29,8 @@ type JobLinkConsumes struct {
 	Name     string `json:"-"`
 	Type     string `json:"-"`
 	Optional bool   `json:"-"`
-	Role     string `json:"role"` // Name of role in which the resolved job is running
-	Job      string `json:"job"`  // Name of job that this resolves to
+	RoleName string `json:"role"` // Name of role in which the resolved job is running
+	JobName  string `json:"job"`  // Name of job that this resolves to
 }
 
 // Job represents a BOSH job
@@ -326,7 +326,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
 	}
 	for _, consumeTarget := range j.LinkConsumes {
-		if consumeTarget.Role != "" && consumeTarget.Job != "" {
+		if consumeTarget.RoleName != "" && consumeTarget.JobName != "" {
 			config.Consumes[consumeTarget.Name] = consumeTarget
 		}
 	}

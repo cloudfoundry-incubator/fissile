@@ -409,8 +409,8 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 							if consumer.Name == "" {
 								consumer.Name = provider.Name
 							}
-							consumer.Role = providingRole.Name
-							consumer.Job = providingJob.Name
+							consumer.RoleName = providingRole.Name
+							consumer.JobName = providingJob.Name
 							continue iterateOverConsumers
 						}
 					}
