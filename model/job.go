@@ -17,12 +17,17 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type jobLinkProvider struct {
+	role string
+	job  string
+}
+
 // JobLinkProvides describes the BOSH links a job provides
 type JobLinkProvides struct {
 	Name       string
-	Roles      []*Role
 	Type       string
 	Properties []string
+	providers  []jobLinkProvider
 }
 
 // JobLinkConsumes describes the BOSH links a job consumes

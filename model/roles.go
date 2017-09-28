@@ -405,7 +405,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	for _, role := range m.Roles {
 		for _, job := range role.Jobs {
 			for _, provides := range job.LinkProvides {
-				provides.Roles = append(provides.Roles, role)
+				provides.providers = append(provides.providers, jobLinkProvider{role: role.Name, job: job.Name})
 				var m map[string][]*JobLinkProvides
 				var ok bool
 				if m, ok = byName[provides.Name]; !ok {
@@ -445,7 +445,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					if consumes.Type != "" && consumes.Type != provider.Type {
 						continue // Incorrect type
 					}
-					if len(provider.Roles) < 1 {
+					if len(provider.providers) < 1 {
 						// The loop that filled byName/byType should have set this
 						panic("Did not set roles on provider")
 					}
@@ -455,14 +455,8 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 						// Explicit name request not matched
 						continue
 					}
-					consumes.Job = job.Name
-					consumes.Role = provider.Roles[0].Name
-					for _, candidateRole := range provider.Roles {
-						if candidateRole == role {
-							consumes.Role = role.Name
-							break
-						}
-					}
+					consumes.Job = provider.providers[0].job
+					consumes.Role = provider.providers[0].role
 					continue iterateOverConsumers
 				}
 				// No valid providers

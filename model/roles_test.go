@@ -694,7 +694,10 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	job := role.LookupJob("role-2-job-1")
 	require.NotNil(job, "Failed to find job")
 	assert.Equal("role-1-job-1-provider-1", job.LinkConsumes[0].Name, "Failed to find role by type")
+	assert.Equal("role-1-job-1", job.LinkConsumes[0].Job)
 	assert.Equal("role-2-job-1-provider-1", job.LinkConsumes[1].Name, "Did not prefer providers in same role")
+	assert.Equal("role-2-job-1", job.LinkConsumes[1].Job)
 	assert.Equal("role-3-job-1-provider-1", job.LinkConsumes[2].Name, "Did not find explicitly named provider")
+	assert.Equal("role-3-job-1", job.LinkConsumes[2].Job)
 	assert.Empty(job.LinkConsumes[3].Name, "Should not have found provider")
 }
