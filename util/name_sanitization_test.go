@@ -15,6 +15,7 @@ func TestSanitizeDockerName(t *testing.T) {
 		"remote/branch": "remote-branch",
 		"image:tag":     "image-tag",
 		"[Ｇｏ]\n":        "-",
+		"{{ foo }}":     "{{ foo }}",
 	} {
 		assert.Equal(output, SanitizeDockerName(input), "Incorrect sanitization")
 	}
