@@ -44,7 +44,6 @@ type RoleManifest struct {
 	Configuration *Configuration `yaml:"configuration"`
 
 	manifestFilePath string
-	rolesByName      map[string]*Role
 }
 
 // Role represents a collection of jobs that are colocated on a container
@@ -314,8 +313,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
 	}
 
-	roleManifest.rolesByName = make(map[string]*Role, len(roleManifest.Roles))
-
 	for _, role := range roleManifest.Roles {
 		role.roleManifest = &roleManifest
 		role.Jobs = make(Jobs, 0, len(role.JobNameList))
@@ -343,9 +340,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		role.calculateRoleConfigurationTemplates()
-		roleManifest.rolesByName[role.Name] = role
 	}
 
+	allErrs = append(allErrs, roleManifest.resolveLinks()...)
 	allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
 	allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
 	allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
@@ -381,7 +378,57 @@ func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *O
 
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
-	return m.rolesByName[roleName]
+	for _, role := range m.Roles {
+		if role.Name == roleName {
+			return role
+		}
+	}
+	return nil
+}
+
+// resolveLinks examines the BOSH links specified in the job specs and maps
+// them to the correct role / job that can be looked up at runtime
+func (m *RoleManifest) resolveLinks() validation.ErrorList {
+	errors := make(validation.ErrorList, 0)
+
+	// Resolve the consumers
+	for _, role := range m.Roles {
+		// Prefer finding providers in the same role
+		providingRoles := append(Roles{role}, m.Roles...)
+		for _, job := range role.Jobs {
+		iterateOverConsumers:
+			for idx, consumer := range job.LinkConsumes {
+				for _, providingRole := range providingRoles {
+					for _, providingJob := range providingRole.Jobs {
+						for _, provider := range providingJob.LinkProvides {
+							if consumer.Type != "" && consumer.Type != provider.Type {
+								continue
+							}
+							if consumer.Name != "" && consumer.Name != provider.Name {
+								continue
+							}
+							if consumer.Name == "" {
+								consumer.Name = provider.Name
+							}
+							consumer.RoleName = providingRole.Name
+							consumer.JobName = providingJob.Name
+							continue iterateOverConsumers
+						}
+					}
+				}
+
+				// No valid providers
+				if !consumer.Optional {
+					errors = append(errors, validation.NotFound(
+						fmt.Sprintf(`role[%s].job[%s].consumes[%d]`, role.Name, job.Name, idx),
+						consumer,
+					))
+				}
+			}
+		}
+	}
+
+	return errors
 }
 
 // SelectRoles will find only the given roles in the role manifest
@@ -395,7 +442,7 @@ func (m *RoleManifest) SelectRoles(roleNames []string) (Roles, error) {
 	var missingRoles []string
 
 	for _, roleName := range roleNames {
-		if role, ok := m.rolesByName[roleName]; ok {
+		if role := m.LookupRole(roleName); role != nil {
 			results = append(results, role)
 		} else {
 			missingRoles = append(missingRoles, roleName)
@@ -982,6 +1029,16 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 	}
 
 	return allErrs
+}
+
+// LookupJob will find the given job in this role, or nil if not found
+func (r *Role) LookupJob(name string) *Job {
+	for _, j := range r.Jobs {
+		if j.Name == name {
+			return j
+		}
+	}
+	return nil
 }
 
 // IsDevRole tests if the role is tagged for development, or not. It

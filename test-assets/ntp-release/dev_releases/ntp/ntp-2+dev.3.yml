@@ -9,7 +9,7 @@ jobs:
 - name: ntpd
   version: 9c168f583bc177f91e6ef6ef1eab1b4550b78b1e
   fingerprint: 9c168f583bc177f91e6ef6ef1eab1b4550b78b1e
-  sha1: aab8da0094ac318f790ca40c53f7a5f4e137f841
+  sha1: 8eeef09ae67e65aeb3257df402336de04822efc5
 license:
   version: 596316b93cdeded339f835660a5b50eac2ecc57a
   fingerprint: 596316b93cdeded339f835660a5b50eac2ecc57a

@@ -17,21 +17,38 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// JobLinkProvides describes the BOSH links a job provides
+type JobLinkProvides struct {
+	Name       string
+	Type       string
+	Properties []string
+}
+
+// JobLinkConsumes describes the BOSH links a job consumes
+type JobLinkConsumes struct {
+	Name     string `json:"-"`
+	Type     string `json:"-"`
+	Optional bool   `json:"-"`
+	RoleName string `json:"role"` // Name of role in which the resolved job is running
+	JobName  string `json:"job"`  // Name of job that this resolves to
+}
+
 // Job represents a BOSH job
 type Job struct {
-	Name        string
-	Description string
-	Templates   []*JobTemplate
-	Packages    Packages
-	Path        string
-	Fingerprint string
-	SHA1        string
-	Properties  []*JobProperty
-	Version     string
-	Release     *Release
+	Name         string
+	Description  string
+	Templates    []*JobTemplate
+	Packages     Packages
+	Path         string
+	Fingerprint  string
+	SHA1         string
+	Properties   []*JobProperty
+	Version      string
+	Release      *Release
+	LinkProvides []*JobLinkProvides
+	LinkConsumes []*JobLinkConsumes
 
 	jobReleaseInfo map[interface{}]interface{}
-	jobSpec        map[interface{}]interface{}
 }
 
 // Jobs is an array of Job*
@@ -154,76 +171,97 @@ func (j *Job) loadJobSpec() (err error) {
 		return err
 	}
 
-	if err := yaml.Unmarshal([]byte(specContents), &j.jobSpec); err != nil {
+	// jobSpec describes the contents of "job.MF" files
+	var jobSpec struct {
+		Name        string
+		Description string
+		Packages    []string
+		Templates   map[string]string
+		Properties  map[string]struct {
+			Description string
+			Default     interface{}
+			Example     interface{}
+		}
+		Consumes []struct {
+			Name     string
+			Type     string
+			Optional bool
+		}
+		Provides []struct {
+			Name       string
+			Type       string
+			Properties []string
+		}
+	}
+
+	if err := yaml.Unmarshal([]byte(specContents), &jobSpec); err != nil {
 		return err
 	}
 
-	if j.jobSpec["description"] != nil {
-		j.Description = j.jobSpec["description"].(string)
+	j.Description = jobSpec.Description
+
+	for _, pkgName := range jobSpec.Packages {
+		dependency, err := j.Release.LookupPackage(pkgName)
+		if err != nil {
+			return fmt.Errorf("Cannot find dependency for job %s: %v", j.Name, err.Error())
+		}
+
+		j.Packages = append(j.Packages, dependency)
 	}
 
-	if j.jobSpec["packages"] != nil {
-		for _, pkg := range j.jobSpec["packages"].([]interface{}) {
-			pkgName := pkg.(string)
-			dependency, err := j.Release.LookupPackage(pkgName)
-			if err != nil {
-				return fmt.Errorf("Cannot find dependency for job %s: %v", j.Name, err.Error())
-			}
+	for source, destination := range jobSpec.Templates {
+		templateFile := filepath.Join(jobDir, "templates", source)
 
-			j.Packages = append(j.Packages, dependency)
+		templateContent, err := ioutil.ReadFile(templateFile)
+		if err != nil {
+			return err
 		}
+
+		template := &JobTemplate{
+			SourcePath:      source,
+			DestinationPath: destination,
+			Job:             j,
+			Content:         string(templateContent),
+		}
+
+		j.Templates = append(j.Templates, template)
 	}
 
-	if j.jobSpec["templates"] != nil {
-		for source, destination := range j.jobSpec["templates"].(map[interface{}]interface{}) {
-			templateFile := filepath.Join(jobDir, "templates", source.(string))
+	// We want to load the properties in sorted order, so that we are
+	// consistent and avoid flaky tests
+	var propertyNames []string
+	for propertyName := range jobSpec.Properties {
+		propertyNames = append(propertyNames, propertyName)
+	}
+	sort.Strings(propertyNames)
+	for _, propertyName := range propertyNames {
 
-			templateContent, err := ioutil.ReadFile(templateFile)
-			if err != nil {
-				return err
-			}
-
-			template := &JobTemplate{
-				SourcePath:      source.(string),
-				DestinationPath: destination.(string),
-				Job:             j,
-				Content:         string(templateContent),
-			}
-
-			j.Templates = append(j.Templates, template)
+		property := &JobProperty{
+			Name:        propertyName,
+			Job:         j,
+			Description: jobSpec.Properties[propertyName].Description,
+			Default:     jobSpec.Properties[propertyName].Default,
 		}
+
+		j.Properties = append(j.Properties, property)
 	}
 
-	if j.jobSpec["properties"] != nil {
-		// We want to load the properties in sorted order, so that we are
-		// consistent and avoid flaky tests
-		properties := j.jobSpec["properties"].(map[interface{}]interface{})
-		var propertyNames []string
-		for propertyName := range properties {
-			propertyNames = append(propertyNames, propertyName.(string))
-		}
-		sort.Strings(propertyNames)
-		for _, propertyName := range propertyNames {
+	j.LinkProvides = make([]*JobLinkProvides, 0, len(jobSpec.Provides))
+	for _, provides := range jobSpec.Provides {
+		j.LinkProvides = append(j.LinkProvides, &JobLinkProvides{
+			Name:       provides.Name,
+			Type:       provides.Type,
+			Properties: provides.Properties,
+		})
+	}
 
-			property := &JobProperty{
-				Name: propertyName,
-				Job:  j,
-			}
-
-			propertyDefinition := properties[propertyName]
-			if propertyDefinition != nil {
-				propertyDefinitionMap := propertyDefinition.(map[interface{}]interface{})
-
-				if propertyDefinitionMap["description"] != nil {
-					property.Description = propertyDefinitionMap["description"].(string)
-				}
-				if propertyDefinitionMap["default"] != nil {
-					property.Default = propertyDefinitionMap["default"]
-				}
-			}
-
-			j.Properties = append(j.Properties, property)
-		}
+	j.LinkConsumes = make([]*JobLinkConsumes, 0, len(jobSpec.Consumes))
+	for _, consumes := range jobSpec.Consumes {
+		j.LinkConsumes = append(j.LinkConsumes, &JobLinkConsumes{
+			Name:     consumes.Name,
+			Type:     consumes.Type,
+			Optional: consumes.Optional,
+		})
 	}
 
 	return nil
@@ -240,20 +278,39 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	j.Properties = append(j.Properties, otherJob.Properties...)
 }
 
+// jobConfigTemplate is one "templates:" entry in the job config output
+type jobConfigTemplate struct {
+	Name string `json:"name"`
+}
+
 // WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
 func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
-	config, err := initializeConfigJSON()
-	if err != nil {
-		return nil, err
+	var config struct {
+		Job struct {
+			Name      string              `json:"name"`
+			Templates []jobConfigTemplate `json:"templates"`
+		} `json:"job"`
+		Parameters map[string]string      `json:"parameters"`
+		Properties map[string]interface{} `json:"properties"`
+		Networks   struct {
+			Default map[string]string `json:"default"`
+		} `json:"networks"`
+		ExportedProperties []string                    `json:"exported_properties"`
+		Consumes           map[string]*JobLinkConsumes `json:"consumes"`
 	}
 
-	config["job"].(map[string]interface{})["name"] = role.Name
+	config.Job.Templates = make([]jobConfigTemplate, 0)
+	config.Parameters = make(map[string]string)
+	config.Properties = make(map[string]interface{})
+	config.Networks.Default = make(map[string]string)
+	config.ExportedProperties = make([]string, 0)
+	config.Consumes = make(map[string]*JobLinkConsumes, 0)
 
-	var templates []map[string]string
+	config.Job.Name = role.Name
+
 	for _, roleJob := range role.Jobs {
-		templates = append(templates, map[string]string{"name": roleJob.Name})
+		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
 	}
-	config["job"].(map[string]interface{})["templates"] = templates
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	if err != nil {
@@ -263,7 +320,16 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	if err != nil {
 		return nil, err
 	}
-	config["properties"] = properties
+	config.Properties = properties
+
+	for _, provider := range j.LinkProvides {
+		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
+	}
+	for _, consumeTarget := range j.LinkConsumes {
+		if consumeTarget.RoleName != "" && consumeTarget.JobName != "" {
+			config.Consumes[consumeTarget.Name] = consumeTarget
+		}
+	}
 
 	// Write out the configuration
 	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
@@ -334,25 +400,6 @@ func (j *Job) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, e
 		}
 	}
 	return props, nil
-}
-
-// initializeConfigJSON returns the scaffolding for the BOSH-style JSON structure
-func initializeConfigJSON() (map[string]interface{}, error) {
-	var config map[string]interface{}
-	err := json.Unmarshal([]byte(`{
-		"job": {
-			"templates": []
-		},
-		"parameters": {},
-		"properties": {},
-		"networks": {
-			"default": {}
-		}
-	}`), &config)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal initial config: %+v", err)
-	}
-	return config, nil
 }
 
 // Len implements the Len function to satisfy sort.Interface

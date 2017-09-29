@@ -73,7 +73,7 @@ func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {
 		log.WriteTo(c.ui)
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if waitStatus, ok := exitError.Sys().(*syscall.WaitStatus); ok {
-				return fmt.Errorf("Error - compilation for packages %s exited with code %d", pkg.Name, waitStatus.ExitStatus())
+				return fmt.Errorf("Error - compilation for package %s exited with code %d", pkg.Name, waitStatus.ExitStatus())
 			}
 		}
 		return fmt.Errorf("Error compiling package %s: %s", pkg.Name, err)

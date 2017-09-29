@@ -266,7 +266,9 @@ func TestDevReleaseJobsOk(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal("bar", barJob.Name)
-	assert.Equal("bar", barJob.Packages[0].Name)
+	if assert.NotEmpty(barJob.Packages) {
+		assert.Equal("bar", barJob.Packages[0].Name)
+	}
 }
 
 func TestDevReleaseJobExtractOk(t *testing.T) {

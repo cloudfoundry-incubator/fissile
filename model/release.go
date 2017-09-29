@@ -64,7 +64,7 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 func (r *Release) loadMetadata() (err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("Error trying to load release metadata from YAML manifest %s: %s", r.manifestFilePath(), p)
+			err = fmt.Errorf("Error trying to load release %s metadata from YAML manifest %s: %s", r.Name, r.manifestFilePath(), p)
 		}
 	}()
 
@@ -118,8 +118,8 @@ func (r *Release) LookupJob(jobName string) (*Job, error) {
 
 func (r *Release) loadJobs() (err error) {
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("Error trying to load release jobs from YAML manifest: %s", r)
+		if p := recover(); p != nil {
+			err = fmt.Errorf("Error trying to load release %s jobs from YAML manifest: %s", r.Name, p)
 		}
 	}()
 
@@ -138,19 +138,20 @@ func (r *Release) loadJobs() (err error) {
 
 func (r *Release) loadPackages() (err error) {
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("Error trying to load release packages from YAML manifest: %s", r)
+		if p := recover(); p != nil {
+			err = fmt.Errorf("Error trying to load release %s packages from YAML manifest: %s", r.Name, p)
 		}
 	}()
 
-	packages := r.manifest["packages"].([]interface{})
-	for _, pkg := range packages {
-		p, err := newPackage(r, pkg.(map[interface{}]interface{}))
-		if err != nil {
-			return err
-		}
+	if packages, ok := r.manifest["packages"].([]interface{}); ok {
+		for _, pkg := range packages {
+			p, err := newPackage(r, pkg.(map[interface{}]interface{}))
+			if err != nil {
+				return err
+			}
 
-		r.Packages = append(r.Packages, p)
+			r.Packages = append(r.Packages, p)
+		}
 	}
 
 	return nil

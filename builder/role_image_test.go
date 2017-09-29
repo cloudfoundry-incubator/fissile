@@ -322,7 +322,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 					"private_key": null,
 					"client_keys":null
 				}
-			}
+			},
+			"consumes": {},
+			"exported_properties": []
 		}`
 		assert.JSONEq(expectedString, string(buf))
 	}
@@ -334,10 +336,8 @@ func getPackage(roles model.Roles, role, job, pkg string) *model.Package {
 		if r.Name != role {
 			continue
 		}
-		for _, j := range r.Jobs {
-			if j.Name != job {
-				continue
-			}
+		j := r.LookupJob(job)
+		if j != nil {
 			for _, p := range j.Packages {
 				if p.Name == pkg {
 					return p

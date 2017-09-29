@@ -70,21 +70,19 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 }
 
 func (r *Release) getDefaultDevReleaseName() (ver string, err error) {
-	releaseConfigContent, err := ioutil.ReadFile(r.getDevReleaseDevConfigFile())
-	if err != nil {
-		return "", err
-	}
-
 	var releaseConfig map[interface{}]interface{}
-
-	if err := yaml.Unmarshal([]byte(releaseConfigContent), &releaseConfig); err != nil {
-		return "", err
-	}
-
 	var name string
-	if value, ok := releaseConfig["dev_name"]; ok {
-		if name, ok = value.(string); ok {
-			return name, nil
+
+	releaseConfigContent, err := ioutil.ReadFile(r.getDevReleaseDevConfigFile())
+	if err == nil {
+		if err := yaml.Unmarshal([]byte(releaseConfigContent), &releaseConfig); err != nil {
+			return "", err
+		}
+
+		if value, ok := releaseConfig["dev_name"]; ok {
+			if name, ok = value.(string); ok {
+				return name, nil
+			}
 		}
 	}
 
@@ -179,7 +177,7 @@ func (r *Release) validateDevPathStructure() error {
 		return err
 	}
 
-	return util.ValidatePath(r.getDevReleaseDevConfigFile(), false, "release dev config file")
+	return util.ValidatePath(r.getDevReleaseFinalConfigFile(), false, "release final config file")
 }
 
 func (r *Release) validateSpecificDevReleasePathStructure() error {
