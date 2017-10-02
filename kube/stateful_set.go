@@ -36,7 +36,7 @@ func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
 
-	return statefulSet.Sort(), svcList, err
+	return statefulSet, svcList, err
 }
 
 // getAllVolumeClaims returns the list of persistent and shared volume claims from a role
