@@ -84,6 +84,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 	fail := fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, role.Run.Scaling.Max)
 	block := fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, role.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
+	controller.Sort()
 
 	return nil
 }
