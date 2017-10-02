@@ -110,8 +110,10 @@ func getPortInfo(name string, minPort, maxPort int) ([]portInfo, error) {
 	return results, nil
 }
 
-func newTypeMeta(apiVersion, kind string) *helm.Mapping {
-	return helm.NewMapping("apiVersion", apiVersion, "kind", kind)
+func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	mapping := helm.NewMapping("apiVersion", apiVersion, "kind", kind)
+	mapping.Set(modifiers...)
+	return mapping
 }
 
 func newObjectMeta(name string) *helm.Mapping {
@@ -128,10 +130,8 @@ func newSelector(name string) *helm.Mapping {
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
 func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
-	mapping := newTypeMeta(apiVersion, kind)
-	mapping.Set(modifiers...)
+	mapping := newTypeMeta(apiVersion, kind, modifiers...)
 	mapping.Add("metadata", newObjectMeta(name))
-
 	return mapping
 }
 

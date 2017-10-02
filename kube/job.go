@@ -29,7 +29,7 @@ func NewJob(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 		// Job objects become a regular feature in kube 1.6
 		apiVersion = fmt.Sprintf("{{ if %s -}} batch/v1 {{- else -}} %s {{- end }}", minKubeVersion(1, 6), apiVersion)
 	}
-	job := newTypeMeta(apiVersion, "Job")
+	job := newTypeMeta(apiVersion, "Job", helm.Comment(role.GetLongDescription()))
 	job.Add("metadata", helm.NewMapping("name", role.Name))
 	job.Add("spec", helm.NewMapping("template", podTemplate))
 
