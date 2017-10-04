@@ -49,6 +49,8 @@ var buildHelmCmd = &cobra.Command{
 			flagBuildHelmOutputDir,
 			flagRepository,
 			flagDockerRegistry,
+			flagDockerUsername,
+			flagDockerPassword,
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildHelmDefaultEnvFiles,
