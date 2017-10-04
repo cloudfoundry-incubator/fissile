@@ -47,6 +47,8 @@ var buildKubeCmd = &cobra.Command{
 			flagBuildKubeOutputDir,
 			flagRepository,
 			flagDockerRegistry,
+			flagDockerUsername,
+			flagDockerPassword,
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildKubeDefaultEnvFiles,
