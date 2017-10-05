@@ -30,7 +30,7 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 	}
 	env.Sort()
 
-	sizing := helm.NewMapping()
+	sizing := helm.NewMapping("HA", false)
 	for _, role := range roleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
@@ -43,6 +43,11 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		} else {
 			comment = fmt.Sprintf("The %s role can scale between %d and %d instances.",
 				role.Name, role.Run.Scaling.Min, role.Run.Scaling.Max)
+
+			if role.Run.Scaling.HA != role.Run.Scaling.Min {
+				comment += fmt.Sprintf("\nFor high availability it needs at least %d instances.",
+					role.Run.Scaling.HA)
+			}
 		}
 		entry.Add("count", role.Run.Scaling.Min, helm.Comment(comment))
 		entry.Add("memory", role.Run.Memory)
