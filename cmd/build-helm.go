@@ -11,7 +11,7 @@ var (
 	flagBuildHelmOutputDir       string
 	flagBuildHelmDefaultEnvFiles []string
 	flagBuildHelmUseMemoryLimits bool
-	flagBuildHelmVersion         string
+	flagBuildHelmTagExtra        string
 )
 
 // buildHelmCmd represents the helm command
@@ -24,6 +24,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
+		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -51,7 +52,7 @@ var buildHelmCmd = &cobra.Command{
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildHelmDefaultEnvFiles,
-			flagBuildHelmVersion,
+			flagBuildHelmTagExtra,
 			flagBuildHelmUseMemoryLimits,
 			true,
 			opinions,
@@ -87,10 +88,10 @@ func init() {
 	)
 
 	buildHelmCmd.PersistentFlags().StringP(
-		"version",
+		"tag-extra",
 		"",
 		"",
-		"Additional version information to use in computing the image tags",
+		"Additional information to use in computing the image tags",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())

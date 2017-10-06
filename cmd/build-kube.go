@@ -11,7 +11,7 @@ var (
 	flagBuildKubeOutputDir       string
 	flagBuildKubeDefaultEnvFiles []string
 	flagBuildKubeUseMemoryLimits bool
-	flagBuildKubeVersion         string
+	flagBuildKubeTagExtra        string
 )
 
 // buildKubeCmd represents the kube command
@@ -24,6 +24,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
+		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -51,7 +52,7 @@ var buildKubeCmd = &cobra.Command{
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildKubeDefaultEnvFiles,
-			flagBuildKubeVersion,
+			flagBuildKubeTagExtra,
 			flagBuildKubeUseMemoryLimits,
 			false,
 			opinions,
@@ -87,10 +88,10 @@ func init() {
 	)
 
 	buildKubeCmd.PersistentFlags().StringP(
-		"version",
+		"tag-extra",
 		"",
 		"",
-		"Additional version information to use in computing the image tags",
+		"Additional information to use in computing the image tags",
 	)
 
 	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())

@@ -532,7 +532,7 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 // role dev version, and the aggregated spec and opinion
 // information. In this manner opinion changes cause a rebuild of the
 // associated role images.
-func (r *Role) GetRoleDevVersion(opinions *Opinions, tagDetails, fissileVersion string) (string, error) {
+func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string) (string, error) {
 
 	// Basic role version
 	devVersion, err := r.getRoleJobAndPackagesSignature()
@@ -549,7 +549,7 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagDetails, fissileVersion 
 	signatures := []string{
 		devVersion,
 		fissileVersion,
-		tagDetails,
+		tagExtra,
 	}
 
 	// Job order comes from the role manifest, and is sort of

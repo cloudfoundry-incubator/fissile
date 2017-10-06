@@ -46,7 +46,7 @@ type RoleImageBuilder struct {
 	compiledPackagesPath string
 	targetPath           string
 	metricsPath          string
-	tagDetails           string
+	tagExtra             string
 	fissileVersion       string
 	lightOpinionsPath    string
 	darkOpinionsPath     string
@@ -54,7 +54,7 @@ type RoleImageBuilder struct {
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagDetails, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 		targetPath:           targetPath,
 		metricsPath:          metricsPath,
 		fissileVersion:       fissileVersion,
-		tagDetails:           tagDetails,
+		tagExtra:             tagExtra,
 		lightOpinionsPath:    lightOpinionsPath,
 		darkOpinionsPath:     darkOpinionsPath,
 		ui:                   ui,
@@ -353,7 +353,7 @@ func (j roleBuildJob) Run() {
 			return err
 		}
 
-		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.tagDetails, j.builder.fissileVersion)
+		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion)
 		if err != nil {
 			return err
 		}
