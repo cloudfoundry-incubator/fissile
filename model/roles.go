@@ -80,9 +80,10 @@ type RoleRun struct {
 
 // RoleRunScaling describes how a role should scale out at runtime
 type RoleRunScaling struct {
-	Min int `yaml:"min"`
-	Max int `yaml:"max"`
-	HA  int `yaml:"ha,omitempty"`
+	Min       int  `yaml:"min"`
+	Max       int  `yaml:"max"`
+	HA        int  `yaml:"ha,omitempty"`
+	MustBeOdd bool `yaml:"must_be_odd,omitempty"`
 }
 
 // RoleRunVolume describes a volume to be attached at runtime

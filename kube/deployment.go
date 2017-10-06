@@ -102,6 +102,13 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 	fail := fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, role.Run.Scaling.Max)
 	block := fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, role.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
+
+	if role.Run.Scaling.MustBeOdd {
+		fail := fmt.Sprintf(`{{ fail "%s must have an odd instance count" }}`, roleName)
+		block := fmt.Sprintf("if eq (mod (int .Values.sizing.%s.count) 2) 0", roleName)
+		controller.Add("_oddReplicas", fail, helm.Block(block))
+	}
+
 	controller.Sort()
 
 	return nil
