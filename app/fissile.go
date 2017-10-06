@@ -516,7 +516,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using dev releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagDetails string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -590,6 +590,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		lightManifestPath,
 		darkManifestPath,
 		metricsPath,
+		tagDetails,
 		f.Version,
 		f.UI,
 	)
@@ -601,7 +602,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool, tagDetails string) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -631,7 +632,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 	}
 
 	for _, role := range roleManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion(opinions, f.Version)
+		devVersion, err := role.GetRoleDevVersion(opinions, tagDetails, f.Version)
 		if err != nil {
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
@@ -823,7 +824,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
+func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, tagDetails string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
 	if err != nil {
@@ -859,7 +860,7 @@ func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry
 		}
 	}
 
-	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, roleManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
+	return f.generateKubeRoles(outputDir, repository, registry, organization, tagDetails, fissileVersion, roleManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
 func (f *Fissile) generateSecrets(outputDir string, secrets helm.Node, roleManifest *model.RoleManifest, createHelmChart bool) error {
@@ -931,7 +932,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, fissileVersion string, roleManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
+func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, tagDetails, fissileVersion string, roleManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
 	settings := &kube.ExportSettings{
 		Defaults:        defaults,
 		Registry:        registry,
@@ -939,6 +940,7 @@ func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organizatio
 		Repository:      repository,
 		UseMemoryLimits: useMemoryLimits,
 		FissileVersion:  fissileVersion,
+		TagDetails:      tagDetails,
 		RoleManifest:    roleManifest,
 		Opinions:        opinions,
 		Secrets:         refs,

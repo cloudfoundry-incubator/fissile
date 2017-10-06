@@ -8,6 +8,7 @@ import (
 var (
 	flagShowImageDockerOnly bool
 	flagShowImageWithSizes  bool
+	flagShowImageVersion    string
 )
 
 // showImageCmd represents the image command
@@ -22,8 +23,9 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		flagShowImageDockerOnly = viper.GetBool("docker-only")
-		flagShowImageWithSizes = viper.GetBool("with-sizes")
+		flagShowImageDockerOnly = showImagesViper.GetBool("docker-only")
+		flagShowImageWithSizes = showImagesViper.GetBool("with-sizes")
+		flagShowImageVersion = showImagesViper.GetString("version")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -44,11 +46,16 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 			flagDarkOpinions,
 			flagShowImageDockerOnly,
 			flagShowImageWithSizes,
+			flagShowImageVersion,
 		)
 	},
 }
 
+var showImagesViper = viper.New()
+
 func init() {
+	initViper(showImagesViper)
+
 	showCmd.AddCommand(showImageCmd)
 
 	showImageCmd.PersistentFlags().BoolP(
@@ -65,5 +72,12 @@ func init() {
 		"If the flag is set, also show image virtual sizes; only works if the --docker-only flag is set",
 	)
 
-	viper.BindPFlags(showImageCmd.PersistentFlags())
+	showImageCmd.PersistentFlags().StringP(
+		"version",
+		"",
+		"",
+		"Additional version information to use in computing the image tags",
+	)
+
+	showImagesViper.BindPFlags(showImageCmd.PersistentFlags())
 }

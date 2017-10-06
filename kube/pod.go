@@ -106,7 +106,7 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 
 // getContainerImageName returns the name of the docker image to use for a role
 func getContainerImageName(role *model.Role, settings *ExportSettings) (string, error) {
-	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.FissileVersion)
+	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagDetails, settings.FissileVersion)
 	if err != nil {
 		return "", err
 	}

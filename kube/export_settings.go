@@ -12,6 +12,7 @@ type ExportSettings struct {
 	Organization    string
 	UseMemoryLimits bool
 	FissileVersion  string
+	TagDetails      string
 	RoleManifest    *model.RoleManifest
 	Opinions        *model.Opinions
 	Secrets         SecretRefMap

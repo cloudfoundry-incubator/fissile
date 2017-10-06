@@ -11,6 +11,7 @@ var (
 	flagBuildHelmOutputDir       string
 	flagBuildHelmDefaultEnvFiles []string
 	flagBuildHelmUseMemoryLimits bool
+	flagBuildHelmVersion         string
 )
 
 // buildHelmCmd represents the helm command
@@ -50,6 +51,7 @@ var buildHelmCmd = &cobra.Command{
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildHelmDefaultEnvFiles,
+			flagBuildHelmVersion,
 			flagBuildHelmUseMemoryLimits,
 			true,
 			opinions,
@@ -82,6 +84,13 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating helm chart",
+	)
+
+	buildHelmCmd.PersistentFlags().StringP(
+		"version",
+		"",
+		"",
+		"Additional version information to use in computing the image tags",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())

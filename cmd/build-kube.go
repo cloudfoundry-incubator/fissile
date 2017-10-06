@@ -11,6 +11,7 @@ var (
 	flagBuildKubeOutputDir       string
 	flagBuildKubeDefaultEnvFiles []string
 	flagBuildKubeUseMemoryLimits bool
+	flagBuildKubeVersion         string
 )
 
 // buildKubeCmd represents the kube command
@@ -50,6 +51,7 @@ var buildKubeCmd = &cobra.Command{
 			flagDockerOrganization,
 			fissile.Version,
 			flagBuildKubeDefaultEnvFiles,
+			flagBuildKubeVersion,
 			flagBuildKubeUseMemoryLimits,
 			false,
 			opinions,
@@ -82,6 +84,13 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating kube configurations",
+	)
+
+	buildKubeCmd.PersistentFlags().StringP(
+		"version",
+		"",
+		"",
+		"Additional version information to use in computing the image tags",
 	)
 
 	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())
