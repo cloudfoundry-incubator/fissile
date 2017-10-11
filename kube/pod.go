@@ -68,8 +68,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 	container.Add("readinessProbe", readinessProbe)
 	container.Sort()
 
-	imagePullSecrets := helm.NewMapping()
-	imagePullSecrets.Add("name", "registry-credentials")
+	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
 
 	spec := helm.NewMapping()
 	spec.Add("containers", helm.NewList(container))
