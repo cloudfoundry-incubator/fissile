@@ -61,6 +61,7 @@ type Role struct {
 	Tags              []string       `yaml:"tags"`
 
 	roleManifest *RoleManifest
+	jobConsumes  map[string][]JobLinkConsumes // keyed by job name
 }
 
 // RoleRun describes how a role should behave at runtime
@@ -375,9 +376,11 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 
 	// Resolve the consumers
 	for _, role := range m.Roles {
+		role.jobConsumes = make(map[string][]JobLinkConsumes)
 		// Prefer finding providers in the same role
 		providingRoles := append(Roles{role}, m.Roles...)
 		for _, job := range role.Jobs {
+			role.jobConsumes[job.Name] = make([]JobLinkConsumes, 0)
 		iterateOverConsumers:
 			for idx, consumer := range job.LinkConsumes {
 				for _, providingRole := range providingRoles {
@@ -389,18 +392,26 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 							if consumer.Name != "" && consumer.Name != provider.Name {
 								continue
 							}
-							if consumer.Name == "" {
-								consumer.Name = provider.Name
-							}
-							consumer.RoleName = providingRole.Name
-							consumer.JobName = providingJob.Name
+							role.jobConsumes[job.Name] = append(role.jobConsumes[job.Name], JobLinkConsumes{
+								Name:     provider.Name,
+								Type:     provider.Type,
+								Optional: consumer.Optional,
+								RoleName: providingRole.Name,
+								JobName:  providingJob.Name,
+							})
 							continue iterateOverConsumers
 						}
 					}
 				}
 
 				// No valid providers
-				if !consumer.Optional {
+				if consumer.Optional {
+					role.jobConsumes[job.Name] = append(role.jobConsumes[job.Name], JobLinkConsumes{
+						Name:     consumer.Name,
+						Type:     consumer.Type,
+						Optional: consumer.Optional,
+					})
+				} else {
 					errors = append(errors, validation.NotFound(
 						fmt.Sprintf(`role[%s].job[%s].consumes[%d]`, role.Name, job.Name, idx),
 						consumer,

@@ -317,9 +317,17 @@ func TestWriteConfigs(t *testing.T) {
 	role := &Role{
 		Name: "dummy role",
 		Jobs: Jobs{job},
+		jobConsumes: map[string][]JobLinkConsumes{
+			"silly job": []JobLinkConsumes{
+				JobLinkConsumes{
+					Name:     "serious",
+					Type:     "serious-type",
+					RoleName: "dummy role",
+					JobName:  job.Name,
+				},
+			},
+		},
 	}
-	job.LinkConsumes[0].RoleName = role.Name
-	job.LinkConsumes[0].JobName = job.Name
 
 	tempFile, err := ioutil.TempFile("", "fissile-job-test")
 	assert.NoError(err)

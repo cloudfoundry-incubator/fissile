@@ -325,9 +325,10 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	for _, provider := range j.LinkProvides {
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
 	}
-	for _, consumeTarget := range j.LinkConsumes {
-		if consumeTarget.RoleName != "" && consumeTarget.JobName != "" {
-			config.Consumes[consumeTarget.Name] = consumeTarget
+
+	for _, consumer := range role.jobConsumes[j.Name] {
+		if consumer.RoleName != "" && consumer.JobName != "" {
+			config.Consumes[consumer.Name] = &consumer
 		}
 	}
 
