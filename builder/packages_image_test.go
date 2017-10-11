@@ -336,19 +336,22 @@ func TestGetRolePackageImageName(t *testing.T) {
 	makeTemplateRole := func() *model.Role {
 		return &model.Role{
 			Name: "test-role",
-			Jobs: model.Jobs{
-				&model.Job{
+			Jobs: []*model.RoleJob{
+				{
 					Name: "test-job",
-					Packages: model.Packages{
-						&model.Package{
-							Name:        "pkg-name",
-							Version:     "pkg-version",
-							Fingerprint: "pkg-fingerprint",
-							SHA1:        "pkg-sha1",
+					Job: &model.Job{
+						Name: "test-job",
+						Packages: model.Packages{
+							&model.Package{
+								Name:        "pkg-name",
+								Version:     "pkg-version",
+								Fingerprint: "pkg-fingerprint",
+								SHA1:        "pkg-sha1",
+							},
 						},
+						Fingerprint: "job-fingerprint",
+						SHA1:        "job-sha1",
 					},
-					Fingerprint: "job-fingerprint",
-					SHA1:        "job-sha1",
 				},
 			},
 		}

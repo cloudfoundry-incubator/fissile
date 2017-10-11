@@ -17,36 +17,43 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// JobLinkProvides describes the BOSH links a job provides
-type JobLinkProvides struct {
-	Name       string
-	Type       string
+// jobLinkInfo describes a BOSH link provider or consumer
+type jobLinkInfo struct {
+	Name     string `json:"-" yaml:"-"`
+	Type     string `json:"-" yaml:"-"`
+	RoleName string `json:"role" yaml:"-"`
+	JobName  string `json:"job" yaml:"-"`
+}
+
+// jobProvidesInfo describes a BOSH link provider
+type jobProvidesInfo struct {
+	jobLinkInfo
+	Alias      string `yaml:"as"`
+	Shared     bool   `yaml:"shared"`
 	Properties []string
 }
 
-// JobLinkConsumes describes the BOSH links a job consumes
-type JobLinkConsumes struct {
-	Name     string `json:"-"`
-	Type     string `json:"-"`
-	Optional bool   `json:"-"`
-	RoleName string `json:"role"` // Name of role in which the resolved job is running
-	JobName  string `json:"job"`  // Name of job that this resolves to
+// jobConsumesInfo describes the BOSH links a job consumes
+type jobConsumesInfo struct {
+	jobLinkInfo
+	Alias    string `yaml:"from"`
+	Optional bool
 }
 
 // Job represents a BOSH job
 type Job struct {
-	Name         string
-	Description  string
-	Templates    []*JobTemplate
-	Packages     Packages
-	Path         string
-	Fingerprint  string
-	SHA1         string
-	Properties   []*JobProperty
-	Version      string
-	Release      *Release
-	LinkProvides []*JobLinkProvides
-	LinkConsumes []*JobLinkConsumes
+	Name          string
+	Description   string
+	Templates     []*JobTemplate
+	Packages      Packages
+	Path          string
+	Fingerprint   string
+	SHA1          string
+	Properties    []*JobProperty
+	Version       string
+	Release       *Release
+	LinkProviders map[string]jobProvidesInfo
+	LinkConsumers []jobConsumesInfo
 
 	jobReleaseInfo map[interface{}]interface{}
 }
@@ -246,20 +253,25 @@ func (j *Job) loadJobSpec() (err error) {
 		j.Properties = append(j.Properties, property)
 	}
 
-	j.LinkProvides = make([]*JobLinkProvides, 0, len(jobSpec.Provides))
+	j.LinkProviders = make(map[string]jobProvidesInfo)
 	for _, provides := range jobSpec.Provides {
-		j.LinkProvides = append(j.LinkProvides, &JobLinkProvides{
-			Name:       provides.Name,
-			Type:       provides.Type,
+		j.LinkProviders[provides.Name] = jobProvidesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:    provides.Name,
+				Type:    provides.Type,
+				JobName: j.Name,
+			},
 			Properties: provides.Properties,
-		})
+		}
 	}
 
-	j.LinkConsumes = make([]*JobLinkConsumes, 0, len(jobSpec.Consumes))
+	j.LinkConsumers = make([]jobConsumesInfo, 0, len(jobSpec.Consumes))
 	for _, consumes := range jobSpec.Consumes {
-		j.LinkConsumes = append(j.LinkConsumes, &JobLinkConsumes{
-			Name:     consumes.Name,
-			Type:     consumes.Type,
+		j.LinkConsumers = append(j.LinkConsumers, jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name: consumes.Name,
+				Type: consumes.Type,
+			},
 			Optional: consumes.Optional,
 		})
 	}
@@ -295,8 +307,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 		Networks   struct {
 			Default map[string]string `json:"default"`
 		} `json:"networks"`
-		ExportedProperties []string                    `json:"exported_properties"`
-		Consumes           map[string]*JobLinkConsumes `json:"consumes"`
+		ExportedProperties []string               `json:"exported_properties"`
+		Consumes           map[string]jobLinkInfo `json:"consumes"`
 	}
 
 	config.Job.Templates = make([]jobConfigTemplate, 0)
@@ -304,12 +316,15 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	config.Properties = make(map[string]interface{})
 	config.Networks.Default = make(map[string]string)
 	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]*JobLinkConsumes, 0)
+	config.Consumes = make(map[string]jobLinkInfo)
 
 	config.Job.Name = role.Name
 
 	for _, roleJob := range role.Jobs {
 		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
+		for _, consumer := range roleJob.Consumes {
+			config.Consumes[consumer.Name] = consumer.jobLinkInfo
+		}
 	}
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
@@ -322,14 +337,8 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 	}
 	config.Properties = properties
 
-	for _, provider := range j.LinkProvides {
+	for _, provider := range j.LinkProviders {
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
-	}
-
-	for _, consumer := range role.jobConsumes[j.Name] {
-		if consumer.RoleName != "" && consumer.JobName != "" {
-			config.Consumes[consumer.Name] = &consumer
-		}
 	}
 
 	// Write out the configuration

@@ -46,22 +46,29 @@ type RoleManifest struct {
 	manifestFilePath string
 }
 
+// RoleJob represents a job in the context of a role
+type RoleJob struct {
+	*Job        `yaml:"-"`                 // The resolved job
+	Name        string                     `yaml:"name"`         // The name of the job
+	ReleaseName string                     `yaml:"release_name"` // The release the job comes from
+	Provides    map[string]jobProvidesInfo `yaml:"provides"`
+	Consumes    map[string]jobConsumesInfo `yaml:"consumes"`
+}
+
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
 	Name              string         `yaml:"name"`
 	Description       string         `yaml:"description"`
-	Jobs              Jobs           `yaml:"_,omitempty"`
 	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
 	Type              RoleType       `yaml:"type,omitempty"`
-	JobNameList       []*roleJob     `yaml:"jobs"`
+	Jobs              []*RoleJob     `yaml:"jobs"`
 	Configuration     *Configuration `yaml:"configuration"`
 	Run               *RoleRun       `yaml:"run"`
 	Tags              []string       `yaml:"tags"`
 
 	roleManifest *RoleManifest
-	jobConsumes  map[string][]JobLinkConsumes // keyed by job name
 }
 
 // RoleRun describes how a role should behave at runtime
@@ -240,11 +247,6 @@ type ConfigurationVariableGenerator struct {
 	ValueType string        `yaml:"value_type"`
 }
 
-type roleJob struct {
-	Name        string `yaml:"name"`
-	ReleaseName string `yaml:"release_name"`
-}
-
 // Len is the number of roles in the slice
 func (roles Roles) Len() int {
 	return len(roles)
@@ -318,9 +320,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 	for _, role := range roleManifest.Roles {
 		role.roleManifest = &roleManifest
-		role.Jobs = make(Jobs, 0, len(role.JobNameList))
 
-		for _, roleJob := range role.JobNameList {
+		for _, roleJob := range role.Jobs {
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
 			if !ok {
@@ -339,18 +340,28 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 				continue
 			}
 
-			role.Jobs = append(role.Jobs, job)
+			roleJob.Job = job
+
+			for name, info := range roleJob.Consumes {
+				info.Name = name
+				roleJob.Consumes[name] = info
+			}
 		}
 
 		role.calculateRoleConfigurationTemplates()
+
 	}
 
-	allErrs = append(allErrs, roleManifest.resolveLinks()...)
-	allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
-	allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
-	allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
-	allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
-	allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
+	// Skip further validation if we fail to resolve any jobs
+	// This lets us assume valid jobs in the validation routines
+	if len(allErrs) == 0 {
+		allErrs = append(allErrs, roleManifest.resolveLinks()...)
+		allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
+		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
+		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
+	}
 
 	if len(allErrs) != 0 {
 		return nil, fmt.Errorf(allErrs.Errors())
@@ -374,48 +385,117 @@ func (m *RoleManifest) LookupRole(roleName string) *Role {
 func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	errors := make(validation.ErrorList, 0)
 
+	// Build mappings of providers by name, and by type.  Note that the names
+	// involved here are the aliasesp, where appropriate.
+	providersByName := make(map[string]jobProvidesInfo)
+	providersByType := make(map[string][]jobProvidesInfo)
+	for _, role := range m.Roles {
+		for _, job := range role.Jobs {
+			var availableProviders []string
+			for availableName, availableProvider := range job.LinkProviders {
+				availableProviders = append(availableProviders, availableName)
+				providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
+					jobLinkInfo: jobLinkInfo{
+						Name:     availableProvider.Name,
+						Type:     availableProvider.Type,
+						RoleName: role.Name,
+						JobName:  job.Name,
+					},
+					Properties: availableProvider.Properties,
+				})
+			}
+			for name, provider := range job.Provides {
+				info, ok := job.LinkProviders[name]
+				if !ok {
+					errors = append(errors, validation.NotFound(
+						fmt.Sprintf("roles[%s].jobs[%s].provides[%s]", role.Name, job.Name, name),
+						fmt.Sprintf("Provider not found; available providers: %v", availableProviders)))
+					continue
+				}
+				if provider.Alias != "" {
+					name = provider.Alias
+				}
+				providersByName[name] = jobProvidesInfo{
+					jobLinkInfo: jobLinkInfo{
+						Name:     info.Name,
+						Type:     info.Type,
+						RoleName: role.Name,
+						JobName:  job.Name,
+					},
+					Properties: info.Properties,
+				}
+			}
+		}
+	}
+
 	// Resolve the consumers
 	for _, role := range m.Roles {
-		role.jobConsumes = make(map[string][]JobLinkConsumes)
-		// Prefer finding providers in the same role
-		providingRoles := append(Roles{role}, m.Roles...)
-		for _, job := range role.Jobs {
-			role.jobConsumes[job.Name] = make([]JobLinkConsumes, 0)
-		iterateOverConsumers:
-			for idx, consumer := range job.LinkConsumes {
-				for _, providingRole := range providingRoles {
-					for _, providingJob := range providingRole.Jobs {
-						for _, provider := range providingJob.LinkProvides {
-							if consumer.Type != "" && consumer.Type != provider.Type {
-								continue
-							}
-							if consumer.Name != "" && consumer.Name != provider.Name {
-								continue
-							}
-							role.jobConsumes[job.Name] = append(role.jobConsumes[job.Name], JobLinkConsumes{
-								Name:     provider.Name,
-								Type:     provider.Type,
-								Optional: consumer.Optional,
-								RoleName: providingRole.Name,
-								JobName:  providingJob.Name,
-							})
-							continue iterateOverConsumers
-						}
-					}
+		for _, roleJob := range role.Jobs {
+			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.LinkConsumers))
+			copy(expectedConsumers, roleJob.Job.LinkConsumers)
+			if roleJob.Consumes == nil {
+				roleJob.Consumes = make(map[string]jobConsumesInfo)
+			}
+			// Deal with any explicitly marked consumers in the role manifest
+			for consumerName, consumerInfo := range roleJob.Consumes {
+				consumerAlias := consumerName
+				if consumerInfo.Alias != "" {
+					consumerAlias = consumerInfo.Alias
+				}
+				if consumerAlias == "" {
+					// There was a consumer with an explicitly empty name
+					errors = append(errors, validation.Invalid(
+						fmt.Sprintf(`role[%s].job[%s]`, role.Name, roleJob.Name),
+						"name",
+						fmt.Sprintf("consumer has no name")))
+					continue
+				}
+				provider, ok := providersByName[consumerAlias]
+				if !ok {
+					errors = append(errors, validation.NotFound(
+						fmt.Sprintf(`role[%s].job[%s].consumes[%s]`, role.Name, roleJob.Name, consumerName),
+						fmt.Sprintf(`consumer %s not found`, consumerAlias)))
+					continue
+				}
+				roleJob.Consumes[consumerName] = jobConsumesInfo{
+					jobLinkInfo: provider.jobLinkInfo,
 				}
 
-				// No valid providers
-				if consumer.Optional {
-					role.jobConsumes[job.Name] = append(role.jobConsumes[job.Name], JobLinkConsumes{
-						Name:     consumer.Name,
-						Type:     consumer.Type,
-						Optional: consumer.Optional,
-					})
-				} else {
-					errors = append(errors, validation.NotFound(
-						fmt.Sprintf(`role[%s].job[%s].consumes[%d]`, role.Name, job.Name, idx),
-						consumer,
-					))
+				for i := len(expectedConsumers) - 1; i >= 0; i-- {
+					if expectedConsumers[i].Name == consumerName {
+						expectedConsumers = append(expectedConsumers[:i], expectedConsumers[i+1:]...)
+					}
+				}
+			}
+			// Handle any consumers not overridden in the role manifest
+			for _, consumerInfo := range expectedConsumers {
+				// Consumers don't _have_ to be listed; they can be automatically
+				// matched to a published name, or to the only provider of the
+				// same type in the whole deployment
+				var provider jobProvidesInfo
+				var ok bool
+				if consumerInfo.Name != "" {
+					provider, ok = providersByName[consumerInfo.Name]
+				}
+				if !ok && len(providersByType[consumerInfo.Type]) == 1 {
+					provider = providersByType[consumerInfo.Type][0]
+					ok = true
+				}
+				if ok {
+					name := consumerInfo.Name
+					if name == "" {
+						name = provider.Name
+					}
+					info := roleJob.Consumes[name]
+					info.Name = provider.Name
+					info.Type = provider.Type
+					info.RoleName = provider.RoleName
+					info.JobName = provider.JobName
+					roleJob.Consumes[name] = info
+				} else if !consumerInfo.Optional {
+					errors = append(errors, validation.Required(
+						fmt.Sprintf(`role[%s].job[%s].consumes[%s]`, role.Name, roleJob.Name, consumerInfo.Name),
+						fmt.Sprintf(`failed to resolve provider %s (type %s)`, consumerInfo.Name, consumerInfo.Type)))
 				}
 			}
 		}
@@ -1030,10 +1110,10 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 }
 
 // LookupJob will find the given job in this role, or nil if not found
-func (r *Role) LookupJob(name string) *Job {
-	for _, j := range r.Jobs {
-		if j.Name == name {
-			return j
+func (r *Role) LookupJob(name string) *RoleJob {
+	for _, roleJob := range r.Jobs {
+		if roleJob.Job.Name == name {
+			return roleJob
 		}
 	}
 	return nil

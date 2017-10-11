@@ -184,7 +184,7 @@ func TestPodGetEnvVars(t *testing.T) {
 		return
 	}
 
-	if !assert.Equal(1, role.Jobs.Len(), "Role should have one job") {
+	if !assert.Equal(1, len(role.Jobs), "Role should have one job") {
 		return
 	}
 

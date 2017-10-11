@@ -224,15 +224,15 @@ func TestJobLinksOk(t *testing.T) {
 
 	job, err := release.LookupJob("ntpd")
 	if assert.NoError(err, "Failed to find ntpd job") {
-		assert.Equal([]*JobLinkConsumes{
-			&JobLinkConsumes{Name: "ntp-server", Type: "ntpd"},
-			&JobLinkConsumes{Type: "ntp", Optional: true},
-			&JobLinkConsumes{Type: "missing", Optional: true},
-		}, job.LinkConsumes)
-		assert.Equal([]*JobLinkProvides{
-			&JobLinkProvides{Name: "ntp-server", Type: "ntpd"},
-			&JobLinkProvides{Name: "ntp-client", Type: "ntp"},
-		}, job.LinkProvides)
+		assert.Equal([]jobConsumesInfo{
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
+		}, job.LinkConsumers)
+		assert.Equal(map[string]jobProvidesInfo{
+			"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
+			"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
+		}, job.LinkProviders)
 	}
 }
 
@@ -300,30 +300,39 @@ func TestWriteConfigs(t *testing.T) {
 				Default: "bar",
 			},
 		},
-		LinkProvides: []*JobLinkProvides{
-			&JobLinkProvides{
-				Name:       "<not used>",
+		LinkProviders: map[string]jobProvidesInfo{
+			"<not used>": jobProvidesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "<not used>",
+				},
 				Properties: []string{"exported-prop"},
 			},
 		},
-		LinkConsumes: []*JobLinkConsumes{
-			&JobLinkConsumes{
-				Name: "serious",
-				Type: "serious-type",
+		LinkConsumers: []jobConsumesInfo{
+			jobConsumesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "serious",
+					Type: "serious-type",
+				},
 			},
 		},
 	}
 
 	role := &Role{
 		Name: "dummy role",
-		Jobs: Jobs{job},
-		jobConsumes: map[string][]JobLinkConsumes{
-			"silly job": []JobLinkConsumes{
-				JobLinkConsumes{
-					Name:     "serious",
-					Type:     "serious-type",
-					RoleName: "dummy role",
-					JobName:  job.Name,
+		Jobs: []*RoleJob{
+			{
+				Job:  job,
+				Name: "silly job",
+				Consumes: map[string]jobConsumesInfo{
+					"serious": jobConsumesInfo{
+						jobLinkInfo: jobLinkInfo{
+							Name:     "serious",
+							Type:     "serious-type",
+							RoleName: "dummy role",
+							JobName:  job.Name,
+						},
+					},
 				},
 			},
 		},
