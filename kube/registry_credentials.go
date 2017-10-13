@@ -9,7 +9,12 @@ func MakeRegistryCredentials(createHelmChart bool) (helm.Node, error) {
 
 	value := ""
 	if createHelmChart {
-		value = "{{ printf \"{%s:{%s:%s,%s:%s,%s:%s}}\" (.Values.kube.registry.hostname | quote) (printf \"%s\" \"username\" | quote) (default \"\" .Values.kube.registry.username | quote) ( printf \"%s\" \"password\" | quote) (default \"\" .Values.kube.registry.password | quote) ( printf \"%s\" \"auth\" | quote) ( printf \"%s:%s\" .Values.kube.registry.username .Values.kube.registry.password | b64enc | quote ) | b64enc }}"
+		value = `{{ printf "{%q:{%q:%q,%q:%q,%q:%q}}" ` +
+			`.Values.kube.registry.hostname ` +
+			`"username" (default "" .Values.kube.registry.username) ` +
+			`"password" (default "" .Values.kube.registry.password) ` +
+			`"auth" (printf "%s:%s" .Values.kube.registry.username .Values.kube.registry.password | b64enc ) ` +
+			`| b64enc }}`
 	}
 
 	data := helm.NewMapping(".dockercfg", value)
