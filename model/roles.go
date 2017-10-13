@@ -80,8 +80,10 @@ type RoleRun struct {
 
 // RoleRunScaling describes how a role should scale out at runtime
 type RoleRunScaling struct {
-	Min int `yaml:"min"`
-	Max int `yaml:"max"`
+	Min       int  `yaml:"min"`
+	Max       int  `yaml:"max"`
+	HA        int  `yaml:"ha,omitempty"`
+	MustBeOdd bool `yaml:"must_be_odd,omitempty"`
 }
 
 // RoleRunVolume describes a volume to be attached at runtime
@@ -882,6 +884,10 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 	if role.Run == nil {
 		return append(allErrs, validation.Required(
 			fmt.Sprintf("roles[%s].run", role.Name), ""))
+	}
+
+	if role.Run.Scaling != nil && role.Run.Scaling.HA == 0 {
+		role.Run.Scaling.HA = role.Run.Scaling.Min
 	}
 
 	allErrs = append(allErrs, normalizeFlightStage(role)...)

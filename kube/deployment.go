@@ -67,8 +67,17 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 	}
 
 	roleName := makeVarName(role.Name)
-	spec.Add("replicas", fmt.Sprintf("{{ .Values.sizing.%s.count }}", roleName))
+	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
+	if role.Run.Scaling.HA != role.Run.Scaling.Min {
+		// Under HA use HA count if the user hasn't explicitly modified the default count
+		count = fmt.Sprintf("{{ if and .Values.sizing.HA (eq (int %s) %d) -}} %d {{- else -}} {{ %s }} {{- end }}",
+			count, role.Run.Scaling.Min, role.Run.Scaling.HA, count)
+	} else {
+		count = "{{ " + count + " }}"
+	}
+	spec.Add("replicas", count)
 	spec.Sort()
+
 	if role.Run.Scaling.Min == 0 {
 		block := helm.Block(fmt.Sprintf("if gt (int .Values.sizing.%s.count) 0", roleName))
 		controller.Set(block)
@@ -79,11 +88,27 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 		fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances" }}`, roleName, role.Run.Scaling.Min)
 		block := fmt.Sprintf("if lt (int .Values.sizing.%s.count) %d", roleName, role.Run.Scaling.Min)
 		controller.Add("_minReplicas", fail, helm.Block(block))
+
+		if role.Run.Scaling.HA != role.Run.Scaling.Min {
+			fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, role.Run.Scaling.HA)
+			count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
+			// If count != Min then count must be >= HA
+			block := fmt.Sprintf("if and .Values.sizing.HA (and (ne (int %s) %d) (lt (int %s) %d))",
+				count, role.Run.Scaling.Min, count, role.Run.Scaling.HA)
+			controller.Add("_minHAReplicas", fail, helm.Block(block))
+		}
 	}
 
 	fail := fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, role.Run.Scaling.Max)
 	block := fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, role.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
+
+	if role.Run.Scaling.MustBeOdd {
+		fail := fmt.Sprintf(`{{ fail "%s must have an odd instance count" }}`, roleName)
+		block := fmt.Sprintf("if eq (mod (int .Values.sizing.%s.count) 2) 0", roleName)
+		controller.Add("_oddReplicas", fail, helm.Block(block))
+	}
+
 	controller.Sort()
 
 	return nil
