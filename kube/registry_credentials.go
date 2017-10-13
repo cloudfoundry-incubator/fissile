@@ -9,6 +9,17 @@ func MakeRegistryCredentials(createHelmChart bool) (helm.Node, error) {
 
 	value := ""
 	if createHelmChart {
+		// Registry secrets are in json format:
+		// {
+		//  "docker.io": {
+		//      "username": "foo",
+		//      "password": "bar",
+		//      "auth": "Zm9vOmJhcg=="
+		//   }
+		// }
+		//
+		// where "auth" is a base64 encoded "username:password"
+
 		value = `{{ printf "{%q:{%q:%q,%q:%q,%q:%q}}" ` +
 			`.Values.kube.registry.hostname ` +
 			`"username" (default "" .Values.kube.registry.username) ` +
