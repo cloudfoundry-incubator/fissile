@@ -278,55 +278,6 @@ func TestGetTemplateSignatures(t *testing.T) {
 	assert.NotEqual(differentTemplateHash1, differentTemplateHash2, "template hash should be dependent on template contents")
 }
 
-func TestGetRoleManifestDevPackageVersion(t *testing.T) {
-	assert := assert.New(t)
-
-	refRole := &Role{
-		Name: "bbb",
-		Jobs: Jobs{
-			{
-				SHA1: "Role 2 Job 1",
-				Packages: Packages{
-					{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
-					{Name: "bbb", SHA1: "Role 2 Job 1 Package 2"},
-				},
-			},
-			{
-				SHA1: "Role 2 Job 2",
-				Packages: Packages{
-					{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},
-				},
-			},
-		},
-	}
-	wrongJobOrder := &Role{
-		Name: refRole.Name,
-		Jobs: Jobs{refRole.Jobs[1], refRole.Jobs[0]},
-	}
-	altRole := &Role{
-		Name: "aaa",
-		Jobs: Jobs{
-			{
-				SHA1: "Role 1 Job 1",
-				Packages: Packages{
-					{Name: "zzz", SHA1: "Role 1	 Job 1 Package 1"},
-				},
-			},
-		},
-	}
-
-	firstManifest := &RoleManifest{Roles: Roles{refRole, altRole}}
-	firstHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
-	secondManifest := &RoleManifest{Roles: Roles{altRole, refRole}}
-	secondHash, _ := secondManifest.GetRoleManifestDevPackageVersion(secondManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
-	assert.Equal(firstHash, secondHash, "role manifest hash should be independent of role order")
-	jobOrderManifest := &RoleManifest{Roles: Roles{wrongJobOrder, altRole}}
-	jobOrderHash, _ := jobOrderManifest.GetRoleManifestDevPackageVersion(jobOrderManifest.Roles, NewEmptyOpinions(), "0.0.0", "")
-	assert.NotEqual(firstHash, jobOrderHash, "role manifest hash should be dependent on job order")
-	differentExtraHash, _ := firstManifest.GetRoleManifestDevPackageVersion(firstManifest.Roles, NewEmptyOpinions(), "0.0.0", "some string")
-	assert.NotEqual(firstHash, differentExtraHash, "role manifest hash should be dependent on extra string")
-}
-
 func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	assert := assert.New(t)
 

@@ -16,6 +16,7 @@ var (
 
 	flagBuildImagesStemcell   string
 	flagBuildImagesStemcellID string
+	flagBuildImagesTagExtra   string
 )
 
 // buildImagesCmd represents the images command
@@ -50,6 +51,7 @@ from other specs.  At most one is allowed.
 		flagOutputDirectory = buildImagesViper.GetString("output-directory")
 		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
 		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
+		flagBuildImagesTagExtra = buildImagesViper.GetString("tag-extra")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -76,6 +78,7 @@ from other specs.  At most one is allowed.
 			flagMetrics,
 			flagBuildImagesNoBuild,
 			flagBuildImagesForce,
+			flagBuildImagesTagExtra,
 			strings.FieldsFunc(flagBuildImagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
 			flagRoleManifest,
@@ -141,6 +144,13 @@ func init() {
 		"",
 		"",
 		"Docker image ID for the stemcell (intended for CI)",
+	)
+
+	buildImagesCmd.PersistentFlags().StringP(
+		"tag-extra",
+		"",
+		"",
+		"Additional information to use in computing the image tags",
 	)
 
 	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())

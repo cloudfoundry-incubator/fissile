@@ -358,26 +358,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	return &roleManifest, nil
 }
 
-// GetRoleManifestDevPackageVersion gets the aggregate signature of all the packages
-func (m *RoleManifest) GetRoleManifestDevPackageVersion(roles Roles, opinions *Opinions, fissileVersion, extra string) (string, error) {
-	// Make sure our roles are sorted, to have consistent output
-	roles = append(Roles{}, roles...)
-	sort.Sort(roles)
-
-	hasher := sha1.New()
-	hasher.Write([]byte(extra))
-
-	for _, role := range roles {
-		version, err := role.GetRoleDevVersion(opinions, fissileVersion)
-		if err != nil {
-			return "", err
-		}
-		hasher.Write([]byte(version))
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil)), nil
-}
-
 // LookupRole will find the given role in the role manifest
 func (m *RoleManifest) LookupRole(roleName string) *Role {
 	for _, role := range m.Roles {
@@ -554,7 +534,7 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 // role dev version, and the aggregated spec and opinion
 // information. In this manner opinion changes cause a rebuild of the
 // associated role images.
-func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string) (string, error) {
+func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string) (string, error) {
 
 	// Basic role version
 	devVersion, err := r.getRoleJobAndPackagesSignature()
@@ -571,6 +551,7 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, fissileVersion string) (str
 	signatures := []string{
 		devVersion,
 		fissileVersion,
+		tagExtra,
 	}
 
 	// Job order comes from the role manifest, and is sort of
