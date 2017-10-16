@@ -24,7 +24,7 @@ func MakeRegistryCredentials(createHelmChart bool) (helm.Node, error) {
 			`.Values.kube.registry.hostname ` +
 			`"username" (default "" .Values.kube.registry.username) ` +
 			`"password" (default "" .Values.kube.registry.password) ` +
-			`"auth" (printf "%s:%s" .Values.kube.registry.username .Values.kube.registry.password | b64enc ) ` +
+			`"auth" (printf "%s:%s" .Values.kube.registry.username .Values.kube.registry.password | b64enc) ` +
 			`| b64enc }}`
 	}
 
