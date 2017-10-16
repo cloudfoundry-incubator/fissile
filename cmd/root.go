@@ -26,6 +26,8 @@ var (
 	flagWorkDir            string
 	flagDockerRegistry     string
 	flagDockerOrganization string
+	flagDockerUsername     string
+	flagDockerPassword     string
 	flagRepository         string
 	flagWorkers            int
 	flagLightOpinions      string
@@ -137,8 +139,22 @@ func init() {
 	RootCmd.PersistentFlags().StringP(
 		"docker-registry",
 		"",
-		"",
+		"docker.io",
 		"Docker registry used when referencing image names",
+	)
+
+	RootCmd.PersistentFlags().StringP(
+		"docker-username",
+		"",
+		"",
+		"Username for authenticated docker registry",
+	)
+
+	RootCmd.PersistentFlags().StringP(
+		"docker-password",
+		"",
+		"",
+		"Password for authenticated docker registry",
 	)
 
 	RootCmd.PersistentFlags().StringP(
@@ -257,6 +273,8 @@ func validateBasicFlags() error {
 	flagRepository = viper.GetString("repository")
 	flagDockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
 	flagDockerOrganization = viper.GetString("docker-organization")
+	flagDockerUsername = viper.GetString("docker-username")
+	flagDockerPassword = viper.GetString("docker-password")
 	flagWorkers = viper.GetInt("workers")
 	flagLightOpinions = viper.GetString("light-opinions")
 	flagDarkOpinions = viper.GetString("dark-opinions")

@@ -823,7 +823,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry, organization, fissileVersion string, defaultFiles []string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
+func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry, username, password, organization, fissileVersion string, defaultFiles []string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
 	if err != nil {
@@ -848,13 +848,29 @@ func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry
 		return err
 	}
 
-	err = f.generateSecrets(outputDir, secrets, roleManifest, createHelmChart)
+	err = f.generateSecrets(outputDir, "secrets.yaml", secrets, createHelmChart)
 	if err != nil {
 		return err
 	}
 
+	registryCredentials, err := kube.MakeRegistryCredentials(createHelmChart)
+	if err != nil {
+		return err
+	}
+
+	if err = f.generateSecrets(outputDir, "registry-secret.yaml", registryCredentials, createHelmChart); err != nil {
+		return err
+	}
+
 	if createHelmChart {
-		if err = f.generateHelmValues(outputDir, roleManifest, defaults); err != nil {
+		values, err := kube.MakeValues(roleManifest, defaults, registry, username, password, organization)
+		if err != nil {
+			return err
+		}
+
+		// Export the default values for variables
+		outputPath := filepath.Join(outputDir, "values.yaml")
+		if err = f.writeHelmNode(outputPath, values); err != nil {
 			return err
 		}
 	}
@@ -862,7 +878,7 @@ func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry
 	return f.generateKubeRoles(outputDir, repository, registry, organization, fissileVersion, roleManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
 }
 
-func (f *Fissile) generateSecrets(outputDir string, secrets helm.Node, roleManifest *model.RoleManifest, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(outputDir, fileName string, secrets helm.Node, createHelmChart bool) error {
 	subDir := "secrets"
 	if createHelmChart {
 		subDir = "templates"
@@ -872,34 +888,19 @@ func (f *Fissile) generateSecrets(outputDir string, secrets helm.Node, roleManif
 		return err
 	}
 
-	outputPath := filepath.Join(secretsDir, "secret.yaml")
-	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(secrets)
-	if err == nil {
-		return outputFile.Close()
-	}
-	_ = outputFile.Close()
-	return err
+	outputPath := filepath.Join(secretsDir, fileName)
+	return f.writeHelmNode(outputPath, secrets)
 }
 
-func (f *Fissile) generateHelmValues(outputDir string, roleManifest *model.RoleManifest, defaults map[string]string) error {
-	// Export the default values for variables
-	outputPath := filepath.Join(outputDir, "values.yaml")
+func (f *Fissile) writeHelmNode(outputPath string, node helm.Node) error {
 	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
 
 	outputFile, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-	values, err := kube.MakeValues(roleManifest, defaults)
-	if err == nil {
-		err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(values)
-	}
+
+	err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(node)
 	if err == nil {
 		return outputFile.Close()
 	}

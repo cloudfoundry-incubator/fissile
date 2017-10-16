@@ -68,8 +68,11 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 	container.Add("readinessProbe", readinessProbe)
 	container.Sort()
 
+	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
+
 	spec := helm.NewMapping()
 	spec.Add("containers", helm.NewList(container))
+	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("restartPolicy", "Always")
 	spec.Sort()
@@ -110,7 +113,16 @@ func getContainerImageName(role *model.Role, settings *ExportSettings) (string, 
 	if err != nil {
 		return "", err
 	}
-	imageName := builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
+
+	var imageName string
+	if settings.CreateHelmChart {
+		registry := "{{ .Values.kube.registry.hostname }}"
+		org := "{{ .Values.kube.organization }}"
+		imageName = builder.GetRoleDevImageName(registry, org, settings.Repository, role, devVersion)
+	} else {
+		imageName = builder.GetRoleDevImageName(settings.Registry, settings.Organization, settings.Repository, role, devVersion)
+	}
+
 	return imageName, nil
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 // MakeValues returns a Mapping with all default values for the Helm chart
-func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
+func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string, registry, username, password, organization string) (helm.Node, error) {
 	env := helm.NewMapping()
 	for name, cv := range model.MakeMapOfVariables(roleManifest) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") {
@@ -69,9 +69,16 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
 
+	registryInfo := helm.NewMapping()
+	registryInfo.Add("hostname", registry)
+	registryInfo.Add("username", username)
+	registryInfo.Add("password", password)
+
 	kube := helm.NewMapping()
 	kube.Add("external_ip", "192.168.77.77")
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
+	kube.Add("registry", registryInfo)
+	kube.Add("organization", organization)
 
 	values := helm.NewMapping()
 	values.Add("env", env)
