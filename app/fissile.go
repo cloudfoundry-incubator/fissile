@@ -824,76 +824,73 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath, outputDir, repository, registry, username, password, organization, fissileVersion string, defaultFiles []string, tagExtra string, useMemoryLimits, createHelmChart bool, opinions *model.Opinions) error {
-
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, settings *kube.ExportSettings) error {
+	var err error
+	settings.RoleManifest, err = model.LoadRoleManifest(roleManifestPath, f.releases)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
 	f.UI.Println("Loading defaults from env files")
-	defaults, err := godotenv.Read(defaultFiles...)
+	settings.Defaults, err = godotenv.Read(defaultFiles...)
 	if err != nil {
 		return err
 	}
 
-	cvs := model.MakeMapOfVariables(roleManifest)
+	cvs := model.MakeMapOfVariables(settings.RoleManifest)
 	for key, value := range cvs {
 		if !value.Secret {
 			delete(cvs, key)
 		}
 	}
 	// cvs now holds only the secrets.
-	secrets, refs, err := kube.MakeSecrets(cvs, defaults, createHelmChart)
+	var secrets helm.Node
+	secrets, settings.Secrets, err = kube.MakeSecrets(cvs, settings)
 	if err != nil {
 		return err
 	}
 
-	err = f.generateSecrets(outputDir, "secrets.yaml", secrets, createHelmChart)
+	err = f.generateSecrets("secrets.yaml", secrets, settings)
 	if err != nil {
 		return err
 	}
 
-	registryCredentials, err := kube.MakeRegistryCredentials(createHelmChart)
+	registryCredentials, err := kube.MakeRegistryCredentials(settings)
 	if err != nil {
 		return err
 	}
 
-	if err = f.generateSecrets(outputDir, "registry-secret.yaml", registryCredentials, createHelmChart); err != nil {
+	if err = f.generateSecrets("registry-secret.yaml", registryCredentials, settings); err != nil {
 		return err
 	}
 
-	if createHelmChart {
-		values, err := kube.MakeValues(roleManifest, defaults, registry, username, password, organization)
+	if settings.CreateHelmChart {
+		values, err := kube.MakeValues(settings)
 		if err != nil {
 			return err
 		}
-
-		// Export the default values for variables
-		outputPath := filepath.Join(outputDir, "values.yaml")
-		if err = f.writeHelmNode(outputPath, values); err != nil {
+		if err = f.writeHelmNode(settings.OutputDir, "values.yaml", values); err != nil {
 			return err
 		}
 	}
 
-	return f.generateKubeRoles(outputDir, repository, registry, organization, tagExtra, fissileVersion, roleManifest, defaults, refs, useMemoryLimits, createHelmChart, opinions)
+	return f.generateKubeRoles(settings)
 }
 
-func (f *Fissile) generateSecrets(outputDir, fileName string, secrets helm.Node, createHelmChart bool) error {
+func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings *kube.ExportSettings) error {
 	subDir := "secrets"
-	if createHelmChart {
+	if settings.CreateHelmChart {
 		subDir = "templates"
 	}
-	secretsDir := filepath.Join(outputDir, subDir)
+	secretsDir := filepath.Join(settings.OutputDir, subDir)
 	if err := os.MkdirAll(secretsDir, 0755); err != nil {
 		return err
 	}
-
-	outputPath := filepath.Join(secretsDir, fileName)
-	return f.writeHelmNode(outputPath, secrets)
+	return f.writeHelmNode(secretsDir, fileName, secrets)
 }
 
-func (f *Fissile) writeHelmNode(outputPath string, node helm.Node) error {
+func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error {
+	outputPath := filepath.Join(dirName, fileName)
 	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
 
 	outputFile, err := os.Create(outputPath)
@@ -933,34 +930,20 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-func (f *Fissile) generateKubeRoles(outputDir, repository, registry, organization, tagExtra, fissileVersion string, roleManifest *model.RoleManifest, defaults map[string]string, refs kube.SecretRefMap, useMemoryLimits bool, createHelmChart bool, opinions *model.Opinions) error {
-	settings := &kube.ExportSettings{
-		Defaults:        defaults,
-		Registry:        registry,
-		Organization:    organization,
-		Repository:      repository,
-		UseMemoryLimits: useMemoryLimits,
-		FissileVersion:  fissileVersion,
-		TagExtra:        tagExtra,
-		RoleManifest:    roleManifest,
-		Opinions:        opinions,
-		Secrets:         refs,
-		CreateHelmChart: createHelmChart,
-	}
-
-	for _, role := range roleManifest.Roles {
+func (f *Fissile) generateKubeRoles(settings *kube.ExportSettings) error {
+	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() {
 			continue
 		}
-		if createHelmChart && role.Run.FlightStage == model.FlightStageManual {
+		if settings.CreateHelmChart && role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
 		subDir := string(role.Type)
-		if createHelmChart {
+		if settings.CreateHelmChart {
 			subDir = "templates"
 		}
-		roleTypeDir := filepath.Join(outputDir, subDir)
+		roleTypeDir := filepath.Join(settings.OutputDir, subDir)
 		if err := os.MkdirAll(roleTypeDir, 0755); err != nil {
 			return err
 		}

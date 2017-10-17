@@ -5,10 +5,10 @@ import (
 )
 
 // MakeRegistryCredentials generates a template that contains Docker Registry credentials
-func MakeRegistryCredentials(createHelmChart bool) (helm.Node, error) {
+func MakeRegistryCredentials(settings *ExportSettings) (helm.Node, error) {
 
 	value := ""
-	if createHelmChart {
+	if settings.CreateHelmChart {
 		// Registry secrets are in json format:
 		// {
 		//  "docker.io": {

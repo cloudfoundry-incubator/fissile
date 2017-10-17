@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/SUSE/fissile/kube"
 	"github.com/SUSE/fissile/model"
 
 	"github.com/spf13/cobra"
@@ -44,21 +45,21 @@ var buildHelmCmd = &cobra.Command{
 			return err
 		}
 
-		return fissile.GenerateKube(
-			flagRoleManifest,
-			flagBuildHelmOutputDir,
-			flagRepository,
-			flagDockerRegistry,
-			flagDockerUsername,
-			flagDockerPassword,
-			flagDockerOrganization,
-			fissile.Version,
-			flagBuildHelmDefaultEnvFiles,
-			flagBuildHelmTagExtra,
-			flagBuildHelmUseMemoryLimits,
-			true,
-			opinions,
-		)
+		settings := &kube.ExportSettings{
+			OutputDir:       flagBuildHelmOutputDir,
+			Registry:        flagDockerRegistry,
+			Username:        flagDockerUsername,
+			Password:        flagDockerPassword,
+			Organization:    flagDockerOrganization,
+			Repository:      flagRepository,
+			UseMemoryLimits: flagBuildHelmUseMemoryLimits,
+			FissileVersion:  fissile.Version,
+			Opinions:        opinions,
+			CreateHelmChart: true,
+			TagExtra:        flagBuildHelmTagExtra,
+		}
+
+		return fissile.GenerateKube(flagRoleManifest, flagBuildHelmDefaultEnvFiles, settings)
 	},
 }
 var buildHelmViper = viper.New()
