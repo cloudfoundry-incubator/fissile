@@ -69,8 +69,12 @@ func MakeValues(settings *ExportSettings) (helm.Node, error) {
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
 
+	registry := settings.Registry
+	if registry == "" {
+		registry = "docker.io"
+	}
 	registryInfo := helm.NewMapping()
-	registryInfo.Add("hostname", settings.Registry)
+	registryInfo.Add("hostname", registry)
 	registryInfo.Add("username", settings.Username)
 	registryInfo.Add("password", settings.Password)
 
