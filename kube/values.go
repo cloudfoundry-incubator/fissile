@@ -71,6 +71,9 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 	registry := settings.Registry
 	if registry == "" {
+		// Use DockerHub as default registry because our templates will *always* include
+		// the registry in image names: $REGISTRY/$ORG/$IMAGE:$TAG, and that doesn't work
+		// if registry is blank.
 		registry = "docker.io"
 	}
 	registryInfo := helm.NewMapping()
