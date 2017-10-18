@@ -860,7 +860,8 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 		return err
 	}
 
-	if err = f.generateSecrets("registry-secret.yaml", registryCredentials, settings); err != nil {
+	err = f.generateSecrets("registry-secret.yaml", registryCredentials, settings)
+	if err != nil {
 		return err
 	}
 
@@ -869,7 +870,8 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 		if err != nil {
 			return err
 		}
-		if err = f.writeHelmNode(settings.OutputDir, "values.yaml", values); err != nil {
+		err = f.writeHelmNode(settings.OutputDir, "values.yaml", values)
+		if err != nil {
 			return err
 		}
 	}
@@ -883,7 +885,8 @@ func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings k
 		subDir = "templates"
 	}
 	secretsDir := filepath.Join(settings.OutputDir, subDir)
-	if err := os.MkdirAll(secretsDir, 0755); err != nil {
+	err := os.MkdirAll(secretsDir, 0755)
+	if err != nil {
 		return err
 	}
 	return f.writeHelmNode(secretsDir, fileName, secrets)
@@ -912,8 +915,8 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 		if err != nil {
 			return err
 		}
-
-		if err := helm.NewEncoder(outputFile).Encode(pod); err != nil {
+		err = helm.NewEncoder(outputFile).Encode(pod)
+		if err != nil {
 			return err
 		}
 	} else {
@@ -921,8 +924,8 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 		if err != nil {
 			return err
 		}
-
-		if err := helm.NewEncoder(outputFile).Encode(job); err != nil {
+		err = helm.NewEncoder(outputFile).Encode(job)
+		if err != nil {
 			return err
 		}
 	}
@@ -944,7 +947,8 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 			subDir = "templates"
 		}
 		roleTypeDir := filepath.Join(settings.OutputDir, subDir)
-		if err := os.MkdirAll(roleTypeDir, 0755); err != nil {
+		err := os.MkdirAll(roleTypeDir, 0755)
+		if err != nil {
 			return err
 		}
 		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yaml", role.Name))
@@ -962,7 +966,8 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 
 		switch role.Type {
 		case model.RoleTypeBoshTask:
-			if err := f.generateBoshTaskRole(outputFile, role, settings); err != nil {
+			err := f.generateBoshTaskRole(outputFile, role, settings)
+			if err != nil {
 				return err
 			}
 
@@ -975,10 +980,12 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 				if err != nil {
 					return err
 				}
-				if err := enc.Encode(statefulSet); err != nil {
+				err = enc.Encode(statefulSet)
+				if err != nil {
 					return err
 				}
-				if err := enc.Encode(deps); err != nil {
+				err = enc.Encode(deps)
+				if err != nil {
 					return err
 				}
 
@@ -988,11 +995,13 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 			if err != nil {
 				return err
 			}
-			if err := enc.Encode(deployment); err != nil {
+			err = enc.Encode(deployment)
+			if err != nil {
 				return err
 			}
 			if svc != nil {
-				if err := enc.Encode(svc); err != nil {
+				err = enc.Encode(svc)
+				if err != nil {
 					return err
 				}
 			}
