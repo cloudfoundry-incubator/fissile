@@ -45,7 +45,7 @@ var buildHelmCmd = &cobra.Command{
 			return err
 		}
 
-		settings := &kube.ExportSettings{
+		settings := kube.ExportSettings{
 			OutputDir:       flagBuildHelmOutputDir,
 			Registry:        flagDockerRegistry,
 			Username:        flagDockerUsername,

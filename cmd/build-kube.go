@@ -45,7 +45,7 @@ var buildKubeCmd = &cobra.Command{
 			return err
 		}
 
-		settings := &kube.ExportSettings{
+		settings := kube.ExportSettings{
 			OutputDir:       flagBuildKubeOutputDir,
 			Registry:        flagDockerRegistry,
 			Username:        flagDockerUsername,

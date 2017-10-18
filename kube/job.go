@@ -8,7 +8,7 @@ import (
 )
 
 // NewJob creates a new Job for the given role, as well as any objects it depends on
-func NewJob(role *model.Role, settings *ExportSettings) (helm.Node, error) {
+func NewJob(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err

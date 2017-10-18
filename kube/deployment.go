@@ -9,7 +9,7 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached services
-func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.Node, error) {
+func NewDeployment(role *model.Role, settings ExportSettings) (helm.Node, helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, nil, err
@@ -29,7 +29,7 @@ func NewDeployment(role *model.Role, settings *ExportSettings) (helm.Node, helm.
 	return deployment, svc, err
 }
 
-func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings *ExportSettings) error {
+func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings ExportSettings) error {
 	spec := controller.Get("spec").(*helm.Mapping)
 	if role.Run.Affinity != nil {
 		var cond string

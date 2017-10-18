@@ -23,7 +23,7 @@ const defaultInitialDelaySeconds = 600
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, error) {
+func NewPodTemplate(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
@@ -85,7 +85,7 @@ func NewPodTemplate(role *model.Role, settings *ExportSettings) (helm.Node, erro
 }
 
 // NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
+func NewPod(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func NewPod(role *model.Role, settings *ExportSettings) (helm.Node, error) {
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
-func getContainerImageName(role *model.Role, settings *ExportSettings) (string, error) {
+func getContainerImageName(role *model.Role, settings ExportSettings) (string, error) {
 	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagExtra, settings.FissileVersion)
 	if err != nil {
 		return "", err
@@ -180,7 +180,7 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNode(mounts)
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, settings *ExportSettings) (helm.Node, error) {
+func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, settings ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
 		return nil, err

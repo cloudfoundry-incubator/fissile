@@ -9,7 +9,7 @@ import (
 )
 
 // MakeValues returns a Mapping with all default values for the Helm chart
-func MakeValues(settings *ExportSettings) (helm.Node, error) {
+func MakeValues(settings ExportSettings) (helm.Node, error) {
 	env := helm.NewMapping()
 	for name, cv := range model.MakeMapOfVariables(settings.RoleManifest) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") {

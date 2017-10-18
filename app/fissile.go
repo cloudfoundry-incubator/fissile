@@ -824,7 +824,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, settings *kube.ExportSettings) error {
+func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, settings kube.ExportSettings) error {
 	var err error
 	settings.RoleManifest, err = model.LoadRoleManifest(roleManifestPath, f.releases)
 	if err != nil {
@@ -877,7 +877,7 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 	return f.generateKubeRoles(settings)
 }
 
-func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings *kube.ExportSettings) error {
+func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings kube.ExportSettings) error {
 	subDir := "secrets"
 	if settings.CreateHelmChart {
 		subDir = "templates"
@@ -906,7 +906,7 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 	return err
 }
 
-func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings *kube.ExportSettings) error {
+func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings kube.ExportSettings) error {
 	if role.IsStopOnFailureRole() {
 		pod, err := kube.NewPod(role, settings)
 		if err != nil {
@@ -930,7 +930,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-func (f *Fissile) generateKubeRoles(settings *kube.ExportSettings) error {
+func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() {
 			continue

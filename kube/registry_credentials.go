@@ -5,7 +5,7 @@ import (
 )
 
 // MakeRegistryCredentials generates a template that contains Docker Registry credentials
-func MakeRegistryCredentials(settings *ExportSettings) (helm.Node, error) {
+func MakeRegistryCredentials(settings ExportSettings) (helm.Node, error) {
 
 	value := ""
 	if settings.CreateHelmChart {

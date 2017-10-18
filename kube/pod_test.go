@@ -248,7 +248,7 @@ func TestPodGetEnvVars(t *testing.T) {
 			},
 		}
 
-		vars, err := getEnvVars(role, defaults, secrets, &ExportSettings{})
+		vars, err := getEnvVars(role, defaults, secrets, ExportSettings{})
 		sample.check(t, vars, err)
 	}
 }
@@ -843,7 +843,7 @@ func TestPodPreFlight(t *testing.T) {
 	if role == nil {
 		return
 	}
-	pod, err := NewPod(role, &ExportSettings{
+	pod, err := NewPod(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
 	})
 	if !assert.NoError(err, "Failed to create pod from role pre-role") {
@@ -886,7 +886,7 @@ func TestPodPostFlight(t *testing.T) {
 		return
 	}
 
-	pod, err := NewPod(role, &ExportSettings{
+	pod, err := NewPod(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
 	})
 	if !assert.NoError(err, "Failed to create pod from role post-role") {

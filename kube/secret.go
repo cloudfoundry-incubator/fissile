@@ -25,7 +25,7 @@ type SecretRefMap map[string]SecretRef
 // MakeSecrets creates Secret KubeConfig filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, settings *ExportSettings) (helm.Node, SecretRefMap, error) {
+func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
 	data := helm.NewMapping()
