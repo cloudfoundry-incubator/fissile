@@ -8,7 +8,7 @@ import (
 )
 
 // NewStatefulSet returns a stateful set and a list of services for the given role
-func NewStatefulSet(role *model.Role, settings *ExportSettings) (helm.Node, helm.Node, error) {
+func NewStatefulSet(role *model.Role, settings ExportSettings) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {

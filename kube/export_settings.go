@@ -6,9 +6,12 @@ import (
 
 // ExportSettings are configuration for creating Kubernetes configs
 type ExportSettings struct {
+	OutputDir       string
 	Repository      string
 	Defaults        map[string]string
 	Registry        string
+	Username        string
+	Password        string
 	Organization    string
 	UseMemoryLimits bool
 	FissileVersion  string

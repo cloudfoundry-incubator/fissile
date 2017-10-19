@@ -9,7 +9,7 @@ import (
 )
 
 // NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSettings) (helm.Node, error) {
+func NewClusterIPServiceList(role *model.Role, headless bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
 	if headless {
@@ -50,7 +50,7 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings *ExportSe
 }
 
 // NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool, public bool, settings *ExportSettings) (helm.Node, error) {
+func NewClusterIPService(role *model.Role, headless bool, public bool, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, portDef := range role.Run.ExposedPorts {
 		if public && !portDef.Public {

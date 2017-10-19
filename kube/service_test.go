@@ -51,7 +51,7 @@ func TestServiceOK(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := NewClusterIPService(role, false, false, &ExportSettings{})
+	service, err := NewClusterIPService(role, false, false, ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
@@ -102,7 +102,7 @@ func TestHeadlessServiceOK(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := NewClusterIPService(role, true, false, &ExportSettings{})
+	service, err := NewClusterIPService(role, true, false, ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}

@@ -9,15 +9,15 @@ import (
 )
 
 // MakeValues returns a Mapping with all default values for the Helm chart
-func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (helm.Node, error) {
+func MakeValues(settings ExportSettings) (helm.Node, error) {
 	env := helm.NewMapping()
-	for name, cv := range model.MakeMapOfVariables(roleManifest) {
+	for name, cv := range model.MakeMapOfVariables(settings.RoleManifest) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") {
 			continue
 		}
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
 			var value interface{}
-			ok, value := cv.Value(defaults)
+			ok, value := cv.Value(settings.Defaults)
 			if !ok {
 				value = nil
 			}
@@ -31,7 +31,7 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 	env.Sort()
 
 	sizing := helm.NewMapping("HA", false)
-	for _, role := range roleManifest.Roles {
+	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
@@ -69,9 +69,23 @@ func MakeValues(roleManifest *model.RoleManifest, defaults map[string]string) (h
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
 
+	registry := settings.Registry
+	if registry == "" {
+		// Use DockerHub as default registry because our templates will *always* include
+		// the registry in image names: $REGISTRY/$ORG/$IMAGE:$TAG, and that doesn't work
+		// if registry is blank.
+		registry = "docker.io"
+	}
+	registryInfo := helm.NewMapping()
+	registryInfo.Add("hostname", registry)
+	registryInfo.Add("username", settings.Username)
+	registryInfo.Add("password", settings.Password)
+
 	kube := helm.NewMapping()
 	kube.Add("external_ip", "192.168.77.77")
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
+	kube.Add("registry", registryInfo)
+	kube.Add("organization", settings.Organization)
 
 	values := helm.NewMapping()
 	values.Add("env", env)

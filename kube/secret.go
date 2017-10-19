@@ -25,13 +25,13 @@ type SecretRefMap map[string]SecretRef
 // MakeSecrets creates Secret KubeConfig filled with the
 // key/value pairs from the specified map. It further returns a map
 // showing which original CV name maps to what secret+key combination.
-func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChart bool) (helm.Node, SecretRefMap, error) {
+func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, SecretRefMap, error) {
 	refs := make(map[string]SecretRef)
 
 	data := helm.NewMapping()
 	for name, cv := range secrets {
 		var value string
-		if createHelmChart {
+		if settings.CreateHelmChart {
 			switch {
 			case cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword:
 				errString := fmt.Sprintf("%s configuration missing", cv.Name)
@@ -40,7 +40,7 @@ func MakeSecrets(secrets model.CVMap, defaults map[string]string, createHelmChar
 				value = "{{ randAlphaNum 32 | b64enc | quote }}"
 			}
 		} else {
-			ok, value := cv.Value(defaults)
+			ok, value := cv.Value(settings.Defaults)
 			if !ok {
 				return nil, nil, fmt.Errorf("Secret '%s' has no value", name)
 			}
