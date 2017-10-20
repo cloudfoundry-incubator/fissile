@@ -635,8 +635,9 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			{
 				// This requires an alias
 				jobLinkInfo: jobLinkInfo{
-					Name: "unused",
+					Name: "actual-consumer-name",
 				},
+				Optional: true, // Not resolvable in role 3
 			},
 		},
 	}
@@ -645,7 +646,17 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		Roles: Roles{
 			&Role{
 				Name: "role-1",
-				Jobs: []*RoleJob{{Job: job1}, {Job: job2}},
+				Jobs: []*RoleJob{
+					{
+						Job: job1,
+						ExportedProviders: map[string]jobProvidesInfo{
+							"job-1-provider-3": jobProvidesInfo{
+								Alias: "unique-alias",
+							},
+						},
+					},
+					{Job: job2},
+				},
 			},
 			&Role{
 				Name: "role-2",
@@ -656,6 +667,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 						// This has an explicitly exported provider
 						ExportedProviders: map[string]jobProvidesInfo{
 							"job-3-provider-3": jobProvidesInfo{},
+						},
+						ResolvedConsumers: map[string]jobConsumesInfo{
+							"actual-consumer-name": jobConsumesInfo{
+								Alias: "unique-alias",
+							},
 						},
 					},
 				},
@@ -680,7 +696,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	require.NotNil(job, "Failed to find job")
 	consumes := job.ResolvedConsumers
 
-	assert.Len(consumes, 2, "incorrect number of resulting link consumers")
+	assert.Len(consumes, 3, "incorrect number of resulting link consumers")
 
 	if assert.Contains(consumes, "job-1-provider-1", "failed to find role by type") {
 		assert.Equal(jobConsumesInfo{
@@ -705,5 +721,16 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 				JobName:  "job-3",
 			},
 		}, consumes["job-3-provider-3"], "did not find explicitly named provider")
+	}
+
+	if assert.Contains(consumes, "actual-consumer-name", "did not resolve consumer with alias") {
+		assert.Equal(jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:     "job-1-provider-3",
+				Type:     "link-5",
+				RoleName: "role-1",
+				JobName:  "job-1",
+			},
+		}, consumes["actual-consumer-name"], "resolved to incorrect provider for alias")
 	}
 }
