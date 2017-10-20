@@ -565,6 +565,12 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 					Type: "link-2",
 				},
 			},
+			"job-1-provider-3": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-1-provider-3",
+					Type: "link-5",
+				},
+			},
 		},
 		DesiredConsumers: []jobConsumesInfo{
 			{
@@ -626,6 +632,12 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 				},
 				Optional: true,
 			},
+			{
+				// This requires an alias
+				jobLinkInfo: jobLinkInfo{
+					Name: "unused",
+				},
+			},
 		},
 	}
 
@@ -656,8 +668,8 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 	for _, r := range roleManifest.Roles {
-		for _, j := range r.Jobs {
-			j.Name = j.Job.Name
+		for _, roleJob := range r.Jobs {
+			roleJob.Name = roleJob.Job.Name
 		}
 	}
 	errors := roleManifest.resolveLinks()

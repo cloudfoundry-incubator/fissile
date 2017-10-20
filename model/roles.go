@@ -390,25 +390,25 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	providersByName := make(map[string]jobProvidesInfo)
 	providersByType := make(map[string][]jobProvidesInfo)
 	for _, role := range m.Roles {
-		for _, job := range role.Jobs {
+		for _, roleJob := range role.Jobs {
 			var availableProviders []string
-			for availableName, availableProvider := range job.Job.AvailableProviders {
+			for availableName, availableProvider := range roleJob.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
 				providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
 					jobLinkInfo: jobLinkInfo{
 						Name:     availableProvider.Name,
 						Type:     availableProvider.Type,
 						RoleName: role.Name,
-						JobName:  job.Name,
+						JobName:  roleJob.Name,
 					},
 					Properties: availableProvider.Properties,
 				})
 			}
-			for name, provider := range job.ExportedProviders {
-				info, ok := job.Job.AvailableProviders[name]
+			for name, provider := range roleJob.ExportedProviders {
+				info, ok := roleJob.Job.AvailableProviders[name]
 				if !ok {
 					errors = append(errors, validation.NotFound(
-						fmt.Sprintf("roles[%s].jobs[%s].provides[%s]", role.Name, job.Name, name),
+						fmt.Sprintf("roles[%s].jobs[%s].provides[%s]", role.Name, roleJob.Name, name),
 						fmt.Sprintf("Provider not found; available providers: %v", availableProviders)))
 					continue
 				}
@@ -420,7 +420,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 						Name:     info.Name,
 						Type:     info.Type,
 						RoleName: role.Name,
-						JobName:  job.Name,
+						JobName:  roleJob.Name,
 					},
 					Properties: info.Properties,
 				}
