@@ -386,7 +386,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	errors := make(validation.ErrorList, 0)
 
 	// Build mappings of providers by name, and by type.  Note that the names
-	// involved here are the aliasesp, where appropriate.
+	// involved here are the aliases, where appropriate.
 	providersByName := make(map[string]jobProvidesInfo)
 	providersByType := make(map[string][]jobProvidesInfo)
 	for _, role := range m.Roles {
