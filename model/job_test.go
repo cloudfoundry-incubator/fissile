@@ -228,11 +228,11 @@ func TestJobLinksOk(t *testing.T) {
 			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
 			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
 			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
-		}, job.LinkConsumers)
+		}, job.DesiredConsumers)
 		assert.Equal(map[string]jobProvidesInfo{
 			"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
 			"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
-		}, job.LinkProviders)
+		}, job.AvailableProviders)
 	}
 }
 
@@ -300,7 +300,7 @@ func TestWriteConfigs(t *testing.T) {
 				Default: "bar",
 			},
 		},
-		LinkProviders: map[string]jobProvidesInfo{
+		AvailableProviders: map[string]jobProvidesInfo{
 			"<not used>": jobProvidesInfo{
 				jobLinkInfo: jobLinkInfo{
 					Name: "<not used>",
@@ -308,7 +308,7 @@ func TestWriteConfigs(t *testing.T) {
 				Properties: []string{"exported-prop"},
 			},
 		},
-		LinkConsumers: []jobConsumesInfo{
+		DesiredConsumers: []jobConsumesInfo{
 			jobConsumesInfo{
 				jobLinkInfo: jobLinkInfo{
 					Name: "serious",
@@ -324,7 +324,7 @@ func TestWriteConfigs(t *testing.T) {
 			{
 				Job:  job,
 				Name: "silly job",
-				Consumes: map[string]jobConsumesInfo{
+				ResolvedConsumers: map[string]jobConsumesInfo{
 					"serious": jobConsumesInfo{
 						jobLinkInfo: jobLinkInfo{
 							Name:     "serious",

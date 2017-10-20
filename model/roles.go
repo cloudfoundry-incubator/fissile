@@ -48,11 +48,11 @@ type RoleManifest struct {
 
 // RoleJob represents a job in the context of a role
 type RoleJob struct {
-	*Job        `yaml:"-"`                 // The resolved job
-	Name        string                     `yaml:"name"`         // The name of the job
-	ReleaseName string                     `yaml:"release_name"` // The release the job comes from
-	Provides    map[string]jobProvidesInfo `yaml:"provides"`
-	Consumes    map[string]jobConsumesInfo `yaml:"consumes"`
+	*Job              `yaml:"-"`                 // The resolved job
+	Name              string                     `yaml:"name"`         // The name of the job
+	ReleaseName       string                     `yaml:"release_name"` // The release the job comes from
+	ExportedProviders map[string]jobProvidesInfo `yaml:"provides"`
+	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
 }
 
 // Role represents a collection of jobs that are colocated on a container
@@ -342,9 +342,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 			roleJob.Job = job
 
-			for name, info := range roleJob.Consumes {
+			for name, info := range roleJob.ResolvedConsumers {
 				info.Name = name
-				roleJob.Consumes[name] = info
+				roleJob.ResolvedConsumers[name] = info
 			}
 		}
 
@@ -392,7 +392,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	for _, role := range m.Roles {
 		for _, job := range role.Jobs {
 			var availableProviders []string
-			for availableName, availableProvider := range job.LinkProviders {
+			for availableName, availableProvider := range job.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
 				providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
 					jobLinkInfo: jobLinkInfo{
@@ -404,8 +404,8 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					Properties: availableProvider.Properties,
 				})
 			}
-			for name, provider := range job.Provides {
-				info, ok := job.LinkProviders[name]
+			for name, provider := range job.ExportedProviders {
+				info, ok := job.Job.AvailableProviders[name]
 				if !ok {
 					errors = append(errors, validation.NotFound(
 						fmt.Sprintf("roles[%s].jobs[%s].provides[%s]", role.Name, job.Name, name),
@@ -431,13 +431,13 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	// Resolve the consumers
 	for _, role := range m.Roles {
 		for _, roleJob := range role.Jobs {
-			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.LinkConsumers))
-			copy(expectedConsumers, roleJob.Job.LinkConsumers)
-			if roleJob.Consumes == nil {
-				roleJob.Consumes = make(map[string]jobConsumesInfo)
+			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.DesiredConsumers))
+			copy(expectedConsumers, roleJob.Job.DesiredConsumers)
+			if roleJob.ResolvedConsumers == nil {
+				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
 			}
 			// Deal with any explicitly marked consumers in the role manifest
-			for consumerName, consumerInfo := range roleJob.Consumes {
+			for consumerName, consumerInfo := range roleJob.ResolvedConsumers {
 				consumerAlias := consumerName
 				if consumerInfo.Alias != "" {
 					consumerAlias = consumerInfo.Alias
@@ -457,7 +457,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 						fmt.Sprintf(`consumer %s not found`, consumerAlias)))
 					continue
 				}
-				roleJob.Consumes[consumerName] = jobConsumesInfo{
+				roleJob.ResolvedConsumers[consumerName] = jobConsumesInfo{
 					jobLinkInfo: provider.jobLinkInfo,
 				}
 
@@ -486,12 +486,12 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					if name == "" {
 						name = provider.Name
 					}
-					info := roleJob.Consumes[name]
+					info := roleJob.ResolvedConsumers[name]
 					info.Name = provider.Name
 					info.Type = provider.Type
 					info.RoleName = provider.RoleName
 					info.JobName = provider.JobName
-					roleJob.Consumes[name] = info
+					roleJob.ResolvedConsumers[name] = info
 				} else if !consumerInfo.Optional {
 					errors = append(errors, validation.Required(
 						fmt.Sprintf(`role[%s].job[%s].consumes[%s]`, role.Name, roleJob.Name, consumerInfo.Name),
