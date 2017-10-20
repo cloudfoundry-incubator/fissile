@@ -184,11 +184,11 @@ func TestPodGetEnvVars(t *testing.T) {
 		return
 	}
 
-	if !assert.Equal(1, len(role.Jobs), "Role should have one job") {
+	if !assert.Equal(1, len(role.RoleJobs), "Role should have one job") {
 		return
 	}
 
-	role.Jobs[0].Properties = []*model.JobProperty{
+	role.RoleJobs[0].Properties = []*model.JobProperty{
 		&model.JobProperty{
 			Name: "some-property",
 		},

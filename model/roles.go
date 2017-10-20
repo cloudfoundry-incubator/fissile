@@ -63,7 +63,7 @@ type Role struct {
 	Scripts           []string       `yaml:"scripts"`
 	PostConfigScripts []string       `yaml:"post_config_scripts"`
 	Type              RoleType       `yaml:"type,omitempty"`
-	Jobs              []*RoleJob     `yaml:"jobs"`
+	RoleJobs          []*RoleJob     `yaml:"jobs"`
 	Configuration     *Configuration `yaml:"configuration"`
 	Run               *RoleRun       `yaml:"run"`
 	Tags              []string       `yaml:"tags"`
@@ -321,7 +321,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 	for _, role := range roleManifest.Roles {
 		role.roleManifest = &roleManifest
 
-		for _, roleJob := range role.Jobs {
+		for _, roleJob := range role.RoleJobs {
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
 			if !ok {
@@ -390,7 +390,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	providersByName := make(map[string]jobProvidesInfo)
 	providersByType := make(map[string][]jobProvidesInfo)
 	for _, role := range m.Roles {
-		for _, roleJob := range role.Jobs {
+		for _, roleJob := range role.RoleJobs {
 			var availableProviders []string
 			for availableName, availableProvider := range roleJob.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
@@ -430,7 +430,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 
 	// Resolve the consumers
 	for _, role := range m.Roles {
-		for _, roleJob := range role.Jobs {
+		for _, roleJob := range role.RoleJobs {
 			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.DesiredConsumers))
 			copy(expectedConsumers, roleJob.Job.DesiredConsumers)
 			if roleJob.ResolvedConsumers == nil {
@@ -537,11 +537,11 @@ func (r *Role) GetLongDescription() string {
 	desc += fmt.Sprintf("The %s role contains the following jobs:", r.Name)
 	var noDesc []string
 	also := ""
-	for _, job := range r.Jobs {
-		if job.Description == "" {
-			noDesc = append(noDesc, job.Name)
+	for _, roleJob := range r.RoleJobs {
+		if roleJob.Description == "" {
+			noDesc = append(noDesc, roleJob.Name)
 		} else {
-			desc += fmt.Sprintf("\n\n- %s: %s", job.Name, job.Description)
+			desc += fmt.Sprintf("\n\n- %s: %s", roleJob.Name, roleJob.Description)
 			also = "Also: "
 		}
 	}
@@ -649,9 +649,9 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 	// fix. Avoid sorting for now.  Also note, if a property is
 	// used multiple times, in different jobs, it will be added
 	// that often. No deduplication across the jobs.
-	for _, job := range r.Jobs {
+	for _, roleJob := range r.RoleJobs {
 		// Get properties ...
-		properties, err := job.GetPropertiesForJob(opinions)
+		properties, err := roleJob.GetPropertiesForJob(opinions)
 		if err != nil {
 			return "", err
 		}
@@ -684,9 +684,9 @@ func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
 
 	// Jobs are *not* sorted because they are an array and the order may be
 	// significant, in particular for bosh-task roles.
-	for _, job := range r.Jobs {
-		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, job.SHA1)
-		packages = append(packages, job.Packages...)
+	for _, roleJob := range r.RoleJobs {
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, roleJob.SHA1)
+		packages = append(packages, roleJob.Packages...)
 	}
 
 	sort.Sort(packages)
@@ -812,8 +812,8 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	// configs.
 
 	for _, role := range roleManifest.Roles {
-		for _, job := range role.Jobs {
-			for _, property := range job.Properties {
+		for _, roleJob := range role.RoleJobs {
+			for _, property := range roleJob.Properties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 				if template, ok := role.Configuration.Templates[propertyName]; ok {
@@ -893,8 +893,8 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 		// have to ignore them (no sensible variable
 		// references) and continue to check everything else.
 
-		for _, job := range role.Jobs {
-			for _, property := range job.Properties {
+		for _, roleJob := range role.RoleJobs {
+			for _, property := range roleJob.Properties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 				if template, ok := role.Configuration.Templates[propertyName]; ok {
@@ -1111,7 +1111,7 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 
 // LookupJob will find the given job in this role, or nil if not found
 func (r *Role) LookupJob(name string) *RoleJob {
-	for _, roleJob := range r.Jobs {
+	for _, roleJob := range r.RoleJobs {
 		if roleJob.Job.Name == name {
 			return roleJob
 		}

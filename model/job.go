@@ -320,7 +320,7 @@ func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath strin
 
 	config.Job.Name = role.Name
 
-	for _, roleJob := range role.Jobs {
+	for _, roleJob := range role.RoleJobs {
 		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
 		for _, consumer := range roleJob.ResolvedConsumers {
 			config.Consumes[consumer.Name] = consumer.jobLinkInfo

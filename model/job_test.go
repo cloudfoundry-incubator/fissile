@@ -320,7 +320,7 @@ func TestWriteConfigs(t *testing.T) {
 
 	role := &Role{
 		Name: "dummy role",
-		Jobs: []*RoleJob{
+		RoleJobs: []*RoleJob{
 			{
 				Job:  job,
 				Name: "silly job",

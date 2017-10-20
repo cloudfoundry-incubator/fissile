@@ -179,8 +179,8 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 		foundFingerprints := make(map[string]struct{})
 		var packages model.Packages
 		for _, role := range roles {
-			for _, job := range role.Jobs {
-				for _, pkg := range job.Packages {
+			for _, roleJob := range role.RoleJobs {
+				for _, pkg := range roleJob.Packages {
 					if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
 						// Package has already been found (possibly due to a different role)
 						continue
@@ -262,7 +262,7 @@ func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.Rol
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
 	for _, r := range roles {
-		for _, j := range r.Jobs {
+		for _, j := range r.RoleJobs {
 			for _, pkg := range j.Packages {
 				pkgMap[pkg.Fingerprint] = pkg
 			}

@@ -34,8 +34,8 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
 	// First, render all referenced variables of type user.
 
-	for _, job := range r.Jobs {
-		for _, property := range job.Properties {
+	for _, roleJob := range r.RoleJobs {
+		for _, property := range roleJob.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 			for templatePropName, template := range r.Configuration.Templates {

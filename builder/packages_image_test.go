@@ -336,7 +336,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 	makeTemplateRole := func() *model.Role {
 		return &model.Role{
 			Name: "test-role",
-			Jobs: []*model.RoleJob{
+			RoleJobs: []*model.RoleJob{
 				{
 					Name: "test-job",
 					Job: &model.Job{
@@ -369,7 +369,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].SHA1 = "different sha1"
+		role.RoleJobs[0].Packages[0].SHA1 = "different sha1"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
@@ -387,7 +387,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].Fingerprint = "different fingerprint"
+		role.RoleJobs[0].Packages[0].Fingerprint = "different fingerprint"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
@@ -405,7 +405,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].Name = "different name"
+		role.RoleJobs[0].Packages[0].Name = "different name"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 

@@ -75,21 +75,21 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
 func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName string) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
-		if len(role.Jobs) == 0 {
+		if len(role.RoleJobs) == 0 {
 			return fmt.Errorf("Error - role %s has 0 jobs", role.Name)
 		}
 
 		// Write out release license files
 		releaseLicensesWritten := map[string]struct{}{}
-		for _, job := range role.Jobs {
-			if _, ok := releaseLicensesWritten[job.Release.Name]; !ok {
-				if len(job.Release.License.Files) == 0 {
+		for _, roleJob := range role.RoleJobs {
+			if _, ok := releaseLicensesWritten[roleJob.Release.Name]; !ok {
+				if len(roleJob.Release.License.Files) == 0 {
 					continue
 				}
 
-				releaseDir := filepath.Join("root/opt/scf/share/doc", job.Release.Name)
+				releaseDir := filepath.Join("root/opt/scf/share/doc", roleJob.Release.Name)
 
-				for filename, contents := range job.Release.License.Files {
+				for filename, contents := range roleJob.Release.License.Files {
 					err := util.WriteToTarStream(tarWriter, contents, tar.Header{
 						Name: filepath.Join(releaseDir, filename),
 					})
@@ -97,14 +97,14 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 						return fmt.Errorf("failed to write out release license file %s: %v", filename, err)
 					}
 				}
-				releaseLicensesWritten[job.Release.Name] = struct{}{}
+				releaseLicensesWritten[roleJob.Release.Name] = struct{}{}
 			}
 		}
 
 		// Symlink compiled packages
 		packageSet := map[string]string{}
-		for _, job := range role.Jobs {
-			for _, pkg := range job.Packages {
+		for _, roleJob := range role.RoleJobs {
+			for _, pkg := range roleJob.Packages {
 				if _, ok := packageSet[pkg.Name]; !ok {
 					err := util.WriteToTarStream(tarWriter, nil, tar.Header{
 						Name:     filepath.Join("root/var/vcap/packages", pkg.Name),
@@ -125,24 +125,24 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Copy jobs templates, spec configs and monit
-		for _, job := range role.Jobs {
+		for _, roleJob := range role.RoleJobs {
 			templates := make(map[string]*model.JobTemplate)
-			for _, template := range job.Templates {
+			for _, template := range roleJob.Templates {
 				sourcePath := filepath.Clean(filepath.Join("templates", template.SourcePath))
 				templates[filepath.ToSlash(sourcePath)] = template
 			}
 
-			sourceTgz, err := os.Open(job.Path)
+			sourceTgz, err := os.Open(roleJob.Path)
 			if err != nil {
-				return fmt.Errorf("Error reading archive for job %s (%s): %s", job.Name, job.Path, err)
+				return fmt.Errorf("Error reading archive for job %s (%s): %s", roleJob.Name, roleJob.Path, err)
 			}
 			defer sourceTgz.Close()
-			err = util.TargzIterate(job.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
+			err = util.TargzIterate(roleJob.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
 				filePath := filepath.ToSlash(filepath.Clean(header.Name))
 				if filePath == "job.MF" {
 					return nil
 				}
-				header.Name = filepath.Join("root/var/vcap/jobs-src", job.Name, header.Name)
+				header.Name = filepath.Join("root/var/vcap/jobs-src", roleJob.Name, header.Name)
 				if template, ok := templates[filePath]; ok {
 					if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
 						header.Mode = 0755
@@ -151,21 +151,21 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 					}
 				}
 				if err = tarWriter.WriteHeader(header); err != nil {
-					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, job.Name, err)
+					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, roleJob.Name, err)
 				}
 				if _, err = io.Copy(tarWriter, reader); err != nil {
-					return fmt.Errorf("Error writing %s for job %s: %s", filePath, job.Name, err)
+					return fmt.Errorf("Error writing %s for job %s: %s", filePath, roleJob.Name, err)
 				}
 				return nil
 			})
 
 			// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-			configJSON, err := job.WriteConfigs(role, r.lightOpinionsPath, r.darkOpinionsPath)
+			configJSON, err := roleJob.WriteConfigs(role, r.lightOpinionsPath, r.darkOpinionsPath)
 			if err != nil {
 				return err
 			}
 			util.WriteToTarStream(tarWriter, configJSON, tar.Header{
-				Name: filepath.Join("root/var/vcap/jobs-src", job.Name, jobConfigSpecFilename),
+				Name: filepath.Join("root/var/vcap/jobs-src", roleJob.Name, jobConfigSpecFilename),
 			})
 		}
 
@@ -265,23 +265,23 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) {
 	jobsConfig := make(map[string]map[string]interface{})
 
-	for index, job := range role.Jobs {
-		jobsConfig[job.Name] = make(map[string]interface{})
-		jobsConfig[job.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", job.Name)
+	for index, roleJob := range role.RoleJobs {
+		jobsConfig[roleJob.Name] = make(map[string]interface{})
+		jobsConfig[roleJob.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", roleJob.Name)
 
 		files := make(map[string]string)
 
-		for _, file := range job.Templates {
+		for _, file := range roleJob.Templates {
 			src := fmt.Sprintf("/var/vcap/jobs-src/%s/templates/%s",
-				job.Name, file.SourcePath)
+				roleJob.Name, file.SourcePath)
 			dest := fmt.Sprintf("/var/vcap/jobs/%s/%s",
-				job.Name, file.DestinationPath)
+				roleJob.Name, file.DestinationPath)
 			files[src] = dest
 		}
 
 		if role.Type != "bosh-task" {
-			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", job.Name)
-			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", job.Name)
+			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", roleJob.Name)
+			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", roleJob.Name)
 			files[src] = dest
 
 			if index == 0 {
@@ -289,7 +289,7 @@ func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) 
 			}
 		}
 
-		jobsConfig[job.Name]["files"] = files
+		jobsConfig[roleJob.Name]["files"] = files
 	}
 
 	jsonOut, err := json.Marshal(jobsConfig)
@@ -312,7 +312,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 	context := map[string]interface{}{
 		"base_image": baseImageName,
 		"role":       role,
-		"licenses":   role.Jobs[0].Release.License.Files,
+		"licenses":   role.RoleJobs[0].Release.License.Files,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))

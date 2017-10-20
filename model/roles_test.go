@@ -38,7 +38,7 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	}, myrole.Scripts)
 
 	foorole := roleManifest.Roles[1]
-	torjob := foorole.Jobs[0]
+	torjob := foorole.RoleJobs[0]
 	assert.Equal("tor", torjob.Name)
 	assert.NotNil(torjob.Release)
 	assert.Equal("tor", torjob.Release.Name)
@@ -131,7 +131,7 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert.Equal("myrole.sh", myrole.Scripts[0])
 
 	foorole := roleManifest.Roles[1]
-	torjob := foorole.Jobs[0]
+	torjob := foorole.RoleJobs[0]
 	assert.Equal("tor", torjob.Name)
 	assert.NotNil(torjob.Release)
 	assert.Equal("tor", torjob.Release.Name)
@@ -206,7 +206,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	refRole := &Role{
 		Name: "bbb",
-		Jobs: []*RoleJob{
+		RoleJobs: []*RoleJob{
 			{
 				Job: &Job{
 					SHA1: "Role 2 Job 1",
@@ -240,9 +240,9 @@ func TestGetScriptSignatures(t *testing.T) {
 	assert.NoError(err)
 
 	differentPatch := &Role{
-		Name:    refRole.Name,
-		Jobs:    []*RoleJob{refRole.Jobs[0], refRole.Jobs[1]},
-		Scripts: []string{scriptName},
+		Name:     refRole.Name,
+		RoleJobs: []*RoleJob{refRole.RoleJobs[0], refRole.RoleJobs[1]},
+		Scripts:  []string{scriptName},
 		roleManifest: &RoleManifest{
 			manifestFilePath: releasePath,
 		},
@@ -262,16 +262,16 @@ func TestGetTemplateSignatures(t *testing.T) {
 	assert := assert.New(t)
 
 	differentTemplate1 := &Role{
-		Name: "aaa",
-		Jobs: []*RoleJob{},
+		Name:     "aaa",
+		RoleJobs: []*RoleJob{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"foo": "bar"},
 		},
 	}
 
 	differentTemplate2 := &Role{
-		Name: "aaa",
-		Jobs: []*RoleJob{},
+		Name:     "aaa",
+		RoleJobs: []*RoleJob{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"bat": "baz"},
 		},
@@ -646,7 +646,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		Roles: Roles{
 			&Role{
 				Name: "role-1",
-				Jobs: []*RoleJob{
+				RoleJobs: []*RoleJob{
 					{
 						Job: job1,
 						ExportedProviders: map[string]jobProvidesInfo{
@@ -660,7 +660,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			},
 			&Role{
 				Name: "role-2",
-				Jobs: []*RoleJob{
+				RoleJobs: []*RoleJob{
 					{Job: job2},
 					{
 						Job: job3,
@@ -679,12 +679,12 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			&Role{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				Jobs: []*RoleJob{{Job: job2}, {Job: job3}},
+				RoleJobs: []*RoleJob{{Job: job2}, {Job: job3}},
 			},
 		},
 	}
 	for _, r := range roleManifest.Roles {
-		for _, roleJob := range r.Jobs {
+		for _, roleJob := range r.RoleJobs {
 			roleJob.Name = roleJob.Job.Name
 		}
 	}
