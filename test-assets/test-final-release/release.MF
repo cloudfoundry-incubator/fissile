@@ -1,0 +1,25 @@
+commit_hash: d759e356
+uncommitted_changes: true
+name: test-final
+version: "1"
+packages:
+- name: bar
+  version: 5f914d68dd16640247bd04fccdcaf24dec214f78
+  fingerprint: 5f914d68dd16640247bd04fccdcaf24dec214f78
+  sha1: 68a95894b04649a62d1cb7543573f8ff1af50928
+  dependencies:
+  - foo
+- name: foo
+  version: 3ca47e4de81b570f2459ece373f26ca184f12a84
+  fingerprint: 3ca47e4de81b570f2459ece373f26ca184f12a84
+  sha1: c3323913873907e05dcafe32498cab7c4137548b
+  dependencies: []
+jobs:
+- name: bar
+  version: b916ebf9dba489a7e4125c48e638268f7268ecb0
+  fingerprint: b916ebf9dba489a7e4125c48e638268f7268ecb0
+  sha1: 692bb3d14c4e49ec702affbf2c8360b23710f874
+- name: foo
+  version: d624f2f1d777626ea43f70922d6a22de6b573049
+  fingerprint: d624f2f1d777626ea43f70922d6a22de6b573049
+  sha1: 4d5bfffdc29414e16f840aa47a6baafc924d248b

@@ -8,7 +8,6 @@ import (
 	"regexp"
 
 	"github.com/SUSE/fissile/util"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -23,6 +22,7 @@ type Release struct {
 	Version            string
 	Path               string
 	DevBOSHCacheDir    string
+	FinalRelease       bool
 
 	manifest map[interface{}]interface{}
 }
@@ -142,7 +142,6 @@ func (r *Release) loadPackages() (err error) {
 			err = fmt.Errorf("Error trying to load release %s packages from YAML manifest: %s", r.Name, p)
 		}
 	}()
-
 	if packages, ok := r.manifest["packages"].([]interface{}); ok {
 		for _, pkg := range packages {
 			p, err := newPackage(r, pkg.(map[interface{}]interface{}))
@@ -224,6 +223,10 @@ func (r *Release) jobsDirPath() string {
 }
 
 func (r *Release) manifestFilePath() string {
+	if r.FinalRelease {
+		return filepath.Join(r.Path, r.getFinalReleaseManifestFilename())
+	}
+
 	return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
 }
 

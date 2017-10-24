@@ -16,223 +16,281 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func TestJobInfoOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-	const ntpdFingerprint = "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e"
-	const ntpdVersion = ntpdFingerprint
-	const ntpdSHA1 = "8eeef09ae67e65aeb3257df402336de04822efc5"
-
-	assert.Equal("ntpd", release.Jobs[0].Name)
-	assert.Equal(ntpdFingerprint, release.Jobs[0].Version)
-	assert.Equal(ntpdVersion, release.Jobs[0].Fingerprint)
-	assert.Equal(ntpdSHA1, release.Jobs[0].SHA1)
-
-	jobPath := filepath.Join(ntpReleasePathCacheDir, ntpdSHA1)
-	assert.Equal(jobPath, release.Jobs[0].Path)
-
-	err = util.ValidatePath(jobPath, false, "")
-	assert.NoError(err)
+type FakeRelease struct {
+	ReleasePath string
+	FakeRelease Release
 }
 
-func TestJobSha1Ok(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Nil(release.Jobs[0].ValidateSHA1())
+type JobInfo struct {
+	Fingerprint string
+	Version     string
+	SHA1        string
+	Path        string
 }
 
-func TestJobSha1NotOk(t *testing.T) {
+func TestDevAndFinalReleaseJob(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
+	ntpDevReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpDevReleasePathCacheDir := filepath.Join(ntpDevReleasePath, "bosh-cache")
+	devRelease, err := NewDevRelease(ntpDevReleasePath, "", "", ntpDevReleasePathCacheDir)
 	assert.NoError(err)
 
-	assert.Len(release.Jobs, 1)
-
-	// Mess up the manifest signature
-	release.Jobs[0].SHA1 += "foo"
-
-	assert.NotNil(release.Jobs[0].ValidateSHA1())
-}
-
-func TestJobExtractOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	tempDir, err := ioutil.TempDir("", "fissile-tests")
-	assert.NoError(err)
-	defer os.RemoveAll(tempDir)
-
-	jobDir, err := release.Jobs[0].Extract(tempDir)
-	assert.NoError(err)
-
-	assert.Nil(util.ValidatePath(jobDir, true, ""))
-	assert.Nil(util.ValidatePath(filepath.Join(jobDir, "job.MF"), false, ""))
-}
-
-func TestJobPackagesOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Len(release.Jobs[0].Packages, 1)
-	assert.Equal("ntp-4.2.8p2", release.Jobs[0].Packages[0].Name)
-}
-
-func TestJobTemplatesOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathCacheDir := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathCacheDir)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Len(release.Jobs[0].Templates, 2)
-
-	assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, release.Jobs[0].Templates[0].SourcePath)
-	assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, release.Jobs[0].Templates[1].SourcePath)
-
-	assert.Contains([]string{"etc/ntp.conf", "bin/ctl"}, release.Jobs[0].Templates[0].DestinationPath)
-	assert.Contains([]string{"etc/ntp.conf", "bin/ctl"}, release.Jobs[0].Templates[1].DestinationPath)
-}
-
-func TestJobPropertiesOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Len(release.Jobs[0].Properties, 3)
-
-	assert.Equal("ntp_conf", release.Jobs[0].Properties[0].Name)
-	assert.Equal("ntpd's configuration file (ntp.conf)", release.Jobs[0].Properties[0].Description)
-	// Looks like properties are sorted by name.
-	assert.Equal("tor.private_key", release.Jobs[0].Properties[1].Name)
-	assert.Equal("M3Efvw4x3kzW+YBWR1oPG7hoUcPcFYXWxoYkYR5+KT4=", release.Jobs[0].Properties[1].Default)
-	assert.Equal("", release.Jobs[0].Properties[1].Description)
-}
-
-func TestGetJobPropertyOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Len(release.Jobs[0].Properties, 3)
-
-	property, err := release.Jobs[0].getProperty("ntp_conf")
-
-	assert.NoError(err)
-	assert.Equal("ntp_conf", property.Name)
-}
-
-func TestGetJobPropertyNotOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	assert.Len(release.Jobs[0].Properties, 3)
-
-	_, err = release.Jobs[0].getProperty("foo")
-
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "not found in job")
-}
-
-func TestJobLinksOk(t *testing.T) {
-	assert := assert.New(t)
-	workDir, err := os.Getwd()
-
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	if !assert.Len(release.Jobs, 1) {
-		return
+	devJobPath := filepath.Join(ntpDevReleasePathCacheDir, "8eeef09ae67e65aeb3257df402336de04822efc5")
+	devJobInfo := JobInfo{
+		Fingerprint: "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e",
+		Version:     "9c168f583bc177f91e6ef6ef1eab1b4550b78b1e",
+		SHA1:        "8eeef09ae67e65aeb3257df402336de04822efc5",
+		Path:        devJobPath,
 	}
 
-	job, err := release.LookupJob("ntpd")
-	if assert.NoError(err, "Failed to find ntpd job") {
-		assert.Equal([]jobConsumesInfo{
-			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
-			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
-			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
-		}, job.DesiredConsumers)
-		assert.Equal(map[string]jobProvidesInfo{
-			"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
-			"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
-		}, job.AvailableProviders)
+	ntpFinalReleasePath := filepath.Join(workDir, "../test-assets/ntp-final-release")
+	finalRelease, err := NewFinalRelease(ntpFinalReleasePath)
+	assert.NoError(err)
+
+	finalJobPath := filepath.Join(ntpFinalReleasePath, "jobs", finalRelease.Jobs[0].Name+".tgz")
+	finalJobInfo := JobInfo{
+		Fingerprint: "99939d396a864a0df92aa3724e84d0e430c9298a",
+		Version:     "99939d396a864a0df92aa3724e84d0e430c9298a",
+		SHA1:        "26f8c7353305424f01d03b504cfa5a5262abc83d",
+		Path:        finalJobPath,
+	}
+
+	t.Run("Dev release testJobInfoOk", testJobInfoOk(devRelease, devJobInfo))
+	t.Run("Dev release testJobExtractOk", testJobExtractOk(devRelease))
+	t.Run("Dev release testJobSha1Ok", testJobSha1Ok(devRelease))
+	t.Run("Dev release testJobSha1NotOk", testJobSha1NotOk(devRelease))
+	t.Run("Dev release testJobPackagesOk", testJobPackagesOk(devRelease, "ntp-4.2.8p2"))
+	t.Run("Dev release testJobTemplatesOk", testJobTemplatesOk(devRelease))
+	t.Run("Dev release testJobPropertiesOk", testJobPropertiesOk(devRelease))
+	t.Run("Dev release testGetJobPropertyOk", testGetJobPropertyOk(devRelease, 3))
+	t.Run("Dev release testGetJobPropertyNotOk", testGetJobPropertyNotOk(devRelease, 3))
+	t.Run("Dev release testJobLinksOk", testJobLinksOk(devRelease))
+	t.Run("Dev release testJobsProperties", testJobsProperties(devRelease))
+
+	t.Run("Final release testJobInfoOk", testJobInfoOk(finalRelease, finalJobInfo))
+	t.Run("Final release testJobExtractOk", testJobExtractOk(finalRelease))
+	t.Run("Final release testJobSha1Ok", testJobSha1Ok(finalRelease))
+	t.Run("Final release testJobSha1NotOk", testJobSha1NotOk(finalRelease))
+	t.Run("Final release testJobPackagesOk", testJobPackagesOk(finalRelease, "ntp"))
+	t.Run("Final release testJobTemplatesOk", testJobTemplatesOk(finalRelease))
+	t.Run("Final release testGetJobPropertyOk", testGetJobPropertyOk(finalRelease, 1))
+	t.Run("Final release testFinalJobPropertiesOk", testFinalJobPropertiesOk(finalRelease))
+	t.Run("Final release testGetJobPropertyNotOk", testGetJobPropertyNotOk(finalRelease, 1))
+	t.Run("Final release testFinalJobsProperties", testFinalJobsProperties(finalRelease))
+}
+
+func testJobInfoOk(fakeRelease *Release, jobInfo JobInfo) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Equal("ntpd", fakeRelease.Jobs[0].Name)
+		assert.Equal(jobInfo.Fingerprint, fakeRelease.Jobs[0].Version)
+		assert.Equal(jobInfo.Version, fakeRelease.Jobs[0].Fingerprint)
+		assert.Equal(jobInfo.SHA1, fakeRelease.Jobs[0].SHA1)
+		assert.Equal(jobInfo.Path, fakeRelease.Jobs[0].Path)
+
+		err := util.ValidatePath(jobInfo.Path, false, "")
+		assert.NoError(err)
+	}
+}
+
+func testJobSha1Ok(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Nil(fakeRelease.Jobs[0].ValidateSHA1())
+	}
+}
+
+func testJobSha1NotOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+
+		// Mess up the manifest signature
+		fakeRelease.Jobs[0].SHA1 += "foo"
+		assert.NotNil(fakeRelease.Jobs[0].ValidateSHA1())
+
+	}
+}
+
+func testJobExtractOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+
+		tempDir, err := ioutil.TempDir("", "fissile-tests")
+		assert.NoError(err)
+		defer os.RemoveAll(tempDir)
+
+		jobDir, err := fakeRelease.Jobs[0].Extract(tempDir)
+		assert.NoError(err)
+
+		assert.Nil(util.ValidatePath(jobDir, true, ""))
+		assert.Nil(util.ValidatePath(filepath.Join(jobDir, "job.MF"), false, ""))
+	}
+}
+
+func testJobPackagesOk(fakeRelease *Release, packageName string) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Packages, 1)
+		assert.Equal(packageName, fakeRelease.Jobs[0].Packages[0].Name)
+	}
+}
+
+func testJobTemplatesOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Templates, 2)
+
+		assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, fakeRelease.Jobs[0].Templates[0].SourcePath)
+		assert.Contains([]string{"ctl.sh", "ntp.conf.erb"}, fakeRelease.Jobs[0].Templates[1].SourcePath)
+
+		assert.Contains([]string{"etc/ntp.conf", "bin/ctl"}, fakeRelease.Jobs[0].Templates[0].DestinationPath)
+		assert.Contains([]string{"etc/ntp.conf", "bin/ctl"}, fakeRelease.Jobs[0].Templates[1].DestinationPath)
+	}
+}
+
+func testJobPropertiesOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Properties, 3)
+
+		assert.Equal("ntp_conf", fakeRelease.Jobs[0].Properties[0].Name)
+		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].Properties[0].Description)
+		// Looks like properties are sorted by name.
+		assert.Equal("tor.private_key", fakeRelease.Jobs[0].Properties[1].Name)
+		assert.Equal("M3Efvw4x3kzW+YBWR1oPG7hoUcPcFYXWxoYkYR5+KT4=", fakeRelease.Jobs[0].Properties[1].Default)
+		assert.Equal("", fakeRelease.Jobs[0].Properties[1].Description)
+	}
+}
+
+func testFinalJobPropertiesOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Properties, 1)
+		assert.Equal("ntp_conf", fakeRelease.Jobs[0].Properties[0].Name)
+		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].Properties[0].Description)
+	}
+}
+
+func testGetJobPropertyOk(fakeRelease *Release, jobPropertyLen int) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Properties, jobPropertyLen)
+		property, err := fakeRelease.Jobs[0].getProperty("ntp_conf")
+
+		assert.NoError(err)
+		assert.Equal("ntp_conf", property.Name)
+	}
+}
+
+func testGetJobPropertyNotOk(fakeRelease *Release, jobPropertyLen int) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+		assert.Len(fakeRelease.Jobs[0].Properties, jobPropertyLen)
+		_, err := fakeRelease.Jobs[0].getProperty("foo")
+		assert.NotNil(err)
+		assert.Contains(err.Error(), "not found in job")
+	}
+}
+
+func testJobLinksOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		if !assert.Len(fakeRelease.Jobs, 1) {
+			return
+		}
+
+		job, err := fakeRelease.LookupJob("ntpd")
+		if assert.NoError(err, "Failed to find ntpd job") {
+			assert.Equal([]jobConsumesInfo{
+				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
+				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
+				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
+			}, job.DesiredConsumers)
+			assert.Equal(map[string]jobProvidesInfo{
+				"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
+				"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
+			}, job.AvailableProviders)
+		}
+	}
+}
+
+func testJobsProperties(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+
+		workDir, err := os.Getwd()
+		assert.NoError(err)
+
+		lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
+		darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
+		opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
+		assert.NoError(err)
+
+		properties, err := fakeRelease.Jobs[0].GetPropertiesForJob(opinions)
+		assert.Len(properties, 2)
+		actualJSON, err := json.Marshal(properties)
+		if assert.NoError(err) {
+			assert.JSONEq(`{
+			"ntp_conf" : "zip.conf",
+			"with": {
+				"json": {
+					"default": { "key": "value" }
+				}
+			}
+		}`, string(actualJSON), "Unexpected properties")
+		}
+	}
+}
+
+func testFinalJobsProperties(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+
+		assert.Len(fakeRelease.Jobs, 1)
+
+		workDir, err := os.Getwd()
+		assert.NoError(err)
+
+		lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
+		darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
+		opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
+		assert.NoError(err)
+
+		properties, err := fakeRelease.Jobs[0].GetPropertiesForJob(opinions)
+		assert.Len(properties, 1)
+		actualJSON, err := json.Marshal(properties)
+		if assert.NoError(err) {
+			assert.JSONEq(`{
+			"ntp_conf" : "zip.conf"
+		}`, string(actualJSON), "Unexpected properties")
+		}
 	}
 }
 
@@ -254,39 +312,6 @@ func TestJobsSort(t *testing.T) {
 	sort.Sort(jobs)
 	assert.Equal(jobs[0].Name, "ccc")
 	assert.Equal(jobs[1].Name, "ddd")
-}
-
-func TestJobsProperties(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
-
-	lightOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/opinions.yml")
-	darkOpinionsPath := filepath.Join(workDir, "../test-assets/ntp-opinions/dark-opinions.yml")
-	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
-	assert.NoError(err)
-
-	properties, err := release.Jobs[0].GetPropertiesForJob(opinions)
-	assert.Len(properties, 2)
-	actualJSON, err := json.Marshal(properties)
-	if assert.NoError(err) {
-		assert.JSONEq(`{
-			"ntp_conf" : "zip.conf",
-			"with": {
-				"json": {
-					"default": { "key": "value" }
-				}
-			}
-		}`, string(actualJSON), "Unexpected properties")
-	}
 }
 
 func TestJobMarshal(t *testing.T) {
