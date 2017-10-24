@@ -728,8 +728,8 @@ func (c *Compilator) gatherPackagesFromRoles(release *model.Release, roles model
 
 	// Find the initial list of packages to examine (all packages of the release in the manifest)
 	for _, role := range roles {
-		for _, job := range role.Jobs {
-			for _, pkg := range job.Packages {
+		for _, roleJob := range role.RoleJobs {
+			for _, pkg := range roleJob.Packages {
 				if pkg.Release.Name == release.Name {
 					pendingPackages.PushBack(pkg)
 				}

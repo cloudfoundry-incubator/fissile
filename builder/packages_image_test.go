@@ -336,19 +336,22 @@ func TestGetRolePackageImageName(t *testing.T) {
 	makeTemplateRole := func() *model.Role {
 		return &model.Role{
 			Name: "test-role",
-			Jobs: model.Jobs{
-				&model.Job{
+			RoleJobs: []*model.RoleJob{
+				{
 					Name: "test-job",
-					Packages: model.Packages{
-						&model.Package{
-							Name:        "pkg-name",
-							Version:     "pkg-version",
-							Fingerprint: "pkg-fingerprint",
-							SHA1:        "pkg-sha1",
+					Job: &model.Job{
+						Name: "test-job",
+						Packages: model.Packages{
+							&model.Package{
+								Name:        "pkg-name",
+								Version:     "pkg-version",
+								Fingerprint: "pkg-fingerprint",
+								SHA1:        "pkg-sha1",
+							},
 						},
+						Fingerprint: "job-fingerprint",
+						SHA1:        "job-sha1",
 					},
-					Fingerprint: "job-fingerprint",
-					SHA1:        "job-sha1",
 				},
 			},
 		}
@@ -366,7 +369,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].SHA1 = "different sha1"
+		role.RoleJobs[0].Packages[0].SHA1 = "different sha1"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
@@ -384,7 +387,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].Fingerprint = "different fingerprint"
+		role.RoleJobs[0].Packages[0].Fingerprint = "different fingerprint"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
@@ -402,7 +405,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 
-		role.Jobs[0].Packages[0].Name = "different name"
+		role.RoleJobs[0].Packages[0].Name = "different name"
 		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
 		assert.NoError(t, err)
 

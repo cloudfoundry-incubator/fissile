@@ -38,7 +38,7 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	}, myrole.Scripts)
 
 	foorole := roleManifest.Roles[1]
-	torjob := foorole.Jobs[0]
+	torjob := foorole.RoleJobs[0]
 	assert.Equal("tor", torjob.Name)
 	assert.NotNil(torjob.Release)
 	assert.Equal("tor", torjob.Release.Name)
@@ -121,7 +121,7 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
 	assert.NoError(err)
-	assert.NotNil(roleManifest)
+	require.NotNil(t, roleManifest)
 
 	assert.Equal(roleManifestPath, roleManifest.manifestFilePath)
 	assert.Len(roleManifest.Roles, 2)
@@ -131,7 +131,7 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert.Equal("myrole.sh", myrole.Scripts[0])
 
 	foorole := roleManifest.Roles[1]
-	torjob := foorole.Jobs[0]
+	torjob := foorole.RoleJobs[0]
 	assert.Equal("tor", torjob.Name)
 	assert.NotNil(torjob.Release)
 	assert.Equal("tor", torjob.Release.Name)
@@ -175,7 +175,7 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/non-bosh-roles.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
 	assert.NoError(err)
-	assert.NotNil(roleManifest)
+	require.NotNil(t, roleManifest)
 
 	assert.Equal(roleManifestPath, roleManifest.manifestFilePath)
 	assert.Len(roleManifest.Roles, 2)
@@ -206,18 +206,22 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	refRole := &Role{
 		Name: "bbb",
-		Jobs: Jobs{
+		RoleJobs: []*RoleJob{
 			{
-				SHA1: "Role 2 Job 1",
-				Packages: Packages{
-					{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
-					{Name: "bbb", SHA1: "Role 2 Job 1 Package 2"},
+				Job: &Job{
+					SHA1: "Role 2 Job 1",
+					Packages: Packages{
+						{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
+						{Name: "bbb", SHA1: "Role 2 Job 1 Package 2"},
+					},
 				},
 			},
 			{
-				SHA1: "Role 2 Job 2",
-				Packages: Packages{
-					{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},
+				Job: &Job{
+					SHA1: "Role 2 Job 2",
+					Packages: Packages{
+						{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},
+					},
 				},
 			},
 		},
@@ -236,9 +240,9 @@ func TestGetScriptSignatures(t *testing.T) {
 	assert.NoError(err)
 
 	differentPatch := &Role{
-		Name:    refRole.Name,
-		Jobs:    Jobs{refRole.Jobs[0], refRole.Jobs[1]},
-		Scripts: []string{scriptName},
+		Name:     refRole.Name,
+		RoleJobs: []*RoleJob{refRole.RoleJobs[0], refRole.RoleJobs[1]},
+		Scripts:  []string{scriptName},
 		roleManifest: &RoleManifest{
 			manifestFilePath: releasePath,
 		},
@@ -258,16 +262,16 @@ func TestGetTemplateSignatures(t *testing.T) {
 	assert := assert.New(t)
 
 	differentTemplate1 := &Role{
-		Name: "aaa",
-		Jobs: Jobs{},
+		Name:     "aaa",
+		RoleJobs: []*RoleJob{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"foo": "bar"},
 		},
 	}
 
 	differentTemplate2 := &Role{
-		Name: "aaa",
-		Jobs: Jobs{},
+		Name:     "aaa",
+		RoleJobs: []*RoleJob{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"bat": "baz"},
 		},
@@ -401,8 +405,7 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/docker-run-env.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
-	assert.Equal(err.Error(),
-		`roles[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
+	assert.EqualError(err, `roles[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
 	assert.Nil(roleManifest)
 }
 
@@ -499,14 +502,14 @@ func TestResolveLinks(t *testing.T) {
 	roleManifest, err := LoadRoleManifest(roleManifestPath, releases)
 	assert.NoError(t, err)
 
-	errList := roleManifest.resolveLinks()
-	assert.Empty(t, errList)
+	// LoadRoleManifest implicitly runs resolveLinks()
 
 	role := roleManifest.LookupRole("myrole")
 	job := role.LookupJob("ntpd")
 	if !assert.NotNil(t, job) {
 		return
 	}
+
 	// Comparing things with assert.Equal() just gives us impossible-to-read dumps
 	samples := []struct {
 		Name     string
@@ -516,100 +519,158 @@ func TestResolveLinks(t *testing.T) {
 	}{
 		// These should match the order in the ntp-release ntp job.MF
 		{Name: "ntp-server", Type: "ntpd"},
-		{Name: "ntp-client", Type: "ntp", Optional: true},
-		{Type: "missing", Optional: true, Missing: true},
+		{Name: "ntp-client", Type: "ntp"},
+		{Type: "missing", Missing: true},
 	}
 
-	if !assert.Len(t, job.LinkConsumes, len(samples)) {
-		return
-	}
-	for i, expected := range samples {
+	expectedLength := 0
+	for _, expected := range samples {
 		t.Run("", func(t *testing.T) {
-			actual := job.LinkConsumes[i]
-			assert.Equal(t, expected.Name, actual.Name)
-			assert.Equal(t, expected.Type, actual.Type)
-			assert.Equal(t, expected.Optional, actual.Optional)
 			if expected.Missing {
-				assert.Empty(t, actual.RoleName)
-				assert.Empty(t, actual.JobName)
-			} else {
-				assert.Equal(t, role.Name, actual.RoleName)
-				assert.Equal(t, job.Name, actual.JobName)
+				for name, consumeInfo := range job.ResolvedConsumers {
+					assert.NotEqual(t, expected.Type, consumeInfo.Type,
+						"link should not resolve, got %s (type %s) in %s / %s",
+						name, consumeInfo.Type, consumeInfo.RoleName, consumeInfo.JobName)
+				}
+				return
 			}
+			expectedLength++
+			require.Contains(t, job.ResolvedConsumers, expected.Name, "link %s is missing", expected.Name)
+			actual := job.ResolvedConsumers[expected.Name]
+			assert.Equal(t, expected.Name, actual.Name, "link name mismatch")
+			assert.Equal(t, expected.Type, actual.Type, "link type mismatch")
+			assert.Equal(t, role.Name, actual.RoleName, "link role name mismatch")
+			assert.Equal(t, job.Name, actual.JobName, "link job name mismatch")
 		})
 	}
+	assert.Len(t, job.ResolvedConsumers, expectedLength)
 }
 
 func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
+	job1 := &Job{
+		Name: "job-1",
+		AvailableProviders: map[string]jobProvidesInfo{
+			"job-1-provider-1": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-1-provider-1",
+					Type: "link-1",
+				},
+			},
+			"job-1-provider-2": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-1-provider-2",
+					Type: "link-2",
+				},
+			},
+			"job-1-provider-3": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-1-provider-3",
+					Type: "link-5",
+				},
+			},
+		},
+		DesiredConsumers: []jobConsumesInfo{
+			{
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-1-provider-1",
+					Type: "link-1",
+				},
+			},
+		},
+	}
+
+	job2 := &Job{
+		Name: "job-2",
+		AvailableProviders: map[string]jobProvidesInfo{
+			"job-2-provider-1": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-2-provider-1",
+					Type: "link-3",
+				},
+			},
+		},
+	}
+
+	job3 := &Job{
+		Name: "job-3",
+		AvailableProviders: map[string]jobProvidesInfo{
+			"job-3-provider-3": {
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-3-provider-3",
+					Type: "link-4",
+				},
+			},
+		},
+		DesiredConsumers: []jobConsumesInfo{
+			{
+				// There is exactly one implicit provider of this type; use it
+				jobLinkInfo: jobLinkInfo{
+					Type: "link-1", // j1
+				},
+			},
+			{
+				// This job has multiple available implicit providers with
+				// the same type; this should not resolve.
+				jobLinkInfo: jobLinkInfo{
+					Type: "link-3", // j3
+				},
+				Optional: true,
+			},
+			{
+				// There is exactly one explicit provider of this name
+				jobLinkInfo: jobLinkInfo{
+					Name: "job-3-provider-3", // j3
+				},
+			},
+			{
+				// There are no providers of this type
+				jobLinkInfo: jobLinkInfo{
+					Type: "missing",
+				},
+				Optional: true,
+			},
+			{
+				// This requires an alias
+				jobLinkInfo: jobLinkInfo{
+					Name: "actual-consumer-name",
+				},
+				Optional: true, // Not resolvable in role 3
+			},
+		},
+	}
+
 	roleManifest := &RoleManifest{
 		Roles: Roles{
 			&Role{
 				Name: "role-1",
-				Jobs: Jobs{
-					&Job{
-						Name: "role-1-job-1",
-						LinkProvides: []*JobLinkProvides{
-							&JobLinkProvides{
-								Name: "role-1-job-1-provider-1",
-								Type: "link-1",
-							},
-							&JobLinkProvides{
-								Name: "role-1-job-1-provider-2",
-								Type: "link-2",
-							},
-						},
-						LinkConsumes: []*JobLinkConsumes{
-							&JobLinkConsumes{
-								Name: "role-1-job-1-provider-1",
-								Type: "link-1",
+				RoleJobs: []*RoleJob{
+					{
+						Job: job1,
+						ExportedProviders: map[string]jobProvidesInfo{
+							"job-1-provider-3": jobProvidesInfo{
+								Alias: "unique-alias",
 							},
 						},
 					},
-					&Job{
-						Name: "role-1-job-2",
-						LinkProvides: []*JobLinkProvides{
-							&JobLinkProvides{
-								Name: "role-1-job-2-provider-1",
-								Type: "link-3",
-							},
-						},
-					},
+					{Job: job2},
 				},
 			},
 			&Role{
 				Name: "role-2",
-				Jobs: Jobs{
-					&Job{
-						Name: "role-2-job-1",
-						LinkProvides: []*JobLinkProvides{
-							&JobLinkProvides{
-								Name: "role-2-job-1-provider-1",
-								Type: "link-2",
-							},
-							&JobLinkProvides{
-								Name: "role-2-job-1-provider-2",
-								Type: "link-3",
-							},
-							&JobLinkProvides{
-								Name: "role-2-job-1-provider-3",
-								Type: "link-4",
-							},
+				RoleJobs: []*RoleJob{
+					{Job: job2},
+					{
+						Job: job3,
+						// This has an explicitly exported provider
+						ExportedProviders: map[string]jobProvidesInfo{
+							"job-3-provider-3": jobProvidesInfo{},
 						},
-						LinkConsumes: []*JobLinkConsumes{
-							&JobLinkConsumes{
-								Type: "link-1", // r1j1p1
-							},
-							&JobLinkConsumes{
-								Type: "link-2", // r2j1p1
-							},
-							&JobLinkConsumes{
-								Name: "role-3-job-1-provider-1",
-							},
-							&JobLinkConsumes{
-								Type:     "missing",
-								Optional: true,
+						ResolvedConsumers: map[string]jobConsumesInfo{
+							"actual-consumer-name": jobConsumesInfo{
+								Alias: "unique-alias",
 							},
 						},
 					},
@@ -617,31 +678,152 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			},
 			&Role{
 				Name: "role-3",
-				Jobs: Jobs{
-					&Job{
-						Name: "role-3-job-1",
-						LinkProvides: []*JobLinkProvides{
-							&JobLinkProvides{
-								Name: "role-3-job-1-provider-1",
-								Type: "link-3",
-							},
+				// This does _not_ have an explicitly exported provider
+				RoleJobs: []*RoleJob{{Job: job2}, {Job: job3}},
+			},
+		},
+	}
+	for _, r := range roleManifest.Roles {
+		for _, roleJob := range r.RoleJobs {
+			roleJob.Name = roleJob.Job.Name
+			if roleJob.ResolvedConsumers == nil {
+				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
+			}
+		}
+	}
+	errors := roleManifest.resolveLinks()
+	assert.Empty(errors)
+	role := roleManifest.LookupRole("role-2")
+	require.NotNil(role, "Failed to find role")
+	job := role.LookupJob("job-3")
+	require.NotNil(job, "Failed to find job")
+	consumes := job.ResolvedConsumers
+
+	assert.Len(consumes, 3, "incorrect number of resulting link consumers")
+
+	if assert.Contains(consumes, "job-1-provider-1", "failed to find role by type") {
+		assert.Equal(jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:     "job-1-provider-1",
+				Type:     "link-1",
+				RoleName: "role-1",
+				JobName:  "job-1",
+			},
+		}, consumes["job-1-provider-1"], "found incorrect role by type")
+	}
+
+	assert.NotContains(consumes, "job-3-provider-1",
+		"should not automatically resolve consumers with multiple providers of the type")
+
+	if assert.Contains(consumes, "job-3-provider-3", "did not find explicitly named provider") {
+		assert.Equal(jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:     "job-3-provider-3",
+				Type:     "link-4",
+				RoleName: "role-2",
+				JobName:  "job-3",
+			},
+		}, consumes["job-3-provider-3"], "did not find explicitly named provider")
+	}
+
+	if assert.Contains(consumes, "actual-consumer-name", "did not resolve consumer with alias") {
+		assert.Equal(jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:     "job-1-provider-3",
+				Type:     "link-5",
+				RoleName: "role-1",
+				JobName:  "job-1",
+			},
+		}, consumes["actual-consumer-name"], "resolved to incorrect provider for alias")
+	}
+}
+
+func TestWriteConfigs(t *testing.T) {
+	assert := assert.New(t)
+
+	job := &Job{
+		Name: "silly job",
+		Properties: []*JobProperty{
+			&JobProperty{
+				Name:    "prop",
+				Default: "bar",
+			},
+		},
+		AvailableProviders: map[string]jobProvidesInfo{
+			"<not used>": jobProvidesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "<not used>",
+				},
+				Properties: []string{"exported-prop"},
+			},
+		},
+		DesiredConsumers: []jobConsumesInfo{
+			jobConsumesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "serious",
+					Type: "serious-type",
+				},
+			},
+		},
+	}
+
+	role := &Role{
+		Name: "dummy role",
+		RoleJobs: []*RoleJob{
+			{
+				Job:  job,
+				Name: "silly job",
+				ResolvedConsumers: map[string]jobConsumesInfo{
+					"serious": jobConsumesInfo{
+						jobLinkInfo: jobLinkInfo{
+							Name:     "serious",
+							Type:     "serious-type",
+							RoleName: "dummy role",
+							JobName:  job.Name,
 						},
 					},
 				},
 			},
 		},
 	}
-	errors := roleManifest.resolveLinks()
-	assert.Empty(errors)
-	role := roleManifest.LookupRole("role-2")
-	require.NotNil(role, "Failed to find role")
-	job := role.LookupJob("role-2-job-1")
-	require.NotNil(job, "Failed to find job")
-	assert.Equal("role-1-job-1-provider-1", job.LinkConsumes[0].Name, "Failed to find role by type")
-	assert.Equal("role-1-job-1", job.LinkConsumes[0].JobName)
-	assert.Equal("role-2-job-1-provider-1", job.LinkConsumes[1].Name, "Did not prefer providers in same role")
-	assert.Equal("role-2-job-1", job.LinkConsumes[1].JobName)
-	assert.Equal("role-3-job-1-provider-1", job.LinkConsumes[2].Name, "Did not find explicitly named provider")
-	assert.Equal("role-3-job-1", job.LinkConsumes[2].JobName)
-	assert.Empty(job.LinkConsumes[3].Name, "Should not have found provider")
+
+	tempFile, err := ioutil.TempFile("", "fissile-job-test")
+	assert.NoError(err)
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString(strings.Replace(`---
+	properties:
+		foo: 3
+	`, "\t", "    ", -1))
+	assert.NoError(err)
+	assert.NoError(tempFile.Close())
+
+	json, err := role.RoleJobs[0].WriteConfigs(role, tempFile.Name(), tempFile.Name())
+	assert.NoError(err)
+
+	assert.JSONEq(`
+	{
+		"job": {
+			"name": "dummy role"
+		},
+		"parameters": {},
+		"properties": {
+			"prop": "bar"
+		},
+		"networks": {
+			"default": {}
+		},
+		"exported_properties": [
+			"prop"
+		],
+		"consumes": {
+			"serious": {
+				"role": "dummy role",
+				"job": "silly job"
+			}
+		},
+		"exported_properties": [
+			"exported-prop"
+		]
+	}`, string(json))
 }

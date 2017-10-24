@@ -165,7 +165,7 @@ done
 
 # Run
 {{ if eq .role.Type "bosh-task" }}
-    {{ range $job := .role.Jobs}}
+    {{ range $job := .role.RoleJobs}}
         /var/vcap/jobs/{{ $job.Name }}/bin/run
     {{ end }}
 {{ else }}

@@ -224,15 +224,15 @@ func TestJobLinksOk(t *testing.T) {
 
 	job, err := release.LookupJob("ntpd")
 	if assert.NoError(err, "Failed to find ntpd job") {
-		assert.Equal([]*JobLinkConsumes{
-			&JobLinkConsumes{Name: "ntp-server", Type: "ntpd"},
-			&JobLinkConsumes{Type: "ntp", Optional: true},
-			&JobLinkConsumes{Type: "missing", Optional: true},
-		}, job.LinkConsumes)
-		assert.Equal([]*JobLinkProvides{
-			&JobLinkProvides{Name: "ntp-server", Type: "ntpd"},
-			&JobLinkProvides{Name: "ntp-client", Type: "ntp"},
-		}, job.LinkProvides)
+		assert.Equal([]jobConsumesInfo{
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
+			jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
+		}, job.DesiredConsumers)
+		assert.Equal(map[string]jobProvidesInfo{
+			"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
+			"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
+		}, job.AvailableProviders)
 	}
 }
 
@@ -287,82 +287,6 @@ func TestJobsProperties(t *testing.T) {
 			}
 		}`, string(actualJSON), "Unexpected properties")
 	}
-}
-
-func TestWriteConfigs(t *testing.T) {
-	assert := assert.New(t)
-
-	job := &Job{
-		Name: "silly job",
-		Properties: []*JobProperty{
-			&JobProperty{
-				Name:    "prop",
-				Default: "bar",
-			},
-		},
-		LinkProvides: []*JobLinkProvides{
-			&JobLinkProvides{
-				Name:       "<not used>",
-				Properties: []string{"exported-prop"},
-			},
-		},
-		LinkConsumes: []*JobLinkConsumes{
-			&JobLinkConsumes{
-				Name: "serious",
-				Type: "serious-type",
-			},
-		},
-	}
-
-	role := &Role{
-		Name: "dummy role",
-		Jobs: Jobs{job},
-	}
-	job.LinkConsumes[0].RoleName = role.Name
-	job.LinkConsumes[0].JobName = job.Name
-
-	tempFile, err := ioutil.TempFile("", "fissile-job-test")
-	assert.NoError(err)
-	defer os.Remove(tempFile.Name())
-
-	_, err = tempFile.WriteString(strings.Replace(`---
-	properties:
-		foo: 3
-	`, "\t", "    ", -1))
-	assert.NoError(err)
-	assert.NoError(tempFile.Close())
-
-	json, err := job.WriteConfigs(role, tempFile.Name(), tempFile.Name())
-	assert.NoError(err)
-
-	assert.JSONEq(`
-	{
-		"job": {
-			"name": "dummy role",
-			"templates": [{
-				"name": "silly job"
-			}]
-		},
-		"parameters": {},
-		"properties": {
-			"prop": "bar"
-		},
-		"networks": {
-			"default": {}
-		},
-		"exported_properties": [
-			"prop"
-		],
-		"consumes": {
-			"serious": {
-				"role": "dummy role",
-				"job": "silly job"
-			}
-		},
-		"exported_properties": [
-			"exported-prop"
-		]
-	}`, string(json))
 }
 
 func TestJobMarshal(t *testing.T) {

@@ -2,7 +2,6 @@ package model
 
 import (
 	"crypto/sha1"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,36 +16,43 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// JobLinkProvides describes the BOSH links a job provides
-type JobLinkProvides struct {
-	Name       string
-	Type       string
+// jobLinkInfo describes a BOSH link provider or consumer
+type jobLinkInfo struct {
+	Name     string `json:"-" yaml:"-"`
+	Type     string `json:"-" yaml:"-"`
+	RoleName string `json:"role" yaml:"-"`
+	JobName  string `json:"job" yaml:"-"`
+}
+
+// jobProvidesInfo describes a BOSH link provider
+type jobProvidesInfo struct {
+	jobLinkInfo
+	Alias      string `yaml:"as"`
+	Shared     bool   `yaml:"shared"`
 	Properties []string
 }
 
-// JobLinkConsumes describes the BOSH links a job consumes
-type JobLinkConsumes struct {
-	Name     string `json:"-"`
-	Type     string `json:"-"`
-	Optional bool   `json:"-"`
-	RoleName string `json:"role"` // Name of role in which the resolved job is running
-	JobName  string `json:"job"`  // Name of job that this resolves to
+// jobConsumesInfo describes the BOSH links a job consumes
+type jobConsumesInfo struct {
+	jobLinkInfo
+	Alias    string `yaml:"from"`
+	Optional bool
 }
 
 // Job represents a BOSH job
 type Job struct {
-	Name         string
-	Description  string
-	Templates    []*JobTemplate
-	Packages     Packages
-	Path         string
-	Fingerprint  string
-	SHA1         string
-	Properties   []*JobProperty
-	Version      string
-	Release      *Release
-	LinkProvides []*JobLinkProvides
-	LinkConsumes []*JobLinkConsumes
+	Name               string
+	Description        string
+	Templates          []*JobTemplate
+	Packages           Packages
+	Path               string
+	Fingerprint        string
+	SHA1               string
+	Properties         []*JobProperty
+	Version            string
+	Release            *Release
+	AvailableProviders map[string]jobProvidesInfo
+	DesiredConsumers   []jobConsumesInfo
 
 	jobReleaseInfo map[interface{}]interface{}
 }
@@ -246,20 +252,31 @@ func (j *Job) loadJobSpec() (err error) {
 		j.Properties = append(j.Properties, property)
 	}
 
-	j.LinkProvides = make([]*JobLinkProvides, 0, len(jobSpec.Provides))
+	j.AvailableProviders = make(map[string]jobProvidesInfo)
 	for _, provides := range jobSpec.Provides {
-		j.LinkProvides = append(j.LinkProvides, &JobLinkProvides{
-			Name:       provides.Name,
-			Type:       provides.Type,
+		if provides.Type == "" {
+			return fmt.Errorf("job %s provider %s has no type", j.Name, provides.Name)
+		}
+		j.AvailableProviders[provides.Name] = jobProvidesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name:    provides.Name,
+				Type:    provides.Type,
+				JobName: j.Name,
+			},
 			Properties: provides.Properties,
-		})
+		}
 	}
 
-	j.LinkConsumes = make([]*JobLinkConsumes, 0, len(jobSpec.Consumes))
+	j.DesiredConsumers = make([]jobConsumesInfo, 0, len(jobSpec.Consumes))
 	for _, consumes := range jobSpec.Consumes {
-		j.LinkConsumes = append(j.LinkConsumes, &JobLinkConsumes{
-			Name:     consumes.Name,
-			Type:     consumes.Type,
+		if consumes.Type == "" {
+			return fmt.Errorf("job %s consumer %s has no type", j.Name, consumes.Name)
+		}
+		j.DesiredConsumers = append(j.DesiredConsumers, jobConsumesInfo{
+			jobLinkInfo: jobLinkInfo{
+				Name: consumes.Name,
+				Type: consumes.Type,
+			},
 			Optional: consumes.Optional,
 		})
 	}
@@ -281,63 +298,6 @@ func (j *Job) MergeSpec(otherJob *Job) {
 // jobConfigTemplate is one "templates:" entry in the job config output
 type jobConfigTemplate struct {
 	Name string `json:"name"`
-}
-
-// WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
-func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
-	var config struct {
-		Job struct {
-			Name      string              `json:"name"`
-			Templates []jobConfigTemplate `json:"templates"`
-		} `json:"job"`
-		Parameters map[string]string      `json:"parameters"`
-		Properties map[string]interface{} `json:"properties"`
-		Networks   struct {
-			Default map[string]string `json:"default"`
-		} `json:"networks"`
-		ExportedProperties []string                    `json:"exported_properties"`
-		Consumes           map[string]*JobLinkConsumes `json:"consumes"`
-	}
-
-	config.Job.Templates = make([]jobConfigTemplate, 0)
-	config.Parameters = make(map[string]string)
-	config.Properties = make(map[string]interface{})
-	config.Networks.Default = make(map[string]string)
-	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]*JobLinkConsumes, 0)
-
-	config.Job.Name = role.Name
-
-	for _, roleJob := range role.Jobs {
-		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
-	}
-
-	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
-	if err != nil {
-		return nil, err
-	}
-	properties, err := j.GetPropertiesForJob(opinions)
-	if err != nil {
-		return nil, err
-	}
-	config.Properties = properties
-
-	for _, provider := range j.LinkProvides {
-		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
-	}
-	for _, consumeTarget := range j.LinkConsumes {
-		if consumeTarget.RoleName != "" && consumeTarget.JobName != "" {
-			config.Consumes[consumeTarget.Name] = consumeTarget
-		}
-	}
-
-	// Write out the configuration
-	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
-	if err != nil {
-		return nil, err
-	}
-
-	return jobJSON, nil
 }
 
 // GetPropertiesForJob returns the parameters for the given job, using its specs and opinions
