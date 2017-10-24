@@ -794,12 +794,7 @@ func (roleJob *RoleJob) WriteConfigs(role *Role, lightOpinionsPath, darkOpinions
 	}
 
 	// Write out the configuration
-	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
-	if err != nil {
-		return nil, err
-	}
-
-	return jobJSON, nil
+	return json.MarshalIndent(config, "", "    ") // 4-space indent
 }
 
 // validateVariableType checks that only legal values are used for
