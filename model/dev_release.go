@@ -18,6 +18,7 @@ func NewDevRelease(path, releaseName, version, boshCacheDir string) (*Release, e
 		Name:            releaseName,
 		Version:         version,
 		DevBOSHCacheDir: boshCacheDir,
+		FinalRelease:    false,
 	}
 
 	if err := release.validateDevPathStructure(); err != nil {

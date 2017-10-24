@@ -144,6 +144,10 @@ func (p *Package) loadPackageDependencies() (err error) {
 }
 
 func (p *Package) packageArchivePath() string {
+	if p.Release.FinalRelease {
+		return filepath.Join(p.Release.Path, "packages", p.Name+".tgz")
+	}
+
 	return filepath.Join(p.Release.DevBOSHCacheDir, p.SHA1)
 }
 

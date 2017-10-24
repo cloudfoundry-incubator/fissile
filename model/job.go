@@ -378,6 +378,10 @@ func (slice Jobs) Swap(i, j int) {
 }
 
 func (j *Job) jobArchivePath() string {
+	if j.Release.FinalRelease {
+		return filepath.Join(j.Release.Path, "jobs", j.Name+".tgz")
+	}
+
 	return filepath.Join(j.Release.DevBOSHCacheDir, j.SHA1)
 }
 
