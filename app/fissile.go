@@ -324,7 +324,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return err
 	}
 
-	f.UI.Println(color.GreenString("Compiling packages for dev releases:"))
+	f.UI.Println(color.GreenString("Compiling packages for releases:"))
 	for _, release := range releases {
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
@@ -681,9 +681,19 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 			releaseVersion = releaseVersions[idx]
 		}
 
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			return fmt.Errorf("Error loading release information: %s", err.Error())
+		var release *model.Release
+		var err error
+		if _, err = isFinalReleasePath(releasePath); err == nil {
+			// For final releases, only can use release name and version defined in release.MF, cannot specify them through flags.
+			release, err = model.NewFinalRelease(releasePath)
+			if err != nil {
+				return fmt.Errorf("Error loading final release information: %s", err.Error())
+			}
+		} else {
+			release, err = model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+			if err != nil {
+				return fmt.Errorf("Error loading dev release information: %s", err.Error())
+			}
 		}
 
 		releases[idx] = release
@@ -692,6 +702,34 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	f.releases = releases
 
 	return nil
+}
+
+func isFinalReleasePath(releasePath string) (bool, error) {
+	if err := util.ValidatePath(releasePath, true, "release directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "release.MF"), false, "release 'release.MF' file"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "dev_releases"), true, "release 'dev_releases' file"); err == nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "jobs"), true, "release 'jobs' directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "packages"), true, "release 'packages' directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "LICENSE"), false, "release 'LICENSE' file"); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // getReleasesByName returns all named releases, or all releases if no names are given

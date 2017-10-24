@@ -12,17 +12,57 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReleaseValidationOk(t *testing.T) {
+type ReleaseInfo struct {
+	Name               string
+	CommitHash         string
+	UncommittedChanges bool
+	Version            string
+}
+
+func TestRelease(t *testing.T) {
 	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	_, err = NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-
+	ntpDevReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpDevReleasePathCacheDir := filepath.Join(ntpDevReleasePath, "bosh-cache")
+	devRelease, err := NewDevRelease(ntpDevReleasePath, "", "", ntpDevReleasePathCacheDir)
 	assert.NoError(err)
+
+	devReleaseInfo := ReleaseInfo{
+		Name:               "ntp",
+		CommitHash:         "4bc2f2fd",
+		UncommittedChanges: true,
+		Version:            "2+dev.3",
+	}
+
+	ntpFinalReleasePath := filepath.Join(workDir, "../test-assets/ntp-final-release")
+	finalRelease, err := NewFinalRelease(ntpFinalReleasePath)
+	assert.NoError(err)
+
+	finalReleaseInfo := ReleaseInfo{
+		Name:               "ntp",
+		CommitHash:         "84166bb2",
+		UncommittedChanges: true,
+		Version:            "4",
+	}
+
+	t.Run("Dev release testReleaseMetadataOk", testReleaseMetadataOk(devRelease, devReleaseInfo))
+	t.Run("Dev release testReleasePackagesOk", testReleasePackagesOk(devRelease))
+	t.Run("Dev release testReleaseJobsOk", testReleaseJobsOk(devRelease))
+	t.Run("Dev release testLookupPackageOk", testLookupPackageOk(devRelease, "ntp-4.2.8p2"))
+	t.Run("Dev release testLookupPackageNotOk", testLookupPackageNotOk(devRelease))
+	t.Run("Dev release testLookupJobOk", testLookupJobOk(devRelease))
+	t.Run("Dev release testLookupJobNotOk", testLookupJobNotOk(devRelease))
+
+	t.Run("Final release testReleaseMetadataOk", testReleaseMetadataOk(finalRelease, finalReleaseInfo))
+	t.Run("Final release testReleasePackagesOk", testReleasePackagesOk(finalRelease))
+	t.Run("Final release testReleaseJobsOk", testReleaseJobsOk(finalRelease))
+	t.Run("Final release testLookupPackageOk", testLookupPackageOk(finalRelease, "ntp"))
+	t.Run("Final release testLookupPackageNotOk", testLookupPackageNotOk(finalRelease))
+	t.Run("Final release testLookupJobOk", testLookupJobOk(finalRelease))
+	t.Run("Final release testLookupJobNotOk", testLookupJobNotOk(finalRelease))
 }
 
 func TestReleaseValidationNonExistingPath(t *testing.T) {
@@ -39,6 +79,11 @@ func TestReleaseValidationNonExistingPath(t *testing.T) {
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "does not exist")
+
+	_, err = NewFinalRelease(releaseDir)
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "no such file or directory")
 }
 
 func TestReleaseValidationReleasePathIsAFile(t *testing.T) {
@@ -54,6 +99,11 @@ func TestReleaseValidationReleasePathIsAFile(t *testing.T) {
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "It should be a directory")
+
+	_, err = NewFinalRelease(tempFile.Name())
+
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "not a directory")
 }
 
 func TestReleaseValidationStructure(t *testing.T) {
@@ -110,115 +160,71 @@ func TestReleaseValidationStructure(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestReleaseMetadataOk(t *testing.T) {
-	assert := assert.New(t)
+func testReleaseMetadataOk(fakeRelease *Release, releaseInfo ReleaseInfo) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	// These values come from the
-	// RELEASE-DIR/dev_releases/RELEASE-NAME/REL-V1+dev.V2.yml
-	assert.Equal("ntp", release.Name)
-	assert.Equal("4bc2f2fd", release.CommitHash)
-	assert.Equal(true, release.UncommittedChanges)
-	assert.Equal("2+dev.3", release.Version)
+		// For dev release, these values come from the
+		// RELEASE-DIR/dev_releases/RELEASE-NAME/REL-V1+dev.V2.yml
+		assert.Equal(releaseInfo.Name, fakeRelease.Name)
+		assert.Equal(releaseInfo.CommitHash, fakeRelease.CommitHash)
+		assert.Equal(releaseInfo.UncommittedChanges, fakeRelease.UncommittedChanges)
+		assert.Equal(releaseInfo.Version, fakeRelease.Version)
+	}
 }
 
-func TestReleasePackagesOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Packages, 1)
+func testReleasePackagesOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+		assert.Len(fakeRelease.Packages, 1)
+	}
 }
 
-func TestReleaseJobsOk(t *testing.T) {
-	assert := assert.New(t)
-
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	assert.Len(release.Jobs, 1)
+func testReleaseJobsOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
+		assert.Len(fakeRelease.Jobs, 1)
+	}
 }
 
-func TestLookupPackageOk(t *testing.T) {
-	assert := assert.New(t)
+func testLookupPackageOk(fakeRelease *Release, packageName string) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.NoError(err)
+		pkg, err := fakeRelease.LookupPackage(packageName)
+		assert.NoError(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	pkg, err := release.LookupPackage("ntp-4.2.8p2")
-	assert.NoError(err)
-
-	assert.Equal("ntp-4.2.8p2", pkg.Name)
+		assert.Equal(packageName, pkg.Name)
+	}
 }
 
-func TestLookupPackageNotOk(t *testing.T) {
-	assert := assert.New(t)
+func testLookupPackageNotOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	_, err = release.LookupPackage("foo")
-	assert.NotNil(err)
+		_, err := fakeRelease.LookupPackage("foo")
+		assert.NotNil(err)
+	}
 }
 
-func TestLookupJobOk(t *testing.T) {
-	assert := assert.New(t)
+func testLookupJobOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.NoError(err)
+		job, err := fakeRelease.LookupJob("ntpd")
+		assert.NoError(err)
 
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	job, err := release.LookupJob("ntpd")
-	assert.NoError(err)
-
-	assert.Equal("ntpd", job.Name)
+		assert.Equal("ntpd", job.Name)
+	}
 }
 
-func TestLookupJobNotOk(t *testing.T) {
-	assert := assert.New(t)
+func testLookupJobNotOk(fakeRelease *Release) func(*testing.T) {
+	return func(t *testing.T) {
+		assert := assert.New(t)
 
-	workDir, err := os.Getwd()
-	assert.NoError(err)
-
-	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	release, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(err)
-
-	_, err = release.LookupJob("foo")
-	assert.NotNil(err)
+		_, err := fakeRelease.LookupJob("foo")
+		assert.NotNil(err)
+	}
 }
 
 func TestPackageDependencies(t *testing.T) {
