@@ -2,7 +2,6 @@ package model
 
 import (
 	"crypto/sha1"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -255,6 +254,9 @@ func (j *Job) loadJobSpec() (err error) {
 
 	j.AvailableProviders = make(map[string]jobProvidesInfo)
 	for _, provides := range jobSpec.Provides {
+		if provides.Type == "" {
+			return fmt.Errorf("job %s provider %s has no type", j.Name, provides.Name)
+		}
 		j.AvailableProviders[provides.Name] = jobProvidesInfo{
 			jobLinkInfo: jobLinkInfo{
 				Name:    provides.Name,
@@ -267,6 +269,9 @@ func (j *Job) loadJobSpec() (err error) {
 
 	j.DesiredConsumers = make([]jobConsumesInfo, 0, len(jobSpec.Consumes))
 	for _, consumes := range jobSpec.Consumes {
+		if consumes.Type == "" {
+			return fmt.Errorf("job %s consumer %s has no type", j.Name, consumes.Name)
+		}
 		j.DesiredConsumers = append(j.DesiredConsumers, jobConsumesInfo{
 			jobLinkInfo: jobLinkInfo{
 				Name: consumes.Name,
@@ -293,61 +298,6 @@ func (j *Job) MergeSpec(otherJob *Job) {
 // jobConfigTemplate is one "templates:" entry in the job config output
 type jobConfigTemplate struct {
 	Name string `json:"name"`
-}
-
-// WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
-func (j *Job) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
-	var config struct {
-		Job struct {
-			Name      string              `json:"name"`
-			Templates []jobConfigTemplate `json:"templates"`
-		} `json:"job"`
-		Parameters map[string]string      `json:"parameters"`
-		Properties map[string]interface{} `json:"properties"`
-		Networks   struct {
-			Default map[string]string `json:"default"`
-		} `json:"networks"`
-		ExportedProperties []string               `json:"exported_properties"`
-		Consumes           map[string]jobLinkInfo `json:"consumes"`
-	}
-
-	config.Job.Templates = make([]jobConfigTemplate, 0)
-	config.Parameters = make(map[string]string)
-	config.Properties = make(map[string]interface{})
-	config.Networks.Default = make(map[string]string)
-	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]jobLinkInfo)
-
-	config.Job.Name = role.Name
-
-	for _, roleJob := range role.RoleJobs {
-		config.Job.Templates = append(config.Job.Templates, jobConfigTemplate{roleJob.Name})
-		for _, consumer := range roleJob.ResolvedConsumers {
-			config.Consumes[consumer.Name] = consumer.jobLinkInfo
-		}
-	}
-
-	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
-	if err != nil {
-		return nil, err
-	}
-	properties, err := j.GetPropertiesForJob(opinions)
-	if err != nil {
-		return nil, err
-	}
-	config.Properties = properties
-
-	for _, provider := range j.AvailableProviders {
-		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
-	}
-
-	// Write out the configuration
-	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
-	if err != nil {
-		return nil, err
-	}
-
-	return jobJSON, nil
 }
 
 // GetPropertiesForJob returns the parameters for the given job, using its specs and opinions

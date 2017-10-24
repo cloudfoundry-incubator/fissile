@@ -3,6 +3,7 @@ package model
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -342,6 +343,11 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 
 			roleJob.Job = job
 
+			if roleJob.ResolvedConsumers == nil {
+				// No explicitly specified consumers
+				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
+			}
+
 			for name, info := range roleJob.ResolvedConsumers {
 				info.Name = name
 				roleJob.ResolvedConsumers[name] = info
@@ -394,15 +400,17 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 			var availableProviders []string
 			for availableName, availableProvider := range roleJob.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
-				providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
-					jobLinkInfo: jobLinkInfo{
-						Name:     availableProvider.Name,
-						Type:     availableProvider.Type,
-						RoleName: role.Name,
-						JobName:  roleJob.Name,
-					},
-					Properties: availableProvider.Properties,
-				})
+				if availableProvider.Type != "" {
+					providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
+						jobLinkInfo: jobLinkInfo{
+							Name:     availableProvider.Name,
+							Type:     availableProvider.Type,
+							RoleName: role.Name,
+							JobName:  roleJob.Name,
+						},
+						Properties: availableProvider.Properties,
+					})
+				}
 			}
 			for name, provider := range roleJob.ExportedProviders {
 				info, ok := roleJob.Job.AvailableProviders[name]
@@ -433,9 +441,6 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 		for _, roleJob := range role.RoleJobs {
 			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.DesiredConsumers))
 			copy(expectedConsumers, roleJob.Job.DesiredConsumers)
-			if roleJob.ResolvedConsumers == nil {
-				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
-			}
 			// Deal with any explicitly marked consumers in the role manifest
 			for consumerName, consumerInfo := range roleJob.ResolvedConsumers {
 				consumerAlias := consumerName
@@ -461,9 +466,10 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					jobLinkInfo: provider.jobLinkInfo,
 				}
 
-				for i := len(expectedConsumers) - 1; i >= 0; i-- {
+				for i := range expectedConsumers {
 					if expectedConsumers[i].Name == consumerName {
 						expectedConsumers = append(expectedConsumers[:i], expectedConsumers[i+1:]...)
+						break
 					}
 				}
 			}
@@ -744,6 +750,56 @@ func (r *Role) calculateRoleConfigurationTemplates() {
 	}
 
 	r.Configuration.Templates = roleConfigs
+}
+
+// WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
+func (roleJob *RoleJob) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
+	var config struct {
+		Job struct {
+			Name string `json:"name"`
+		} `json:"job"`
+		Parameters map[string]string      `json:"parameters"`
+		Properties map[string]interface{} `json:"properties"`
+		Networks   struct {
+			Default map[string]string `json:"default"`
+		} `json:"networks"`
+		ExportedProperties []string               `json:"exported_properties"`
+		Consumes           map[string]jobLinkInfo `json:"consumes"`
+	}
+
+	config.Parameters = make(map[string]string)
+	config.Properties = make(map[string]interface{})
+	config.Networks.Default = make(map[string]string)
+	config.ExportedProperties = make([]string, 0)
+	config.Consumes = make(map[string]jobLinkInfo)
+
+	config.Job.Name = role.Name
+
+	for _, consumer := range roleJob.ResolvedConsumers {
+		config.Consumes[consumer.Name] = consumer.jobLinkInfo
+	}
+
+	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
+	if err != nil {
+		return nil, err
+	}
+	properties, err := roleJob.Job.GetPropertiesForJob(opinions)
+	if err != nil {
+		return nil, err
+	}
+	config.Properties = properties
+
+	for _, provider := range roleJob.Job.AvailableProviders {
+		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
+	}
+
+	// Write out the configuration
+	jobJSON, err := json.MarshalIndent(config, "", "    ") // 4-space indent
+	if err != nil {
+		return nil, err
+	}
+
+	return jobJSON, nil
 }
 
 // validateVariableType checks that only legal values are used for

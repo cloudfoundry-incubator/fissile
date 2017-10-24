@@ -305,11 +305,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 		expectedString := `{
 			"job": {
-				"name": "myrole",
-				"templates": [
-					{"name":"new_hostname"},
-					{"name":"tor"}
-				]
+				"name": "myrole"
 			},
 			"networks":{
 				"default":{}

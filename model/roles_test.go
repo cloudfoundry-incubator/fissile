@@ -686,6 +686,9 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	for _, r := range roleManifest.Roles {
 		for _, roleJob := range r.RoleJobs {
 			roleJob.Name = roleJob.Job.Name
+			if roleJob.ResolvedConsumers == nil {
+				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
+			}
 		}
 	}
 	errors := roleManifest.resolveLinks()
@@ -733,4 +736,94 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			},
 		}, consumes["actual-consumer-name"], "resolved to incorrect provider for alias")
 	}
+}
+
+func TestWriteConfigs(t *testing.T) {
+	assert := assert.New(t)
+
+	job := &Job{
+		Name: "silly job",
+		Properties: []*JobProperty{
+			&JobProperty{
+				Name:    "prop",
+				Default: "bar",
+			},
+		},
+		AvailableProviders: map[string]jobProvidesInfo{
+			"<not used>": jobProvidesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "<not used>",
+				},
+				Properties: []string{"exported-prop"},
+			},
+		},
+		DesiredConsumers: []jobConsumesInfo{
+			jobConsumesInfo{
+				jobLinkInfo: jobLinkInfo{
+					Name: "serious",
+					Type: "serious-type",
+				},
+			},
+		},
+	}
+
+	role := &Role{
+		Name: "dummy role",
+		RoleJobs: []*RoleJob{
+			{
+				Job:  job,
+				Name: "silly job",
+				ResolvedConsumers: map[string]jobConsumesInfo{
+					"serious": jobConsumesInfo{
+						jobLinkInfo: jobLinkInfo{
+							Name:     "serious",
+							Type:     "serious-type",
+							RoleName: "dummy role",
+							JobName:  job.Name,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tempFile, err := ioutil.TempFile("", "fissile-job-test")
+	assert.NoError(err)
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString(strings.Replace(`---
+	properties:
+		foo: 3
+	`, "\t", "    ", -1))
+	assert.NoError(err)
+	assert.NoError(tempFile.Close())
+
+	json, err := role.RoleJobs[0].WriteConfigs(role, tempFile.Name(), tempFile.Name())
+	assert.NoError(err)
+
+	assert.JSONEq(`
+	{
+		"job": {
+			"name": "dummy role"
+		},
+		"parameters": {},
+		"properties": {
+			"prop": "bar"
+		},
+		"networks": {
+			"default": {}
+		},
+		"exported_properties": [
+			"prop"
+		],
+		"consumes": {
+			"serious": {
+				"role": "dummy role",
+				"job": "silly job"
+			}
+		},
+		"exported_properties": [
+			"exported-prop"
+		]
+	}`, string(json))
 }
