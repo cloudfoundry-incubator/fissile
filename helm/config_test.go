@@ -156,6 +156,7 @@ List:
 
 func TestHelmMapping(t *testing.T) {
 	mapping := NewMapping("foo", 1)
+	mapping.Add("bar", "too")
 	mapping.Add("bar", "two")
 
 	root := NewMapping("Mapping", mapping)
