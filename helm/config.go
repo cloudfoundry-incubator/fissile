@@ -287,8 +287,16 @@ func NewMapping(values ...interface{}) *Mapping {
 	return mapping
 }
 
-// Add a single named node at the end of the list.
+// Add a single named node at the end of the list, replacing any existing
+// entries of the same name.
 func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeModifier) {
+	for i, node := range mapping.nodes {
+		if node.name == name {
+			mapping.nodes = append(mapping.nodes[:i], mapping.nodes[i+1:]...)
+			// There can be at most one node with this name
+			break
+		}
+	}
 	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: NewNode(value, modifiers...)})
 }
 

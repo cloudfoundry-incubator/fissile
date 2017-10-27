@@ -23,7 +23,11 @@ func isYAMLSubsetInner(assert *assert.Assertions, expected, actual interface{}, 
 
 	switch expectedValue.Kind() {
 	case reflect.Map:
-		if !assert.Equal(reflect.Map, actualValue.Kind(), "expected YAML path %s to be a %s, but is actually %s", yamlPath, expectedValue.Type(), actualValue.Type()) {
+		actualType := "<nil>"
+		if actualValue.IsValid() {
+			actualType = fmt.Sprintf("%s", actualValue.Type())
+		}
+		if !assert.Equal(reflect.Map, actualValue.Kind(), "expected YAML path %s to be a %s, but is actually %s", yamlPath, expectedValue.Type(), actualType) {
 			return false
 		}
 		success := true

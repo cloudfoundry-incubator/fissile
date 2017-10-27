@@ -15,9 +15,6 @@ import (
 	"github.com/SUSE/fissile/model"
 )
 
-// monitPort is the port monit runs on in the pods
-const monitPort = 2289
-
 // defaultInitialDelaySeconds is the default initial delay for liveness probes
 const defaultInitialDelaySeconds = 600
 
@@ -272,11 +269,8 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 		return nil, nil
 	}
 
-	var probe *helm.Mapping
 	if role.Run.HealthCheck != nil && role.Run.HealthCheck.Liveness != nil {
-		var complete bool
-		var err error
-		probe, complete, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
+		probe, complete, err := configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
 		if probe.Get("initialDelaySeconds").String() == "0" {
 			probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
@@ -285,18 +279,9 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 			return probe, err
 		}
 	}
-	if role.Type != model.RoleTypeBosh {
-		return nil, nil
-	}
 
-	if probe == nil {
-		probe = helm.NewMapping()
-	}
-	if probe.Get("initialDelaySeconds") == nil {
-		probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
-	}
-	probe.Add("tcpSocket", helm.NewMapping("port", monitPort))
-	return probe.Sort(), nil
+	// No custom probes; we don't have a default one either.
+	return nil, nil
 }
 
 func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {

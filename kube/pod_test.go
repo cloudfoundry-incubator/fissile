@@ -58,37 +58,39 @@ type Sample struct {
 }
 
 func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
-	assert := assert.New(t)
-	if sample.err != "" {
-		assert.EqualError(err, sample.err, sample.desc)
-		return
-	}
-	if !assert.NoError(err, sample.desc) {
-		return
-	}
-	if sample.expected == "" {
-		assert.Nil(helmConfig)
-		return
-	}
-	actualYAML := &bytes.Buffer{}
-	if helmConfig != nil && !assert.NoError(helm.NewEncoder(actualYAML).Encode(helmConfig)) {
-		return
-	}
-	expectedYAML := strings.Replace(sample.expected, "-\t", "-   ", -1)
-	expectedYAML = strings.Replace(expectedYAML, "\t", "    ", -1)
+	t.Run(sample.desc, func(t *testing.T) {
+		assert := assert.New(t)
+		if sample.err != "" {
+			assert.EqualError(err, sample.err, sample.desc)
+			return
+		}
+		if !assert.NoError(err, sample.desc) {
+			return
+		}
+		if sample.expected == "" {
+			assert.Nil(helmConfig)
+			return
+		}
+		actualYAML := &bytes.Buffer{}
+		if helmConfig != nil && !assert.NoError(helm.NewEncoder(actualYAML).Encode(helmConfig)) {
+			return
+		}
+		expectedYAML := strings.Replace(sample.expected, "-\t", "-   ", -1)
+		expectedYAML = strings.Replace(expectedYAML, "\t", "    ", -1)
 
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		assert.Fail(expectedYAML)
-		return
-	}
-	if !assert.NoError(yaml.Unmarshal(actualYAML.Bytes(), &actual)) {
-		assert.Fail(actualYAML.String())
-		return
-	}
-	if !testhelpers.IsYAMLSubset(assert, expected, actual) {
-		assert.Fail("Not a proper YAML subset", "*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
-	}
+		var expected, actual interface{}
+		if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+			assert.Fail(expectedYAML)
+			return
+		}
+		if !assert.NoError(yaml.Unmarshal(actualYAML.Bytes(), &actual)) {
+			assert.Fail(actualYAML.String())
+			return
+		}
+		if !testhelpers.IsYAMLSubset(assert, expected, actual) {
+			assert.Fail("Not a proper YAML subset", "*Actual*\n%s\n*Expected*\n%s\n", actualYAML.String(), expectedYAML)
+		}
+	})
 }
 
 func TestPodGetVolumes(t *testing.T) {
@@ -354,12 +356,9 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 
 	samples := []Sample{
 		{
-			desc:  "Always on, defaults",
-			input: nil,
-			expected: `---
-				initialDelaySeconds: 600
-				tcpSocket:
-					port: 2289`,
+			desc:     "Always on, defaults",
+			input:    nil,
+			expected: `---`,
 		},
 		{
 			desc: "Port probe",
@@ -486,17 +485,6 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 					scheme: HTTP
 					port:   80
 					path:   "/path"`,
-		},
-		{
-			desc: "Defaults, liveness timeout",
-			input: &model.HealthProbe{
-				Timeout: 20,
-			},
-			expected: `---
-				timeoutSeconds:      20
-				initialDelaySeconds: 600
-				tcpSocket:
-					port: 2289`,
 		},
 		{
 			desc: "Port probe, liveness timeout",
