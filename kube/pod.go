@@ -269,17 +269,19 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 		return nil, nil
 	}
 
-	var err error
-	probe := helm.NewMapping()
 	if role.Run.HealthCheck != nil && role.Run.HealthCheck.Liveness != nil {
-		probe, _, err = configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
+		probe, complete, err := configureContainerProbe(role, "liveness", role.Run.HealthCheck.Liveness)
 
 		if probe.Get("initialDelaySeconds").String() == "0" {
 			probe.Add("initialDelaySeconds", defaultInitialDelaySeconds)
 		}
+		if complete || err != nil {
+			return probe, err
+		}
 	}
 
-	return probe, err
+	// No custom probes; we don't have a default one either.
+	return nil, nil
 }
 
 func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {

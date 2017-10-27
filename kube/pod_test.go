@@ -487,15 +487,6 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 					path:   "/path"`,
 		},
 		{
-			desc: "Defaults, liveness timeout",
-			input: &model.HealthProbe{
-				Timeout: 20,
-			},
-			expected: `---
-				timeoutSeconds:      20
-				initialDelaySeconds: 600`,
-		},
-		{
 			desc: "Port probe, liveness timeout",
 			input: &model.HealthProbe{
 				Port:    1234,
