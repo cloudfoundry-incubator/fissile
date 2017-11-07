@@ -409,6 +409,40 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 	assert.Nil(roleManifest)
 }
 
+func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/rbac-missing-account.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.EqualError(err, `roles[myrole].run.service-account: Not found: "missing-account"`)
+	assert.Nil(roleManifest)
+}
+
+func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/rbac-missing-role.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	assert.EqualError(err, `configuration.auth.accounts[test-account].roles: Not found: "missing-role"`)
+	assert.Nil(roleManifest)
+}
+
 func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	assert := assert.New(t)
 

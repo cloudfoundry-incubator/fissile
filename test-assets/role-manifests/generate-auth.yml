@@ -1,0 +1,25 @@
+---
+roles:
+- name: non-default
+  run:
+    service-account: non-default
+- name: default
+  run: {}
+configuration:
+  auth:
+    accounts:
+      non-default:
+        roles:
+        - extra-permissions
+      default:
+        roles:
+        - pointless
+    roles:
+      extra-permissions:
+      - apiGroups: ['']
+        resources: [pods]
+        verbs: [create, get, list, update, patch, delete]
+      pointless:
+      - apiGroups: ['']
+        resources: [bird]
+        verbs: [fly]
