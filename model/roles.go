@@ -86,6 +86,7 @@ type RoleRun struct {
 	ServiceAccount    string                `yaml:"service-account,omitempty"`
 	Affinity          interface{}           `yaml:"affinity,omitempty"`
 	Environment       []string              `yaml:"env"`
+	ObjectAnnotations *map[string]string    `yaml:"object-annotations,omitempty"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
