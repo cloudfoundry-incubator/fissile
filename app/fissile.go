@@ -865,6 +865,11 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 		return err
 	}
 
+	err = f.generateAuth(settings)
+	if err != nil {
+		return err
+	}
+
 	if settings.CreateHelmChart {
 		values, err := kube.MakeValues(settings)
 		if err != nil {
@@ -890,6 +895,52 @@ func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings k
 		return err
 	}
 	return f.writeHelmNode(secretsDir, fileName, secrets)
+}
+
+func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
+	subDir := "auth"
+	if settings.CreateHelmChart {
+		subDir = "templates"
+	}
+	authDir := filepath.Join(settings.OutputDir, subDir)
+	err := os.MkdirAll(authDir, 0755)
+	if err != nil {
+		return err
+	}
+	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
+		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
+		if err != nil {
+			return err
+		}
+		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-role-%s.yaml", roleName), node)
+		if err != nil {
+			return err
+		}
+	}
+	for accountName, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+		nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
+		if err != nil {
+			return err
+		}
+		outputPath := filepath.Join(authDir, fmt.Sprintf("account-%s.yaml", accountName))
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+		encoder := helm.NewEncoder(outputFile, helm.EmptyLines(true))
+		for _, n := range nodes {
+			err = encoder.Encode(n)
+			if err != nil {
+				return err
+			}
+		}
+		err = outputFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error {

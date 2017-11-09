@@ -1,0 +1,10 @@
+---
+configuration:
+  auth:
+    accounts:
+      test-account:
+        roles:
+        - missing-role
+        - valid-role
+    roles:
+      valid-role: []

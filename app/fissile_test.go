@@ -8,13 +8,18 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 
+	"github.com/SUSE/fissile/kube"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestCleanCacheEmpty(t *testing.T) {
@@ -325,6 +330,149 @@ func TestSerializeJobs(t *testing.T) {
 
 	_, err = (&Fissile{}).SerializeJobs()
 	assert.EqualError(err, "Releases not loaded")
+}
+
+func TestGenerateAuth(t *testing.T) {
+	workDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	require.NoError(t, err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/generate-auth.yml")
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	require.NoError(t, err)
+	require.NotNil(t, roleManifest)
+
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	f := NewFissileApplication(".", ui)
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	require.NoError(t, err)
+
+	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
+	require.NoError(t, err)
+	defer os.RemoveAll(outDir)
+
+	settings := kube.ExportSettings{
+		OutputDir:    outDir,
+		RoleManifest: roleManifest,
+	}
+	err = f.generateAuth(settings)
+	require.NoError(t, err)
+
+	samples := map[string][]string{
+		`auth/auth-role-extra-permissions.yaml`: []string{
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"kind": "Role",
+				"metadata": {
+					"name": "extra-permissions"
+				},
+				"rules": [
+					{
+						"apiGroups": [""],
+						"resources": ["pods"],
+						"verbs": ["create", "get", "list", "update", "patch", "delete"]
+					}
+				]
+			}`,
+		},
+		`auth/auth-role-pointless.yaml`: []string{
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"kind": "Role",
+				"metadata": {
+					"name": "pointless"
+				},
+				"rules": [
+					{
+						"apiGroups": [""],
+						"resources": ["bird"],
+						"verbs": ["fly"]
+					}
+				]
+			}`,
+		},
+		`auth/account-non-default.yaml`: []string{
+			`{
+				"apiVersion": "v1",
+				"kind": "ServiceAccount",
+				"metadata": {
+					"name": "non-default"
+				}
+			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"name": "non-default-extra-permissions-binding"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "non-default"
+					}
+				],
+				"roleRef": {
+					"kind": "Role",
+					"name": "extra-permissions",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
+		},
+		`auth/account-default.yaml`: []string{
+			// Service accounts named "default" should not get created
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"name": "default-pointless-binding"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "default"
+					}
+				],
+				"roleRef": {
+					"kind": "Role",
+					"name": "pointless",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
+		},
+	}
+
+	for name, expectedText := range samples {
+		t.Run(name, func(t *testing.T) {
+			actualText, err := ioutil.ReadFile(filepath.Join(outDir, name))
+			require.NoError(t, err)
+			actualText = []byte(strings.TrimPrefix(string(actualText), "---\n"))
+			actualChunks := strings.Split(string(actualText), "---\n")
+
+			assert.Len(t, actualChunks, len(expectedText), "Unexpected number of chunks")
+
+			for i, expectedChunk := range expectedText {
+				// Run _another_ subtest so that we know which resource failed
+				t.Run("", func(t *testing.T) {
+					if i >= len(actualChunks) {
+						// Already caught with the Len() assertion above
+						return
+					}
+					var expected, actual map[string]interface{}
+					err = json.Unmarshal([]byte(expectedChunk), &expected)
+					assert.NoError(t, err, "Failed to unmarshal expected data")
+
+					err = yaml.Unmarshal([]byte(actualChunks[i]), &actual)
+					assert.NoError(t, err, "Failed to unmarshal actual results")
+
+					testhelpers.IsYAMLSubset(assert.New(t), expected, actual)
+				})
+			}
+		})
+	}
 }
 
 func TestDevDiffConfigurations(t *testing.T) {

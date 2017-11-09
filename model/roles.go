@@ -83,6 +83,7 @@ type RoleRun struct {
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
+	ServiceAccount    string                `yaml:"service-account,omitempty"`
 	Affinity          interface{}           `yaml:"affinity,omitempty"`
 	Environment       []string              `yaml:"env"`
 }
@@ -145,9 +146,28 @@ const (
 	GeneratorTypeCertificate   = GeneratorType("Certificate")   // Certificate
 )
 
+// An AuthRule is a single rule for a RBAC authorization role
+type AuthRule struct {
+	APIGroups []string `yaml:"apiGroups"`
+	Resources []string `yaml:"resources"`
+	Verbs     []string `yaml:"verbs"`
+}
+
+// An AuthRole is a role for RBAC authorization
+type AuthRole []AuthRule
+
+// An AuthAccount is a service account for RBAC authorization
+type AuthAccount struct {
+	Roles []string `yaml:"roles"`
+}
+
 // Configuration contains information about how to configure the
 // resulting images
 type Configuration struct {
+	Authorization struct {
+		Roles    map[string]AuthRole    `yaml:"roles,omitempty"`
+		Accounts map[string]AuthAccount `yaml:"accounts,omitempty"`
+	} `yaml:"auth,omitempty"`
 	Templates map[string]string          `yaml:"templates"`
 	Variables ConfigurationVariableSlice `yaml:"variables"`
 }
@@ -367,6 +387,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
 		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
 		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
+		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -1035,6 +1056,14 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 			fmt.Sprintf("roles[%s].run.exposed-ports[%s].protocol", role.Name, role.Run.ExposedPorts[i].Name))...)
 	}
 
+	if role.Run.ServiceAccount != "" {
+		accountName := role.Run.ServiceAccount
+		if _, ok := roleManifest.Configuration.Authorization.Accounts[accountName]; !ok {
+			allErrs = append(allErrs, validation.NotFound(
+				fmt.Sprintf("roles[%s].run.service-account", role.Name), accountName))
+		}
+	}
+
 	if len(role.Run.Environment) == 0 {
 		return allErrs
 	}
@@ -1157,6 +1186,20 @@ func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
 		}
 	}
 
+	return allErrs
+}
+
+func validateServiceAccounts(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+	for accountName, accountInfo := range roleManifest.Configuration.Authorization.Accounts {
+		for _, roleName := range accountInfo.Roles {
+			if _, ok := roleManifest.Configuration.Authorization.Roles[roleName]; !ok {
+				allErrs = append(allErrs, validation.NotFound(
+					fmt.Sprintf("configuration.auth.accounts[%s].roles", accountName),
+					roleName))
+			}
+		}
+	}
 	return allErrs
 }
 

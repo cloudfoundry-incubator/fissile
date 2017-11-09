@@ -72,6 +72,14 @@ func NewPodTemplate(role *model.Role, settings ExportSettings) (helm.Node, error
 	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("restartPolicy", "Always")
+	if role.Run.ServiceAccount != "" {
+		// This role requires a custom service account
+		block := helm.Block("")
+		if settings.CreateHelmChart {
+			block = helm.Block(authModeRBAC)
+		}
+		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
+	}
 	spec.Sort()
 
 	podTemplate := helm.NewMapping()
