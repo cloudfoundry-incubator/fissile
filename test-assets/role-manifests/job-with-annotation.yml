@@ -1,0 +1,12 @@
+---
+roles:
+- name: role
+  type: bosh-task
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  run:
+    flight-stage: post-flight
+    memory: 128
+    object-annotations:
+      "helm.sh/hook": post-install

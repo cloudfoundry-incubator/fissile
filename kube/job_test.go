@@ -15,11 +15,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func jobTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
+func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *model.Role {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/jobs.yml")
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 
@@ -42,7 +42,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 
 func TestJobPreFlight(t *testing.T) {
 	assert := assert.New(t)
-	role := jobTestLoadRole(assert, "pre-role")
+	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
 	if role == nil {
 		return
 	}
@@ -88,7 +88,7 @@ func TestJobPreFlight(t *testing.T) {
 
 func TestJobPostFlight(t *testing.T) {
 	assert := assert.New(t)
-	role := jobTestLoadRole(assert, "post-role")
+	role := jobTestLoadRole(assert, "post-role", "jobs.yml")
 	if role == nil {
 		return
 	}
@@ -128,5 +128,57 @@ func TestJobPostFlight(t *testing.T) {
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return
 	}
+	testhelpers.IsYAMLSubset(assert, expected, actual)
+}
+
+func TestJobWithAnnotations(t *testing.T) {
+	assert := assert.New(t)
+
+	role := jobTestLoadRole(assert, "role", "job-with-annotation.yml")
+	if role == nil {
+		return
+	}
+
+	job, err := NewJob(role, ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	})
+	if !assert.NoError(err, "Failed to create job from role pre-role") {
+		return
+	}
+	assert.NotNil(job)
+
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
+		return
+	}
+
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
+		return
+	}
+	expectedYAML := strings.Replace(`---
+		apiVersion: extensions/v1beta1
+		kind: Job
+		metadata:
+			name: role
+			annotations:
+				helm.sh/hook: post-install
+	`, "\t", "    ", -1)
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		return
+	}
+
+	/*
+		spec:
+			template:
+				metadata:
+					name: role
+				spec:
+					containers:
+					-
+						name: role
+					restartPolicy: OnFailure
+	*/
+
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
