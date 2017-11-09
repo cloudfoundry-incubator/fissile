@@ -168,17 +168,5 @@ func TestJobWithAnnotations(t *testing.T) {
 		return
 	}
 
-	/*
-		spec:
-			template:
-				metadata:
-					name: role
-				spec:
-					containers:
-					-
-						name: role
-					restartPolicy: OnFailure
-	*/
-
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
