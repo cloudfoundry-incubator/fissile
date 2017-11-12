@@ -48,7 +48,7 @@ var RootCmd = &cobra.Command{
 	Use:   "fissile",
 	Short: "The BOSH disintegrator",
 	Long: `
-Fissile converts existing BOSH dev releases into docker images.
+Fissile converts existing BOSH final or dev releases into docker images.
 
 It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH 
 agent.
@@ -96,7 +96,7 @@ func init() {
 		"release",
 		"r",
 		"",
-		"Path to dev BOSH release(s).",
+		"Path to final or dev BOSH release(s).",
 	)
 
 	// We can't use slices here because of https://github.com/spf13/viper/issues/112
@@ -104,7 +104,7 @@ func init() {
 		"release-name",
 		"n",
 		"",
-		"Name of a dev BOSH release; if empty, default configured dev release name will be used",
+		"Name of a dev BOSH release; if empty, default configured dev release name will be used; Final release always use the name in release.MF",
 	)
 
 	// We can't use slices here because of https://github.com/spf13/viper/issues/112
@@ -112,7 +112,7 @@ func init() {
 		"release-version",
 		"v",
 		"",
-		"Version of a dev BOSH release; if empty, the latest dev release will be used",
+		"Version of a dev BOSH release; if empty, the latest dev release will be used; Final release always use the version in release.MF",
 	)
 
 	RootCmd.PersistentFlags().StringP(

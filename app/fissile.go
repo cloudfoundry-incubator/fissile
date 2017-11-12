@@ -52,7 +52,7 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
-// ListPackages will list all BOSH packages within a list of dev releases
+// ListPackages will list all BOSH packages within a list of releases
 func (f *Fissile) ListPackages(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -90,7 +90,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 	return nil
 }
 
-// ListJobs will list all jobs within a list of dev releases
+// ListJobs will list all jobs within a list of releases
 func (f *Fissile) ListJobs(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -128,7 +128,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 	return nil
 }
 
-// ListProperties will list all properties in all jobs within a list of dev releases
+// ListProperties will list all properties in all jobs within a list of releases
 func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -190,7 +190,7 @@ func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 	return releases, nil
 }
 
-// SerializeJobs will return all of the jobs within the dev releases, keyed by fingerprint
+// SerializeJobs will return all of the jobs within the releases, keyed by fingerprint
 func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
 	if len(f.releases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
@@ -515,7 +515,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 	return nil
 }
 
-// GenerateRoleImages generates all role images using dev releases
+// GenerateRoleImages generates all role images using releases
 func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
