@@ -52,7 +52,7 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
-// ListPackages will list all BOSH packages within a list of dev releases
+// ListPackages will list all BOSH packages within a list of releases
 func (f *Fissile) ListPackages(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -90,7 +90,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 	return nil
 }
 
-// ListJobs will list all jobs within a list of dev releases
+// ListJobs will list all jobs within a list of releases
 func (f *Fissile) ListJobs(verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -128,7 +128,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 	return nil
 }
 
-// ListProperties will list all properties in all jobs within a list of dev releases
+// ListProperties will list all properties in all jobs within a list of releases
 func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -190,7 +190,7 @@ func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 	return releases, nil
 }
 
-// SerializeJobs will return all of the jobs within the dev releases, keyed by fingerprint
+// SerializeJobs will return all of the jobs within the releases, keyed by fingerprint
 func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
 	if len(f.releases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
@@ -324,7 +324,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return err
 	}
 
-	f.UI.Println(color.GreenString("Compiling packages for dev releases:"))
+	f.UI.Println(color.GreenString("Compiling packages for releases:"))
 	for _, release := range releases {
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
@@ -515,7 +515,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 	return nil
 }
 
-// GenerateRoleImages generates all role images using dev releases
+// GenerateRoleImages generates all role images using releases
 func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -681,9 +681,19 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 			releaseVersion = releaseVersions[idx]
 		}
 
-		release, err := model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-		if err != nil {
-			return fmt.Errorf("Error loading release information: %s", err.Error())
+		var release *model.Release
+		var err error
+		if _, err = isFinalReleasePath(releasePath); err == nil {
+			// For final releases, only can use release name and version defined in release.MF, cannot specify them through flags.
+			release, err = model.NewFinalRelease(releasePath)
+			if err != nil {
+				return fmt.Errorf("Error loading final release information: %s", err.Error())
+			}
+		} else {
+			release, err = model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+			if err != nil {
+				return fmt.Errorf("Error loading dev release information: %s", err.Error())
+			}
 		}
 
 		releases[idx] = release
@@ -692,6 +702,34 @@ func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []str
 	f.releases = releases
 
 	return nil
+}
+
+func isFinalReleasePath(releasePath string) (bool, error) {
+	if err := util.ValidatePath(releasePath, true, "release directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "release.MF"), false, "release 'release.MF' file"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "dev_releases"), true, "release 'dev_releases' file"); err == nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "jobs"), true, "release 'jobs' directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "packages"), true, "release 'packages' directory"); err != nil {
+		return false, err
+	}
+
+	if err := util.ValidatePath(filepath.Join(releasePath, "LICENSE"), false, "release 'LICENSE' file"); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // getReleasesByName returns all named releases, or all releases if no names are given
