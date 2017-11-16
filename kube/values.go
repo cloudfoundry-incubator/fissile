@@ -12,7 +12,7 @@ import (
 func MakeValues(settings ExportSettings) (helm.Node, error) {
 	env := helm.NewMapping()
 	for name, cv := range model.MakeMapOfVariables(settings.RoleManifest) {
-		if strings.HasPrefix(name, "KUBE_SIZING_") {
+		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.Type == model.CVTypeEnv {
 			continue
 		}
 		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
