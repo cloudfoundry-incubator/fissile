@@ -87,9 +87,18 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 
 	spec := helm.NewMapping()
 	spec.Add("selector", helm.NewMapping(RoleNameLabel, role.Name))
-	spec.Add("type", "ClusterIP")
+
+	if settings.CreateHelmChart {
+		spec.Add("type", "{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}")
+	} else {
+		spec.Add("type", "ClusterIP")
+	}
 	if headless {
-		spec.Add("clusterIP", "None")
+		if settings.CreateHelmChart {
+			spec.Add("clusterIP", "None", helm.Block("if not .Values.services.loadbalanced"))
+		} else {
+			spec.Add("clusterIP", "None")
+		}
 	}
 	if public {
 		externalIP := "192.168.77.77"
