@@ -91,6 +91,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	values := helm.NewMapping()
 	values.Add("env", env)
 	values.Add("sizing", sizing.Sort())
+	values.Add("services", helm.NewMapping("loadbalanced", false))
 	values.Add("kube", kube)
 
 	return values, nil
