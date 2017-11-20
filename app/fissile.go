@@ -837,6 +837,24 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 		return err
 	}
 
+	cvs := model.MakeMapOfVariables(settings.RoleManifest)
+	for key, value := range cvs {
+		if !value.Secret {
+			delete(cvs, key)
+		}
+	}
+	// cvs now holds only the secrets.
+	var secrets helm.Node
+	secrets, settings.Secrets, err = kube.MakeSecrets(cvs, settings)
+	if err != nil {
+		return err
+	}
+
+	err = f.generateSecrets("secrets.yaml", secrets, settings)
+	if err != nil {
+		return err
+	}
+
 	registryCredentials, err := kube.MakeRegistryCredentials(settings)
 	if err != nil {
 		return err
