@@ -31,13 +31,22 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 	data := helm.NewMapping()
 	for name, cv := range secrets {
 		var value string
+
+		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
+		key := strings.ToLower(strings.Replace(name, "_", "-", -1))
+
+		refs[name] = SecretRef{
+			Secret: "secret",
+			Key:    key,
+		}
+
 		if settings.CreateHelmChart {
-			switch {
-			case cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword:
+			if cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
+				// There is a generator, so it will be created by a job during runtime
+				continue
+			} else {
 				errString := fmt.Sprintf("%s configuration missing", cv.Name)
 				value = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, cv.Name)
-			case cv.Generator.Type == model.GeneratorTypePassword:
-				value = "{{ randAlphaNum 32 | b64enc | quote }}"
 			}
 		} else {
 			ok, value := cv.Value(settings.Defaults)
@@ -47,14 +56,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 			value = base64.StdEncoding.EncodeToString([]byte(value))
 		}
 
-		// (**) "secrets need to be lowercase and can only use dashes, not underscores"
-		key := strings.ToLower(strings.Replace(name, "_", "-", -1))
-
 		data.Add(key, helm.NewNode(value, helm.Comment(cv.Description)))
-		refs[name] = SecretRef{
-			Secret: "secret",
-			Key:    key,
-		}
 	}
 	data.Sort()
 
