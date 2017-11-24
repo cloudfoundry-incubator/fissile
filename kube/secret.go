@@ -41,7 +41,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 		}
 
 		if settings.CreateHelmChart {
-			if cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
+			if cv.Generator != nil {
 				// There is a generator, so it will be created by a job during runtime
 				continue
 			} else {
