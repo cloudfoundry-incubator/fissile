@@ -15,7 +15,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.Type == model.CVTypeEnv {
 			continue
 		}
-		if !cv.Secret || cv.Generator == nil || cv.Generator.Type != model.GeneratorTypePassword {
+		if !cv.Secret || cv.Generator == nil {
 			var value interface{}
 			ok, value := cv.Value(settings.Defaults)
 			if !ok {
