@@ -60,7 +60,11 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 	}
 	data.Sort()
 
-	secret := newKubeConfig("v1", "Secret", "secret")
+	secretName := "secret"
+	if settings.UseSecretsGenerator {
+		secretName = "secret-update"
+	}
+	secret := newKubeConfig("v1", "Secret", secretName)
 	secret.Add("data", data)
 
 	return secret.Sort(), refs, nil
