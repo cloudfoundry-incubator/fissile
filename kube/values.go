@@ -26,6 +26,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 				comment += fmt.Sprintf("\nExample: %s", cv.Example)
 			}
 			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
+		} else if cv.Secret && cv.Generator != nil {
+			// Secrets with generators should appear in values.yaml as nulls
+			// so they *can* be overridden at runtime.
+			comment := cv.Description
+			if cv.Example != "" {
+				comment += fmt.Sprintf("\nExample: %s", cv.Example)
+			}
+			env.Add(name, helm.NewNode(nil, helm.Comment(comment)))
 		}
 	}
 	env.Sort()
