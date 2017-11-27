@@ -9,10 +9,11 @@ import (
 )
 
 var (
-	flagBuildKubeOutputDir       string
-	flagBuildKubeDefaultEnvFiles []string
-	flagBuildKubeUseMemoryLimits bool
-	flagBuildKubeTagExtra        string
+	flagBuildKubeOutputDir           string
+	flagBuildKubeDefaultEnvFiles     []string
+	flagBuildKubeUseMemoryLimits     bool
+	flagBuildKubeTagExtra            string
+	flagBuildKubeUseSecretsGenerator bool
 )
 
 // buildKubeCmd represents the kube command
@@ -26,6 +27,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
+		flagBuildKubeUseSecretsGenerator = buildKubeViper.GetBool("use-secrets-generator")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -56,7 +58,7 @@ var buildKubeCmd = &cobra.Command{
 			FissileVersion:      fissile.Version,
 			Opinions:            opinions,
 			CreateHelmChart:     false,
-			UseSecretsGenerator: false,
+			UseSecretsGenerator: flagBuildKubeUseSecretsGenerator,
 			TagExtra:            flagBuildKubeTagExtra,
 		}
 
@@ -96,6 +98,13 @@ func init() {
 		"",
 		"",
 		"Additional information to use in computing the image tags",
+	)
+
+	buildKubeCmd.PersistentFlags().BoolP(
+		"use-secrets-generator",
+		"",
+		false,
+		"The project uses the a secret generator pre-flight job",
 	)
 
 	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())
