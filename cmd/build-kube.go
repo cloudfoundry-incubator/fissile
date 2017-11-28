@@ -104,7 +104,7 @@ func init() {
 		"use-secrets-generator",
 		"",
 		false,
-		"The project uses the a secret generator pre-flight job",
+		"The project uses a secret generator pre-flight job",
 	)
 
 	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())
