@@ -30,6 +30,12 @@ func NewStatefulSet(role *model.Role, settings ExportSettings) (helm.Node, helm.
 	spec := helm.NewMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
 	spec.Add("template", podTemplate)
+	// "updateStrategy" is new in kube 1.7, so we don't add anything to non-helm configs
+	// The default behaviour is "OnDelete"
+	if settings.CreateHelmChart {
+		strategy := helm.NewMapping("type", "RollingUpdate")
+		spec.Add("updateStrategy", strategy, helm.Block("if "+minKubeVersion(1, 7)))
+	}
 	spec.Add("volumeClaimTemplates", helm.NewNode(claims))
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
