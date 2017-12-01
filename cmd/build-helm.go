@@ -104,7 +104,7 @@ func init() {
 		"use-secrets-generator",
 		"",
 		false,
-		"The project uses a secret generator pre-flight job",
+		"Passwords will not be set by helm templates, but all secrets with a generator will be set/updated at runtime via a generator job like https://github.com/SUSE/scf-seret-generator",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())
