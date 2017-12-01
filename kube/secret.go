@@ -41,9 +41,12 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 		}
 
 		if settings.CreateHelmChart {
-			if cv.Generator != nil {
-				// There is a generator, so it will be created by a job during runtime
+			if settings.UseSecretsGenerator && cv.Generator != nil {
+				// it will be created during runtime
 				continue
+			}
+			if cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
+				value = "{{ randAlphaNum 32 | b64enc | quote }}"
 			} else {
 				errString := fmt.Sprintf("%s configuration missing", cv.Name)
 				value = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, cv.Name)
