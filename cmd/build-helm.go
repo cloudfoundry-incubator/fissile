@@ -9,10 +9,11 @@ import (
 )
 
 var (
-	flagBuildHelmOutputDir       string
-	flagBuildHelmDefaultEnvFiles []string
-	flagBuildHelmUseMemoryLimits bool
-	flagBuildHelmTagExtra        string
+	flagBuildHelmOutputDir           string
+	flagBuildHelmDefaultEnvFiles     []string
+	flagBuildHelmUseMemoryLimits     bool
+	flagBuildHelmTagExtra            string
+	flagBuildHelmUseSecretsGenerator bool
 )
 
 // buildHelmCmd represents the helm command
@@ -26,6 +27,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
+		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -46,17 +48,18 @@ var buildHelmCmd = &cobra.Command{
 		}
 
 		settings := kube.ExportSettings{
-			OutputDir:       flagBuildHelmOutputDir,
-			Registry:        flagDockerRegistry,
-			Username:        flagDockerUsername,
-			Password:        flagDockerPassword,
-			Organization:    flagDockerOrganization,
-			Repository:      flagRepository,
-			UseMemoryLimits: flagBuildHelmUseMemoryLimits,
-			FissileVersion:  fissile.Version,
-			Opinions:        opinions,
-			CreateHelmChart: true,
-			TagExtra:        flagBuildHelmTagExtra,
+			OutputDir:           flagBuildHelmOutputDir,
+			Registry:            flagDockerRegistry,
+			Username:            flagDockerUsername,
+			Password:            flagDockerPassword,
+			Organization:        flagDockerOrganization,
+			Repository:          flagRepository,
+			UseMemoryLimits:     flagBuildHelmUseMemoryLimits,
+			FissileVersion:      fissile.Version,
+			Opinions:            opinions,
+			CreateHelmChart:     true,
+			UseSecretsGenerator: flagBuildHelmUseSecretsGenerator,
+			TagExtra:            flagBuildHelmTagExtra,
 		}
 
 		return fissile.GenerateKube(flagRoleManifest, flagBuildHelmDefaultEnvFiles, settings)
@@ -95,6 +98,13 @@ func init() {
 		"",
 		"",
 		"Additional information to use in computing the image tags",
+	)
+
+	buildHelmCmd.PersistentFlags().BoolP(
+		"use-secrets-generator",
+		"",
+		false,
+		"Passwords will not be set by helm templates, but all secrets with a generator will be set/updated at runtime via a generator job like https://github.com/SUSE/scf-seret-generator",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())

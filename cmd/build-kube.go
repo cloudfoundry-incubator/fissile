@@ -46,17 +46,18 @@ var buildKubeCmd = &cobra.Command{
 		}
 
 		settings := kube.ExportSettings{
-			OutputDir:       flagBuildKubeOutputDir,
-			Registry:        flagDockerRegistry,
-			Username:        flagDockerUsername,
-			Password:        flagDockerPassword,
-			Organization:    flagDockerOrganization,
-			Repository:      flagRepository,
-			UseMemoryLimits: flagBuildKubeUseMemoryLimits,
-			FissileVersion:  fissile.Version,
-			Opinions:        opinions,
-			CreateHelmChart: false,
-			TagExtra:        flagBuildKubeTagExtra,
+			OutputDir:           flagBuildKubeOutputDir,
+			Registry:            flagDockerRegistry,
+			Username:            flagDockerUsername,
+			Password:            flagDockerPassword,
+			Organization:        flagDockerOrganization,
+			Repository:          flagRepository,
+			UseMemoryLimits:     flagBuildKubeUseMemoryLimits,
+			FissileVersion:      fissile.Version,
+			Opinions:            opinions,
+			CreateHelmChart:     false,
+			UseSecretsGenerator: false,
+			TagExtra:            flagBuildKubeTagExtra,
 		}
 
 		return fissile.GenerateKube(flagRoleManifest, flagBuildKubeDefaultEnvFiles, settings)
