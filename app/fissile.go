@@ -869,10 +869,12 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
 
-	f.UI.Println("Loading defaults from env files")
-	settings.Defaults, err = godotenv.Read(defaultFiles...)
-	if err != nil {
-		return err
+	if len(defaultFiles) > 0 {
+		f.UI.Println("Loading defaults from env files")
+		settings.Defaults, err = godotenv.Read(defaultFiles...)
+		if err != nil {
+			return err
+		}
 	}
 
 	cvs := model.MakeMapOfVariables(settings.RoleManifest)
