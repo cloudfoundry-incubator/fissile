@@ -54,7 +54,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 		} else {
 			ok, value := cv.Value(settings.Defaults)
 			if !ok {
-				return nil, nil, fmt.Errorf("Secret '%s' has no value", name)
+				value = ""
 			}
 			value = base64.StdEncoding.EncodeToString([]byte(value))
 		}
