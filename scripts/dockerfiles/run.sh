@@ -2,6 +2,10 @@
 
 set -e
 
+# Sometimes kube doesn't manage to put the hostname into /etc/hosts
+# In that case exit with error to restart the pod and try again
+grep $(hostname) /etc/hosts
+
 if [[ "$1" == "--help" ]]; then
 cat <<EOL
 Usage: run.sh
