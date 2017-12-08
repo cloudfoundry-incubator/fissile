@@ -71,7 +71,7 @@ fi
 
 # Note, any changes to this list of variables have to be replicated in
 # --> model/mustache.go, func builtins
-export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
+export IP_ADDRESS=$(ip route | grep -v ^default | awk '{print $NF;exit}')
 export DNS_RECORD_NAME=$(/bin/hostname)
 export KUBE_COMPONENT_INDEX="${HOSTNAME##*-}"
 if test -n "${KUBE_COMPONENT_INDEX//[0-9]/}" ; then
