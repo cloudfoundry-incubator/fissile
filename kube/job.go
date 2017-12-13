@@ -24,14 +24,16 @@ func NewJob(role *model.Role, settings ExportSettings) (helm.Node, error) {
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
+	name := role.Name
 	apiVersion := "extensions/v1beta1"
 	if settings.CreateHelmChart {
+		name += "-{{ Release.Revision }}"
 		// Job objects become a regular feature in kube 1.6
 		apiVersion = fmt.Sprintf("{{ if %s -}} batch/v1 {{- else -}} %s {{- end }}", minKubeVersion(1, 6), apiVersion)
 	}
 
 	metadata := helm.NewMapping()
-	metadata.Add("name", role.Name)
+	metadata.Add("name", name)
 	if role.Run.ObjectAnnotations != nil {
 		metadata.Add("annotations", *role.Run.ObjectAnnotations)
 	}
