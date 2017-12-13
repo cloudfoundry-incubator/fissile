@@ -244,6 +244,10 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
 
+	if settings.CreateHelmChart {
+		env = append(env, helm.NewMapping("name", "RELEASE_REVISION", "value", "{{ .Release.Revision | quote }}"))
+	}
+
 	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
 
 	envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")

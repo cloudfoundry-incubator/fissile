@@ -66,6 +66,9 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, Secre
 	secretName := "secret"
 	if settings.UseSecretsGenerator {
 		secretName = "secret-update"
+		if settings.CreateHelmChart {
+			secretName = "secret-update-{{ .Release.Revision }}"
+		}
 	}
 	secret := newKubeConfig("v1", "Secret", secretName)
 	secret.Add("data", data)
