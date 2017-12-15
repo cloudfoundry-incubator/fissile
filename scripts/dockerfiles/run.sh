@@ -13,18 +13,6 @@ EOL
 exit 0
 fi
 
-# Compatibility code for use with older stemcells. Move all files
-# provided in the old location to the new. And fix the references
-# they have.
-
-if [ -d /opt/hcf ] ; then
-    mkdir -p /opt/scf
-    mv       /opt/hcf/* /opt/scf/
-    rmdir    /opt/hcf
-    sed < /opt/scf/monitrc.erb > $$ -e 's|/hcf|/scf|'
-    mv $$ /opt/scf/monitrc.erb
-fi
-
 # Make BOSH installed binaries available
 export PATH=/var/vcap/bosh/bin:$PATH
 
@@ -100,16 +88,16 @@ echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}
-    source {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
+    source {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
 {{ end }}
 # Run custom role scripts
 {{ range $script := .role.Scripts}}
-    bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
+    bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
 {{ end }}
 
 configgin \
-	--jobs /opt/scf/job_config.json \
-	--env2conf /opt/scf/env2conf.yml
+	--jobs /opt/fissile/job_config.json \
+	--env2conf /opt/fissile/env2conf.yml
 
 if [ -e /etc/monitrc ]
 then
@@ -140,8 +128,8 @@ fi
 # Run any custom scripts other than pre-start
 {{ range $script := .role.PostConfigScripts}}
 {{ if not (is_pre_start $script) }}
-    echo bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
-    bash {{ if not (is_abs $script) }}/opt/scf/startup/{{ end }}{{ $script }}
+    echo bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
+    bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
 {{ end }}
 {{ end }}
 

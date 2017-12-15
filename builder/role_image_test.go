@@ -107,18 +107,18 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0])
 	assert.NoError(err)
-	assert.Contains(string(runScriptContents), "source /opt/scf/startup/environ.sh")
+	assert.Contains(string(runScriptContents), "source /opt/fissile/startup/environ.sh")
 	assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/scf/startup/environ/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/scf/startup//environ/script/with/absolute/path.sh")
-	assert.Contains(string(runScriptContents), "bash /opt/scf/startup/myrole.sh")
+	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/environ/script/with/absolute/path.sh")
+	assert.NotContains(string(runScriptContents), "/opt/fissile/startup//environ/script/with/absolute/path.sh")
+	assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/myrole.sh")
 	assert.Contains(string(runScriptContents), "bash /script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/scf/startup/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/scf/startup//script/with/absolute/path.sh")
-	assert.Contains(string(runScriptContents), "bash /opt/scf/startup/post_config_script.sh")
+	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/script/with/absolute/path.sh")
+	assert.NotContains(string(runScriptContents), "/opt/fissile/startup//script/with/absolute/path.sh")
+	assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/post_config_script.sh")
 	assert.Contains(string(runScriptContents), "bash /var/vcap/jobs/myrole/pre-start")
-	assert.NotContains(string(runScriptContents), "/opt/scf/startup/var/vcap/jobs/myrole/pre-start")
-	assert.NotContains(string(runScriptContents), "/opt/scf//startup/var/vcap/jobs/myrole/pre-start")
+	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/var/vcap/jobs/myrole/pre-start")
+	assert.NotContains(string(runScriptContents), "/opt/fissile//startup/var/vcap/jobs/myrole/pre-start")
 	assert.Contains(string(runScriptContents), "monit -vI &")
 
 	runScriptContents, err = roleImageBuilder.generateRunScript(roleManifest.Roles[1])
@@ -218,9 +218,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		keep     bool // Hold for extra examination after
 	}{
 		"Dockerfile":                                              {desc: "Dockerfile"},
-		"root/opt/scf/share/doc/tor/LICENSE":                      {desc: "release license file"},
-		"root/opt/scf/run.sh":                                     {desc: "run script"},
-		"root/opt/scf/startup/myrole.sh":                          {desc: "role specific startup script"},
+		"root/opt/fissile/share/doc/tor/LICENSE":                  {desc: "release license file"},
+		"root/opt/fissile/run.sh":                                 {desc: "run script"},
+		"root/opt/fissile/startup/myrole.sh":                      {desc: "role specific startup script"},
 		"root/var/vcap/jobs-src/tor/monit":                        {desc: "job monit file"},
 		"root/var/vcap/jobs-src/tor/templates/bin/monit_debugger": {desc: "job template file"},
 		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true},
