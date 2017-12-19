@@ -227,7 +227,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		}
 
 		var stringifiedValue string
-		if settings.CreateHelmChart {
+		if settings.CreateHelmChart && config.Type == model.CVTypeUser {
 			required := ""
 			if config.Required {
 				required = fmt.Sprintf(`required "%s configuration missing" `, config.Name)
