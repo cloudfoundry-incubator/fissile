@@ -29,7 +29,7 @@ func TestValidation(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
@@ -87,7 +87,7 @@ func TestValidationOk(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
@@ -115,7 +115,7 @@ func TestValidationHash(t *testing.T) {
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	assert.NoError(err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	assert.NoError(err)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)

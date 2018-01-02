@@ -43,13 +43,13 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
@@ -96,13 +96,13 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0])
@@ -150,13 +150,13 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(roleManifest.Roles[0])
@@ -199,14 +199,14 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	torPkg := getPackage(roleManifest.Roles, "myrole", "tor", "tor")
@@ -413,7 +413,7 @@ func TestBuildRoleImages(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
@@ -429,6 +429,7 @@ func TestBuildRoleImages(t *testing.T) {
 		"deadbeef",
 		"6.28.30",
 		ui,
+		nil,
 	)
 	assert.NoError(err)
 

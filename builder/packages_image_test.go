@@ -111,7 +111,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
@@ -221,7 +221,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 
 	roleManifestDir := filepath.Join(workDir, "../test-assets/role-manifests/")
 	roleManifestPath := filepath.Join(roleManifestDir, "tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(t, err)
 
 	t.Run("FissileVersionShouldBeRelevant", func(t *testing.T) {
@@ -232,11 +232,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		builder.fissileVersion += ".4.5.6"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing fissile version should change package layer hash")
@@ -250,11 +250,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		builder.stemcellImageID = "stemcell:newer"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing stemcell image ID should change package layer hash")
@@ -269,11 +269,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			fissileVersion:  "0.1.2",
 			stemcellImageID: "stemcell:latest",
 		}
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		builder.repository = "repository"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing repository should change package layer hash")
@@ -291,7 +291,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		yamlRaw, err := ioutil.ReadFile(roleManifestPath)
@@ -309,10 +309,10 @@ func TestGetRolePackageImageName(t *testing.T) {
 		defer os.Remove(tempManifestFile.Name())
 		assert.NoError(t, tempManifestFile.Close(), "Error closing temporary file")
 		assert.NoError(t, ioutil.WriteFile(tempManifestFile.Name(), yamlBytes, 0644), "Error writing modified role manifest")
-		modifiedRoleManifest, err := model.LoadRoleManifest(tempManifestFile.Name(), []*model.Release{release})
+		modifiedRoleManifest, err := model.LoadRoleManifest(tempManifestFile.Name(), []*model.Release{release}, nil)
 		assert.NoError(t, err, "Error loading modified role manifest")
 
-		newImageName, err := builder.GetPackagesLayerImageName(modifiedRoleManifest, modifiedRoleManifest.Roles)
+		newImageName, err := builder.GetPackagesLayerImageName(modifiedRoleManifest, modifiedRoleManifest.Roles, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, oldImageName, newImageName, "Changing templates should not change image hash")
 	})
@@ -324,10 +324,10 @@ func TestGetRolePackageImageName(t *testing.T) {
 			fissileVersion:  "0.1.2",
 			stemcellImageID: "stemcell:latest",
 		}
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, nil)
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, nil, nil)
 		assert.NoError(t, err)
 
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles)
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.Roles, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing roles should change package layer hash")
@@ -366,11 +366,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		role.RoleJobs[0].Packages[0].SHA1 = "different sha1"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package SHA1 should change package layer hash")
@@ -384,11 +384,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		role.RoleJobs[0].Packages[0].Fingerprint = "different fingerprint"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package fingerprint should change package layer hash")
@@ -402,11 +402,11 @@ func TestGetRolePackageImageName(t *testing.T) {
 			stemcellImageID: "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		role.RoleJobs[0].Packages[0].Name = "different name"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role})
+		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.Roles{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package name should change package layer hash")

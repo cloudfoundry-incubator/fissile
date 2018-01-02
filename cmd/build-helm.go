@@ -28,6 +28,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
+		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -60,6 +61,16 @@ var buildHelmCmd = &cobra.Command{
 			CreateHelmChart:     true,
 			UseSecretsGenerator: flagBuildHelmUseSecretsGenerator,
 			TagExtra:            flagBuildHelmTagExtra,
+		}
+
+		if flagBuildOutputGraph != "" {
+			err = fissile.GraphBegin(flagBuildOutputGraph)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				fissile.GraphEnd()
+			}()
 		}
 
 		return fissile.GenerateKube(flagRoleManifest, flagBuildHelmDefaultEnvFiles, settings)

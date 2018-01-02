@@ -24,7 +24,7 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
@@ -56,7 +56,7 @@ func TestGetScriptPaths(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
@@ -79,7 +79,7 @@ func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-bad.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{release})
+	_, err = LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "Cannot find job foo in release")
 }
@@ -96,7 +96,7 @@ func TestLoadDuplicateReleases(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{release, release})
+	_, err = LoadRoleManifest(roleManifestPath, []*Release{release, release}, nil)
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "release tor has been loaded more than once")
@@ -119,7 +119,7 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease}, nil)
 	assert.NoError(err)
 	require.NotNil(t, roleManifest)
 
@@ -154,7 +154,7 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-bad.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease})
+	_, err = LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease}, nil)
 
 	assert.NotNil(err)
 	assert.Contains(err.Error(),
@@ -173,7 +173,7 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/non-bosh-roles.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.NoError(err)
 	require.NotNil(t, roleManifest)
 
@@ -294,7 +294,7 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-badly-sorted.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 
 	assert.Contains(err.Error(), `configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'`)
 	assert.Contains(err.Error(), `configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
@@ -314,7 +314,7 @@ func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-without-usage.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.Equal(err.Error(),
 		`configuration.variables: Not found: "No templates using 'SOME_VAR'"`)
 	assert.Nil(roleManifest)
@@ -332,7 +332,7 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-without-decl.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.Equal(err.Error(),
 		`configuration.variables: Not found: "No declaration of 'HOME'"`)
 	assert.Nil(roleManifest)
@@ -350,7 +350,7 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/templates-non.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.Equal(err.Error(),
 		`configuration.templates: Invalid value: "": Using 'properties.tor.hostname' as a constant`)
 	assert.Nil(roleManifest)
@@ -368,7 +368,7 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/bad-cv-type.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.Equal(err.Error(),
 		`configuration.variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
 	assert.Nil(roleManifest)
@@ -386,7 +386,7 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/bad-cv-type-internal.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.Equal(err.Error(),
 		`configuration.variables[BAR].type: Invalid value: "environment": type conflicts with flag "internal"`)
 	assert.Nil(roleManifest)
@@ -404,7 +404,7 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/docker-run-env.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(err, `roles[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
 	assert.Nil(roleManifest)
 }
@@ -421,7 +421,7 @@ func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/rbac-missing-account.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(err, `roles[myrole].run.service-account: Not found: "missing-account"`)
 	assert.Nil(roleManifest)
 }
@@ -438,7 +438,7 @@ func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 	assert.NoError(err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/rbac-missing-role.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(err, `configuration.auth.accounts[test-account].roles: Not found: "missing-role"`)
 	assert.Nil(roleManifest)
 }
@@ -499,7 +499,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
-		roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+		roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 		assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
 		assert.Nil(roleManifest)
 	}
@@ -511,7 +511,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 
 	for _, manifest := range testsOk {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifest)
-		_, err := LoadRoleManifest(roleManifestPath, []*Release{release})
+		_, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 		assert.Nil(err)
 	}
 }
@@ -533,7 +533,7 @@ func TestResolveLinks(t *testing.T) {
 	}
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/multiple-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, releases)
+	roleManifest, err := LoadRoleManifest(roleManifestPath, releases, nil)
 	assert.NoError(t, err)
 
 	// LoadRoleManifest implicitly runs resolveLinks()

@@ -258,7 +258,7 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 }
 
 // GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified roles
-func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, roles model.Roles) (string, error) {
+func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, roles model.Roles, grapher util.ModelGrapher) (string, error) {
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
 	for _, r := range roles {
@@ -285,5 +285,14 @@ func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.Rol
 
 	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repository))
 	imageTag := util.SanitizeDockerName(hex.EncodeToString(hasher.Sum(nil)))
-	return fmt.Sprintf("%s:%s", imageName, imageTag), nil
+	result := fmt.Sprintf("%s:%s", imageName, imageTag)
+
+	if grapher != nil {
+		grapher.GraphNode(result, map[string]string{"label": "pkglayer/" + result})
+		for _, pkg := range pkgs {
+			grapher.GraphEdge(pkg.Fingerprint, result, map[string]string{"label": fmt.Sprintf("pkg/%s:%s", pkg.Name, pkg.SHA1)})
+		}
+	}
+
+	return result, nil
 }

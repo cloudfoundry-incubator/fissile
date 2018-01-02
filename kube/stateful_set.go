@@ -5,17 +5,18 @@ import (
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 )
 
 // NewStatefulSet returns a stateful set and a list of services for the given role
-func NewStatefulSet(role *model.Role, settings ExportSettings) (helm.Node, helm.Node, error) {
+func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
 		panic(fmt.Sprintf("No role given"))
 	}
 
-	podTemplate, err := NewPodTemplate(role, settings)
+	podTemplate, err := NewPodTemplate(role, settings, grapher)
 	if err != nil {
 		return nil, nil, err
 	}
