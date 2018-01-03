@@ -196,7 +196,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	// `boguspackage` is neither, and will not be included
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 

@@ -51,10 +51,11 @@ type RoleImageBuilder struct {
 	lightOpinionsPath    string
 	darkOpinionsPath     string
 	ui                   *termui.UI
+	grapher              util.ModelGrapher
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -69,6 +70,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 		lightOpinionsPath:    lightOpinionsPath,
 		darkOpinionsPath:     darkOpinionsPath,
 		ui:                   ui,
+		grapher:              grapher,
 	}, nil
 }
 
@@ -327,6 +329,7 @@ type roleBuildJob struct {
 	role            *model.Role
 	builder         *RoleImageBuilder
 	ui              *termui.UI
+	grapher         util.ModelGrapher
 	force           bool
 	noBuild         bool
 	dockerManager   dockerImageBuilder
@@ -353,9 +356,13 @@ func (j roleBuildJob) Run() {
 			return err
 		}
 
-		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion)
+		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion, j.grapher)
 		if err != nil {
 			return err
+		}
+
+		if j.grapher != nil {
+			_ = j.grapher.GraphEdge(j.baseImageName, devVersion, nil)
 		}
 
 		var roleImageName string
@@ -471,6 +478,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organiza
 			role:            role,
 			builder:         r,
 			ui:              r.ui,
+			grapher:         r.grapher,
 			force:           force,
 			noBuild:         noBuild,
 			dockerManager:   dockerManager,

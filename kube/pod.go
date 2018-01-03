@@ -13,6 +13,7 @@ import (
 	"github.com/SUSE/fissile/builder"
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 )
 
 // defaultInitialDelaySeconds is the default initial delay for liveness probes
@@ -20,7 +21,7 @@ const defaultInitialDelaySeconds = 600
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings ExportSettings) (helm.Node, error) {
+func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
@@ -40,7 +41,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings) (helm.Node, error
 	if err != nil {
 		return nil, err
 	}
-	image, err := getContainerImageName(role, settings)
+	image, err := getContainerImageName(role, settings, grapher)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +91,8 @@ func NewPodTemplate(role *model.Role, settings ExportSettings) (helm.Node, error
 }
 
 // NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings ExportSettings) (helm.Node, error) {
-	podTemplate, err := NewPodTemplate(role, settings)
+func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
+	podTemplate, err := NewPodTemplate(role, settings, grapher)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +114,8 @@ func NewPod(role *model.Role, settings ExportSettings) (helm.Node, error) {
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
-func getContainerImageName(role *model.Role, settings ExportSettings) (string, error) {
-	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagExtra, settings.FissileVersion)
+func getContainerImageName(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (string, error) {
+	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagExtra, settings.FissileVersion, grapher)
 	if err != nil {
 		return "", err
 	}

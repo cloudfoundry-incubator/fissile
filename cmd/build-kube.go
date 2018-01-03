@@ -26,6 +26,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
+		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -58,6 +59,16 @@ var buildKubeCmd = &cobra.Command{
 			CreateHelmChart:     false,
 			UseSecretsGenerator: false,
 			TagExtra:            flagBuildKubeTagExtra,
+		}
+
+		if flagBuildOutputGraph != "" {
+			err = fissile.GraphBegin(flagBuildOutputGraph)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				fissile.GraphEnd()
+			}()
 		}
 
 		return fissile.GenerateKube(flagRoleManifest, flagBuildKubeDefaultEnvFiles, settings)

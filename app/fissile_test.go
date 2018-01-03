@@ -336,18 +336,19 @@ func TestGenerateAuth(t *testing.T) {
 	workDir, err := os.Getwd()
 	require.NoError(t, err)
 
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	f := NewFissileApplication(".", ui)
+
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	require.NoError(t, err)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/generate-auth.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release})
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, f)
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
-	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-	f := NewFissileApplication(".", ui)
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
 	require.NoError(t, err)
 
@@ -561,7 +562,7 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 		return
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	if !assert.NoError(err, "Failed to load role manifest: %s", roleManifestPath) {
 		return
 	}

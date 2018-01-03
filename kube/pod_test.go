@@ -29,7 +29,7 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.Role {
 	if !assert.NoError(err) {
 		return nil
 	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
+	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -813,7 +813,7 @@ func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	if !assert.NoError(err) {
 		return nil
 	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
+	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -833,7 +833,7 @@ func TestPodPreFlight(t *testing.T) {
 	}
 	pod, err := NewPod(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err, "Failed to create pod from role pre-role") {
 		return
 	}
@@ -876,7 +876,7 @@ func TestPodPostFlight(t *testing.T) {
 
 	pod, err := NewPod(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err, "Failed to create pod from role post-role") {
 		return
 	}

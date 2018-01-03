@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/SUSE/fissile/util"
 	"github.com/SUSE/fissile/validation"
 
 	"gopkg.in/yaml.v2"
@@ -285,7 +286,7 @@ func (roles Roles) Swap(i, j int) {
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
-func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManifest, error) {
+func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util.ModelGrapher) (*RoleManifest, error) {
 	manifestContents, err := ioutil.ReadFile(manifestFilePath)
 	if err != nil {
 		return nil, err
@@ -300,6 +301,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 		}
 
 		mappedReleases[release.Name] = release
+		if grapher != nil {
+			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
+		}
 	}
 
 	roleManifest := RoleManifest{}
@@ -363,6 +367,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release) (*RoleManife
 			}
 
 			roleJob.Job = job
+			if grapher != nil {
+				_ = grapher.GraphNode(job.Fingerprint, map[string]string{"label": "job/" + job.Name})
+			}
 
 			if roleJob.ResolvedConsumers == nil {
 				// No explicitly specified consumers
@@ -653,10 +660,10 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 // role dev version, and the aggregated spec and opinion
 // information. In this manner opinion changes cause a rebuild of the
 // associated role images.
-func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string) (string, error) {
+func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string, grapher util.ModelGrapher) (string, error) {
 
 	// Basic role version
-	devVersion, err := r.getRoleJobAndPackagesSignature()
+	jobPkgVersion, inputSigs, err := r.getRoleJobAndPackagesSignature(grapher)
 	if err != nil {
 		return "", fmt.Errorf("Error calculating checksum for role %s: %s", r.Name, err.Error())
 	}
@@ -668,9 +675,13 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 	// - NDP/WC does not care about order. We do, as we need a
 	//   stable hash for the configuration.
 	signatures := []string{
-		devVersion,
+		jobPkgVersion,
 		fissileVersion,
 		tagExtra,
+	}
+	extraGraphEdges := [][]string{
+		[]string{"version/fissile/", fissileVersion},
+		[]string{"extra/", tagExtra},
 	}
 
 	// Job order comes from the role manifest, and is sort of
@@ -696,18 +707,52 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 		sort.Strings(keys)
 
 		// ... then add them and their values to the hash precursor
+		// For the graph output, adding all properties individually results in
+		// too many nodes and makes graphviz fall over. So use the hash of them
+		// all instead.
+		propertyHasher := sha1.New()
 		for _, property := range keys {
 			value := flatProps[property]
 			signatures = append(signatures, property, value)
+			if grapher != nil {
+				propertyHasher.Write([]byte(property))
+				propertyHasher.Write([]byte{0x1F})
+				propertyHasher.Write([]byte(value))
+				propertyHasher.Write([]byte{0x1E})
+			}
+		}
+		if grapher != nil {
+			extraGraphEdges = append(extraGraphEdges, []string{
+				fmt.Sprintf("properties/%s:", roleJob.Name),
+				hex.EncodeToString(propertyHasher.Sum(nil))})
 		}
 	}
-	devVersion = AggregateSignatures(signatures)
+	devVersion := AggregateSignatures(signatures)
+	if grapher != nil {
+		_ = grapher.GraphNode(devVersion, map[string]string{"label": "role/" + r.Name})
+		for _, inputSig := range inputSigs {
+			_ = grapher.GraphEdge(inputSig, jobPkgVersion, nil)
+		}
+		_ = grapher.GraphNode(jobPkgVersion, map[string]string{"label": "role/jobpkg/" + r.Name})
+		_ = grapher.GraphEdge(jobPkgVersion, devVersion, nil)
+		for _, extraGraphEdgeParts := range extraGraphEdges {
+			prefix := extraGraphEdgeParts[0]
+			value := extraGraphEdgeParts[1]
+			valueHasher := sha1.New()
+			valueHasher.Write([]byte(value))
+			valueHash := hex.EncodeToString(valueHasher.Sum(nil))
+			_ = grapher.GraphEdge(prefix+valueHash, devVersion, nil)
+			_ = grapher.GraphNode(prefix+valueHash, map[string]string{"label": prefix + value})
+		}
+	}
 	return devVersion, nil
 }
 
 // getRoleJobAndPackagesSignature gets the aggregate signature of all jobs and packages
-func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
+// It also returns a list of all hashes invovled in calculating the final result
+func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string, []string, error) {
 	roleSignature := ""
+	var inputs []string
 	var packages Packages
 
 	// Jobs are *not* sorted because they are an array and the order may be
@@ -715,17 +760,30 @@ func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
 	for _, roleJob := range r.RoleJobs {
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, roleJob.SHA1)
 		packages = append(packages, roleJob.Packages...)
+		inputs = append(inputs, roleJob.Fingerprint)
+		if grapher != nil {
+			_ = grapher.GraphNode(roleJob.Fingerprint,
+				map[string]string{"label": fmt.Sprintf("job/%s/%s", roleJob.ReleaseName, roleJob.Name)})
+			_ = grapher.GraphEdge("release/"+roleJob.ReleaseName, roleJob.Fingerprint, nil)
+			for _, pkg := range roleJob.Packages {
+				_ = grapher.GraphEdge("release/"+roleJob.ReleaseName, pkg.Fingerprint, nil)
+			}
+		}
 	}
 
 	sort.Sort(packages)
 	for _, pkg := range packages {
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, pkg.SHA1)
+		inputs = append(inputs, pkg.Fingerprint)
+		if grapher != nil {
+			_ = grapher.GraphNode(pkg.Fingerprint, map[string]string{"label": "pkg/" + pkg.Name})
+		}
 	}
 
 	// Collect signatures for various script sections
 	sig, err := r.GetScriptSignatures()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
 
@@ -733,14 +791,14 @@ func (r *Role) getRoleJobAndPackagesSignature() (string, error) {
 	if r.Configuration != nil && r.Configuration.Templates != nil {
 		sig, err = r.GetTemplateSignatures()
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
 	}
 
 	hasher := sha1.New()
 	hasher.Write([]byte(roleSignature))
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	return hex.EncodeToString(hasher.Sum(nil)), inputs, nil
 }
 
 // HasTag returns true if the role has a specific tag

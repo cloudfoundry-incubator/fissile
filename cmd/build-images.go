@@ -52,6 +52,7 @@ from other specs.  At most one is allowed.
 		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
 		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
 		flagBuildImagesTagExtra = buildImagesViper.GetString("tag-extra")
+		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -66,6 +67,16 @@ from other specs.  At most one is allowed.
 		if flagOutputDirectory != "" && !flagBuildImagesForce {
 			fissile.UI.Printf("--force required when --output-directory is set\n")
 			flagBuildImagesForce = true
+		}
+
+		if flagBuildOutputGraph != "" {
+			err = fissile.GraphBegin(flagBuildOutputGraph)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				fissile.GraphEnd()
+			}()
 		}
 
 		return fissile.GenerateRoleImages(

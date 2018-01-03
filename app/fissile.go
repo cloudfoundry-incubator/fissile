@@ -38,10 +38,11 @@ const (
 
 // Fissile represents a fissile application
 type Fissile struct {
-	Version  string
-	UI       *termui.UI
-	cmdErr   error
-	releases []*model.Release // Only applies for some commands
+	Version   string
+	UI        *termui.UI
+	cmdErr    error
+	releases  []*model.Release // Only applies for some commands
+	graphFile *os.File
 }
 
 // NewFissileApplication creates a new app.Fissile
@@ -314,7 +315,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -424,7 +425,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
 	if err != nil {
 		return fmt.Errorf("Error finding role's package name: %s", err.Error())
 	}
@@ -472,7 +473,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
 	if err != nil {
 		return fmt.Errorf("Error finding role's package name: %v", err)
 	}
@@ -526,7 +527,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		defer stampy.Stamp(metricsPath, "fissile", "create-role-images", "done")
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -578,7 +579,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
 	if err != nil {
 		return err
 	}
@@ -593,6 +594,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		tagExtra,
 		f.Version,
 		f.UI,
+		f,
 	)
 	if err != nil {
 		return err
@@ -621,7 +623,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 		}
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -632,7 +634,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 	}
 
 	for _, role := range roleManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion(opinions, tagExtra, f.Version)
+		devVersion, err := role.GetRoleDevVersion(opinions, tagExtra, f.Version, f)
 		if err != nil {
 			return fmt.Errorf("Error creating role checksum: %s", err.Error())
 		}
@@ -864,7 +866,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 // on Kubernetes
 func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, settings kube.ExportSettings) error {
 	var err error
-	settings.RoleManifest, err = model.LoadRoleManifest(roleManifestPath, f.releases)
+	settings.RoleManifest, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -1002,7 +1004,7 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 
 func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings kube.ExportSettings) error {
 	if role.IsStopOnFailureRole() {
-		pod, err := kube.NewPod(role, settings)
+		pod, err := kube.NewPod(role, settings, f)
 		if err != nil {
 			return err
 		}
@@ -1011,7 +1013,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 			return err
 		}
 	} else {
-		job, err := kube.NewJob(role, settings)
+		job, err := kube.NewJob(role, settings, f)
 		if err != nil {
 			return err
 		}
@@ -1067,7 +1069,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
 			if role.HasTag("clustered") || needsStorage {
-				statefulSet, deps, err := kube.NewStatefulSet(role, settings)
+				statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
 				if err != nil {
 					return err
 				}
@@ -1082,7 +1084,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 
 				continue
 			}
-			deployment, svc, err := kube.NewDeployment(role, settings)
+			deployment, svc, err := kube.NewDeployment(role, settings, f)
 			if err != nil {
 				return err
 			}
@@ -1099,5 +1101,68 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		}
 	}
 
+	return nil
+}
+
+// GraphBegin will start logging hash information to the given file
+func (f *Fissile) GraphBegin(outputPath string) error {
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString("strict digraph {\n")
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString("graph[K=5]\n")
+	if err != nil {
+		return err
+	}
+	f.graphFile = file
+	return nil
+}
+
+// GraphEnd will stop logging hash information
+func (f *Fissile) GraphEnd() error {
+	if f.graphFile == nil {
+		return nil
+	}
+	if _, err := f.graphFile.WriteString("}\n"); err != nil {
+		return err
+	}
+	if err := f.graphFile.Close(); err != nil {
+		return err
+	}
+	f.graphFile = nil
+	return nil
+}
+
+// GraphNode adds a node to the hash debugging graph; this implements model.ModelGrapher
+func (f *Fissile) GraphNode(nodeName string, attrs map[string]string) error {
+	if f.graphFile == nil {
+		return nil
+	}
+	var attrString string
+	for k, v := range attrs {
+		attrString += fmt.Sprintf("[%s=\"%s\"]", k, v)
+	}
+	if _, err := fmt.Fprintf(f.graphFile, "\"%s\" %s\n", nodeName, attrString); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GraphEdge adds an edge to the hash debugging graph; this implements model.ModelGrapher
+func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) error {
+	if f.graphFile == nil {
+		return nil
+	}
+	var attrString string
+	for k, v := range attrs {
+		attrString += fmt.Sprintf("[%s=\"%s\"]", k, v)
+	}
+	if _, err := fmt.Fprintf(f.graphFile, "\"%s\" -> \"%s\" %s\n", fromNode, toNode, attrString); err != nil {
+		return err
+	}
 	return nil
 }

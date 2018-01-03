@@ -33,6 +33,7 @@ compiled once.
 		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
 		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
+		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -42,6 +43,16 @@ compiled once.
 		)
 		if err != nil {
 			return err
+		}
+
+		if flagBuildOutputGraph != "" {
+			err = fissile.GraphBegin(flagBuildOutputGraph)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				fissile.GraphEnd()
+			}()
 		}
 
 		return fissile.Compile(

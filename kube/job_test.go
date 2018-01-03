@@ -28,7 +28,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 		return nil
 	}
 
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
+	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -49,7 +49,7 @@ func TestJobPreFlight(t *testing.T) {
 
 	job, err := NewJob(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}
@@ -95,7 +95,7 @@ func TestJobPostFlight(t *testing.T) {
 
 	job, err := NewJob(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err, "Failed to create job from role post-role") {
 		return
 	}
@@ -141,7 +141,7 @@ func TestJobWithAnnotations(t *testing.T) {
 
 	job, err := NewJob(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err, "Failed to create job from role pre-role") {
 		return
 	}

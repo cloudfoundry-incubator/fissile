@@ -27,7 +27,7 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 	if !assert.NoError(err) {
 		return nil, nil
 	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release})
+	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
 	if !assert.NoError(err) {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	statefulset, deps, err := NewStatefulSet(role, ExportSettings{})
+	statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -184,7 +184,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 
 	statefulset, _, err := NewStatefulSet(role, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
-	})
+	}, nil)
 	if !assert.NoError(err) {
 		return
 	}

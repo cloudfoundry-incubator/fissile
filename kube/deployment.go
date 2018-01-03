@@ -9,8 +9,8 @@ import (
 )
 
 // NewDeployment creates a Deployment for the given role, and its attached services
-func NewDeployment(role *model.Role, settings ExportSettings) (helm.Node, helm.Node, error) {
-	podTemplate, err := NewPodTemplate(role, settings)
+func NewDeployment(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, helm.Node, error) {
+	podTemplate, err := NewPodTemplate(role, settings, grapher)
 	if err != nil {
 		return nil, nil, err
 	}
