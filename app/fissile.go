@@ -1137,7 +1137,7 @@ func (f *Fissile) GraphEnd() error {
 	return nil
 }
 
-// GraphNode adds a node to the hash debugging graph
+// GraphNode adds a node to the hash debugging graph; this implements model.ModelGrapher
 func (f *Fissile) GraphNode(nodeName string, attrs map[string]string) error {
 	if f.graphFile == nil {
 		return nil
@@ -1152,7 +1152,7 @@ func (f *Fissile) GraphNode(nodeName string, attrs map[string]string) error {
 	return nil
 }
 
-// GraphEdge adds an edge to the hash debugging graph
+// GraphEdge adds an edge to the hash debugging graph; this implements model.ModelGrapher
 func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) error {
 	if f.graphFile == nil {
 		return nil

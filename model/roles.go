@@ -714,14 +714,18 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 		for _, property := range keys {
 			value := flatProps[property]
 			signatures = append(signatures, property, value)
-			propertyHasher.Write([]byte(property))
-			propertyHasher.Write([]byte{0x1F})
-			propertyHasher.Write([]byte(value))
-			propertyHasher.Write([]byte{0x1E})
+			if grapher != nil {
+				propertyHasher.Write([]byte(property))
+				propertyHasher.Write([]byte{0x1F})
+				propertyHasher.Write([]byte(value))
+				propertyHasher.Write([]byte{0x1E})
+			}
 		}
-		extraGraphEdges = append(extraGraphEdges, []string{
-			fmt.Sprintf("properties/%s:", roleJob.Name),
-			hex.EncodeToString(propertyHasher.Sum(nil))})
+		if grapher != nil {
+			extraGraphEdges = append(extraGraphEdges, []string{
+				fmt.Sprintf("properties/%s:", roleJob.Name),
+				hex.EncodeToString(propertyHasher.Sum(nil))})
+		}
 	}
 	devVersion := AggregateSignatures(signatures)
 	if grapher != nil {
