@@ -55,6 +55,8 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 					if confVar, ok := configsDictionary[envVar]; ok {
 						if confVar.Type == CVTypeUser {
 							configs[confVar.Name] = confVar
+						} else if confVar.Type == CVTypeEnv && confVar.Default != "" {
+							configs[confVar.Name] = confVar
 						}
 					}
 				}
