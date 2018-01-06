@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -55,9 +58,15 @@ compiled once.
 			}()
 		}
 
+		hasher := sha1.New()
+		if _, err := hasher.Write([]byte(flagBuildPackagesStemcell)); err != nil {
+			return err
+		}
+		compilationDir := filepath.Join(workPathCompilationDir, hex.EncodeToString(hasher.Sum(nil)))
+
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
-			workPathCompilationDir,
+			compilationDir,
 			flagRoleManifest,
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),

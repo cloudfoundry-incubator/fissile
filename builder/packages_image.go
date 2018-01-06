@@ -54,11 +54,16 @@ func NewPackagesImageBuilder(repository, stemcellImageName, stemcellImageID, com
 		stemcellImageID = stemcellImage.ID
 	}
 
+	hasher := sha1.New()
+	if _, err := hasher.Write([]byte(stemcellImageName)); err != nil {
+		return nil, err
+	}
+
 	return &PackagesImageBuilder{
 		repository:           repository,
 		stemcellImageID:      stemcellImageID,
 		stemcellImageName:    stemcellImageName,
-		compiledPackagesPath: compiledPackagesPath,
+		compiledPackagesPath: filepath.Join(compiledPackagesPath, hex.EncodeToString(hasher.Sum(nil))),
 		targetPath:           targetPath,
 		fissileVersion:       fissileVersion,
 		ui:                   ui,
