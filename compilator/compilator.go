@@ -65,6 +65,7 @@ type Compilator struct {
 	signalDependencies map[string]chan struct{}
 	keepContainer      bool
 	ui                 *termui.UI
+	grapher            util.ModelGrapher
 }
 
 type compileJob struct {
@@ -86,6 +87,7 @@ func NewDockerCompilator(
 	dockerNetworkMode string,
 	keepContainer bool,
 	ui *termui.UI,
+	grapher util.ModelGrapher,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -99,6 +101,7 @@ func NewDockerCompilator(
 		dockerNetworkMode: dockerNetworkMode,
 		keepContainer:     keepContainer,
 		ui:                ui,
+		grapher:           grapher,
 
 		signalDependencies: make(map[string]chan struct{}),
 	}
@@ -115,6 +118,7 @@ func NewMountNSCompilator(
 	baseType string,
 	fissileVersion string,
 	ui *termui.UI,
+	grapher util.ModelGrapher,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -125,6 +129,7 @@ func NewMountNSCompilator(
 		fissileVersion:    fissileVersion,
 		compilePackage:    (*Compilator).compilePackageInMountNS,
 		ui:                ui,
+		grapher:           grapher,
 
 		signalDependencies: make(map[string]chan struct{}),
 	}
@@ -703,6 +708,15 @@ func (c *Compilator) removeCompiledPackages(packages model.Packages, verbose boo
 			return nil, err
 		}
 
+		if c.grapher != nil {
+			_ = c.grapher.GraphNode(pkg.Fingerprint, map[string]string{"label": "pkg/" + pkg.Name})
+			_ = c.grapher.GraphEdge(c.stemcellImageName, pkg.Fingerprint, nil)
+			_ = c.grapher.GraphEdge("release/"+pkg.Release.Name, pkg.Fingerprint, nil)
+			for _, dep := range pkg.Dependencies {
+				_ = c.grapher.GraphEdge(dep.Fingerprint, pkg.Fingerprint, nil)
+			}
+		}
+
 		if compiled {
 			close(c.signalDependencies[pkg.Fingerprint])
 			if verbose {
@@ -732,6 +746,9 @@ func (c *Compilator) gatherPackagesFromRoles(release *model.Release, roles model
 			for _, pkg := range roleJob.Packages {
 				if pkg.Release.Name == release.Name {
 					pendingPackages.PushBack(pkg)
+					if c.grapher != nil {
+						_ = c.grapher.GraphEdge(pkg.Fingerprint, roleJob.Fingerprint, nil)
+					}
 				}
 			}
 		}
