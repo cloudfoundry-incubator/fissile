@@ -8,7 +8,7 @@ Each node can have an associated comment, and be wrapped by a template block
 (any template action that encloses text and terminates with an {{end}}). For
 example:
 
-  obj.AddNode("Answer", NewScalar("42", Comment("A comment"), Block("if .Values.enabled")))
+  map.Add("Answer", NewNode("42", Comment("A comment"), Block("if .Values.enabled")))
 
 will generate:
 
@@ -37,18 +37,18 @@ Tricks:
 
 * Throw an error if the the configuration cannot possibly work
 
-    list.AddNode(NewScalar(`{{ fail "Cannot proceed" }}`, Block("if le (int .count) 0")))
+    list.Add(NewNode(`{{ fail "Cannot proceed" }}`, Block("if le (int .count) 0")))
 
 * Use a block action to generate multiple list elements
 
-    tcp := NewNodeMapping(Block("range $key, $value := .Values.tcp"))
-    tcp.AddNode("name", NewScalar("\"{{ $key }}-tcp\""))
-    tcp.AddNode("containerPort", NewScalar("$key"))
-    tcp.AddNode("protocol", NewScalar("TCP"))
+    tcp := NewMapping().Set(Block("range $key, $value := .Values.tcp"))
+    tcp.Add("name", NewNode("\"{{ $key }}-tcp\""))
+    tcp.Add("containerPort", NewNode("$key"))
+    tcp.Add("protocol", NewNode("TCP"))
 
-    ports := NewNodeList(Comment("List of TCP ports"))
-    ports.AddNode(tcp)
-    root.AddNode("ports", ports)
+    ports := NewList(Comment("List of TCP ports"))
+    ports.Add(tcp)
+    root.Add("ports", ports)
 
   Generates this document:
 
@@ -149,7 +149,8 @@ type Node interface {
 	write(enc *Encoder, prefix string)
 }
 
-// NewNode creates a new scalar node.
+// NewNode creates a new node (scalar of various types, list, map)
+// depending on the (runtime type of the) specified value.
 func NewNode(value interface{}, modifiers ...NodeModifier) Node {
 	var node Node
 	if value == nil {
@@ -225,8 +226,8 @@ type List struct {
 	nodes []Node
 }
 
-// NewList creates a list node initialized with string scalars.
-// The list and scalar nodes will not have comments or block actions.
+// NewList creates a list node initialized with a slice of values.
+// The list and element nodes will not have comments nor block actions.
 func NewList(values ...interface{}) *List {
 	list := &List{}
 	list.Add(values...)
@@ -274,14 +275,17 @@ type namedNode struct {
 	node Node
 }
 
-// Mapping represents an ordered lst of named nodes.
+// Mapping represents an ordered list of named nodes.
 type Mapping struct {
 	sharedFields
 	nodes []namedNode
 }
 
-// NewMapping creates a new mapping node initialzed with string scalars.
-// The mapping and scalar nodes will not have comments or block actions.
+// NewMapping creates a new mapping node initialized with a slice of
+// keys and values, interleaved. The keys are stored in the
+// even-numbered indices and must be strings. Values are odd-numbered.
+// The mapping and element nodes will not have comments nor block
+// actions.
 func NewMapping(values ...interface{}) *Mapping {
 	mapping := &Mapping{}
 	for i := 0; i < len(values); i += 2 {
@@ -325,7 +329,7 @@ func (mapping *Mapping) Get(names ...string) Node {
 	return nil
 }
 
-// Names returns the the ordered list of node names in the mapping.
+// Names returns the ordered list of node names in the mapping.
 func (mapping *Mapping) Names() []string {
 	names := make([]string, 0, len(mapping.nodes))
 	for _, namedNode := range mapping.nodes {
@@ -397,7 +401,7 @@ func EmptyLines(emptyLines bool) func(*Encoder) {
 }
 
 // Indent sets the indentation amount per nesting level for the YAML encoding.
-// The default value is 2.
+// The default value is 2. This is also the minimum allowed.
 func Indent(indent int) func(*Encoder) {
 	return func(enc *Encoder) {
 		if indent < 2 {
@@ -424,7 +428,7 @@ func (enc *Encoder) Set(modifiers ...func(*Encoder)) {
 	}
 }
 
-// NewEncoder returns an Encoder mapping holding the output stream and encoding options.
+// NewEncoder returns an Encoder holding the output stream and encoding options.
 func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	enc := &Encoder{
 		writer:     writer,
@@ -437,7 +441,7 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	return enc
 }
 
-// Encode writes the config mapping to the stream.
+// Encode writes the config mapping held by the node to the stream.
 func (enc *Encoder) Encode(node Node) error {
 	enc.pendingNewline = false
 	fmt.Fprintln(enc, "---")
