@@ -56,7 +56,7 @@ func TestCompilePackageInMountNS(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	c, err := NewMountNSCompilator(tempDir, "", "repo", "linux", "0", ui)
+	c, err := NewMountNSCompilator(tempDir, "", "repo", "linux", "0", ui, nil)
 	assert.NoError(err)
 
 	err = c.Compile(2, []*model.Release{release}, nil, false)
