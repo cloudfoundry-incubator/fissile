@@ -14,6 +14,7 @@ var (
 	flagBuildHelmUseMemoryLimits     bool
 	flagBuildHelmTagExtra            string
 	flagBuildHelmUseSecretsGenerator bool
+	flagBuildHelmAuthType            string
 )
 
 // buildHelmCmd represents the helm command
@@ -29,6 +30,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
+		flagBuildHelmAuthType = buildViper.GetString("auth-type")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -61,6 +63,7 @@ var buildHelmCmd = &cobra.Command{
 			CreateHelmChart:     true,
 			UseSecretsGenerator: flagBuildHelmUseSecretsGenerator,
 			TagExtra:            flagBuildHelmTagExtra,
+			AuthType:            flagBuildHelmAuthType,
 		}
 
 		if flagBuildOutputGraph != "" {
@@ -116,6 +119,13 @@ func init() {
 		"",
 		false,
 		"Passwords will not be set by helm templates, but all secrets with a generator will be set/updated at runtime via a generator job like https://github.com/SUSE/scf-seret-generator",
+	)
+
+	buildHelmCmd.PersistentFlags().StringP(
+		"auth-type",
+		"",
+		"",
+		"Sets the Kubernetes auth type",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())
