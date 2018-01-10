@@ -48,6 +48,9 @@ func NewPackagesImageBuilder(repository, stemcellImageName, stemcellImageID, com
 
 		stemcellImage, err := imageManager.FindImage(stemcellImageName)
 		if err != nil {
+			if _, ok := err.(docker.ErrImageNotFound); ok {
+				return nil, fmt.Errorf("Stemcell %s", err.Error())
+			}
 			return nil, err
 		}
 
