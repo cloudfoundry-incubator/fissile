@@ -61,7 +61,8 @@ func TestFindImageNotOK(t *testing.T) {
 	_, err = dockerManager.FindImage(name)
 
 	assert.Error(err)
-	assert.Equal(ErrImageNotFound, err)
+	_, ok := err.(ErrImageNotFound)
+	assert.True(ok)
 }
 
 func TestHasImageOK(t *testing.T) {
