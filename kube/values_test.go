@@ -86,7 +86,9 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		settings.AuthType = "rbac"
+		authString := "foo"
+
+		settings.AuthType = authString
 
 		node, err := MakeValues(settings)
 
@@ -95,6 +97,6 @@ func TestMakeValues(t *testing.T) {
 
 		auth := node.Get("kube").Get("auth")
 
-		assert.Equal(auth.String(), "rbac")
+		assert.Equal(auth.String(), authString)
 	})
 }
