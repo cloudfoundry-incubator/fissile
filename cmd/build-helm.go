@@ -30,7 +30,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
-		flagBuildHelmAuthType = buildViper.GetString("auth-type")
+		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
 		err := fissile.LoadReleases(
 			flagRelease,
