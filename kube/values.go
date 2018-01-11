@@ -94,7 +94,12 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
 	kube.Add("registry", registryInfo)
 	kube.Add("organization", settings.Organization)
-	kube.Add("auth", nil)
+
+	if settings.AuthType == "" {
+		kube.Add("auth", nil)
+	} else {
+		kube.Add("auth", settings.AuthType)
+	}
 
 	values := helm.NewMapping()
 	values.Add("env", env)

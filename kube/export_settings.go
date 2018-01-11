@@ -21,4 +21,5 @@ type ExportSettings struct {
 	Secrets             SecretRefMap
 	CreateHelmChart     bool
 	UseSecretsGenerator bool
+	AuthType            string
 }
