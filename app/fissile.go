@@ -378,7 +378,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 	f.UI.Printf("Cleaning up %s\n", color.MagentaString(targetPath))
 
-	cached, err := filepath.Glob(targetPath + "/*")
+	cached, err := filepath.Glob(targetPath + "/*/*")
 	if err != nil {
 		return err
 	}
@@ -390,7 +390,11 @@ func (f *Fissile) CleanCache(targetPath string) error {
 			continue
 		}
 
-		f.UI.Printf("- Removing %s\n", color.YellowString(key))
+		relpath, err := filepath.Rel(targetPath, cache)
+		if err != nil {
+			relpath = key
+		}
+		f.UI.Printf("- Removing %s\n", color.YellowString(relpath))
 		if err := os.RemoveAll(cache); err != nil {
 			return err
 		}
