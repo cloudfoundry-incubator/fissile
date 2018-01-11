@@ -26,10 +26,12 @@ const (
 	ContainerOutPath = "/fissile-out"
 )
 
-var (
-	// ErrImageNotFound is the error returned when an image is not found.
-	ErrImageNotFound = fmt.Errorf("Image not found")
-)
+// ErrImageNotFound is the error returned when an image is not found.
+type ErrImageNotFound string
+
+func (e ErrImageNotFound) Error() string {
+	return fmt.Sprintf("Image '%s' not found", string(e))
+}
 
 // dockerClient is an interface to represent a dockerclient.Client
 // It exists so we can replace it with a mock object in tests
@@ -233,7 +235,7 @@ func (d *ImageManager) FindImage(imageName string) (*dockerclient.Image, error) 
 	image, err := d.client.InspectImage(imageName)
 
 	if err == dockerclient.ErrNoSuchImage {
-		return nil, ErrImageNotFound
+		return nil, ErrImageNotFound(imageName)
 	} else if err != nil {
 		return nil, fmt.Errorf("Error looking up image %s: %s", imageName, err.Error())
 	}
@@ -391,12 +393,14 @@ func (d *ImageManager) HasLabels(image *dockerclient.APIImages, labels map[strin
 
 // HasImage determines if the given image already exists in Docker
 func (d *ImageManager) HasImage(imageName string) (bool, error) {
-	if _, err := d.FindImage(imageName); err == ErrImageNotFound {
-		return false, nil
-	} else if err != nil {
-		return false, err
+	_, err := d.FindImage(imageName)
+	if err == nil {
+		return true, nil
 	}
-	return true, nil
+	if _, ok := err.(ErrImageNotFound); ok {
+		return false, nil
+	}
+	return false, err
 }
 
 // RemoveContainer will remove a container from Docker

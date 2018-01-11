@@ -652,7 +652,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 
 		image, err := dockerManager.FindImage(imageName)
 
-		if err == docker.ErrImageNotFound {
+		if _, ok := err.(docker.ErrImageNotFound); ok {
 			continue
 		} else if err != nil {
 			return fmt.Errorf("Error looking up image: %s", err.Error())
