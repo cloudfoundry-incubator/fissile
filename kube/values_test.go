@@ -74,7 +74,7 @@ func TestMakeValues(t *testing.T) {
 
 		auth := node.Get("kube").Get("auth")
 
-		assert.Equal(auth.String(), "~")
+		assert.Equal(auth.String(), "~", "Default value should be nil")
 	})
 
 	t.Run("Check Custom Auth", func(t *testing.T) {
