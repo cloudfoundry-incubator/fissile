@@ -157,9 +157,17 @@ done
 
 # Run
 {{ if eq .role.Type "bosh-task" }}
+        idx=0
     {{ range $job := .role.RoleJobs}}
-        /var/vcap/jobs/{{ $job.Name }}/bin/run
+        if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/run ] ; then
+            /var/vcap/jobs/{{ $job.Name }}/bin/run
+	    idx=$((idx + 1))
+	fi
     {{ end }}
+        if [ ${idx} -eq 0 ] ; then
+	    echo "No runnable jobs found for this task" 1>&2
+	    exit 1
+	fi
 {{ else }}
 
   killer() {
