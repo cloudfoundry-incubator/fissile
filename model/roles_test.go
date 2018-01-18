@@ -303,6 +303,27 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	assert.Nil(roleManifest)
 }
 
+func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/variables-with-dup-prev-names.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAR' also exist as a new variable`)
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAZ' also claimed by 'QUX'`)
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "QUX": Previous name 'BAZ' also claimed by 'FOO'`)
+	// Note how this ignores other errors possibly present in the manifest and releases.
+	assert.Nil(roleManifest)
+}
+
 func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 	assert := assert.New(t)
 
