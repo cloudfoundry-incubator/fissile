@@ -298,6 +298,7 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 
 	assert.Contains(err.Error(), `configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'`)
 	assert.Contains(err.Error(), `configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	assert.Contains(err.Error(), `configuration.variables: Invalid value: "PELERINUL": Appears more than once`)
 	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(roleManifest)
 }

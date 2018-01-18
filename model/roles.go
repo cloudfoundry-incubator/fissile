@@ -915,6 +915,9 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 			allErrs = append(allErrs, validation.Invalid("configuration.variables",
 				previousName,
 				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+		} else if cv.Name == previousName {
+			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+				previousName, "Appears more than once"))
 		}
 		previousName = cv.Name
 	}

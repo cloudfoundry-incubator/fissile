@@ -27,6 +27,7 @@ configuration:
   - name: FOO
   - name: BAR
   - name: PELERINUL
+  - name: PELERINUL
   - name: ALPHA
   templates:
     properties.tor.hostname: '((FOO))((ALPHA))'
