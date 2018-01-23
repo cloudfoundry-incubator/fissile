@@ -69,6 +69,7 @@ configuration:
   - name: NATS_USER
     description: User name for NATS
     required: true
+    previous_names: [NATS_USR]
 ```
 
 Note that there are a few special variables that are automatically supplied to

@@ -17,19 +17,12 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
-- name: foorole
-  type: bosh-task
-  jobs:
-  - name: tor
-    release_name: tor
 configuration:
   variables:
-  - name: FOO
   - name: BAR
-  - name: PELERINUL
-  - name: PELERINUL
-  - name: ALPHA
+  - name: FOO
+    previous_names: [BAR, BAZ]
+  - name: QUX
+    previous_names: [BAZ]
   templates:
-    properties.tor.hostname: '((FOO))((ALPHA))'
-    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+    properties.tor.hostname: '((FOO))((BAR))((QUX))'

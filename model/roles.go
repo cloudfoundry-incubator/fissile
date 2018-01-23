@@ -191,15 +191,16 @@ type Configuration struct {
 //    A public CV is used in templates
 //    An internal CV is not, consumed in a script instead.
 type ConfigurationVariable struct {
-	Name        string                          `yaml:"name"`
-	Default     interface{}                     `yaml:"default"`
-	Description string                          `yaml:"description"`
-	Example     string                          `yaml:"example"`
-	Generator   *ConfigurationVariableGenerator `yaml:"generator"`
-	Type        CVType                          `yaml:"type"`
-	Internal    bool                            `yaml:"internal,omitempty"`
-	Secret      bool                            `yaml:"secret,omitempty"`
-	Required    bool                            `yaml:"required,omitempty"`
+	Name          string                          `yaml:"name"`
+	PreviousNames []string                        `yaml:"previous_names"`
+	Default       interface{}                     `yaml:"default"`
+	Description   string                          `yaml:"description"`
+	Example       string                          `yaml:"example"`
+	Generator     *ConfigurationVariableGenerator `yaml:"generator"`
+	Type          CVType                          `yaml:"type"`
+	Internal      bool                            `yaml:"internal,omitempty"`
+	Secret        bool                            `yaml:"secret,omitempty"`
+	Required      bool                            `yaml:"required,omitempty"`
 }
 
 // Value fetches the value of config variable
@@ -392,6 +393,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		allErrs = append(allErrs, roleManifest.resolveLinks()...)
 		allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
 		allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariablePreviousNames(roleManifest.Configuration.Variables)...)
 		allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
 		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
 		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
@@ -915,8 +917,38 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 			allErrs = append(allErrs, validation.Invalid("configuration.variables",
 				previousName,
 				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+		} else if cv.Name == previousName {
+			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+				previousName, "Appears more than once"))
 		}
 		previousName = cv.Name
+	}
+
+	return allErrs
+}
+
+// validateVariablePreviousNames tests whether PreviousNames of a variable are used either
+// by as a Name or a PreviousName of another variable.
+func validateVariablePreviousNames(variables ConfigurationVariableSlice) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, cvOuter := range variables {
+		for _, previousOuter := range cvOuter.PreviousNames {
+			for _, cvInner := range variables {
+				if previousOuter == cvInner.Name {
+					allErrs = append(allErrs, validation.Invalid("configuration.variables",
+						cvOuter.Name,
+						fmt.Sprintf("Previous name '%s' also exist as a new variable", cvInner.Name)))
+				}
+				for _, previousInner := range cvInner.PreviousNames {
+					if cvOuter.Name != cvInner.Name && previousOuter == previousInner {
+						allErrs = append(allErrs, validation.Invalid("configuration.variables",
+							cvOuter.Name,
+							fmt.Sprintf("Previous name '%s' also claimed by '%s'", previousOuter, cvInner.Name)))
+					}
+				}
+			}
+		}
 	}
 
 	return allErrs
