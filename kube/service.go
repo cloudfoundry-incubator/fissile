@@ -23,16 +23,19 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings ExportSet
 		}
 	}
 
-	// Create private service
-	svc, err := NewClusterIPService(role, false, false, settings)
-	if err != nil {
-		return nil, err
+	if role.HasTag("indexed") {
+		// Create private service
+		svc, err := NewClusterIPService(role, false, false, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
 	}
-	if svc != nil {
-		items = append(items, svc)
-	}
+
 	// Create public service
-	svc, err = NewClusterIPService(role, false, true, settings)
+	svc, err := NewClusterIPService(role, false, true, settings)
 	if err != nil {
 		return nil, err
 	}
