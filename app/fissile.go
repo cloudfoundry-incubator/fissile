@@ -1081,9 +1081,11 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 				if err != nil {
 					return err
 				}
-				err = enc.Encode(deps)
-				if err != nil {
-					return err
+				if deps != nil {
+					err = enc.Encode(deps)
+					if err != nil {
+						return err
+					}
 				}
 
 				continue
