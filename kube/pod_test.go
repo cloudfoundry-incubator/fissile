@@ -213,7 +213,7 @@ func TestPodGetEnvVars(t *testing.T) {
 					valueFrom:
 						secretKeyRef:
 							key: "secret-var"
-							name: "secret-1"
+							name: "secret-1-{{ .Release.Revision }}"
 				-	name: SOME_VAR
 					value: "simple string"`,
 		},
@@ -231,7 +231,7 @@ func TestPodGetEnvVars(t *testing.T) {
 					valueFrom:
 						secretKeyRef:
 							key: "secret-var"
-							name: "secret-1"
+							name: "secret-1-{{ .Release.Revision }}"
 				-	name: SOME_VAR
 					value: "hello\nworld"`,
 		},
