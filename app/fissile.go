@@ -1072,7 +1072,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 			enc := helm.NewEncoder(outputFile)
 
 			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
-			if role.HasTag("clustered") || needsStorage {
+			if role.HasTag("clustered") || role.HasTag("indexed") || needsStorage {
 				statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
 				if err != nil {
 					return err

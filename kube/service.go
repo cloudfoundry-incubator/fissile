@@ -9,7 +9,7 @@ import (
 )
 
 // NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, headless bool, settings ExportSettings) (helm.Node, error) {
+func NewClusterIPServiceList(role *model.Role, headless, private bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
 	if headless {
@@ -23,16 +23,19 @@ func NewClusterIPServiceList(role *model.Role, headless bool, settings ExportSet
 		}
 	}
 
-	// Create private service
-	svc, err := NewClusterIPService(role, false, false, settings)
-	if err != nil {
-		return nil, err
+	if private {
+		// Create private service
+		svc, err := NewClusterIPService(role, false, false, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
 	}
-	if svc != nil {
-		items = append(items, svc)
-	}
+
 	// Create public service
-	svc, err = NewClusterIPService(role, false, true, settings)
+	svc, err := NewClusterIPService(role, false, true, settings)
 	if err != nil {
 		return nil, err
 	}
