@@ -646,3 +646,35 @@ func TestFissileGetReleasesByName(t *testing.T) {
 		assert.NotContains(err.Error(), "test-dev", "Error message should not contain valid release name")
 	}
 }
+
+func TestFissileGenerateKubeRoles(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	// Set up the test params
+	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/exposed-ports-no-ports.yml")
+
+	f := NewFissileApplication(".", ui)
+	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	require.NoError(t, err, "Failed to load release from %s", releasePath)
+
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	require.NoError(t, err, "Failed to load role manifest: %s", roleManifestPath)
+	require.NotNil(t, roleManifest)
+
+	outDir, err := ioutil.TempDir("", "fissile-test-generate-kube-roles")
+	require.NoError(t, err)
+	defer os.RemoveAll(outDir)
+
+	err = f.generateKubeRoles(kube.ExportSettings{OutputDir: outDir, RoleManifest: roleManifest})
+	assert.NoError(t, err)
+
+	for _, name := range []string{"myrole-deployment.yaml", "myrole-clustered.yaml"} {
+		path := filepath.Join(outDir, "bosh", name)
+		_, err := os.Stat(path)
+		assert.NoError(t, err, "Failed to find output %s", name)
+	}
+}

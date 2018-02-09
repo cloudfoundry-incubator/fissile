@@ -1,0 +1,15 @@
+---
+roles:
+- name: myrole-deployment
+  jobs: []
+  run:
+    scaling:
+      min: 1
+      max: 2
+- name: myrole-clustered
+  jobs: []
+  tags: [ clustered ]
+  run:
+    scaling:
+      min: 1
+      max: 2
