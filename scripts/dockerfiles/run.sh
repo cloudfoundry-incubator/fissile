@@ -127,10 +127,8 @@ fi
 # Run custom post config role scripts
 # Run any custom scripts other than pre-start
 {{ range $script := .role.PostConfigScripts}}
-{{ if not (is_pre_start $script) }}
     echo bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
     bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
-{{ end }}
 {{ end }}
 
 # Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.
