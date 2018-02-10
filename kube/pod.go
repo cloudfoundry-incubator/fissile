@@ -218,9 +218,12 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		}
 
 		if config.Secret {
-			secretKeyRef := helm.NewMapping(
-				"key", secrets[config.Name].Key,
-				"name", secrets[config.Name].Secret+"-{{ .Release.Revision }}")
+			secretName := secrets[config.Name].Secret
+			if settings.CreateHelmChart {
+				secretName += "-{{ .Release.Revision }}"
+			}
+
+			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secretName)
 
 			envVar := helm.NewMapping("name", config.Name)
 			envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
