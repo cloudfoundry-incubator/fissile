@@ -182,12 +182,23 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Generate run script
-		runScriptContents, err := r.generateRunScript(role)
+		runScriptContents, err := r.generateRunScript(role, "run.sh")
 		if err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, runScriptContents, tar.Header{
 			Name: "root/opt/fissile/run.sh",
+		})
+		if err != nil {
+			return err
+		}
+
+		preStopScriptContents, err := r.generateRunScript(role, "pre-stop.sh")
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, preStopScriptContents, tar.Header{
+			Name: "root/opt/fissile/pre-stop.sh",
 		})
 		if err != nil {
 			return err
@@ -232,13 +243,13 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 	}
 }
 
-func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
-	asset, err := dockerfiles.Asset("run.sh")
+func (r *RoleImageBuilder) generateRunScript(role *model.Role, assetName string) ([]byte, error) {
+	asset, err := dockerfiles.Asset(assetName)
 	if err != nil {
 		return nil, err
 	}
 
-	runScriptTemplate := template.New("role-runscript")
+	runScriptTemplate := template.New("role-script-" + assetName)
 	runScriptTemplate.Funcs(template.FuncMap{
 		"script_path": func(path string) string {
 			if filepath.IsAbs(path) {

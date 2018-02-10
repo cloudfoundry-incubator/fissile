@@ -64,6 +64,11 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	container.Add("securityContext", securityContext)
 	container.Add("livenessProbe", livenessProbe)
 	container.Add("readinessProbe", readinessProbe)
+	container.Add("lifecycle",
+		helm.NewMapping("preStop",
+			helm.NewMapping("exec",
+				helm.NewMapping("command",
+					[]string{"/opt/fissile/pre-stop.sh"}))))
 	container.Sort()
 
 	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
