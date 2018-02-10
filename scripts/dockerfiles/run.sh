@@ -88,11 +88,11 @@ echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .role.EnvironScripts }}
-    source {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
+    source {{ script_path $script }}
 {{ end }}
 # Run custom role scripts
 {{ range $script := .role.Scripts}}
-    bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
+    bash {{ script_path $script }}
 {{ end }}
 
 configgin \
@@ -127,8 +127,8 @@ fi
 # Run custom post config role scripts
 # Run any custom scripts other than pre-start
 {{ range $script := .role.PostConfigScripts}}
-    echo bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
-    bash {{ if not (is_abs $script) }}/opt/fissile/startup/{{ end }}{{ $script }}
+    echo bash {{ script_path $script }}
+    bash {{ script_path $script }}
 {{ end }}
 
 # Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.

@@ -240,7 +240,12 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role) ([]byte, error) {
 
 	runScriptTemplate := template.New("role-runscript")
 	runScriptTemplate.Funcs(template.FuncMap{
-		"is_abs": filepath.IsAbs,
+		"script_path": func(path string) string {
+			if filepath.IsAbs(path) {
+				return path
+			}
+			return filepath.Join("/opt/fissile/startup/", path)
+		},
 	})
 	context := map[string]interface{}{
 		"role": role,
