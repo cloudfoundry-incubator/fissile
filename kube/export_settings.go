@@ -18,7 +18,6 @@ type ExportSettings struct {
 	TagExtra            string
 	RoleManifest        *model.RoleManifest
 	Opinions            *model.Opinions
-	Secrets             SecretRefMap
 	CreateHelmChart     bool
 	UseSecretsGenerator bool
 	AuthType            string
