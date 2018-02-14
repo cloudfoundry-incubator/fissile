@@ -859,6 +859,7 @@ func TestPodPreFlight(t *testing.T) {
 			-
 				name: pre-role
 			restartPolicy: OnFailure
+			terminationGracePeriodSeconds: 600
 	`, "\t", "    ", -1)
 	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
 		return

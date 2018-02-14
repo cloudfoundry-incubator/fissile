@@ -86,6 +86,9 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		}
 		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
 	}
+	// BOSH can potentially have an infinite termination grace period; we don't
+	// really trust that, so we'll just go with ten minutes and hope it's enough
+	spec.Add("terminationGracePeriodSeconds", 600)
 	spec.Sort()
 
 	podTemplate := helm.NewMapping()
