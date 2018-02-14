@@ -130,8 +130,17 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	preStopScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0], "pre-stop.sh")
 	if assert.NoError(err) {
-		assert.Contains(string(preStopScriptContents), "drain_job new_hostname")
-		assert.Contains(string(preStopScriptContents), "drain_job tor")
+		var wantedLine string
+		for _, line := range strings.Split(string(preStopScriptContents), "\n") {
+			if strings.Contains(line, "${0}") {
+				assert.Empty(wantedLine, "Duplicate line with pre-stop self-exec: %s", line)
+				wantedLine = line
+			}
+		}
+		if assert.NotEmpty(wantedLine, "Could not find line pre-stop execs itself") {
+			assert.Contains(strings.Fields(wantedLine), "new_hostname")
+			assert.Contains(strings.Fields(wantedLine), "tor")
+		}
 	}
 }
 
