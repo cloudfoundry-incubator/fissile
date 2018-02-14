@@ -244,7 +244,7 @@ func TestPodGetEnvVars(t *testing.T) {
 			"SECRET_VAR": "the-secret",
 		}
 
-		vars, err := getEnvVars(role, defaults, ExportSettings{})
+		vars, err := getEnvVars(role, ExportSettings{Defaults: defaults})
 		sample.check(t, vars, err)
 	}
 }
