@@ -105,26 +105,43 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
-	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0])
-	assert.NoError(err)
-	assert.Contains(string(runScriptContents), "source /opt/fissile/startup/environ.sh")
-	assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/environ/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/fissile/startup//environ/script/with/absolute/path.sh")
-	assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/myrole.sh")
-	assert.Contains(string(runScriptContents), "bash /script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/script/with/absolute/path.sh")
-	assert.NotContains(string(runScriptContents), "/opt/fissile/startup//script/with/absolute/path.sh")
-	assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/post_config_script.sh")
-	assert.Contains(string(runScriptContents), "bash /var/vcap/jobs/myrole/pre-start")
-	assert.NotContains(string(runScriptContents), "/opt/fissile/startup/var/vcap/jobs/myrole/pre-start")
-	assert.NotContains(string(runScriptContents), "/opt/fissile//startup/var/vcap/jobs/myrole/pre-start")
-	assert.Contains(string(runScriptContents), "monit -vI &")
+	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0], "run.sh")
+	if assert.NoError(err) {
+		assert.Contains(string(runScriptContents), "source /opt/fissile/startup/environ.sh")
+		assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
+		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/environ/script/with/absolute/path.sh")
+		assert.NotContains(string(runScriptContents), "/opt/fissile/startup//environ/script/with/absolute/path.sh")
+		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/myrole.sh")
+		assert.Contains(string(runScriptContents), "bash /script/with/absolute/path.sh")
+		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/script/with/absolute/path.sh")
+		assert.NotContains(string(runScriptContents), "/opt/fissile/startup//script/with/absolute/path.sh")
+		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/post_config_script.sh")
+		assert.Contains(string(runScriptContents), "bash /var/vcap/jobs/myrole/pre-start")
+		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/var/vcap/jobs/myrole/pre-start")
+		assert.NotContains(string(runScriptContents), "/opt/fissile//startup/var/vcap/jobs/myrole/pre-start")
+		assert.Contains(string(runScriptContents), "monit -vI &")
+	}
 
-	runScriptContents, err = roleImageBuilder.generateRunScript(roleManifest.Roles[1])
-	assert.NoError(err)
-	assert.NotContains(string(runScriptContents), "monit -vI")
-	assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
+	runScriptContents, err = roleImageBuilder.generateRunScript(roleManifest.Roles[1], "run.sh")
+	if assert.NoError(err) {
+		assert.NotContains(string(runScriptContents), "monit -vI")
+		assert.Contains(string(runScriptContents), "/var/vcap/jobs/tor/bin/run")
+	}
+
+	preStopScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.Roles[0], "pre-stop.sh")
+	if assert.NoError(err) {
+		var wantedLine string
+		for _, line := range strings.Split(string(preStopScriptContents), "\n") {
+			if strings.Contains(line, "${0}") {
+				assert.Empty(wantedLine, "Duplicate line with pre-stop self-exec: %s", line)
+				wantedLine = line
+			}
+		}
+		if assert.NotEmpty(wantedLine, "Could not find line pre-stop execs itself") {
+			assert.Contains(strings.Fields(wantedLine), "new_hostname")
+			assert.Contains(strings.Fields(wantedLine), "tor")
+		}
+	}
 }
 
 func TestGenerateRoleImageJobsConfig(t *testing.T) {
