@@ -26,7 +26,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
 
-	vars, err := getEnvVars(role, settings.Defaults, settings.Secrets, settings)
+	vars, err := getEnvVars(role, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNode(mounts)
 }
 
-func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefMap, settings ExportSettings) (helm.Node, error) {
+func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
 		return nil, err
@@ -226,7 +226,14 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 		}
 
 		if config.Secret {
-			secretKeyRef := helm.NewMapping("key", secrets[config.Name].Key, "name", secrets[config.Name].Secret)
+			secretName := "secret"
+			if settings.CreateHelmChart {
+				secretName += "-{{ .Release.Revision }}"
+			}
+
+			secretKeyRef := helm.NewMapping(
+				"key", util.ConvertNameToKey(config.Name),
+				"name", secretName)
 
 			envVar := helm.NewMapping("name", config.Name)
 			envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
@@ -244,7 +251,7 @@ func getEnvVars(role *model.Role, defaults map[string]string, secrets SecretRefM
 			stringifiedValue = fmt.Sprintf("{{ %s.Values.env.%s | quote }}", required, config.Name)
 		} else {
 			var ok bool
-			ok, stringifiedValue = config.Value(defaults)
+			ok, stringifiedValue = config.Value(settings.Defaults)
 			if !ok {
 				// Ignore config vars that don't have a default value
 				continue

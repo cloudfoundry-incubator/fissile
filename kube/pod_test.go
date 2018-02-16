@@ -213,7 +213,7 @@ func TestPodGetEnvVars(t *testing.T) {
 					valueFrom:
 						secretKeyRef:
 							key: "secret-var"
-							name: "secret-1"
+							name: "secret"
 				-	name: SOME_VAR
 					value: "simple string"`,
 		},
@@ -231,7 +231,7 @@ func TestPodGetEnvVars(t *testing.T) {
 					valueFrom:
 						secretKeyRef:
 							key: "secret-var"
-							name: "secret-1"
+							name: "secret"
 				-	name: SOME_VAR
 					value: "hello\nworld"`,
 		},
@@ -243,14 +243,8 @@ func TestPodGetEnvVars(t *testing.T) {
 			"ALL_VAR":    "placeholder",
 			"SECRET_VAR": "the-secret",
 		}
-		secrets := SecretRefMap{
-			"SECRET_VAR": SecretRef{
-				Secret: "secret-1",
-				Key:    "secret-var",
-			},
-		}
 
-		vars, err := getEnvVars(role, defaults, secrets, ExportSettings{})
+		vars, err := getEnvVars(role, ExportSettings{Defaults: defaults})
 		sample.check(t, vars, err)
 	}
 }

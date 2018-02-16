@@ -891,7 +891,7 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 	}
 	// cvs now holds only the secrets.
 	var secrets helm.Node
-	secrets, settings.Secrets, err = kube.MakeSecrets(cvs, settings)
+	secrets, err = kube.MakeSecrets(cvs, settings)
 	if err != nil {
 		return err
 	}
