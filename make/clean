@@ -6,6 +6,7 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
 rm -rf ${GIT_ROOT}/build
 rm -f ${GIT_ROOT}/fissile
+rm -f ${GIT_ROOT}/docker/mock_dockerclient_generated.go
 rm -f ${GIT_ROOT}/scripts/compilation/compilation.go
 rm -f ${GIT_ROOT}/scripts/dockerfiles/dockerfiles.go
 rm -f ${GIT_ROOT}/scripts/templates/transformations.go
