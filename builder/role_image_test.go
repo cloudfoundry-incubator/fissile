@@ -297,6 +297,8 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	}
 	// Synchronize with the gofunc to make sure it's done
 	<-latch
+	assert.NoError(asyncError)
+
 	for name, info := range expected {
 		assert.Equal(TypeMissing, info.typeflag, "File %s was not found", name)
 	}

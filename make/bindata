@@ -11,13 +11,6 @@ go-bindata -pkg=dockerfiles -o=./scripts/dockerfiles/dockerfiles.go \
            ./scripts/dockerfiles/*.sh \
            ./scripts/dockerfiles/Dockerfile-* \
 
-# Note. We are working around an issue with go-bindata here.
-# See
-#	 https://github.com/jteeuwen/go-bindata/issues/110
-#
-# Further see the code after 'exit' for the original commands to use
-# (again) after go-bindata is fixed.
-#
 # We have to use just the directory, i.e. "./scripts/compilation" to
 # get the correct asset names in the output. This forces us to ensure
 # that the .go files in that directory are not bundled into the

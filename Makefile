@@ -6,7 +6,7 @@ endif
 
 .PHONY: all clean format lint vet bindata build test docker-deps reap dist
 
-all: clean format lint vet bindata docker-deps build test
+all: clean format lint bindata docker-deps build test vet
 
 clean:
 	${GIT_ROOT}/make/clean
