@@ -90,7 +90,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	registryInfo.Add("password", settings.Password)
 
 	kube := helm.NewMapping()
-	kube.Add("external_ip", "192.168.77.77")
+	kube.Add("external_ips", helm.NewList("192.168.77.77"))
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
 	kube.Add("registry", registryInfo)
 	kube.Add("organization", settings.Organization)
