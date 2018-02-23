@@ -104,11 +104,20 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		}
 	}
 	if public {
-		externalIP := "192.168.77.77"
+		externalIP := "[ 192.168.77.77 ]"
 		if settings.CreateHelmChart {
-			externalIP = "{{ .Values.kube.external_ip | quote }}"
+			// Backwards compatibility: If .kube.external_ips doesn't exist,
+			// use .kube.external_ip instead (as the single address)
+			externalIP = strings.Replace(`{{
+				default
+					( append .Values.kube.external_ips
+						( .Values.kube.external_ip )
+					)
+					.Values.kube.external_ips
+				| toJson
+			}}`, "\n", " ", -1)
 		}
-		spec.Add("externalIPs", helm.NewList(externalIP))
+		spec.Add("externalIPs", externalIP)
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
