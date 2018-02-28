@@ -179,6 +179,9 @@ done
     echo "Ran 'monit stop all'."
 
     while [ $total_services != $(monit summary | grep "^Process" | grep -c "Not monitored") ] ; do
+       if ! pidof monit 2>/dev/null >/dev/null ; then
+           break
+       fi
        sleep 1
     done
 
