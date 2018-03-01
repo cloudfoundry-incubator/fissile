@@ -26,6 +26,9 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
 
+	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
+	roleVarName := makeVarName(roleName)
+
 	vars, err := getEnvVars(role, settings)
 	if err != nil {
 		return nil, err
@@ -33,7 +36,16 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 
 	var resources helm.Node
 	if settings.UseMemoryLimits {
-		resources = helm.NewMapping("requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)))
+		if settings.CreateHelmChart {
+			resources = helm.NewMapping(
+				"requests", helm.NewMapping("memory", fmt.Sprintf("{{ int .Values.sizing.%s.memory }}Mi", roleVarName)),
+				"limits", helm.NewMapping("memory", fmt.Sprintf("{{ (mul (int .Values.sizing.memory_slack) (int .Values.sizing.%s.memory)) }}Mi", roleVarName)))
+
+		} else {
+			resources = helm.NewMapping(
+				"requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)),
+				"limits", helm.NewMapping("memory", fmt.Sprintf("%dMi", settings.MemLimitFactor*role.Run.Memory)))
+		}
 	}
 
 	securityContext := getSecurityContext(role)
