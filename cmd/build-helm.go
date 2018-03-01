@@ -114,7 +114,7 @@ func init() {
 		"mem-limit-factor",
 		"",
 		3,
-		"Slack factor for determing limits from requests",
+		"Slack factor for determining limits from requests",
 	)
 
 	buildHelmCmd.PersistentFlags().StringP(
