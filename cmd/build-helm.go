@@ -12,6 +12,7 @@ var (
 	flagBuildHelmOutputDir           string
 	flagBuildHelmDefaultEnvFiles     []string
 	flagBuildHelmUseMemoryLimits     bool
+	flagBuildHelmMemLimitFactor      int
 	flagBuildHelmTagExtra            string
 	flagBuildHelmUseSecretsGenerator bool
 	flagBuildHelmAuthType            string
@@ -27,6 +28,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
+		flagBuildHelmMemLimitFactor = buildHelmViper.GetInt("mem-limit-factor")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
@@ -58,6 +60,7 @@ var buildHelmCmd = &cobra.Command{
 			Organization:        flagDockerOrganization,
 			Repository:          flagRepository,
 			UseMemoryLimits:     flagBuildHelmUseMemoryLimits,
+			MemLimitFactor:      flagBuildHelmMemLimitFactor,
 			FissileVersion:      fissile.Version,
 			Opinions:            opinions,
 			CreateHelmChart:     true,
@@ -105,6 +108,13 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating helm chart",
+	)
+
+	buildHelmCmd.PersistentFlags().IntP(
+		"mem-limit-factor",
+		"",
+		3,
+		"Slack factor for determing limits from requests",
 	)
 
 	buildHelmCmd.PersistentFlags().StringP(

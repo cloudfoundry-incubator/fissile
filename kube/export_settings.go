@@ -14,6 +14,7 @@ type ExportSettings struct {
 	Password            string
 	Organization        string
 	UseMemoryLimits     bool
+	MemLimitFactor      int
 	FissileVersion      string
 	TagExtra            string
 	RoleManifest        *model.RoleManifest

@@ -12,6 +12,7 @@ var (
 	flagBuildKubeOutputDir       string
 	flagBuildKubeDefaultEnvFiles []string
 	flagBuildKubeUseMemoryLimits bool
+	flagBuildKubeMemLimitFactor  int
 	flagBuildKubeTagExtra        string
 )
 
@@ -25,6 +26,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
+		flagBuildKubeMemLimitFactor = buildKubeViper.GetInt("mem-limit-factor")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
@@ -54,6 +56,7 @@ var buildKubeCmd = &cobra.Command{
 			Organization:        flagDockerOrganization,
 			Repository:          flagRepository,
 			UseMemoryLimits:     flagBuildKubeUseMemoryLimits,
+			MemLimitFactor:      flagBuildKubeMemLimitFactor,
 			FissileVersion:      fissile.Version,
 			Opinions:            opinions,
 			CreateHelmChart:     false,
@@ -100,6 +103,13 @@ func init() {
 		"",
 		true,
 		"Include memory limits when generating kube configurations",
+	)
+
+	buildKubeCmd.PersistentFlags().IntP(
+		"mem-limit-factor",
+		"",
+		3,
+		"Slack factor for determing limits from requests",
 	)
 
 	buildKubeCmd.PersistentFlags().StringP(
