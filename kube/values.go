@@ -38,7 +38,12 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 	env.Sort()
 
-	sizing := helm.NewMapping("HA", false, "memory_slack", settings.MemLimitFactor)
+	sizing := helm.NewMapping(
+		"HA", false,
+		"memory", helm.NewMapping("slack", settings.MemLimitFactor,
+			"requests", false,
+			"limits", false))
+
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
