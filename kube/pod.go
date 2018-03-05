@@ -159,24 +159,7 @@ func getContainerImageName(role *model.Role, settings ExportSettings, grapher ut
 func getContainerPorts(role *model.Role) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
-		// Convert port range specifications to port numbers
-		minInternalPort, maxInternalPort, err := parsePortRange(port.Internal, port.Name, "internal")
-		if err != nil {
-			return nil, err
-		}
-		// The external port is optional here; we only need it if it's public
-		var minExternalPort, maxExternalPort int
-		if port.External != "" {
-			minExternalPort, maxExternalPort, err = parsePortRange(port.External, port.Name, "external")
-			if err != nil {
-				return nil, err
-			}
-		}
-		if port.External != "" && maxInternalPort-minInternalPort != maxExternalPort-minExternalPort {
-			return nil, fmt.Errorf("Port %s has mismatched internal and external port ranges %s and %s",
-				port.Name, port.Internal, port.External)
-		}
-		portInfos, err := getPortInfo(port.Name, minInternalPort, maxInternalPort)
+		portInfos, err := getPortInfo(port.Name, port.InternalPort, port.InternalPort+port.Count-1)
 		if err != nil {
 			return nil, err
 		}
@@ -355,15 +338,11 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	if readinessPort == nil {
 		return nil, nil
 	}
-	probePort, _, err := parsePortRange(readinessPort.Internal, readinessPort.Name, "internal")
-	if err != nil {
-		return nil, err
-	}
 
 	if probe == nil {
 		probe = helm.NewMapping()
 	}
-	probe.Add("tcpSocket", helm.NewMapping("port", probePort))
+	probe.Add("tcpSocket", helm.NewMapping("port", readinessPort.InternalPort))
 	return probe.Sort(), nil
 }
 

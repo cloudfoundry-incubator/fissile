@@ -80,10 +80,12 @@ func TestValidatePortRangeOk(t *testing.T) {
 	cases := []string{
 		"1", "1-2",
 	}
-	for _, arange := range cases {
-		errs := ValidatePortRange(arange, "")
+	for i, arange := range cases {
+		first, last, errs := ValidatePortRange(arange, "")
 		assert.NotNil(errs)
 		assert.Empty(errs)
+		assert.Equal(first, 1)
+		assert.Equal(last, i+1)
 	}
 }
 
@@ -102,7 +104,7 @@ func TestValidatePortRangeOutOfRange(t *testing.T) {
 		{"65600-70000", []string{"65600", "70000"}},
 	}
 	for _, acase := range cases {
-		errs := ValidatePortRange(acase.therange, "field")
+		_, _, errs := ValidatePortRange(acase.therange, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, len(acase.badvalue))
 		assert.Contains(errs.Errors(), `must be between 1 and 65535, inclusive`)
@@ -119,7 +121,7 @@ func TestValidatePortRangeBadSyntax(t *testing.T) {
 		"-1", "q", "1.5", "1-",
 	}
 	for _, arange := range cases {
-		errs := ValidatePortRange(arange, "field")
+		_, _, errs := ValidatePortRange(arange, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, 1)
 		assert.Contains(errs.Errors(), `invalid syntax`)

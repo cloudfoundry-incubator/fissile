@@ -336,6 +336,12 @@ func TestPodGetContainerPorts(t *testing.T) {
 
 	for _, sample := range samples {
 		role.Run.ExposedPorts = sample.input.([]*model.RoleRunExposedPort)
+		for _, port := range role.Run.ExposedPorts {
+			// ValidateExposedPorts not only validates the struct but also translates the
+			// legacy definitions ("2000-2010") into the current firstPort and Count fields.
+			errList := model.ValidateExposedPorts("role-name", port)
+			assert.Len(errList, 0)
+		}
 		actual, err := getContainerPorts(role)
 		sample.check(t, actual, err)
 	}

@@ -3,7 +3,6 @@ package kube
 import (
 	"fmt"
 	"hash/crc32"
-	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/helm"
@@ -15,32 +14,6 @@ const (
 	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
-
-// parsePortRange converts a port range string to a starting and an ending port number
-// port ranges can be single integers (e.g. 8080) or they can be ranges (e.g. 10001-10010)
-func parsePortRange(portRange, name, description string) (int, int, error) {
-	// Note that we do ParseInt with bitSize=16 because the max port number is 65535
-	idx := strings.Index(portRange, "-")
-	if idx < 0 {
-		portNum, err := strconv.Atoi(portRange)
-		if err != nil {
-			return 0, 0, fmt.Errorf("Port %s has invalid %s port %s: %s", name, description, portRange, err)
-		}
-		return portNum, portNum, nil
-	}
-	minPort, err := strconv.Atoi(portRange[:idx])
-	if err != nil {
-		return 0, 0, fmt.Errorf("Port %s has invalid %s starting port %s: %s", name, description, portRange[:idx], err)
-	}
-	maxPort, err := strconv.Atoi(portRange[idx+1:])
-	if err != nil {
-		return 0, 0, fmt.Errorf("Port %s has invalid %s ending port %s: %s", name, description, portRange[idx+1:], err)
-	}
-	if minPort > maxPort {
-		return 0, 0, fmt.Errorf("Port %s has invalid %s port range %s", name, description, portRange)
-	}
-	return minPort, maxPort, nil
-}
 
 type portInfo struct {
 	name string

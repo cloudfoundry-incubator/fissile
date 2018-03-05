@@ -492,14 +492,24 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		},
 		{
 			"bosh-run-bad-ports.yml", []string{
-				`roles[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
 				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
+				`roles[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
+			},
+		},
+		{
+			"bosh-run-missing-portrange.yml", []string{
+				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "": invalid syntax`,
+			},
+		},
+		{
+			"bosh-run-reverse-portrange.yml", []string{
+				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "5678-123": last port can't be lower than first port`,
 			},
 		},
 		{
 			"bosh-run-bad-parse.yml", []string{
-				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
 				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
+				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
 			},
 		},
 		{
@@ -522,8 +532,10 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
 		roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-		assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
-		assert.Nil(roleManifest)
+		if assert.Error(err) {
+			assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
+			assert.Nil(roleManifest)
+		}
 	}
 
 	testsOk := []string{

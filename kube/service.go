@@ -59,11 +59,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if public && !portDef.Public {
 			continue
 		}
-		minPort, maxPort, err := parsePortRange(portDef.External, portDef.Name, "external")
-		if err != nil {
-			return nil, err
-		}
-		portInfos, err := getPortInfo(portDef.Name, minPort, maxPort)
+		portInfos, err := getPortInfo(portDef.Name, portDef.ExternalPort, portDef.ExternalPort+portDef.Count-1)
 		if err != nil {
 			return nil, err
 		}
