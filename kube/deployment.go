@@ -109,9 +109,9 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 		controller.Add("_oddReplicas", fail, helm.Block(block))
 	}
 
-	failSlack := fmt.Sprintf(`{{ fail "memory slack factor must be at least 1" }}`)
-	blockSlack := fmt.Sprintf("if lt (int .Values.sizing.memory.slack) 1")
-	controller.Add("_minSlack", failSlack, helm.Block(blockSlack))
+	failLimitFactor := fmt.Sprintf(`{{ fail "The memory limit factor must be at least 1" }}`)
+	blockLimitFactor := fmt.Sprintf("if lt (int .Values.sizing.memory.limit_factor) 1")
+	controller.Add("_minLimitFactor", failLimitFactor, helm.Block(blockLimitFactor))
 
 	controller.Sort()
 

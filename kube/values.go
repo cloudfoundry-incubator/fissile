@@ -38,11 +38,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 	env.Sort()
 
-	sizing := helm.NewMapping(
-		"HA", false,
-		"memory", helm.NewMapping("slack", settings.MemLimitFactor,
-			"requests", false,
-			"limits", false))
+	memSizing := helm.NewMapping()
+	memSizing.Add("limit_factor", settings.MemLimitFactor, helm.Comment("Factor to calculate the limits from the requests\nMust be 1 or larger."))
+	memSizing.Add("requests", false, helm.Comment("Flag to activate memory requests"))
+	memSizing.Add("limits", false, helm.Comment("Flag to activate memory limits"))
+
+	sizing := helm.NewMapping()
+	sizing.Add("HA", false, helm.Comment("Flag to activate high-availability mode"))
+	sizing.Add("memory", memSizing, helm.Comment("Global memory configuration"))
 
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {

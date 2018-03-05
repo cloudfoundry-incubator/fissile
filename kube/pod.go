@@ -38,7 +38,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	if settings.UseMemoryLimits {
 		if settings.CreateHelmChart {
 			reqMap := helm.NewMapping("memory", fmt.Sprintf("{{ int .Values.sizing.%s.memory }}Mi", roleVarName))
-			limMap := helm.NewMapping("memory", fmt.Sprintf("{{ (mul (int .Values.sizing.memory.slack) (int .Values.sizing.%s.memory)) }}Mi", roleVarName))
+			limMap := helm.NewMapping("memory", fmt.Sprintf("{{ (mul (int .Values.sizing.memory.limit_factor) (int .Values.sizing.%s.memory)) }}Mi", roleVarName))
 
 			reqMap.Set(helm.Block("if .Values.sizing.memory.requests"))
 			limMap.Set(helm.Block("if .Values.sizing.memory.limits"))
