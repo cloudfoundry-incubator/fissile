@@ -114,7 +114,7 @@ func init() {
 		"mem-limit-factor",
 		"",
 		3,
-		"Multiplicative factor for determining limits from requests",
+		"Factor for determining limits from requests",
 	)
 
 	buildHelmCmd.PersistentFlags().StringP(

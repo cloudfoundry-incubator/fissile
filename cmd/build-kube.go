@@ -109,7 +109,7 @@ func init() {
 		"mem-limit-factor",
 		"",
 		3,
-		"Multiplicative factor for determining limits from requests",
+		"Factor for determining limits from requests",
 	)
 
 	buildKubeCmd.PersistentFlags().StringP(
