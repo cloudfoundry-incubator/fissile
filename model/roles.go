@@ -80,8 +80,10 @@ type RoleRun struct {
 	Capabilities      []string              `yaml:"capabilities"`
 	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"`
 	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`
-	Memory            int                   `yaml:"memory"`
-	VirtualCPUs       int                   `yaml:"virtual-cpus"`
+	MemRequest        int                   `yaml:"memory"`
+	Memory            *RoleRunMemory        `yaml:"mem"`
+	VirtualCPUs       float64               `yaml:"virtual-cpus"`
+	CPU               *RoleRunCPU           `yaml:"cpu"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
@@ -89,6 +91,18 @@ type RoleRun struct {
 	Affinity          interface{}           `yaml:"affinity,omitempty"`
 	Environment       []string              `yaml:"env"`
 	ObjectAnnotations *map[string]string    `yaml:"object-annotations,omitempty"`
+}
+
+// RoleRunMemory describes how a role should behave with regard to memory usage.
+type RoleRunMemory struct {
+	Request *int64 `yaml:"request"`
+	Limit   *int64 `yaml:"limit"`
+}
+
+// RoleRunCPU describes how a role should behave with regard to cpu usage.
+type RoleRunCPU struct {
+	Request *float64 `yaml:"request"`
+	Limit   *float64 `yaml:"limit"`
 }
 
 // RoleRunScaling describes how a role should scale out at runtime
@@ -336,11 +350,12 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 
 		// Remove all roles that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
+		// The kept roles are validated.
 		switch role.Type {
 		case "":
 			role.Type = RoleTypeBosh
 		case RoleTypeBosh, RoleTypeBoshTask:
-			continue
+			// Nothing to do.
 		case RoleTypeDocker:
 			roleManifest.Roles = append(roleManifest.Roles[:i], roleManifest.Roles[i+1:]...)
 		default:
@@ -1134,10 +1149,8 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 
 	allErrs = append(allErrs, normalizeFlightStage(role)...)
 	allErrs = append(allErrs, validateHealthCheck(role)...)
-	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.Memory),
-		fmt.Sprintf("roles[%s].run.memory", role.Name))...)
-	allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.VirtualCPUs),
-		fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+	allErrs = append(allErrs, validateRoleMemory(role)...)
+	allErrs = append(allErrs, validateRoleCPU(role)...)
 
 	for i := range role.Run.ExposedPorts {
 		allErrs = append(allErrs, ValidateExposedPorts(role.Name, role.Run.ExposedPorts[i])...)
@@ -1245,6 +1258,72 @@ func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validat
 	// Clear out legacy fields to make sure they aren't still be used elsewhere in the code
 	exposedPorts.Internal = ""
 	exposedPorts.External = ""
+
+	return allErrs
+}
+
+// validateRoleMemory validates memory requests and limits, and
+// converts the old key (`memory`, run.MemRequest), to the new
+// form. Afterward only run.Memory is valid.
+func validateRoleMemory(role *Role) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	if role.Run.Memory == nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.MemRequest),
+			fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+		mreq := int64(role.Run.MemRequest)
+		role.Run.Memory = &RoleRunMemory{Request: &mreq}
+		return allErrs
+	}
+
+	// assert: role.Run.Memory != nil
+
+	if role.Run.Memory.Request == nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.MemRequest),
+			fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+		mreq := int64(role.Run.MemRequest)
+		role.Run.Memory.Request = &mreq
+	} else {
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.Memory.Request,
+			fmt.Sprintf("roles[%s].run.mem.request", role.Name))...)
+	}
+
+	if role.Run.Memory.Limit != nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.Memory.Limit,
+			fmt.Sprintf("roles[%s].run.mem.limit", role.Name))...)
+	}
+
+	return allErrs
+}
+
+// validateRoleCPU validates cpu requests and limits, and converts the
+// old key (`virtual-cpus`, run.VirtualCPUs), to the new
+// form. Afterward only run.CPU is valid.
+func validateRoleCPU(role *Role) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	if role.Run.CPU == nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(role.Run.VirtualCPUs,
+			fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+		role.Run.CPU = &RoleRunCPU{Request: &role.Run.VirtualCPUs}
+		return allErrs
+	}
+
+	// assert: role.Run.CPU != nil
+
+	if role.Run.CPU.Request == nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(role.Run.VirtualCPUs,
+			fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+		role.Run.CPU.Request = &role.Run.VirtualCPUs
+	} else {
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.CPU.Request,
+			fmt.Sprintf("roles[%s].run.cpu.request", role.Name))...)
+	}
+
+	if role.Run.CPU.Limit != nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.CPU.Limit,
+			fmt.Sprintf("roles[%s].run.cpu.limit", role.Name))...)
+	}
 
 	return allErrs
 }

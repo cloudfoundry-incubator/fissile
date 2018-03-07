@@ -35,19 +35,65 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	}
 
 	var resources helm.Node
+	var requests *helm.Mapping
+	var limits *helm.Mapping
+
+	if settings.UseMemoryLimits || settings.UseCPULimits {
+		requests = helm.NewMapping()
+		limits = helm.NewMapping()
+		resources = helm.NewMapping("requests", requests, "limits", limits)
+	}
+
 	if settings.UseMemoryLimits {
 		if settings.CreateHelmChart {
-			reqMap := helm.NewMapping("memory", fmt.Sprintf("{{ int .Values.sizing.%s.memory }}Mi", roleVarName))
-			limMap := helm.NewMapping("memory", fmt.Sprintf("{{ (mul (int .Values.sizing.memory.limit_factor) (int .Values.sizing.%s.memory)) }}Mi", roleVarName))
-
-			reqMap.Set(helm.Block("if .Values.sizing.memory.requests"))
-			limMap.Set(helm.Block("if .Values.sizing.memory.limits"))
-
-			resources = helm.NewMapping("requests", reqMap, "limits", limMap)
+			requests.Add("memory",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.request }}Mi", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.requests .Values.sizing.%s.memory.request", roleVarName))))
+			limits.Add("memory",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.limit }}Mi", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.limits .Values.sizing.%s.memory.limit", roleVarName))))
 		} else {
-			resources = helm.NewMapping(
-				"requests", helm.NewMapping("memory", fmt.Sprintf("%dMi", role.Run.Memory)),
-				"limits", helm.NewMapping("memory", fmt.Sprintf("%dMi", settings.MemLimitFactor*role.Run.Memory)))
+			if role.Run.Memory != nil {
+				if role.Run.Memory.Request != nil {
+					requests.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Request))
+				} else {
+					requests.Add("memory", nil)
+				}
+				if role.Run.Memory.Limit != nil {
+					limits.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Limit))
+				} else {
+					limits.Add("memory", nil)
+				}
+			} else {
+				requests.Add("memory", nil)
+				limits.Add("memory", nil)
+			}
+		}
+	}
+	if settings.UseCPULimits {
+		if settings.CreateHelmChart {
+			requests.Add("cpu",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.request }}m", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.requests .Values.sizing.%s.cpu.request", roleVarName))))
+			limits.Add("cpu",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.limit }}m", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.limits .Values.sizing.%s.cpu.limit", roleVarName))))
+		} else {
+			if role.Run.CPU != nil {
+				if role.Run.CPU.Request != nil {
+					requests.Add("cpu", fmt.Sprintf("%dm", int(0.5+1000**role.Run.CPU.Request)))
+				} else {
+					requests.Add("cpu", nil)
+				}
+				if role.Run.CPU.Limit != nil {
+					limits.Add("cpu", fmt.Sprintf("%dm", int(0.5+1000**role.Run.CPU.Limit)))
+				} else {
+					limits.Add("cpu", nil)
+				}
+			} else {
+				requests.Add("cpu", nil)
+				limits.Add("cpu", nil)
+			}
 		}
 	}
 

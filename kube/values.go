@@ -39,13 +39,17 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	env.Sort()
 
 	memSizing := helm.NewMapping()
-	memSizing.Add("limit_factor", settings.MemLimitFactor, helm.Comment("Factor to calculate the limits from the requests\nMust be 1 or larger."))
 	memSizing.Add("requests", false, helm.Comment("Flag to activate memory requests"))
 	memSizing.Add("limits", false, helm.Comment("Flag to activate memory limits"))
+
+	cpuSizing := helm.NewMapping()
+	cpuSizing.Add("requests", false, helm.Comment("Flag to activate cpu requests"))
+	cpuSizing.Add("limits", false, helm.Comment("Flag to activate cpu limits"))
 
 	sizing := helm.NewMapping()
 	sizing.Add("HA", false, helm.Comment("Flag to activate high-availability mode"))
 	sizing.Add("memory", memSizing, helm.Comment("Global memory configuration"))
+	sizing.Add("cpu", cpuSizing, helm.Comment("Global CPU configuration"))
 
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
@@ -69,8 +73,44 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			}
 		}
 		entry.Add("count", role.Run.Scaling.Min, helm.Comment(comment))
-		entry.Add("memory", role.Run.Memory)
-		entry.Add("vcpu_count", role.Run.VirtualCPUs)
+		if settings.UseMemoryLimits {
+			var request helm.Node
+			if role.Run.Memory.Request == nil {
+				request = helm.NewNode(nil)
+			} else {
+				request = helm.NewNode(int(*role.Run.Memory.Request))
+			}
+			var limit helm.Node
+			if role.Run.Memory.Limit == nil {
+				limit = helm.NewNode(nil)
+			} else {
+				limit = helm.NewNode(int(*role.Run.Memory.Limit))
+			}
+
+			entry.Add("memory", helm.NewMapping(
+				"request", request,
+				"limit", limit),
+				helm.Comment("Unit [MiB]"))
+		}
+		if settings.UseCPULimits {
+			var request helm.Node
+			if role.Run.CPU.Request == nil {
+				request = helm.NewNode(nil)
+			} else {
+				request = helm.NewNode(1000. * *role.Run.CPU.Request)
+			}
+			var limit helm.Node
+			if role.Run.CPU.Limit == nil {
+				limit = helm.NewNode(nil)
+			} else {
+				limit = helm.NewNode(1000. * *role.Run.CPU.Limit)
+			}
+
+			entry.Add("cpu", helm.NewMapping(
+				"request", request,
+				"limit", limit),
+				helm.Comment("Unit [millicore]"))
+		}
 
 		diskSizes := helm.NewMapping()
 		for _, volume := range role.Run.PersistentVolumes {

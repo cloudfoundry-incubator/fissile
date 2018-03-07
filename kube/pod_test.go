@@ -819,11 +819,12 @@ func TestPodMemory(t *testing.T) {
 	if role == nil {
 		return
 	}
+
 	pod, err := NewPod(role, ExportSettings{
 		Opinions:        model.NewEmptyOpinions(),
 		UseMemoryLimits: true,
-		MemLimitFactor:  3,
 	}, nil)
+
 	if !assert.NoError(err, "Failed to create pod from role pre-role") {
 		return
 	}
@@ -853,6 +854,55 @@ func TestPodMemory(t *testing.T) {
 						memory: 128Mi
 					limits:
 						memory: 384Mi
+			restartPolicy: OnFailure
+			terminationGracePeriodSeconds: 600
+	`, "\t", "    ", -1)
+	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
+		return
+	}
+
+	testhelpers.IsYAMLSubset(assert, expected, actual)
+}
+
+func TestPodCPU(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		Opinions:     model.NewEmptyOpinions(),
+		UseCPULimits: true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	yamlConfig := &bytes.Buffer{}
+	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
+		return
+	}
+
+	var expected, actual interface{}
+	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
+		return
+	}
+
+	expectedYAML := strings.Replace(`---
+		apiVersion: v1
+		kind: Pod
+		metadata:
+			name: pre-role
+		spec:
+			containers:
+			-
+				name: pre-role
+				resources:
+					requests:
+						cpu: 2000m
+					limits:
+						cpu: 4000m
 			restartPolicy: OnFailure
 			terminationGracePeriodSeconds: 600
 	`, "\t", "    ", -1)

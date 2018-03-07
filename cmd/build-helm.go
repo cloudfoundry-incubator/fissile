@@ -12,7 +12,7 @@ var (
 	flagBuildHelmOutputDir           string
 	flagBuildHelmDefaultEnvFiles     []string
 	flagBuildHelmUseMemoryLimits     bool
-	flagBuildHelmMemLimitFactor      int
+	flagBuildHelmUseCPULimits        bool
 	flagBuildHelmTagExtra            string
 	flagBuildHelmUseSecretsGenerator bool
 	flagBuildHelmAuthType            string
@@ -28,7 +28,7 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
-		flagBuildHelmMemLimitFactor = buildHelmViper.GetInt("mem-limit-factor")
+		flagBuildHelmUseCPULimits = buildHelmViper.GetBool("use-cpu-limits")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
@@ -60,7 +60,7 @@ var buildHelmCmd = &cobra.Command{
 			Organization:        flagDockerOrganization,
 			Repository:          flagRepository,
 			UseMemoryLimits:     flagBuildHelmUseMemoryLimits,
-			MemLimitFactor:      flagBuildHelmMemLimitFactor,
+			UseCPULimits:        flagBuildHelmUseCPULimits,
 			FissileVersion:      fissile.Version,
 			Opinions:            opinions,
 			CreateHelmChart:     true,
@@ -110,11 +110,11 @@ func init() {
 		"Include memory limits when generating helm chart",
 	)
 
-	buildHelmCmd.PersistentFlags().IntP(
-		"mem-limit-factor",
+	buildHelmCmd.PersistentFlags().BoolP(
+		"use-cpu-limits",
 		"",
-		3,
-		"Factor for determining limits from requests",
+		true,
+		"Include cpu limits when generating helm chart",
 	)
 
 	buildHelmCmd.PersistentFlags().StringP(

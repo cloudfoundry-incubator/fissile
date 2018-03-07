@@ -12,7 +12,7 @@ var (
 	flagBuildKubeOutputDir       string
 	flagBuildKubeDefaultEnvFiles []string
 	flagBuildKubeUseMemoryLimits bool
-	flagBuildKubeMemLimitFactor  int
+	flagBuildKubeUseCPULimits    bool
 	flagBuildKubeTagExtra        string
 )
 
@@ -26,7 +26,7 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
 		flagBuildKubeDefaultEnvFiles = splitNonEmpty(buildKubeViper.GetString("defaults-file"), ",")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
-		flagBuildKubeMemLimitFactor = buildKubeViper.GetInt("mem-limit-factor")
+		flagBuildKubeUseCPULimits = buildKubeViper.GetBool("use-cpu-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
@@ -56,7 +56,7 @@ var buildKubeCmd = &cobra.Command{
 			Organization:        flagDockerOrganization,
 			Repository:          flagRepository,
 			UseMemoryLimits:     flagBuildKubeUseMemoryLimits,
-			MemLimitFactor:      flagBuildKubeMemLimitFactor,
+			UseCPULimits:        flagBuildKubeUseCPULimits,
 			FissileVersion:      fissile.Version,
 			Opinions:            opinions,
 			CreateHelmChart:     false,
@@ -105,11 +105,11 @@ func init() {
 		"Include memory limits when generating kube configurations",
 	)
 
-	buildKubeCmd.PersistentFlags().IntP(
-		"mem-limit-factor",
+	buildKubeCmd.PersistentFlags().BoolP(
+		"use-cpu-limits",
 		"",
-		3,
-		"Factor for determining limits from requests",
+		true,
+		"Include cpu limits when generating helm chart",
 	)
 
 	buildKubeCmd.PersistentFlags().StringP(
