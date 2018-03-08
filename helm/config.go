@@ -41,7 +41,8 @@ Tricks:
 
 * Use a block action to generate multiple list elements
 
-    tcp := NewMapping().Set(Block("range $key, $value := .Values.tcp"))
+    tcp := NewMapping()
+    tcp.Set(Block("range $key, $value := .Values.tcp"))
     tcp.Add("name", NewNode("\"{{ $key }}-tcp\""))
     tcp.Add("containerPort", NewNode("$key"))
     tcp.Add("protocol", NewNode("TCP"))
