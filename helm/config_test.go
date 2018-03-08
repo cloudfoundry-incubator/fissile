@@ -152,17 +152,6 @@ List:
 	values := list.Values()
 	assert.Equal(t, 7, len(values))
 	assert.Equal(t, "3.1415", values[2].String())
-
-	equal(t, NewList(), `---
-[]
-`)
-	equal(t, NewList(NewList()), `---
-- []
-`)
-	equal(t, NewList(NewList(), "1"), `---
-- []
-- "1"
-`)
 }
 
 func TestHelmMapping(t *testing.T) {
