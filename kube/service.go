@@ -110,9 +110,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 			// use .kube.external_ip instead (as the single address)
 			externalIP = strings.Replace(`{{
 				default
-					( append .Values.kube.external_ips
-						( .Values.kube.external_ip )
-					)
+					( list .Values.kube.external_ip )
 					.Values.kube.external_ips
 				| toJson
 			}}`, "\n", " ", -1)
