@@ -126,14 +126,14 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if settings.CreateHelmChart {
 			// Backwards compatibility: If .kube.external_ips doesn't exist,
 			// use .kube.external_ip instead (as the single address)
-			externalIP = strings.Replace(`{{
+			externalIP = strings.Join(strings.Fields(`{{
 				default
 					( append .Values.kube.external_ips
 						( .Values.kube.external_ip )
 					)
 					.Values.kube.external_ips
 				| toJson
-			}}`, "\n", " ", -1)
+			}}`), " ")
 		}
 		spec.Add("externalIPs", externalIP)
 	}
