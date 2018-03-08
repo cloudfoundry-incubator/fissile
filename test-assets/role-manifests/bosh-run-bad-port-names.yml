@@ -1,0 +1,16 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    exposed-ports:
+    - name: a--b
+      protocol: TCP
+      internal: 80
+    - name: abcd-efgh-ijkl-x
+      protocol: TCP
+      internal: 8080
+    - name: abcdefghij
+      protocol: TCP
+      user-configurable: true
+      internal: 8008

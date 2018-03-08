@@ -52,7 +52,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	}
 
 	securityContext := getSecurityContext(role)
-	ports, err := getContainerPorts(role)
+	ports, err := getContainerPorts(role, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -156,19 +156,43 @@ func getContainerImageName(role *model.Role, settings ExportSettings, grapher ut
 }
 
 // getContainerPorts returns a list of ports for a role
-func getContainerPorts(role *model.Role) (helm.Node, error) {
+func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
-		portInfos, err := getPortInfo(port.Name, port.InternalPort, port.InternalPort+port.Count-1)
-		if err != nil {
-			return nil, err
-		}
-		for _, portInfo := range portInfos {
+		if settings.CreateHelmChart && port.UserConfigurable {
+			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
+
+			fail := fmt.Sprintf(`{{ fail "%s.count must not exceed %d" }}`, sizing, port.Max)
+			block := fmt.Sprintf("if gt (int %s.count) %d", sizing, port.Max)
+			ports = append(ports, helm.NewNode(fail, helm.Block(block)))
+
+			fail = fmt.Sprintf(`{{ fail "%s.count must be at least 1" }}`, sizing)
+			block = fmt.Sprintf("if lt (int %s.count) 1", sizing)
+			ports = append(ports, helm.NewNode(fail, helm.Block(block)))
+
+			block = fmt.Sprintf("range $port := untilStep %d (int (add %d %s.count)) 1", port.InternalPort, port.InternalPort, sizing)
 			newPort := helm.NewMapping()
-			newPort.Add("containerPort", portInfo.port)
-			newPort.Add("name", portInfo.name)
-			newPort.Add("protocol", strings.ToUpper(port.Protocol))
+			newPort.Set(helm.Block(block))
+			newPort.Add("containerPort", "{{ $port }}")
+			if port.Max > 1 {
+				newPort.Add("name", fmt.Sprintf("%s-{{ $port }}", port.Name))
+			} else {
+				newPort.Add("name", port.Name)
+			}
+			newPort.Add("protocol", port.Protocol)
 			ports = append(ports, newPort)
+		} else {
+			for portNumber := port.InternalPort; portNumber < port.InternalPort+port.Count; portNumber++ {
+				newPort := helm.NewMapping()
+				newPort.Add("containerPort", portNumber)
+				if port.Max > 1 {
+					newPort.Add("name", fmt.Sprintf("%s-%d", port.Name, portNumber))
+				} else {
+					newPort.Add("name", port.Name)
+				}
+				newPort.Add("protocol", port.Protocol)
+				ports = append(ports, newPort)
+			}
 		}
 	}
 	if len(ports) == 0 {
@@ -198,11 +222,12 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 		return nil, err
 	}
 
-	re := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
+	sizingCountRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
+	sizingPortsRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_PORTS_([A-Z][A-Z_]*)_(MIN|MAX)$")
 
 	var env []helm.Node
 	for _, config := range configs {
-		match := re.FindStringSubmatch(config.Name)
+		match := sizingCountRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
 			role := settings.RoleManifest.LookupRole(roleName)
@@ -220,6 +245,49 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 				envVar := helm.NewMapping("name", config.Name, "value", strconv.Itoa(role.Run.Scaling.Min))
 				env = append(env, envVar)
 			}
+			continue
+		}
+
+		match = sizingPortsRegexp.FindStringSubmatch(config.Name)
+		if match != nil {
+			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
+			role := settings.RoleManifest.LookupRole(roleName)
+			if role == nil {
+				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
+			}
+			if config.Secret {
+				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
+			}
+
+			portName := strings.Replace(strings.ToLower(match[2]), "_", "-", -1)
+			var port *model.RoleRunExposedPort
+			for _, exposedPort := range role.Run.ExposedPorts {
+				if exposedPort.UserConfigurable && exposedPort.Name == portName {
+					port = exposedPort
+					break
+				}
+			}
+			if port == nil {
+				return nil, fmt.Errorf("Role %s doesn't have a user configurable port %s", roleName, portName)
+			}
+
+			var value string
+			if settings.CreateHelmChart {
+				if match[3] == "MIN" {
+					value = fmt.Sprintf("{{ .Values.sizing.%s.ports.%s.port | quote }}", makeVarName(roleName), makeVarName(portName))
+				} else {
+					value = fmt.Sprintf("{{ add .Values.sizing.%s.ports.%s.port .Values.sizing.%s.ports.%s.count -1 | quote }}",
+						makeVarName(roleName), makeVarName(portName), makeVarName(roleName), makeVarName(portName))
+				}
+			} else {
+				if match[3] == "MIN" {
+					value = strconv.Itoa(port.ExternalPort)
+				} else {
+					value = strconv.Itoa(port.ExternalPort + port.Count - 1)
+				}
+			}
+			envVar := helm.NewMapping("name", config.Name, "value", value)
+			env = append(env, envVar)
 			continue
 		}
 
@@ -330,7 +398,7 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 
 	var readinessPort *model.RoleRunExposedPort
 	for _, port := range role.Run.ExposedPorts {
-		if strings.ToUpper(port.Protocol) == "TCP" {
+		if port.Protocol == "TCP" {
 			readinessPort = port
 			break
 		}

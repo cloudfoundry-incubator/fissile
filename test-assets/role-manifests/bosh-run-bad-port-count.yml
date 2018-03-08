@@ -4,8 +4,7 @@ roles:
   jobs: []
   run:
     exposed-ports:
-    - name: https
+    - name: http
       protocol: TCP
-      external: 0
-      internal: -1
-      public: true
+      internal: 80-82
+      count: 2

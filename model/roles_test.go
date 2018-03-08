@@ -491,6 +491,18 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
+			"bosh-run-bad-port-names.yml", []string{
+				`roles[myrole].run.exposed-ports[a--b].name: Invalid value: "a--b": port names must be lowercase words separated by hyphens`,
+				`roles[myrole].run.exposed-ports[abcd-efgh-ijkl-x].name: Invalid value: "abcd-efgh-ijkl-x": port name must be no more than 15 characters`,
+				`roles[myrole].run.exposed-ports[abcdefghij].name: Invalid value: "abcdefghij": user configurable port name must be no more than 9 characters`,
+			},
+		},
+		{
+			"bosh-run-bad-port-count.yml", []string{
+				`roles[myrole].run.exposed-ports[http].count: Invalid value: 2: count doesn't match port range 80-82`,
+			},
+		},
+		{
 			"bosh-run-bad-ports.yml", []string{
 				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
 				`roles[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
@@ -532,7 +544,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
 		roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-		if assert.Error(err) {
+		if assert.Error(err, "Expected errors: %s", tc.message) {
 			assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
 			assert.Nil(roleManifest)
 		}

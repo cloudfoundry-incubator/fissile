@@ -55,27 +55,49 @@ func NewClusterIPServiceList(role *model.Role, headless, private bool, settings 
 // NewClusterIPService creates a new k8s ClusterIP service
 func NewClusterIPService(role *model.Role, headless bool, public bool, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
-	for _, portDef := range role.Run.ExposedPorts {
-		if public && !portDef.Public {
+	for _, port := range role.Run.ExposedPorts {
+		if public && !port.Public {
 			continue
 		}
-		portInfos, err := getPortInfo(portDef.Name, portDef.ExternalPort, portDef.ExternalPort+portDef.Count-1)
-		if err != nil {
-			return nil, err
-		}
+		if settings.CreateHelmChart && port.UserConfigurable {
+			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
-		for _, portInfoEntry := range portInfos {
-			port := helm.NewMapping(
-				"name", portInfoEntry.name,
-				"port", portInfoEntry.port,
-				"protocol", strings.ToUpper(portDef.Protocol),
-			)
-			if headless {
-				port.Add("targetPort", 0)
-			} else {
-				port.Add("targetPort", portInfoEntry.name)
+			block := fmt.Sprintf("range $port := untilStep (int %s.port) (int (add %s.port %s.count)) 1", sizing, sizing, sizing)
+			newPort := helm.NewMapping()
+			newPort.Set(helm.Block(block))
+
+			portName := port.Name
+			if port.Max > 1 {
+				portName = fmt.Sprintf("%s-{{ $port }}", portName)
 			}
-			ports = append(ports, port)
+			newPort.Add("name", portName)
+			newPort.Add("port", "{{ $port }}")
+			newPort.Add("protocol", port.Protocol)
+			if headless {
+				newPort.Add("targetPort", 0)
+			} else {
+				newPort.Add("targetPort", portName)
+			}
+			ports = append(ports, newPort)
+		} else {
+			for portNumber := port.ExternalPort; portNumber < port.ExternalPort+port.Count; portNumber++ {
+				portName := port.Name
+				if port.Max > 1 {
+					portName = fmt.Sprintf("%s-%d", portName, portNumber)
+				}
+				newPort := helm.NewMapping(
+					"name", portName,
+					"port", portNumber,
+					"protocol", port.Protocol,
+				)
+
+				if headless {
+					newPort.Add("targetPort", 0)
+				} else {
+					newPort.Add("targetPort", portName)
+				}
+				ports = append(ports, newPort)
+			}
 		}
 	}
 	if len(ports) == 0 {
