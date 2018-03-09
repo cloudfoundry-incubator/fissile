@@ -272,18 +272,14 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 			}
 
 			var value string
-			if settings.CreateHelmChart {
-				if match[3] == "MIN" {
-					value = fmt.Sprintf("{{ .Values.sizing.%s.ports.%s.port | quote }}", makeVarName(roleName), makeVarName(portName))
-				} else {
-					value = fmt.Sprintf("{{ add .Values.sizing.%s.ports.%s.port .Values.sizing.%s.ports.%s.count -1 | quote }}",
-						makeVarName(roleName), makeVarName(portName), makeVarName(roleName), makeVarName(portName))
-				}
+			if match[3] == "MIN" {
+				value = strconv.Itoa(port.InternalPort)
 			} else {
-				if match[3] == "MIN" {
-					value = strconv.Itoa(port.ExternalPort)
+				if settings.CreateHelmChart {
+					value = fmt.Sprintf("{{ add %d .Values.sizing.%s.ports.%s.count -1 | quote }}",
+						port.InternalPort, makeVarName(roleName), makeVarName(portName))
 				} else {
-					value = strconv.Itoa(port.ExternalPort + port.Count - 1)
+					value = strconv.Itoa(port.InternalPort + port.Count - 1)
 				}
 			}
 			envVar := helm.NewMapping("name", config.Name, "value", value)
