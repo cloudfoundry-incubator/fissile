@@ -170,10 +170,10 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 			block = fmt.Sprintf("if lt (int %s.count) 1", sizing)
 			ports = append(ports, helm.NewNode(fail, helm.Block(block)))
 
-			block = fmt.Sprintf("range $port := untilStep %d (int (add %d %s.count)) 1", port.InternalPort, port.InternalPort, sizing)
+			block = fmt.Sprintf("range $port := until (int %s.count)", sizing)
 			newPort := helm.NewMapping()
 			newPort.Set(helm.Block(block))
-			newPort.Add("containerPort", "{{ $port }}")
+			newPort.Add("containerPort", fmt.Sprintf("{{ add %d $port }}", port.InternalPort))
 			if port.Max > 1 {
 				newPort.Add("name", fmt.Sprintf("%s-{{ $port }}", port.Name))
 			} else {

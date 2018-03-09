@@ -62,7 +62,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if settings.CreateHelmChart && port.UserConfigurable {
 			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
-			block := fmt.Sprintf("range $port := untilStep (int %s.port) (int (add %s.port %s.count)) 1", sizing, sizing, sizing)
+			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
 			newPort := helm.NewMapping()
 			newPort.Set(helm.Block(block))
 
@@ -71,7 +71,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 				portName = fmt.Sprintf("%s-{{ $port }}", portName)
 			}
 			newPort.Add("name", portName)
-			newPort.Add("port", "{{ $port }}")
+			newPort.Add("port", fmt.Sprintf("{{ add (int %s.port) $port }}", sizing))
 			newPort.Add("protocol", port.Protocol)
 			if headless {
 				newPort.Add("targetPort", 0)
