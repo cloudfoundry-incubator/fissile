@@ -59,7 +59,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if public && !port.Public {
 			continue
 		}
-		if settings.CreateHelmChart && port.UserConfigurable {
+		if settings.CreateHelmChart && port.CountIsConfigurable {
 			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
 			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
@@ -70,8 +70,16 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 			if port.Max > 1 {
 				portName = fmt.Sprintf("%s-{{ $port }}", portName)
 			}
+
+			var portNumber string
+			if port.PortIsConfigurable {
+				portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
+			} else {
+				portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
+			}
+
 			newPort.Add("name", portName)
-			newPort.Add("port", fmt.Sprintf("{{ add (int %s.port) $port }}", sizing))
+			newPort.Add("port", portNumber)
 			newPort.Add("protocol", port.Protocol)
 			if headless {
 				newPort.Add("targetPort", 0)
@@ -80,11 +88,20 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 			}
 			ports = append(ports, newPort)
 		} else {
-			for portNumber := port.ExternalPort; portNumber < port.ExternalPort+port.Count; portNumber++ {
+			for portIndex := 0; portIndex < port.Count; portIndex++ {
 				portName := port.Name
 				if port.Max > 1 {
-					portName = fmt.Sprintf("%s-%d", portName, portNumber)
+					portName = fmt.Sprintf("%s-%d", portName, portIndex)
 				}
+
+				var portNumber interface{}
+				if settings.CreateHelmChart && port.PortIsConfigurable {
+					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
+						makeVarName(role.Name), makeVarName(port.Name), portIndex)
+				} else {
+					portNumber = port.ExternalPort + portIndex
+				}
+
 				newPort := helm.NewMapping(
 					"name", portName,
 					"port", portNumber,

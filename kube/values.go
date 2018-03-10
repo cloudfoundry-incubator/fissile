@@ -84,8 +84,15 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 		ports := helm.NewMapping()
 		for _, port := range role.Run.ExposedPorts {
-			if port.UserConfigurable {
-				ports.Add(makeVarName(port.Name), helm.NewMapping("port", port.ExternalPort, "count", port.Count))
+			config := helm.NewMapping()
+			if port.PortIsConfigurable {
+				config.Add("port", port.ExternalPort)
+			}
+			if port.CountIsConfigurable {
+				config.Add("count", port.Count)
+			}
+			if len(config.Names()) > 0 {
+				ports.Add(makeVarName(port.Name), config)
 			}
 		}
 		if len(ports.Names()) > 0 {

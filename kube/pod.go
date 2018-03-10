@@ -159,7 +159,7 @@ func getContainerImageName(role *model.Role, settings ExportSettings, grapher ut
 func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
-		if settings.CreateHelmChart && port.UserConfigurable {
+		if settings.CreateHelmChart && port.CountIsConfigurable {
 			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
 			fail := fmt.Sprintf(`{{ fail "%s.count must not exceed %d" }}`, sizing, port.Max)
@@ -262,7 +262,7 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 			portName := strings.Replace(strings.ToLower(match[2]), "_", "-", -1)
 			var port *model.RoleRunExposedPort
 			for _, exposedPort := range role.Run.ExposedPorts {
-				if exposedPort.UserConfigurable && exposedPort.Name == portName {
+				if (exposedPort.PortIsConfigurable || exposedPort.CountIsConfigurable) && exposedPort.Name == portName {
 					port = exposedPort
 					break
 				}

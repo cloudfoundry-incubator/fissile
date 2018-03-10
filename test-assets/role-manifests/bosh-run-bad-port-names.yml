@@ -12,5 +12,5 @@ roles:
       internal: 8080
     - name: abcdefghij
       protocol: TCP
-      user-configurable: true
+      count-configurable: true
       internal: 8008

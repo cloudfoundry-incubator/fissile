@@ -108,16 +108,17 @@ type RoleRunVolume struct {
 
 // RoleRunExposedPort describes a port to be available to other roles, or the outside world
 type RoleRunExposedPort struct {
-	Name             string `yaml:"name"`
-	Protocol         string `yaml:"protocol"`
-	External         string `yaml:"external"`
-	Internal         string `yaml:"internal"`
-	Public           bool   `yaml:"public"`
-	Count            int    `yaml:"count"`
-	Max              int    `yaml:"max"`
-	UserConfigurable bool   `yaml:"user-configurable"`
-	InternalPort     int
-	ExternalPort     int
+	Name                string `yaml:"name"`
+	Protocol            string `yaml:"protocol"`
+	External            string `yaml:"external"`
+	Internal            string `yaml:"internal"`
+	Public              bool   `yaml:"public"`
+	Count               int    `yaml:"count"`
+	Max                 int    `yaml:"max"`
+	PortIsConfigurable  bool   `yaml:"port-configurable"`
+	CountIsConfigurable bool   `yaml:"count-configurable"`
+	InternalPort        int
+	ExternalPort        int
 }
 
 // HealthCheck describes a non-standard health check endpoint
@@ -1195,7 +1196,7 @@ func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validat
 	if len(exposedPorts.Name) > 15 {
 		allErrs = append(allErrs, validation.Invalid(fieldName+".name", exposedPorts.Name,
 			"port name must be no more than 15 characters"))
-	} else if len(exposedPorts.Name) > 9 && exposedPorts.UserConfigurable {
+	} else if len(exposedPorts.Name) > 9 && exposedPorts.CountIsConfigurable {
 		// need to be able to append "-12345" and still be 15 chars or less
 		allErrs = append(allErrs, validation.Invalid(fieldName+".name", exposedPorts.Name,
 			"user configurable port name must be no more than 9 characters"))
