@@ -143,5 +143,6 @@ func minKubeVersion(major, minor int) string {
 	ver := ".Capabilities.KubeVersion"
 	// "Major > major || (Major == major && Minor >= minor)"
 	// The int conversions are necessary because Major/Minor in KubeVersion are strings
-	return fmt.Sprintf("or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (int %s.Minor) %d))", ver, major, ver, major, ver, minor)
+	// The `regexFind` is necessary because the Minor version on GKE is currently "8+"
+	return fmt.Sprintf(`or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (%s.Minor | regexFind "[0-9]+" | int) %d))`, ver, major, ver, major, ver, minor)
 }
