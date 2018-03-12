@@ -55,31 +55,66 @@ func NewClusterIPServiceList(role *model.Role, headless, private bool, settings 
 // NewClusterIPService creates a new k8s ClusterIP service
 func NewClusterIPService(role *model.Role, headless bool, public bool, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
-	for _, portDef := range role.Run.ExposedPorts {
-		if public && !portDef.Public {
+	for _, port := range role.Run.ExposedPorts {
+		if public && !port.Public {
 			continue
 		}
-		minPort, maxPort, err := parsePortRange(portDef.External, portDef.Name, "external")
-		if err != nil {
-			return nil, err
-		}
-		portInfos, err := getPortInfo(portDef.Name, minPort, maxPort)
-		if err != nil {
-			return nil, err
-		}
+		if settings.CreateHelmChart && port.CountIsConfigurable {
+			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
-		for _, portInfoEntry := range portInfos {
-			port := helm.NewMapping(
-				"name", portInfoEntry.name,
-				"port", portInfoEntry.port,
-				"protocol", strings.ToUpper(portDef.Protocol),
-			)
-			if headless {
-				port.Add("targetPort", 0)
-			} else {
-				port.Add("targetPort", portInfoEntry.name)
+			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
+			newPort := helm.NewMapping()
+			newPort.Set(helm.Block(block))
+
+			portName := port.Name
+			if port.Max > 1 {
+				portName = fmt.Sprintf("%s-{{ $port }}", portName)
 			}
-			ports = append(ports, port)
+
+			var portNumber string
+			if port.PortIsConfigurable {
+				portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
+			} else {
+				portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
+			}
+
+			newPort.Add("name", portName)
+			newPort.Add("port", portNumber)
+			newPort.Add("protocol", port.Protocol)
+			if headless {
+				newPort.Add("targetPort", 0)
+			} else {
+				newPort.Add("targetPort", portName)
+			}
+			ports = append(ports, newPort)
+		} else {
+			for portIndex := 0; portIndex < port.Count; portIndex++ {
+				portName := port.Name
+				if port.Max > 1 {
+					portName = fmt.Sprintf("%s-%d", portName, portIndex)
+				}
+
+				var portNumber interface{}
+				if settings.CreateHelmChart && port.PortIsConfigurable {
+					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
+						makeVarName(role.Name), makeVarName(port.Name), portIndex)
+				} else {
+					portNumber = port.ExternalPort + portIndex
+				}
+
+				newPort := helm.NewMapping(
+					"name", portName,
+					"port", portNumber,
+					"protocol", port.Protocol,
+				)
+
+				if headless {
+					newPort.Add("targetPort", 0)
+				} else {
+					newPort.Add("targetPort", portName)
+				}
+				ports = append(ports, newPort)
+			}
 		}
 	}
 	if len(ports) == 0 {
@@ -108,12 +143,12 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		if settings.CreateHelmChart {
 			// Backwards compatibility: If .kube.external_ips doesn't exist,
 			// use .kube.external_ip instead (as the single address)
-			externalIP = strings.Replace(`{{
+			externalIP = strings.Join(strings.Fields(`{{
 				default
 					( list .Values.kube.external_ip )
 					.Values.kube.external_ips
 				| toJson
-			}}`, "\n", " ", -1)
+			}}`), " ")
 		}
 		spec.Add("externalIPs", externalIP)
 	}

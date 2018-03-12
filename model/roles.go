@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -107,11 +108,17 @@ type RoleRunVolume struct {
 
 // RoleRunExposedPort describes a port to be available to other roles, or the outside world
 type RoleRunExposedPort struct {
-	Name     string `yaml:"name"`
-	Protocol string `yaml:"protocol"`
-	External string `yaml:"external"`
-	Internal string `yaml:"internal"`
-	Public   bool   `yaml:"public"`
+	Name                string `yaml:"name"`
+	Protocol            string `yaml:"protocol"`
+	External            string `yaml:"external"`
+	Internal            string `yaml:"internal"`
+	Public              bool   `yaml:"public"`
+	Count               int    `yaml:"count"`
+	Max                 int    `yaml:"max"`
+	PortIsConfigurable  bool   `yaml:"port-configurable"`
+	CountIsConfigurable bool   `yaml:"count-configurable"`
+	InternalPort        int
+	ExternalPort        int
 }
 
 // HealthCheck describes a non-standard health check endpoint
@@ -1133,18 +1140,7 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 		fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
 
 	for i := range role.Run.ExposedPorts {
-		if role.Run.ExposedPorts[i].Name == "" {
-			allErrs = append(allErrs, validation.Required(
-				fmt.Sprintf("roles[%s].run.exposed-ports.name", role.Name), ""))
-		}
-
-		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].External,
-			fmt.Sprintf("roles[%s].run.exposed-ports[%s].external", role.Name, role.Run.ExposedPorts[i].Name))...)
-		allErrs = append(allErrs, validation.ValidatePortRange(role.Run.ExposedPorts[i].Internal,
-			fmt.Sprintf("roles[%s].run.exposed-ports[%s].internal", role.Name, role.Run.ExposedPorts[i].Name))...)
-
-		allErrs = append(allErrs, validation.ValidateProtocol(role.Run.ExposedPorts[i].Protocol,
-			fmt.Sprintf("roles[%s].run.exposed-ports[%s].protocol", role.Name, role.Run.ExposedPorts[i].Name))...)
+		allErrs = append(allErrs, ValidateExposedPorts(role.Name, role.Run.ExposedPorts[i])...)
 	}
 
 	if role.Run.ServiceAccount != "" {
@@ -1179,6 +1175,76 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 			fmt.Sprintf("roles[%s].run.env", role.Name),
 			"Non-docker role declares bogus parameters"))
 	}
+
+	return allErrs
+}
+
+// ValidateExposedPorts validates exposed port ranges. It also translates the legacy
+// format of port ranges ("2000-2010") into the FirstPort and Count values.
+func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	fieldName := fmt.Sprintf("roles[%s].run.exposed-ports[%s]", name, exposedPorts.Name)
+
+	// Validate Name
+	if exposedPorts.Name == "" {
+		allErrs = append(allErrs, validation.Required(fieldName+".name", ""))
+	} else if regexp.MustCompile("^[a-z0-9]+(-[a-z0-9]+)*$").FindString(exposedPorts.Name) == "" {
+		allErrs = append(allErrs, validation.Invalid(fieldName+".name", exposedPorts.Name,
+			"port names must be lowercase words separated by hyphens"))
+	}
+	if len(exposedPorts.Name) > 15 {
+		allErrs = append(allErrs, validation.Invalid(fieldName+".name", exposedPorts.Name,
+			"port name must be no more than 15 characters"))
+	} else if len(exposedPorts.Name) > 9 && exposedPorts.CountIsConfigurable {
+		// need to be able to append "-12345" and still be 15 chars or less
+		allErrs = append(allErrs, validation.Invalid(fieldName+".name", exposedPorts.Name,
+			"user configurable port name must be no more than 9 characters"))
+	}
+
+	// Validate Protocol
+	allErrs = append(allErrs, validation.ValidateProtocol(exposedPorts.Protocol, fieldName+".protocol")...)
+
+	// Validate Internal
+	firstPort, lastPort, errs := validation.ValidatePortRange(exposedPorts.Internal, fieldName+".internal")
+	allErrs = append(allErrs, errs...)
+	exposedPorts.InternalPort = firstPort
+
+	if exposedPorts.Count == 0 {
+		exposedPorts.Count = lastPort + 1 - firstPort
+	} else if lastPort+1-firstPort != exposedPorts.Count {
+		allErrs = append(allErrs, validation.Invalid(fieldName+".count", exposedPorts.Count,
+			fmt.Sprintf("count doesn't match port range %s", exposedPorts.Internal)))
+	}
+
+	// Validate External
+	if exposedPorts.External == "" {
+		exposedPorts.ExternalPort = exposedPorts.InternalPort
+	} else {
+		firstPort, lastPort, errs := validation.ValidatePortRange(exposedPorts.External, fieldName+".external")
+		allErrs = append(allErrs, errs...)
+		exposedPorts.ExternalPort = firstPort
+
+		if lastPort+1-firstPort != exposedPorts.Count {
+			allErrs = append(allErrs, validation.Invalid(fieldName+".external", exposedPorts.External,
+				"internal and external ranges must have same number of ports"))
+		}
+	}
+
+	if exposedPorts.Max == 0 {
+		exposedPorts.Max = exposedPorts.Count
+	}
+
+	// Validate default port count; actual count will be validated at deploy time
+	if exposedPorts.Count > exposedPorts.Max {
+		allErrs = append(allErrs, validation.Invalid(fieldName+".count", exposedPorts.Count,
+			fmt.Sprintf("default number of ports %d is larger than max allowed %d",
+				exposedPorts.Count, exposedPorts.Max)))
+	}
+
+	// Clear out legacy fields to make sure they aren't still be used elsewhere in the code
+	exposedPorts.Internal = ""
+	exposedPorts.External = ""
 
 	return allErrs
 }

@@ -82,6 +82,22 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		if len(diskSizes.Names()) > 0 {
 			entry.Add("disk_sizes", diskSizes.Sort())
 		}
+		ports := helm.NewMapping()
+		for _, port := range role.Run.ExposedPorts {
+			config := helm.NewMapping()
+			if port.PortIsConfigurable {
+				config.Add("port", port.ExternalPort)
+			}
+			if port.CountIsConfigurable {
+				config.Add("count", port.Count)
+			}
+			if len(config.Names()) > 0 {
+				ports.Add(makeVarName(port.Name), config)
+			}
+		}
+		if len(ports.Names()) > 0 {
+			entry.Add("ports", ports.Sort())
+		}
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
 
