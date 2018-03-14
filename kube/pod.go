@@ -81,12 +81,12 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		} else {
 			if role.Run.CPU != nil {
 				if role.Run.CPU.Request != nil {
-					requests.Add("cpu", fmt.Sprintf("%dm", int(0.5+1000**role.Run.CPU.Request)))
+					requests.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Request*1000+0.5)))
 				} else {
 					requests.Add("cpu", nil)
 				}
 				if role.Run.CPU.Limit != nil {
-					limits.Add("cpu", fmt.Sprintf("%dm", int(0.5+1000**role.Run.CPU.Limit)))
+					limits.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Limit*1000+0.5)))
 				} else {
 					limits.Add("cpu", nil)
 				}
