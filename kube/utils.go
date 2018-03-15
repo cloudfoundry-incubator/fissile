@@ -47,6 +47,7 @@ func minKubeVersion(major, minor int) string {
 	ver := ".Capabilities.KubeVersion"
 	// "Major > major || (Major == major && Minor >= minor)"
 	// The int conversions are necessary because Major/Minor in KubeVersion are strings
-	// The `regexFind` is necessary because the Minor version on GKE is currently "8+"
-	return fmt.Sprintf(`or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (%s.Minor | regexFind "[0-9]+" | int) %d))`, ver, major, ver, major, ver, minor)
+	// The `trimSuffix` is necessary because the Minor version on GKE is currently "8+".
+	// We would use `regexFind "[0-9]+"` but that isn't available in helm 2.6.2
+	return fmt.Sprintf(`or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (%s.Minor | trimSuffix "+" | int) %d))`, ver, major, ver, major, ver, minor)
 }
