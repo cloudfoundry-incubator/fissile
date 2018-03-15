@@ -9,6 +9,11 @@ roles:
   run:
     flight-stage: pre-flight
     memory: 128
+    mem:
+      limit: 384
+    virtual-cpus: 2
+    cpu:
+      limit: 4
 - name: post-role
   type: bosh-task
   tags: [stop-on-failure]

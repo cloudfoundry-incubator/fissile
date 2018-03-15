@@ -4,4 +4,4 @@ roles:
   jobs: []
   run:
     memory: -10
-    cpu: -2
+    virtual-cpus: 2
