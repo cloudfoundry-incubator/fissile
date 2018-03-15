@@ -80,9 +80,9 @@ type RoleRun struct {
 	Capabilities      []string              `yaml:"capabilities"`
 	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"`
 	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`
-	MemRequest        int                   `yaml:"memory"`
+	MemRequest        *int64                `yaml:"memory"`
 	Memory            *RoleRunMemory        `yaml:"mem"`
-	VirtualCPUs       float64               `yaml:"virtual-cpus"`
+	VirtualCPUs       *float64              `yaml:"virtual-cpus"`
 	CPU               *RoleRunCPU           `yaml:"cpu"`
 	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
 	FlightStage       FlightStage           `yaml:"flight-stage"`
@@ -1269,20 +1269,22 @@ func validateRoleMemory(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	if role.Run.Memory == nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.MemRequest),
-			fmt.Sprintf("roles[%s].run.memory", role.Name))...)
-		mreq := int64(role.Run.MemRequest)
-		role.Run.Memory = &RoleRunMemory{Request: &mreq}
+		if role.Run.MemRequest != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.MemRequest,
+				fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+		}
+		role.Run.Memory = &RoleRunMemory{Request: role.Run.MemRequest}
 		return allErrs
 	}
 
 	// assert: role.Run.Memory != nil
 
 	if role.Run.Memory.Request == nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(role.Run.MemRequest),
-			fmt.Sprintf("roles[%s].run.memory", role.Name))...)
-		mreq := int64(role.Run.MemRequest)
-		role.Run.Memory.Request = &mreq
+		if role.Run.MemRequest != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.MemRequest,
+				fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+		}
+		role.Run.Memory.Request = role.Run.MemRequest
 	} else {
 		allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.Memory.Request,
 			fmt.Sprintf("roles[%s].run.mem.request", role.Name))...)
@@ -1303,18 +1305,22 @@ func validateRoleCPU(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	if role.Run.CPU == nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(role.Run.VirtualCPUs,
-			fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
-		role.Run.CPU = &RoleRunCPU{Request: &role.Run.VirtualCPUs}
+		if role.Run.VirtualCPUs != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.VirtualCPUs,
+				fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+		}
+		role.Run.CPU = &RoleRunCPU{Request: role.Run.VirtualCPUs}
 		return allErrs
 	}
 
 	// assert: role.Run.CPU != nil
 
 	if role.Run.CPU.Request == nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(role.Run.VirtualCPUs,
-			fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
-		role.Run.CPU.Request = &role.Run.VirtualCPUs
+		if role.Run.VirtualCPUs != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.VirtualCPUs,
+				fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+		}
+		role.Run.CPU.Request = role.Run.VirtualCPUs
 	} else {
 		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.CPU.Request,
 			fmt.Sprintf("roles[%s].run.cpu.request", role.Name))...)
