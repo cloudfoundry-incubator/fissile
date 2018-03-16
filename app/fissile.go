@@ -731,10 +731,6 @@ func isFinalReleasePath(releasePath string) (bool, error) {
 		return false, err
 	}
 
-	if err := util.ValidatePath(filepath.Join(releasePath, "LICENSE"), false, "release 'LICENSE' file"); err != nil {
-		return false, err
-	}
-
 	return true, nil
 }
 
