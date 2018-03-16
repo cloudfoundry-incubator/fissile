@@ -56,17 +56,10 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 			if role.Run.Memory != nil {
 				if role.Run.Memory.Request != nil {
 					requests.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Request))
-				} else {
-					requests.Add("memory", nil)
 				}
 				if role.Run.Memory.Limit != nil {
 					limits.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Limit))
-				} else {
-					limits.Add("memory", nil)
 				}
-			} else {
-				requests.Add("memory", nil)
-				limits.Add("memory", nil)
 			}
 		}
 	}
@@ -82,17 +75,10 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 			if role.Run.CPU != nil {
 				if role.Run.CPU.Request != nil {
 					requests.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Request*1000+0.5)))
-				} else {
-					requests.Add("cpu", nil)
 				}
 				if role.Run.CPU.Limit != nil {
 					limits.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Limit*1000+0.5)))
-				} else {
-					limits.Add("cpu", nil)
 				}
-			} else {
-				requests.Add("cpu", nil)
-				limits.Add("cpu", nil)
 			}
 		}
 	}
