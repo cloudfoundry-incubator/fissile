@@ -138,7 +138,11 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		if len(ports.Names()) > 0 {
 			entry.Add("ports", ports.Sort())
 		}
+
+		entry.Add("affinity", helm.NewMapping(), helm.Comment("Node affinity rules can be specified here"))
+
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
+
 	}
 
 	registry := settings.Registry
