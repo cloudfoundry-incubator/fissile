@@ -351,13 +351,18 @@ func (mapping *Mapping) String() string {
 }
 
 func (mapping Mapping) write(enc *Encoder, prefix string) {
-	var nodes []Node
-	for _, namedNode := range mapping.nodes {
-		nodes = append(nodes, namedNode.node)
-	}
-	emptyLines := enc.useEmptyLines(prefix, nodes)
-	for _, namedNode := range mapping.nodes {
-		enc.writeNode(namedNode.node, &prefix, namedNode.name+":", emptyLines)
+	if len(mapping.nodes) == 0 {
+		// Emit an empty map if there aren't any child nodes
+		fmt.Fprintln(enc, prefix+" {}")
+	} else {
+		var nodes []Node
+		for _, namedNode := range mapping.nodes {
+			nodes = append(nodes, namedNode.node)
+		}
+		emptyLines := enc.useEmptyLines(prefix, nodes)
+		for _, namedNode := range mapping.nodes {
+			enc.writeNode(namedNode.node, &prefix, namedNode.name+":", emptyLines)
+		}
 	}
 }
 
