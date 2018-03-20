@@ -305,10 +305,9 @@ func (mapping *Mapping) Add(name string, value interface{}, modifiers ...NodeMod
 	mapping.nodes = append(mapping.nodes, namedNode{name: name, node: NewNode(value, modifiers...)})
 }
 
-// Get returns the named node, or nil if the name cannot be found. Name may be
-// a "/" separated "path" of nested names, which will be treated as a string of
-// Get() calls, but with the advantage of not crashing if any intermediate node
-// does not exist.
+// Get returns the named node, or nil if the name cannot be found. Multiple
+// names may be used, which will be treated as a string of Get() calls, but
+// with the advantage of not crashing if any intermediate node does not exist.
 func (mapping *Mapping) Get(names ...string) Node {
 	if len(names) > 0 {
 		for _, namedNode := range mapping.nodes {
@@ -352,13 +351,18 @@ func (mapping *Mapping) String() string {
 }
 
 func (mapping Mapping) write(enc *Encoder, prefix string) {
-	var nodes []Node
-	for _, namedNode := range mapping.nodes {
-		nodes = append(nodes, namedNode.node)
-	}
-	emptyLines := enc.useEmptyLines(prefix, nodes)
-	for _, namedNode := range mapping.nodes {
-		enc.writeNode(namedNode.node, &prefix, namedNode.name+":", emptyLines)
+	if len(mapping.nodes) == 0 {
+		// Emit an empty map if there aren't any child nodes
+		fmt.Fprintln(enc, prefix+" {}")
+	} else {
+		var nodes []Node
+		for _, namedNode := range mapping.nodes {
+			nodes = append(nodes, namedNode.node)
+		}
+		emptyLines := enc.useEmptyLines(prefix, nodes)
+		for _, namedNode := range mapping.nodes {
+			enc.writeNode(namedNode.node, &prefix, namedNode.name+":", emptyLines)
+		}
 	}
 }
 

@@ -1,0 +1,8 @@
+---
+roles:
+- name: role
+  run:
+    memory: 128
+    affinity:
+      podAffinity:
+        foo: bar

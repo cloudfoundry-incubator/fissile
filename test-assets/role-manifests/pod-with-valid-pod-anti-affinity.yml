@@ -1,0 +1,20 @@
+---
+roles:
+- name: role
+  run:
+    memory: 128
+    scaling:
+      min: 1
+      max: 1
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: "skiff-role-name"
+                operator: In
+                values:
+                - role
+            topologyKey: "beta.kubernetes.io/os"

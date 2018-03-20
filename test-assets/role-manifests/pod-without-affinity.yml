@@ -1,0 +1,5 @@
+---
+roles:
+- name: role
+  run:
+    memory: 128

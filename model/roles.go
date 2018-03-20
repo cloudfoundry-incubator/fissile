@@ -88,9 +88,16 @@ type RoleRun struct {
 	FlightStage       FlightStage           `yaml:"flight-stage"`
 	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
 	ServiceAccount    string                `yaml:"service-account,omitempty"`
-	Affinity          interface{}           `yaml:"affinity,omitempty"`
+	Affinity          *RoleRunAffinity      `yaml:"affinity,omitempty"`
 	Environment       []string              `yaml:"env"`
 	ObjectAnnotations *map[string]string    `yaml:"object-annotations,omitempty"`
+}
+
+// RoleRunAffinity describes how a role should behave with regard to node / pod selection
+type RoleRunAffinity struct {
+	PodAntiAffinity interface{} `yaml:"podAntiAffinity,omitempty"`
+	PodAffinity     interface{} `yaml:"podAffinity,omitempty"`
+	NodeAffinity    interface{} `yaml:"nodeAffinity,omitempty"`
 }
 
 // RoleRunMemory describes how a role should behave with regard to memory usage.

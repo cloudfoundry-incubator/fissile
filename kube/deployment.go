@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/SUSE/fissile/helm"
@@ -29,16 +30,56 @@ func NewDeployment(role *model.Role, settings ExportSettings, grapher util.Model
 	return deployment, svc, err
 }
 
-func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings ExportSettings) error {
-	spec := controller.Get("spec").(*helm.Mapping)
+// getAffinityBlock returns an affinity block to add to a podspec
+func getAffinityBlock(role *model.Role) *helm.Mapping {
+	affinity := helm.NewMapping()
+
+	if role.Run.Affinity.PodAntiAffinity != nil {
+		// Add pod anti affinity from role manifest
+		affinity.Add("podAntiAffinity", role.Run.Affinity.PodAntiAffinity)
+	}
+
+	// Add node affinity template to be filled in by values.yaml
+	roleName := makeVarName(role.Name)
+	nodeCond := fmt.Sprintf("if .Values.sizing.%s.affinity.nodeAffinity", roleName)
+	nodeAffinity := fmt.Sprintf("{{ toJson .Values.sizing.%s.affinity.nodeAffinity }}", roleName)
+	affinity.Add("nodeAffinity", nodeAffinity, helm.Block(nodeCond))
+
+	return affinity
+}
+
+// getAffinityAnnotation returns a Kubernetes 1.5 affinity annotation to add to a podspec
+func getAffinityAnnotation(role *model.Role) (string, error) {
+	affinitySpec := make(map[string]interface{})
+	if role.Run.Affinity.PodAntiAffinity != nil {
+		affinitySpec["podAntiAffinity"] = role.Run.Affinity.PodAntiAffinity
+	}
+	affinity, err := util.JSONMarshal(affinitySpec)
+	if err != nil {
+		return "", err
+	}
+	return string(affinity), nil
+}
+
+// addAffinityRules adds affinity rules to the pod spec
+func addAffinityRules(role *model.Role, spec *helm.Mapping, settings ExportSettings) error {
 	if role.Run.Affinity != nil {
+		if role.Run.Affinity.NodeAffinity != nil {
+			return errors.New("node affinity in role manifest not allowed")
+		}
+
+		if role.Run.Affinity.PodAffinity != nil {
+			return errors.New("pod affinity in role manifest not supported")
+		}
+
 		var cond string
 		if settings.CreateHelmChart {
 			podSpec := spec.Get("template", "spec").(*helm.Mapping)
 
 			// affinity spec is only supported in kube 1.6 and later
 			cond = fmt.Sprintf("if %s", minKubeVersion(1, 6))
-			podSpec.Add("affinity", role.Run.Affinity, helm.Block(cond))
+
+			podSpec.Add("affinity", getAffinityBlock(role), helm.Block(cond))
 			podSpec.Sort()
 
 			// in kube 1.5 affinity is declared via annotation
@@ -52,12 +93,25 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 		}
 		annotations := meta.Get("annotations").(*helm.Mapping)
 
-		affinity, err := util.JSONMarshal(role.Run.Affinity)
+		affinity, err := getAffinityAnnotation(role)
+
 		if err != nil {
 			return err
 		}
-		annotations.Add("scheduler.alpha.kubernetes.io/affinity", string(affinity), helm.Block(cond))
+
+		annotations.Add("scheduler.alpha.kubernetes.io/affinity", affinity, helm.Block(cond))
 		annotations.Sort()
+	}
+
+	return nil
+}
+
+func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings ExportSettings) error {
+	spec := controller.Get("spec").(*helm.Mapping)
+
+	err := addAffinityRules(role, spec, settings)
+	if err != nil {
+		return err
 	}
 
 	if !settings.CreateHelmChart {

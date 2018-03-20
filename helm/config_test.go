@@ -687,6 +687,16 @@ List:
 	equal(t, root, expect, Indent(4))
 }
 
+func TestHelmEmptyMapping(t *testing.T) {
+	root := NewMapping()
+	mapping := NewMapping()
+	root.Add("Mapping", mapping)
+	expect := `---
+Mapping: {}
+`
+	equal(t, root, expect)
+}
+
 func TestHelmEmptyLines(t *testing.T) {
 	list := NewList()
 	list.Add(NewNode(1, Comment("Some comment")))
