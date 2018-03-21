@@ -2,7 +2,6 @@ package kube
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -139,18 +138,11 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 		}
 	}
 	if public {
-		externalIP := "[ 192.168.77.77 ]"
+		externalIPs := "[ 192.168.77.77 ]"
 		if settings.CreateHelmChart {
-			// Backwards compatibility: If .kube.external_ips doesn't exist,
-			// use .kube.external_ip instead (as the single address)
-			externalIP = strings.Join(strings.Fields(`{{
-				default
-					( list .Values.kube.external_ip )
-					.Values.kube.external_ips
-				| toJson
-			}}`), " ")
+			externalIPs = "{{ .Values.kube.external_ips | toJson }}"
 		}
-		spec.Add("externalIPs", externalIP)
+		spec.Add("externalIPs", externalIPs)
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
