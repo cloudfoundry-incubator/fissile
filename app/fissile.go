@@ -66,7 +66,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
-		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
+		f.UI.Println(color.GreenString("%s release %s (%s)%s", release.ReleaseType(), color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, pkg := range release.Packages {
 			var isCached string
@@ -104,7 +104,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
-		f.UI.Println(color.GreenString("Dev release %s (%s)%s", color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
+		f.UI.Println(color.GreenString("%s release %s (%s)%s", release.ReleaseType(), color.YellowString(release.Name), color.MagentaString(release.Version), releasePath))
 
 		for _, job := range release.Jobs {
 			var isCached string
@@ -209,8 +209,8 @@ func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
 func (f *Fissile) listPropertiesForHuman() {
 	// Human readable output.
 	for _, release := range f.releases {
-		f.UI.Println(color.GreenString("Dev release %s (%s)",
-			color.YellowString(release.Name), color.MagentaString(release.Version)))
+		f.UI.Println(color.GreenString("%s release %s (%s)",
+			release.ReleaseType(), color.YellowString(release.Name), color.MagentaString(release.Version)))
 
 		for _, job := range release.Jobs {
 			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name),
