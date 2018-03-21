@@ -230,6 +230,15 @@ func (r *Release) manifestFilePath() string {
 	return filepath.Join(r.getDevReleaseManifestsDir(), r.getDevReleaseManifestFilename())
 }
 
+// ReleaseType returns a string identifying the type of the release: Dev or Final.
+func (r *Release) ReleaseType() string {
+	if r.FinalRelease {
+		return "Final"
+	}
+
+	return "Dev"
+}
+
 // Marshal implements the util.Marshaler interface
 func (r *Release) Marshal() (interface{}, error) {
 	jobFingerprints := make([]string, 0, len(r.Jobs))
