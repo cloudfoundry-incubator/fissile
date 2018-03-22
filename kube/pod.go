@@ -252,6 +252,21 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNode(mounts)
 }
 
+var generatedSecretsName = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+
+func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) helm.Node {
+	secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(name))
+	if generated {
+		secretKeyRef.Add("name", generatedSecretsName)
+	} else {
+		secretKeyRef.Add("name", "secrets")
+	}
+
+	envVar := helm.NewMapping("name", name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+	envVar.Set(modifiers...)
+	return envVar
+}
+
 func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
@@ -336,30 +351,24 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 		if config.Name == "KUBE_SECRETS_GENERATION_NAME" {
 			value := "secrets-1"
 			if settings.CreateHelmChart {
-				value = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+				value = generatedSecretsName
 			}
 			env = append(env, helm.NewMapping("name", config.Name, "value", value))
 		}
 
 		if config.Secret {
-			secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(config.Name))
-			secretKeyRef.Add("name", "secrets")
-
-			envVar := helm.NewMapping("name", config.Name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
-
 			if !settings.CreateHelmChart {
-				env = append(env, envVar)
+				env = append(env, makeSecretVar(config.Name, false))
 			} else {
-				envVar.Set(helm.Block(fmt.Sprintf("if .Values.secrets.%s", config.Name)))
-				env = append(env, envVar)
+				if config.Immutable && config.Generator != nil {
+					env = append(env, makeSecretVar(config.Name, true))
+				} else {
+					block := helm.Block(fmt.Sprintf("if not .Values.secrets.%s", config.Name))
+					env = append(env, makeSecretVar(config.Name, true, block))
 
-				secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(config.Name))
-				secretKeyRef.Add("name", "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}")
-
-				envVar := helm.NewMapping("name", config.Name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
-				envVar.Set(helm.Block(fmt.Sprintf("if (not .Values.secrets.%s)", config.Name)))
-
-				env = append(env, envVar)
+					block = helm.Block(fmt.Sprintf("if .Values.secrets.%s", config.Name))
+					env = append(env, makeSecretVar(config.Name, false, block))
+				}
 			}
 			continue
 		}

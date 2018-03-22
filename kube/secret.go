@@ -17,12 +17,14 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 	generated := helm.NewMapping()
 
 	for name, cv := range secrets {
-		var value interface{}
-
 		key := util.ConvertNameToKey(name)
+		var value interface{}
 		comment := cv.Description
-
 		if settings.CreateHelmChart {
+			if cv.Immutable && cv.Generator != nil {
+				continue
+			}
+
 			if !settings.UseSecretsGenerator && cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
 				value = "{{ randAlphaNum 32 | b64enc | quote }}"
 			} else {
