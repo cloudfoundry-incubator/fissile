@@ -34,6 +34,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
 				generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
 			}
+			// Immutable secrets with a generator are not user-overridable and only included in the versioned secrets object
 		} else {
 			ok, value := cv.Value(settings.Defaults)
 			if !ok {
