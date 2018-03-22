@@ -20,30 +20,19 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 		key := util.ConvertNameToKey(name)
 		var value interface{}
 		comment := cv.Description
+
 		if settings.CreateHelmChart {
-			if cv.Immutable && cv.Generator != nil {
-				continue
-			}
-
-			if !settings.UseSecretsGenerator && cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
-				value = "{{ randAlphaNum 32 | b64enc | quote }}"
-			} else {
-				if settings.UseSecretsGenerator && cv.Generator != nil {
-					comment += "\nThis value uses a generated default."
-					if cv.Immutable {
-						comment += "\nIt is also immutable and must not be changed once set."
-					}
-					value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
-					generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
-					continue
-				} else {
-					errString := fmt.Sprintf("secrets.%s has not been set", cv.Name)
-					value = fmt.Sprintf(`{{ required "%s" .Values.secrets.%s | b64enc | quote }}`, errString, cv.Name)
-					if cv.Immutable {
-						comment += "\nThis value is immutable and must not be changed once set."
-					}
-
+			if cv.Generator == nil {
+				errString := fmt.Sprintf("secrets.%s has not been set", cv.Name)
+				value = fmt.Sprintf(`{{ required "%s" .Values.secrets.%s | b64enc | quote }}`, errString, cv.Name)
+				if cv.Immutable {
+					comment += "\nThis value is immutable and must not be changed once set."
 				}
+				data.Add(key, helm.NewNode(value, helm.Comment(comment)))
+			} else if !cv.Immutable {
+				comment += "\nThis value uses a generated default."
+				value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
+				generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
 			}
 		} else {
 			ok, value := cv.Value(settings.Defaults)
@@ -51,9 +40,8 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				value = ""
 			}
 			value = base64.StdEncoding.EncodeToString([]byte(value))
+			data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 		}
-
-		data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 	}
 	data.Sort()
 	data.Merge(generated.Sort())
