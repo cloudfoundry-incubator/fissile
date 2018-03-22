@@ -346,6 +346,7 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 				value = "{{ .Values.kube.secrets_generation_counter | quote }}"
 			}
 			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
 		}
 
 		if config.Name == "KUBE_SECRETS_GENERATION_NAME" {
@@ -354,6 +355,7 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 				value = generatedSecretsName
 			}
 			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
 		}
 
 		if config.Secret {
