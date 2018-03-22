@@ -11,6 +11,9 @@ import (
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(settings ExportSettings) (helm.Node, error) {
 	env := helm.NewMapping()
+	secrets := helm.NewMapping()
+	generated := helm.NewMapping()
+
 	for name, cv := range model.MakeMapOfVariables(settings.RoleManifest) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.Type == model.CVTypeEnv {
 			continue
@@ -34,9 +37,27 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		if cv.Example != "" && cv.Example != value {
 			comment += fmt.Sprintf("\nExample: %s", cv.Example)
 		}
-		env.Add(name, helm.NewNode(value, helm.Comment(comment)))
+
+		if cv.Secret {
+			thisValue := "This value"
+			if cv.Generator != nil {
+				comment += "\n" + thisValue + " uses a generated default."
+				thisValue = "It"
+			}
+			if cv.Immutable {
+				comment += "\n" + thisValue + " is immutable and must not be changed once set."
+			}
+			if cv.Generator == nil {
+				secrets.Add(name, helm.NewNode(value, helm.Comment(comment)))
+			} else {
+				generated.Add(name, helm.NewNode(value, helm.Comment(comment)))
+			}
+		} else {
+			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
+		}
 	}
-	env.Sort()
+	secrets.Sort()
+	secrets.Merge(generated.Sort())
 
 	memSizing := helm.NewMapping()
 	memSizing.Add("requests", false, helm.Comment("Flag to activate memory requests"))
@@ -159,6 +180,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 	kube := helm.NewMapping()
 	kube.Add("external_ips", helm.NewList())
+	kube.Add("secrets_generation_counter", 1, helm.Comment("Increment this counter to rotate all generated secrets"))
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
 	kube.Add("registry", registryInfo)
 	kube.Add("organization", settings.Organization)
@@ -170,8 +192,9 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 
 	values := helm.NewMapping()
-	values.Add("env", env)
+	values.Add("env", env.Sort())
 	values.Add("sizing", sizing.Sort())
+	values.Add("secrets", secrets)
 	values.Add("services", helm.NewMapping("loadbalanced", false))
 	values.Add("kube", kube)
 

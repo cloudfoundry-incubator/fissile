@@ -229,6 +229,7 @@ type ConfigurationVariable struct {
 	Internal      bool                            `yaml:"internal,omitempty"`
 	Secret        bool                            `yaml:"secret,omitempty"`
 	Required      bool                            `yaml:"required,omitempty"`
+	Immutable     bool                            `yaml:"immutable,omitempty"`
 }
 
 // Value fetches the value of config variable

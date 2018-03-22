@@ -14,21 +14,34 @@ import (
 // showing which original CV name maps to what secret+key combination.
 func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error) {
 	data := helm.NewMapping()
+	generated := helm.NewMapping()
+
 	for name, cv := range secrets {
-		var value string
+		var value interface{}
 
 		key := util.ConvertNameToKey(name)
+		comment := cv.Description
 
 		if settings.CreateHelmChart {
-			if settings.UseSecretsGenerator && cv.Generator != nil {
-				// it will be created during runtime
-				continue
-			}
-			if cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
+			if !settings.UseSecretsGenerator && cv.Generator != nil && cv.Generator.Type == model.GeneratorTypePassword {
 				value = "{{ randAlphaNum 32 | b64enc | quote }}"
 			} else {
-				errString := fmt.Sprintf("%s configuration missing", cv.Name)
-				value = fmt.Sprintf(`{{ required "%s" .Values.env.%s | b64enc | quote }}`, errString, cv.Name)
+				if settings.UseSecretsGenerator && cv.Generator != nil {
+					comment += "\nThis value uses a generated default."
+					if cv.Immutable {
+						comment += "\nIt is also immutable and must not be changed once set."
+					}
+					value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
+					generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
+					continue
+				} else {
+					errString := fmt.Sprintf("secrets.%s has not been set", cv.Name)
+					value = fmt.Sprintf(`{{ required "%s" .Values.secrets.%s | b64enc | quote }}`, errString, cv.Name)
+					if cv.Immutable {
+						comment += "\nThis value is immutable and must not be changed once set."
+					}
+
+				}
 			}
 		} else {
 			ok, value := cv.Value(settings.Defaults)
@@ -38,18 +51,12 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 			value = base64.StdEncoding.EncodeToString([]byte(value))
 		}
 
-		data.Add(key, helm.NewNode(value, helm.Comment(cv.Description)))
+		data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 	}
 	data.Sort()
+	data.Merge(generated.Sort())
 
-	secretName := "secret"
-	if settings.UseSecretsGenerator {
-		secretName = "secret-update"
-		if settings.CreateHelmChart {
-			secretName = "secret-update-{{ .Release.Revision }}"
-		}
-	}
-	secret := newKubeConfig("v1", "Secret", secretName)
+	secret := newKubeConfig("v1", "Secret", "secrets")
 	secret.Add("data", data)
 
 	return secret.Sort(), nil
