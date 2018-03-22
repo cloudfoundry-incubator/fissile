@@ -18,6 +18,8 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.Type == model.CVTypeEnv {
 			continue
 		}
+		// Immutable secrets that are generated cannot be overridden by the user
+		// and any default value would always be ignored.
 		if cv.Immutable && cv.Generator != nil {
 			continue
 		}

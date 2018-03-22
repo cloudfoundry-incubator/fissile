@@ -252,14 +252,15 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNode(mounts)
 }
 
-var generatedSecretsName = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+const userSecretsName = "secrets"
+const generatedSecretsName = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
 
 func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) helm.Node {
 	secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(name))
 	if generated {
 		secretKeyRef.Add("name", generatedSecretsName)
 	} else {
-		secretKeyRef.Add("name", "secrets")
+		secretKeyRef.Add("name", userSecretsName)
 	}
 
 	envVar := helm.NewMapping("name", name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
@@ -363,8 +364,12 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 				env = append(env, makeSecretVar(config.Name, false))
 			} else {
 				if config.Immutable && config.Generator != nil {
+					// Users cannot override immutable secrets that are generated
 					env = append(env, makeSecretVar(config.Name, true))
+				} else if config.Generator == nil {
+					env = append(env, makeSecretVar(config.Name, false))
 				} else {
+					// Generated secrets can be overridden by the user (unless immutable)
 					block := helm.Block(fmt.Sprintf("if not .Values.secrets.%s", config.Name))
 					env = append(env, makeSecretVar(config.Name, true, block))
 

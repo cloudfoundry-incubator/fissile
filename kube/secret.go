@@ -46,7 +46,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 	data.Sort()
 	data.Merge(generated.Sort())
 
-	secret := newKubeConfig("v1", "Secret", "secrets")
+	secret := newKubeConfig("v1", "Secret", userSecretsName)
 	secret.Add("data", data)
 
 	return secret.Sort(), nil
