@@ -41,6 +41,17 @@ const (
 	FlightStageManual     = FlightStage("manual")      // A role that only runs via user intervention
 )
 
+// VolumeType is the type of volume to create
+type VolumeType string
+
+// These are the volume type available
+const (
+	VolumeTypePersistent = VolumeType("persistent") // A volume that is only used for this instance of the role
+	VolumeTypeShared     = VolumeType("shared")     // A volume that acts as shared storage between multiple roles / instances
+	VolumeTypeHost       = VolumeType("host")       // A volume that is a mount of a host directory
+	VolumeTypeNone       = VolumeType("none")       // A volume that isn't mounted to anything
+)
+
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
 	Roles         Roles          `yaml:"roles"`
@@ -78,8 +89,9 @@ type Role struct {
 type RoleRun struct {
 	Scaling           *RoleRunScaling       `yaml:"scaling"`
 	Capabilities      []string              `yaml:"capabilities"`
-	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"`
-	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`
+	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
+	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
+	Volumes           []*RoleRunVolume      `yaml:"volumes"`
 	MemRequest        *int64                `yaml:"memory"`
 	Memory            *RoleRunMemory        `yaml:"mem"`
 	VirtualCPUs       *float64              `yaml:"virtual-cpus"`
@@ -122,9 +134,10 @@ type RoleRunScaling struct {
 
 // RoleRunVolume describes a volume to be attached at runtime
 type RoleRunVolume struct {
-	Path string `yaml:"path"`
-	Tag  string `yaml:"tag"`
-	Size int    `yaml:"size"`
+	Type VolumeType `yaml:"type"`
+	Path string     `yaml:"path"`
+	Tag  string     `yaml:"tag"`
+	Size int        `yaml:"size"`
 }
 
 // RoleRunExposedPort describes a port to be available to other roles, or the outside world
@@ -1169,6 +1182,31 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 		if _, ok := roleManifest.Configuration.Authorization.Accounts[accountName]; !ok {
 			allErrs = append(allErrs, validation.NotFound(
 				fmt.Sprintf("roles[%s].run.service-account", role.Name), accountName))
+		}
+	}
+
+	// Backwards compat: convert separate volume lists to the centralized one
+	for _, persistentVolume := range role.Run.PersistentVolumes {
+		persistentVolume.Type = VolumeTypePersistent
+		role.Run.Volumes = append(role.Run.Volumes, persistentVolume)
+	}
+	for _, sharedVolume := range role.Run.SharedVolumes {
+		sharedVolume.Type = VolumeTypeShared
+		role.Run.Volumes = append(role.Run.Volumes, sharedVolume)
+	}
+	role.Run.PersistentVolumes = nil
+	role.Run.SharedVolumes = nil
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case VolumeTypePersistent:
+		case VolumeTypeShared:
+		case VolumeTypeHost:
+		case VolumeTypeNone:
+		default:
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.volumes[%s]", role.Name, volume.Tag),
+				volume.Type,
+				fmt.Sprintf("Invalid volume type '%s'", volume.Type)))
 		}
 	}
 

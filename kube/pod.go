@@ -240,10 +240,7 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 // getVolumeMounts gets the list of volume mounts for a role
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
-	for _, volume := range role.Run.PersistentVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
-	}
-	for _, volume := range role.Run.SharedVolumes {
+	for _, volume := range role.Run.Volumes {
 		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
 	}
 	if len(mounts) == 0 {

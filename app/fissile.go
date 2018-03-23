@@ -1026,6 +1026,20 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
+// roleIsStateful returns true if a given role needs to be a StatefulSet
+func (f *Fissile) roleIsStateful(role *model.Role) bool {
+	if role.HasTag("clustered") || role.HasTag("indexed") {
+		return true
+	}
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent, model.VolumeTypeShared:
+			return true
+		}
+	}
+	return false
+}
+
 func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() {
@@ -1067,8 +1081,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		case model.RoleTypeBosh:
 			enc := helm.NewEncoder(outputFile)
 
-			needsStorage := len(role.Run.PersistentVolumes) != 0 || len(role.Run.SharedVolumes) != 0
-			if role.HasTag("clustered") || role.HasTag("indexed") || needsStorage {
+			if f.roleIsStateful(role) {
 				statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
 				if err != nil {
 					return err

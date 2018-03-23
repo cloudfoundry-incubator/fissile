@@ -26,7 +26,7 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, nil, err
 	}
 
-	claims := getAllVolumeClaims(role, settings.CreateHelmChart)
+	claims := getVolumeClaims(role, settings.CreateHelmChart)
 
 	spec := helm.NewMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
@@ -48,21 +48,25 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 	return statefulSet, svcList, err
 }
 
-// getAllVolumeClaims returns the list of persistent and shared volume claims from a role
-func getAllVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
-	claims := getVolumeClaims(role, role.Run.PersistentVolumes, "persistent", "ReadWriteOnce", createHelmChart)
-	claims = append(claims, getVolumeClaims(role, role.Run.SharedVolumes, "shared", "ReadWriteMany", createHelmChart)...)
-	return claims
-}
-
-// getVolumeClaims returns the list of persistent volume claims from a role
-func getVolumeClaims(role *model.Role, volumeDefinitions []*model.RoleRunVolume, storageClass string, accessMode string, createHelmChart bool) []helm.Node {
-	if createHelmChart {
-		storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", storageClass)
-	}
-
+// getVolumeClaims returns the list of persistent and shared volume claims from a role
+func getVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
 	var claims []helm.Node
-	for _, volume := range volumeDefinitions {
+	for _, volume := range role.Run.Volumes {
+		var accessMode string
+		switch volume.Type {
+		case model.VolumeTypeHost, model.VolumeTypeNone:
+			// These volume types don't have claims
+			continue
+		case model.VolumeTypePersistent:
+			accessMode = "ReadWriteOnce"
+		case model.VolumeTypeShared:
+			accessMode = "ReadWriteMany"
+		}
+		storageClass := string(volume.Type)
+		if createHelmChart {
+			storageClass = fmt.Sprintf("{{ .Values.kube.storage_class.%s | quote }}", storageClass)
+		}
+
 		meta := helm.NewMapping("name", volume.Tag)
 		meta.Add("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
 

@@ -132,11 +132,11 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 
 		diskSizes := helm.NewMapping()
-		for _, volume := range role.Run.PersistentVolumes {
-			diskSizes.Add(makeVarName(volume.Tag), volume.Size)
-		}
-		for _, volume := range role.Run.SharedVolumes {
-			diskSizes.Add(makeVarName(volume.Tag), volume.Size)
+		for _, volume := range role.Run.Volumes {
+			switch volume.Type {
+			case model.VolumeTypePersistent, model.VolumeTypeShared:
+				diskSizes.Add(makeVarName(volume.Tag), volume.Size)
+			}
 		}
 		if len(diskSizes.Names()) > 0 {
 			entry.Add("disk_sizes", diskSizes.Sort())

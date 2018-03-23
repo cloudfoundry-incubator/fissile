@@ -100,15 +100,25 @@ func TestPodGetVolumes(t *testing.T) {
 		return
 	}
 
-	claims := getAllVolumeClaims(role, false)
+	claims := getVolumeClaims(role, false)
 	assert.Len(claims, 2, "expected two claims")
+
+	var persistentVolume, sharedVolume *model.RoleRunVolume
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent:
+			persistentVolume = volume
+		case model.VolumeTypeShared:
+			sharedVolume = volume
+		}
+	}
 
 	var persistentClaim, sharedClaim helm.Node
 	for _, claim := range claims {
 		switch claim.Get("metadata", "name").String() {
-		case role.Run.PersistentVolumes[0].Tag:
+		case string(persistentVolume.Tag):
 			persistentClaim = claim
-		case role.Run.SharedVolumes[0].Tag:
+		case string(sharedVolume.Tag):
 			sharedClaim = claim
 		default:
 			assert.Fail("Got unexpected claim", "%s", claim)
