@@ -9,13 +9,12 @@ import (
 )
 
 var (
-	flagBuildHelmOutputDir           string
-	flagBuildHelmDefaultEnvFiles     []string
-	flagBuildHelmUseMemoryLimits     bool
-	flagBuildHelmUseCPULimits        bool
-	flagBuildHelmTagExtra            string
-	flagBuildHelmUseSecretsGenerator bool
-	flagBuildHelmAuthType            string
+	flagBuildHelmOutputDir       string
+	flagBuildHelmDefaultEnvFiles []string
+	flagBuildHelmUseMemoryLimits bool
+	flagBuildHelmUseCPULimits    bool
+	flagBuildHelmTagExtra        string
+	flagBuildHelmAuthType        string
 )
 
 // buildHelmCmd represents the helm command
@@ -30,7 +29,6 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
 		flagBuildHelmUseCPULimits = buildHelmViper.GetBool("use-cpu-limits")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
-		flagBuildHelmUseSecretsGenerator = buildHelmViper.GetBool("use-secrets-generator")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
@@ -53,20 +51,19 @@ var buildHelmCmd = &cobra.Command{
 		}
 
 		settings := kube.ExportSettings{
-			OutputDir:           flagBuildHelmOutputDir,
-			Registry:            flagDockerRegistry,
-			Username:            flagDockerUsername,
-			Password:            flagDockerPassword,
-			Organization:        flagDockerOrganization,
-			Repository:          flagRepository,
-			UseMemoryLimits:     flagBuildHelmUseMemoryLimits,
-			UseCPULimits:        flagBuildHelmUseCPULimits,
-			FissileVersion:      fissile.Version,
-			Opinions:            opinions,
-			CreateHelmChart:     true,
-			UseSecretsGenerator: flagBuildHelmUseSecretsGenerator,
-			TagExtra:            flagBuildHelmTagExtra,
-			AuthType:            flagBuildHelmAuthType,
+			OutputDir:       flagBuildHelmOutputDir,
+			Registry:        flagDockerRegistry,
+			Username:        flagDockerUsername,
+			Password:        flagDockerPassword,
+			Organization:    flagDockerOrganization,
+			Repository:      flagRepository,
+			UseMemoryLimits: flagBuildHelmUseMemoryLimits,
+			UseCPULimits:    flagBuildHelmUseCPULimits,
+			FissileVersion:  fissile.Version,
+			Opinions:        opinions,
+			CreateHelmChart: true,
+			TagExtra:        flagBuildHelmTagExtra,
+			AuthType:        flagBuildHelmAuthType,
 		}
 
 		if flagBuildOutputGraph != "" {

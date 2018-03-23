@@ -139,7 +139,11 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	spec.Sort()
 
 	podTemplate := helm.NewMapping()
-	podTemplate.Add("metadata", newObjectMeta(role.Name))
+	meta := newObjectMeta(role.Name)
+	if settings.CreateHelmChart {
+		meta.Add("annotations", helm.NewMapping("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`))
+	}
+	podTemplate.Add("metadata", meta)
 	podTemplate.Add("spec", spec)
 
 	return podTemplate, nil
@@ -248,6 +252,22 @@ func getVolumeMounts(role *model.Role) helm.Node {
 	return helm.NewNode(mounts)
 }
 
+const userSecretsName = "secrets"
+const generatedSecretsName = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+
+func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) helm.Node {
+	secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(name))
+	if generated {
+		secretKeyRef.Add("name", generatedSecretsName)
+	} else {
+		secretKeyRef.Add("name", userSecretsName)
+	}
+
+	envVar := helm.NewMapping("name", name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+	envVar.Set(modifiers...)
+	return envVar
+}
+
 func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
@@ -259,6 +279,7 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 
 	var env []helm.Node
 	for _, config := range configs {
+		// KUBE_SIZING_role_COUNT
 		match := sizingCountRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
@@ -280,6 +301,7 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 			continue
 		}
 
+		// KUBE_SIZING_role_PORTS_port_MIN/MAX
 		match = sizingPortsRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
@@ -319,20 +341,42 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 			continue
 		}
 
-		if config.Secret {
-			secretName := "secret"
+		if config.Name == "KUBE_SECRETS_GENERATION_COUNTER" {
+			value := "1"
 			if settings.CreateHelmChart {
-				secretName += "-{{ .Release.Revision }}"
+				value = "{{ .Values.kube.secrets_generation_counter | quote }}"
 			}
+			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
+		}
 
-			secretKeyRef := helm.NewMapping(
-				"key", util.ConvertNameToKey(config.Name),
-				"name", secretName)
+		if config.Name == "KUBE_SECRETS_GENERATION_NAME" {
+			value := "secrets-1"
+			if settings.CreateHelmChart {
+				value = generatedSecretsName
+			}
+			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
+		}
 
-			envVar := helm.NewMapping("name", config.Name)
-			envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+		if config.Secret {
+			if !settings.CreateHelmChart {
+				env = append(env, makeSecretVar(config.Name, false))
+			} else {
+				if config.Immutable && config.Generator != nil {
+					// Users cannot override immutable secrets that are generated
+					env = append(env, makeSecretVar(config.Name, true))
+				} else if config.Generator == nil {
+					env = append(env, makeSecretVar(config.Name, false))
+				} else {
+					// Generated secrets can be overridden by the user (unless immutable)
+					block := helm.Block(fmt.Sprintf("if not .Values.secrets.%s", config.Name))
+					env = append(env, makeSecretVar(config.Name, true, block))
 
-			env = append(env, envVar)
+					block = helm.Block(fmt.Sprintf("if .Values.secrets.%s", config.Name))
+					env = append(env, makeSecretVar(config.Name, false, block))
+				}
+			}
 			continue
 		}
 
@@ -352,10 +396,6 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 			}
 		}
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
-	}
-
-	if settings.CreateHelmChart {
-		env = append(env, helm.NewMapping("name", "RELEASE_REVISION", "value", "{{ .Release.Revision | quote }}"))
 	}
 
 	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
