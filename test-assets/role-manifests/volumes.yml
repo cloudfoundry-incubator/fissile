@@ -16,6 +16,10 @@ roles:
     - path: /mnt/shared
       tag: shared-volume
       size: 40 # cakes
+    volumes:
+    - path: /sys/fs/cgroup
+      type: host
+      tag: host-volume
 configuration:
   templates:
     fox: ((SOME_VAR))

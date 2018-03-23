@@ -170,15 +170,17 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	}
 
 	volumeMounts := getVolumeMounts(role).Values()
-	assert.Len(volumeMounts, 2)
+	assert.Len(volumeMounts, 3)
 
-	var persistentMount, sharedMount helm.Node
+	var persistentMount, sharedMount, hostMount helm.Node
 	for _, mount := range volumeMounts {
 		switch mount.Get("name").String() {
 		case "persistent-volume":
 			persistentMount = mount
 		case "shared-volume":
 			sharedMount = mount
+		case "host-volume":
+			hostMount = mount
 		default:
 			assert.Fail("Got unexpected volume mount", "%+v", mount)
 		}
@@ -187,6 +189,8 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	assert.Equal("false", persistentMount.Get("readOnly").String())
 	assert.Equal("/mnt/shared", sharedMount.Get("mountPath").String())
 	assert.Equal("false", sharedMount.Get("readOnly").String())
+	assert.Equal("/sys/fs/cgroup", hostMount.Get("mountPath").String())
+	assert.Equal("false", hostMount.Get("readOnly").String())
 }
 
 func TestPodGetEnvVars(t *testing.T) {

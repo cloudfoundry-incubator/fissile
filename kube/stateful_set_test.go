@@ -217,11 +217,20 @@ func TestStatefulSetVolumes(t *testing.T) {
 						name: myrole
 						volumeMounts:
 						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+						-
 							name: persistent-volume
 							mountPath: /mnt/persistent
 						-
 							name: shared-volume
 							mountPath: /mnt/shared
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+							type: Directory
 			volumeClaimTemplates:
 				-
 					metadata:
