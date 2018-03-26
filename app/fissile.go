@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/SUSE/fissile/builder"
 	"github.com/SUSE/fissile/compilator"
@@ -817,8 +818,38 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 		sort.Strings(sortedKeys)
 		for _, k := range sortedKeys {
 			v := hashDiffs.ChangedValues[k]
-			f.UI.Printf("  %s: %s => %s\n", k, v[0], v[1])
+			f.UI.Printf("  %s:\n    %s\n    %s\n", k,
+				strings.Replace(v[0], "\n", "\n    ", -1),
+				strings.Replace(v[1], "\n", "\n    ", -1))
 		}
+	}
+}
+
+// stringifyValue returns a string representation of a value
+func stringifyValue(value reflect.Value) string {
+	switch value.Kind() {
+	case reflect.Invalid:
+		return "<nil>"
+	case reflect.Map:
+		pairs := make([]string, 0, value.Len())
+		for _, key := range value.MapKeys() {
+			innerValue := stringifyValue(value.MapIndex(key))
+			result := fmt.Sprintf("  %v:%s\n", key, strings.Replace(innerValue, "\n", "\n  ", -1))
+			pairs = append(pairs, result)
+		}
+		sort.Strings(pairs)
+		return fmt.Sprintf("map[\n%s]", strings.Join(pairs, ""))
+	case reflect.Array, reflect.Slice:
+		items := make([]string, 0, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			innerValue := stringifyValue(value.Index(i))
+			result := fmt.Sprintf("  %s\n", strings.Replace(innerValue, "\n", "\n  ", -1))
+			items = append(items, result)
+		}
+		sort.Strings(items)
+		return fmt.Sprintf("[\n%s]", strings.Join(items, ""))
+	default:
+		return fmt.Sprintf("%+v", value.Interface())
 	}
 }
 
@@ -832,8 +863,8 @@ func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 		// Get the spec configs
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				key := fmt.Sprintf("%s.%s.%s", release.Name, job.Name, property.Name)
-				hashes[idx][key] = fmt.Sprintf("%+v", property.Default)
+				key := fmt.Sprintf("%s:%s:%s", release.Name, job.Name, property.Name)
+				hashes[idx][key] = stringifyValue(reflect.ValueOf(property.Default))
 			}
 		}
 	}
