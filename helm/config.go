@@ -255,6 +255,13 @@ func (list *List) Values() []Node {
 
 func (list List) write(enc *Encoder, prefix string) {
 	emptyLines := enc.useEmptyLines(prefix, list.nodes)
+	if len(list.nodes) == 0 {
+		var leadingSpace = ""
+		if prefix != "" {
+			leadingSpace = " "
+		}
+		fmt.Fprintln(enc, prefix+leadingSpace+"[]")
+	}
 	for _, node := range list.nodes {
 		enc.writeNode(node, &prefix, strings.Repeat(" ", enc.indent-2)+"-", emptyLines)
 	}

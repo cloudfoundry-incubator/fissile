@@ -37,7 +37,9 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 		strategy := helm.NewMapping("type", "RollingUpdate")
 		spec.Add("updateStrategy", strategy, helm.Block("if "+minKubeVersion(1, 7)))
 	}
-	spec.Add("volumeClaimTemplates", helm.NewNode(claims))
+	if len(claims) > 0 {
+		spec.Add("volumeClaimTemplates", helm.NewNode(claims))
+	}
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
