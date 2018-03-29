@@ -65,9 +65,25 @@ fi
 # --> model/mustache.go, func builtins
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
+
 export KUBE_COMPONENT_INDEX="${HOSTNAME##*-}"
-if test -n "${KUBE_COMPONENT_INDEX//[0-9]/}" ; then
-  # The instance id wasn't a valid number; make it one
+# We distinguish the component index from stateful sets versus regular
+# pods by length of the suffix.
+#
+# * Length 5 or longer is the random alphanumeric suffix kube
+#   generates for regular pods.
+# * Anything shorter is the numeric index from a stateful set.
+#
+# While this limits stateful sets to 9999 components that should be no
+# problem in practical environments.
+#
+# This gets rid of the issue where the old code considered an
+# all-digit suffix as a number while the ruby code did not and kept it
+# as a string, later failing on a numeric-only method.
+# Example: "09611". The leading 0 indicates octal, but digit 9 is not,
+# therefore this is not a number to ruby/yaml.
+if test "${#KUBE_COMPONENT_INDEX}" -gt 4 ; then
+  # Convert the instance id for a regular pod into a proper number.
   # We use the gawk expression to ensure we have a unique instance id across all
   # active containers.  The name was generated via
   # https://github.com/kubernetes/kubernetes/blob/v1.7.0/pkg/api/v1/generate.go#L59
