@@ -53,6 +53,7 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.Role {
 type Sample struct {
 	desc     string
 	input    interface{}
+	helm     map[string]interface{}
 	expected string
 	err      string
 }

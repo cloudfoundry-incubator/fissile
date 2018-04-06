@@ -180,6 +180,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	kube.Add("external_ips", helm.NewList())
 	kube.Add("secrets_generation_counter", 1, helm.Comment("Increment this counter to rotate all generated secrets"))
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
+	kube.Add("hostpath_available", true, helm.Comment("Whether HostPath volume mounts are available"))
 	kube.Add("registry", registryInfo)
 	kube.Add("organization", settings.Organization)
 

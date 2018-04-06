@@ -2,15 +2,25 @@ package testhelpers
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // IsYAMLSubset asserts that all items in the expected properties are in the actual properties
 func IsYAMLSubset(assert *assert.Assertions, expected, actual interface{}) bool {
-	return isYAMLSubsetInner(assert, expected, actual, nil)
+	result := isYAMLSubsetInner(assert, expected, actual, nil)
+	if !result {
+		buf, err := yaml.Marshal(actual)
+		if assert.NoError(err) {
+			_, err := os.Stderr.Write(buf)
+			assert.NoError(err)
+		}
+	}
+	return result
 }
 
 func isYAMLSubsetInner(assert *assert.Assertions, expected, actual interface{}, prefix []string) bool {
