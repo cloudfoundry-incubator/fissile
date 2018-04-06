@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,14 +82,13 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	items = append(items, statefulset)
 	objects := helm.NewMapping("items", helm.NewNode(items))
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(objects); !assert.NoError(err) {
+
+	actual, err := testhelpers.RoundtripNode(objects, nil)
+	if !assert.NoError(err) {
 		return
 	}
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
+
+	var expected interface{}
 
 	expectedYAML := strings.Replace(`---
 		items:
@@ -189,16 +187,11 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	yamlConfig := &bytes.Buffer{}
-	err = helm.NewEncoder(yamlConfig).Encode(statefulset)
+	actual, err := testhelpers.RoundtripNode(statefulset, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
+	var expected interface{}
 
 	expectedYAML := strings.Replace(`---
 		metadata:
