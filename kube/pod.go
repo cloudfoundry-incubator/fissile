@@ -242,7 +242,11 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
+		mount := helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		if volume.Type == model.VolumeTypeHost {
+			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
+		}
+		mounts = append(mounts, mount)
 	}
 	if len(mounts) == 0 {
 		return nil

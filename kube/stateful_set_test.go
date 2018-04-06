@@ -250,4 +250,18 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubset(assert, expected, actual)
+
+	// Check that not having hostpath disables the hostpath volume
+	overrides := map[string]interface{}{
+		"Values.kube.hostpath_available": false,
+	}
+	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
+	if !assert.NoError(err) {
+		return
+	}
+	volumes := actual
+	for _, k := range []string{"spec", "template", "spec", "volumes"} {
+		volumes = volumes.(map[interface{}]interface{})[k]
+	}
+	assert.Empty(volumes, "Hostpath volumes should not be available")
 }
