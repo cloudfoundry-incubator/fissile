@@ -48,19 +48,6 @@ func getAffinityBlock(role *model.Role) *helm.Mapping {
 	return affinity
 }
 
-// getAffinityAnnotation returns a Kubernetes 1.5 affinity annotation to add to a podspec
-func getAffinityAnnotation(role *model.Role) (string, error) {
-	affinitySpec := make(map[string]interface{})
-	if role.Run.Affinity.PodAntiAffinity != nil {
-		affinitySpec["podAntiAffinity"] = role.Run.Affinity.PodAntiAffinity
-	}
-	affinity, err := util.JSONMarshal(affinitySpec)
-	if err != nil {
-		return "", err
-	}
-	return string(affinity), nil
-}
-
 // addAffinityRules adds affinity rules to the pod spec
 func addAffinityRules(role *model.Role, spec *helm.Mapping, settings ExportSettings) error {
 	if role.Run.Affinity != nil {
@@ -72,18 +59,11 @@ func addAffinityRules(role *model.Role, spec *helm.Mapping, settings ExportSetti
 			return errors.New("pod affinity in role manifest not supported")
 		}
 
-		var cond string
 		if settings.CreateHelmChart {
 			podSpec := spec.Get("template", "spec").(*helm.Mapping)
 
-			// affinity spec is only supported in kube 1.6 and later
-			cond = fmt.Sprintf("if %s", minKubeVersion(1, 6))
-
-			podSpec.Add("affinity", getAffinityBlock(role), helm.Block(cond))
+			podSpec.Add("affinity", getAffinityBlock(role))
 			podSpec.Sort()
-
-			// in kube 1.5 affinity is declared via annotation
-			cond = fmt.Sprintf("if not (%s)", minKubeVersion(1, 6))
 		}
 
 		meta := spec.Get("template", "metadata").(*helm.Mapping)
@@ -93,13 +73,6 @@ func addAffinityRules(role *model.Role, spec *helm.Mapping, settings ExportSetti
 		}
 		annotations := meta.Get("annotations").(*helm.Mapping)
 
-		affinity, err := getAffinityAnnotation(role)
-
-		if err != nil {
-			return err
-		}
-
-		annotations.Add("scheduler.alpha.kubernetes.io/affinity", affinity, helm.Block(cond))
 		annotations.Sort()
 	}
 

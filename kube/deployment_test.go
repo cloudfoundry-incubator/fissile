@@ -96,36 +96,6 @@ func TestGetAffinityBlock(t *testing.T) {
 	assert.Equal(affinity.Get("nodeAffinity").Block(), "if .Values.sizing.role.affinity.nodeAffinity")
 }
 
-func TestGetAffinityAnnotation(t *testing.T) {
-	assert := assert.New(t)
-
-	//
-	// If a pod anti affinity is specified, it should have an annotation
-	//
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
-		return
-	}
-
-	affinity, err := getAffinityAnnotation(role)
-
-	assert.NoError(err)
-	assert.Equal(affinity, "{\"podAntiAffinity\":{\"preferredDuringSchedulingIgnoredDuringExecution\":[{\"podAffinityTerm\":{\"labelSelector\":{\"matchExpressions\":[{\"key\":\"skiff-role-name\",\"operator\":\"In\",\"values\":[\"role\"]}]},\"topologyKey\":\"beta.kubernetes.io/os\"},\"weight\":100}]}}")
-
-	//
-	// If a pod anti affinity isn't specified, it shouldn't have an annotation
-	//
-	role = deploymentTestLoadRole(assert, "role", "pod-with-no-pod-anti-affinity.yml")
-	if role == nil {
-		return
-	}
-
-	affinity, err = getAffinityAnnotation(role)
-
-	assert.NoError(err)
-	assert.Equal(affinity, "{}")
-}
-
 func createEmptySpec() *helm.Mapping {
 	emptySpec := helm.NewMapping()
 	template := helm.NewMapping()
@@ -162,7 +132,6 @@ func TestAddAffinityRules(t *testing.T) {
 
 	assert.NotNil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
 	assert.NotNil(spec.Get("template", "spec", "affinity", "nodeAffinity"))
-	assert.NotNil(spec.Get("template", "metadata", "annotations", "scheduler.alpha.kubernetes.io/affinity"))
 	assert.NoError(err)
 
 	//
@@ -209,6 +178,5 @@ func TestAddAffinityRules(t *testing.T) {
 
 	err = addAffinityRules(role, spec, settings)
 	assert.Nil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
-	assert.NotNil(spec.Get("template", "metadata", "annotations", "scheduler.alpha.kubernetes.io/affinity"))
 	assert.NoError(err)
 }
