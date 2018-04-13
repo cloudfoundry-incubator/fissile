@@ -35,7 +35,7 @@ roles:
   - name: nats
     release_name: nats             # The name of the BOSH release this is from
   tags:
-  - clustered                      # Mark this role as self-clustering
+  - clustered                      # Mark this role as self-clustering => StatefulSet
   run:                             # Runtime configuration
     scaling:                       # Auto-scaling limits
       min: 1
@@ -132,7 +132,65 @@ headers (for example, to set the `Accept:` header to request JSON responses).
 
 [Kubernetes container probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
 
+## Tagging
+
+The NATS role above was tagged as `clustered`, causing fissile to emit
+it as a [StatefulSet].
+
+The second way of causing fissile to do that is to tag a role as
+`indexed`. The main difference between `clustered` and `indexed` roles
+is that fissile creates a public service (of type `LoadBalancer`) for
+the latter, providing a single point of access to the pods for the
+role.
+
+Therefore index roles which require load balancing and need a 0-based,
+incremented index, and cluster otherwise.
+
+Note that both `clustered` and `indexed` roles can take advantage of
+volume claim templates for local storage.
+
+An example of an indexed role is the BLOBSTORE of CF. See the example
+below.
+
+```yaml
+roles:
+- name: blobstore
+  jobs:
+  - name: blobstore
+    release_name: capi
+  processes:
+  - name: blobstore_nginx
+  - name: blobstore_url_signer
+  tags:
+  - indexed                      # Mark this role as indexed => StatefulSet
+  run:
+    scaling:
+      min: 1
+      max: 1
+      # Not HA capable; use external HA storage instead
+    capabilities: []
+    persistent-volumes:          # Local persistent storage, shared across the set
+    - path: /var/vcap/store
+      tag: blobstore-data
+      size: 50
+    shared-volumes: []
+    memory: 420
+    virtual-cpus: 2
+    exposed-ports:
+    - name: blobstore-ext
+      protocol: TCP
+      internal: 8080
+    - name: blobstore
+      protocol: TCP
+      internal: 4443
+  configuration:
+    [...]
+```
+
+[StatefulSet]: https://kubernetes.io/docs/resources-reference/v1.6/#statefulset-v1beta1-apps
+
 ## Opinions, Dark Opinions, and Environment
+
 For BOSH properties that are constant across deployments, but that do not match
 the upstream defaults, they can be stored in an opinions file which will be
 embedded within the docker image.  An additional dark opinions file is used to
@@ -161,6 +219,7 @@ section of the role manifest.  For the NATS role, we can use the following files
   ```
 
 ## Fissile command line options
+
 All fissile options are also available as environment variables.  For that NATS
 release, we are just setting the paths to the things we created above.  For
 additional options, please refer to the [command documentation]:
@@ -189,6 +248,7 @@ export FISSILE_STEMCELL="splatform/fissile-stemcell-opensuse:42.2-6.ga651b2d-28.
 ```
 
 ## Building the NATS Image
+
 We can now assemble all the files necessary from the information above:
 
 ```bash
