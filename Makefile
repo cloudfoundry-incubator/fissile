@@ -38,6 +38,9 @@ docker-deps:
 tools:
 	${GIT_ROOT}/make/tools
 
+show-versions:
+	make/show-versions
+
 # If this fails, try running 'make bindata' and rerun 'make test'
 test:
 	${GIT_ROOT}/make/test
