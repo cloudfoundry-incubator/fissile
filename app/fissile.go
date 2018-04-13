@@ -1062,12 +1062,6 @@ func (f *Fissile) roleIsStateful(role *model.Role) bool {
 	if role.HasTag("clustered") || role.HasTag("indexed") {
 		return true
 	}
-	for _, volume := range role.Run.Volumes {
-		switch volume.Type {
-		case model.VolumeTypePersistent, model.VolumeTypeShared:
-			return true
-		}
-	}
 	return false
 }
 
