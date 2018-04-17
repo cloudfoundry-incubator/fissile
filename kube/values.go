@@ -132,11 +132,11 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 
 		diskSizes := helm.NewMapping()
-		for _, volume := range role.Run.PersistentVolumes {
-			diskSizes.Add(makeVarName(volume.Tag), volume.Size)
-		}
-		for _, volume := range role.Run.SharedVolumes {
-			diskSizes.Add(makeVarName(volume.Tag), volume.Size)
+		for _, volume := range role.Run.Volumes {
+			switch volume.Type {
+			case model.VolumeTypePersistent, model.VolumeTypeShared:
+				diskSizes.Add(makeVarName(volume.Tag), volume.Size)
+			}
 		}
 		if len(diskSizes.Names()) > 0 {
 			entry.Add("disk_sizes", diskSizes.Sort())
@@ -180,6 +180,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	kube.Add("external_ips", helm.NewList())
 	kube.Add("secrets_generation_counter", 1, helm.Comment("Increment this counter to rotate all generated secrets"))
 	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
+	kube.Add("hostpath_available", true, helm.Comment("Whether HostPath volume mounts are available"))
 	kube.Add("registry", registryInfo)
 	kube.Add("organization", settings.Organization)
 

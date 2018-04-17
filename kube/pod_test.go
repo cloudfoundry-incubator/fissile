@@ -53,6 +53,7 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.Role {
 type Sample struct {
 	desc     string
 	input    interface{}
+	helm     map[string]interface{}
 	expected string
 	err      string
 }
@@ -100,15 +101,25 @@ func TestPodGetVolumes(t *testing.T) {
 		return
 	}
 
-	claims := getAllVolumeClaims(role, false)
+	claims := getVolumeClaims(role, false)
 	assert.Len(claims, 2, "expected two claims")
+
+	var persistentVolume, sharedVolume *model.RoleRunVolume
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent:
+			persistentVolume = volume
+		case model.VolumeTypeShared:
+			sharedVolume = volume
+		}
+	}
 
 	var persistentClaim, sharedClaim helm.Node
 	for _, claim := range claims {
 		switch claim.Get("metadata", "name").String() {
-		case role.Run.PersistentVolumes[0].Tag:
+		case string(persistentVolume.Tag):
 			persistentClaim = claim
-		case role.Run.SharedVolumes[0].Tag:
+		case string(sharedVolume.Tag):
 			sharedClaim = claim
 		default:
 			assert.Fail("Got unexpected claim", "%s", claim)
@@ -153,30 +164,55 @@ func TestPodGetVolumes(t *testing.T) {
 }
 
 func TestPodGetVolumeMounts(t *testing.T) {
-	assert := assert.New(t)
-	role := podTemplateTestLoadRole(assert)
+	role := podTemplateTestLoadRole(assert.New(t))
 	if role == nil {
 		return
 	}
 
-	volumeMounts := getVolumeMounts(role).Values()
-	assert.Len(volumeMounts, 2)
-
-	var persistentMount, sharedMount helm.Node
-	for _, mount := range volumeMounts {
-		switch mount.Get("name").String() {
-		case "persistent-volume":
-			persistentMount = mount
-		case "shared-volume":
-			sharedMount = mount
-		default:
-			assert.Fail("Got unexpected volume mount", "%+v", mount)
-		}
+	cases := map[string]interface{}{
+		"with hostpath":    nil,
+		"without hostpath": map[string]interface{}{"Values.kube.hostpath_available": false},
 	}
-	assert.Equal("/mnt/persistent", persistentMount.Get("mountPath").String())
-	assert.Equal("false", persistentMount.Get("readOnly").String())
-	assert.Equal("/mnt/shared", sharedMount.Get("mountPath").String())
-	assert.Equal("false", sharedMount.Get("readOnly").String())
+	for caseName, caseOverrides := range cases {
+		t.Run(caseName, func(t *testing.T) {
+
+			volumeMountNodes := getVolumeMounts(role)
+			volumeMounts, err := testhelpers.RoundtripNode(volumeMountNodes, caseOverrides)
+			if !assert.NoError(t, err) {
+				return
+			}
+			if caseOverrides == nil {
+				assert.Len(t, volumeMounts, 3)
+			} else {
+				assert.Len(t, volumeMounts, 2)
+			}
+
+			var persistentMount, sharedMount, hostMount map[interface{}]interface{}
+			for _, elem := range volumeMounts.([]interface{}) {
+				mount := elem.(map[interface{}]interface{})
+				switch mount["name"] {
+				case "persistent-volume":
+					persistentMount = mount
+				case "shared-volume":
+					sharedMount = mount
+				case "host-volume":
+					hostMount = mount
+				default:
+					assert.Fail(t, "Got unexpected volume mount", "%+v", mount)
+				}
+			}
+			assert.Equal(t, "/mnt/persistent", persistentMount["mountPath"])
+			assert.Equal(t, false, persistentMount["readOnly"])
+			assert.Equal(t, "/mnt/shared", sharedMount["mountPath"])
+			assert.Equal(t, false, sharedMount["readOnly"])
+			if caseOverrides == nil {
+				assert.Equal(t, "/sys/fs/cgroup", hostMount["mountPath"])
+				assert.Equal(t, false, hostMount["readOnly"])
+			} else {
+				assert.Nil(t, hostMount)
+			}
+		})
+	}
 }
 
 func TestPodGetEnvVars(t *testing.T) {

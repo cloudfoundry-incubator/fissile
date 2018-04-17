@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,14 +82,13 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	items = append(items, statefulset)
 	objects := helm.NewMapping("items", helm.NewNode(items))
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(objects); !assert.NoError(err) {
+
+	actual, err := testhelpers.RoundtripNode(objects, nil)
+	if !assert.NoError(err) {
 		return
 	}
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
+
+	var expected interface{}
 
 	expectedYAML := strings.Replace(`---
 		items:
@@ -189,16 +187,11 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	yamlConfig := &bytes.Buffer{}
-	err = helm.NewEncoder(yamlConfig).Encode(statefulset)
+	actual, err := testhelpers.RoundtripNode(statefulset, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
+	var expected interface{}
 
 	expectedYAML := strings.Replace(`---
 		metadata:
@@ -217,11 +210,20 @@ func TestStatefulSetVolumes(t *testing.T) {
 						name: myrole
 						volumeMounts:
 						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+						-
 							name: persistent-volume
 							mountPath: /mnt/persistent
 						-
 							name: shared-volume
 							mountPath: /mnt/shared
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+							type: Directory
 			volumeClaimTemplates:
 				-
 					metadata:
@@ -248,4 +250,18 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubset(assert, expected, actual)
+
+	// Check that not having hostpath disables the hostpath volume
+	overrides := map[string]interface{}{
+		"Values.kube.hostpath_available": false,
+	}
+	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
+	if !assert.NoError(err) {
+		return
+	}
+	volumes := actual
+	for _, k := range []string{"spec", "template", "spec", "volumes"} {
+		volumes = volumes.(map[interface{}]interface{})[k]
+	}
+	assert.Empty(volumes, "Hostpath volumes should not be available")
 }

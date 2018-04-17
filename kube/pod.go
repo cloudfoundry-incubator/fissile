@@ -124,6 +124,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	spec.Add("containers", helm.NewList(container))
 	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
 	spec.Add("dnsPolicy", "ClusterFirst")
+	spec.Add("volumes", getNonClaimVolumes(role))
 	spec.Add("restartPolicy", "Always")
 	if role.Run.ServiceAccount != "" {
 		// This role requires a custom service account
@@ -240,11 +241,12 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 // getVolumeMounts gets the list of volume mounts for a role
 func getVolumeMounts(role *model.Role) helm.Node {
 	var mounts []helm.Node
-	for _, volume := range role.Run.PersistentVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
-	}
-	for _, volume := range role.Run.SharedVolumes {
-		mounts = append(mounts, helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false))
+	for _, volume := range role.Run.Volumes {
+		mount := helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		if volume.Type == model.VolumeTypeHost {
+			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
+		}
+		mounts = append(mounts, mount)
 	}
 	if len(mounts) == 0 {
 		return nil
@@ -266,6 +268,24 @@ func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) 
 	envVar := helm.NewMapping("name", name, "valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
 	envVar.Set(modifiers...)
 	return envVar
+}
+
+// getNonClaimVolumes returns the list of pod volumes that are _not_ bound with volume claims
+func getNonClaimVolumes(role *model.Role) helm.Node {
+	var mounts []helm.Node
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypeHost:
+			hostPathInfo := helm.NewMapping("path", volume.Path, "type", "Directory")
+			volumeEntry := helm.NewMapping("name", volume.Tag, "hostPath", hostPathInfo)
+			volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
+			mounts = append(mounts, volumeEntry)
+		}
+	}
+	if len(mounts) == 0 {
+		return nil
+	}
+	return helm.NewNode(mounts)
 }
 
 func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
