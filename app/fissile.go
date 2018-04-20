@@ -420,7 +420,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder, labels []string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -460,7 +460,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, labels, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -473,7 +473,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 
 // GeneratePackagesRoleTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
-func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder) error {
+func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels []string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -507,7 +507,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 
 	// We always force build all packages here to avoid needing to talk to the
 	// docker daemon to figure out what we can keep
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, true)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, labels, true)
 	err = tarPopulator(tarWriter)
 	if err != nil {
 		return fmt.Errorf("Error writing tar file: %s", err)
@@ -522,7 +522,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels []string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -576,9 +576,9 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	}
 
 	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, roles, packagesImageBuilder)
+		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, roles, packagesImageBuilder, labels)
 	} else {
-		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder)
+		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder, labels)
 	}
 	if err != nil {
 		return err

@@ -176,7 +176,7 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildAll bool) func(*tar.Writer) error {
+func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, labels []string, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		var err error
 		if len(roles) == 0 {
@@ -208,7 +208,7 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 				return err
 			}
 		}
-		if err = p.generateDockerfile(baseImageName, packages, &dockerfile); err != nil {
+		if err = p.generateDockerfile(baseImageName, packages, labels, &dockerfile); err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, dockerfile.Bytes(), tar.Header{
@@ -245,11 +245,12 @@ func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, forceBuildA
 }
 
 // generateDockerfile builds a docker file for the shared packages layer.
-func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages model.Packages, outputFile io.Writer) error {
+func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages model.Packages, labels []string, outputFile io.Writer) error {
 	context := map[string]interface{}{
 		"base_image":      baseImage,
 		"packages":        packages,
 		"fissile_version": p.fissileVersionLabel(),
+		"labels":          labels,
 	}
 	asset, err := dockerfiles.Asset("Dockerfile-packages")
 	if err != nil {

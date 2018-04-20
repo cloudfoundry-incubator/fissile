@@ -17,6 +17,7 @@ var (
 	flagBuildImagesStemcell   string
 	flagBuildImagesStemcellID string
 	flagBuildImagesTagExtra   string
+	flagLabels                []string
 )
 
 // buildImagesCmd represents the images command
@@ -53,6 +54,7 @@ from other specs.  At most one is allowed.
 		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
 		flagBuildImagesTagExtra = buildImagesViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
+		flagLabels = buildImagesViper.GetStringSlice("add-label")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -78,7 +80,6 @@ from other specs.  At most one is allowed.
 				fissile.GraphEnd()
 			}()
 		}
-
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagDockerRegistry,
@@ -97,6 +98,7 @@ from other specs.  At most one is allowed.
 			flagLightOpinions,
 			flagDarkOpinions,
 			flagOutputDirectory,
+			flagLabels,
 		)
 	},
 }
@@ -162,6 +164,13 @@ func init() {
 		"",
 		"",
 		"Additional information to use in computing the image tags",
+	)
+
+	buildImagesCmd.PersistentFlags().StringSliceP(
+		"add-label",
+		"",
+		[]string{},
+		"Additional label which will be set for the base layer image. Format: label=value",
 	)
 
 	buildImagesViper.BindPFlags(buildImagesCmd.PersistentFlags())

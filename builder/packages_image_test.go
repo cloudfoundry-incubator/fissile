@@ -72,8 +72,9 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	dockerfile := bytes.Buffer{}
+	labels := []string{"version.cap=1.2.3", "publisher=SUSE Linux Products GmbH"}
 
-	err = packagesImageBuilder.generateDockerfile("scratch:latest", nil, &dockerfile)
+	err = packagesImageBuilder.generateDockerfile("scratch:latest", nil, labels, &dockerfile)
 	assert.NoError(err)
 
 	lines := getDockerfileLines(dockerfile.String())
@@ -81,6 +82,8 @@ func TestGenerateDockerfile(t *testing.T) {
 		"FROM scratch:latest",
 		"ADD packages-src /var/vcap/packages-src/",
 		"LABEL version.generator.fissile=3.14.15",
+		`LABEL "version.cap=1.2.3"`,
+		`LABEL "publisher=SUSE Linux Products GmbH"`,
 	}, lines, "Unexpected dockerfile contents found")
 }
 
@@ -117,9 +120,11 @@ func TestNewDockerPopulator(t *testing.T) {
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
+	labels := []string{"version.cap=1.2.3", "publisher=SUSE Linux Products GmbH"}
+
 	tarFile := &bytes.Buffer{}
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest.Roles, false)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(roleManifest.Roles, labels, false)
 	tarWriter := tar.NewWriter(tarFile)
 	assert.NoError(tarPopulator(tarWriter))
 	assert.NoError(tarWriter.Close())
@@ -151,6 +156,12 @@ func TestNewDockerPopulator(t *testing.T) {
 					assert.Equal("LABEL version.generator.fissile=3.14.15", line, "line 4 mismatch (LABEL, generator version)")
 				},
 				func() {
+					assert.Equal(`LABEL "version.cap=1.2.3"`, line, "line 5 mismatch (LABEL, additional label)")
+				},
+				func() {
+					assert.Equal(`LABEL "publisher=SUSE Linux Products GmbH"`, line, "line 6 mismatch (LABEL, additional label)")
+				},
+				func() {
 					expected := []string{
 						"LABEL",
 						fmt.Sprintf(`"fingerprint.%s"="libevent"`, getPackage(roleManifest.Roles, "myrole", "tor", "libevent").Fingerprint),
@@ -159,7 +170,7 @@ func TestNewDockerPopulator(t *testing.T) {
 					actual := strings.Fields(line)
 					sort.Strings(expected[1:])
 					sort.Strings(actual[1:])
-					assert.Equal(expected, actual, "line 4 has unexpected fields")
+					assert.Equal(expected, actual, "line 6 has unexpected fields")
 				},
 			}
 			for i, line = range getDockerfileLines(contents) {
