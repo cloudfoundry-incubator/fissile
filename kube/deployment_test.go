@@ -7,6 +7,7 @@ import (
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -66,6 +67,140 @@ func TestNewDeployment(t *testing.T) {
 	assert.NotNil(deployment)
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+}
+
+func TestNewDeploymentHelmDefaults(t *testing.T) {
+	assert := assert.New(t)
+
+	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+	}
+
+	grapher := FakeGrapher{}
+
+	deployment, svc, err := NewDeployment(role, settings, grapher)
+
+	assert.NoError(err)
+	assert.Nil(svc)
+	assert.NotNil(deployment)
+	assert.Equal(deployment.Get("kind").String(), "Deployment")
+	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+
+	// Rendering fails with defaults, template needs information about sizing and the like.
+	_, err = testhelpers.RenderNode(deployment, nil)
+	if !assert.Error(err) {
+		return
+	}
+
+	assert.Equal(`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`,
+		err.Error())
+}
+
+func TestNewDeploymentHelmConfigured(t *testing.T) {
+	assert := assert.New(t)
+
+	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "the_repos",
+	}
+
+	grapher := FakeGrapher{}
+
+	deployment, svc, err := NewDeployment(role, settings, grapher)
+
+	assert.NoError(err)
+	assert.Nil(svc)
+	assert.NotNil(deployment)
+	assert.Equal(deployment.Get("kind").String(), "Deployment")
+	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+
+	config := map[string]interface{}{
+		"Values.sizing.role.count":                 "1",
+		"Values.sizing.role.affinity.nodeAffinity": "snafu",
+		"Values.kube.registry.hostname":            "docker.suse.fake",
+		"Values.kube.organization":                 "splat",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
+	}
+
+	deploymentYAML, err := testhelpers.RenderNode(deployment, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The role role contains the following jobs:
+
+apiVersion: "extensions/v1beta1"
+kind: "Deployment"
+metadata:
+  name: "role"
+  labels:
+    skiff-role-name: "role"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      skiff-role-name: "role"
+  template:
+    metadata:
+      name: "role"
+      labels:
+        skiff-role-name: "role"
+      annotations:
+        checksum/config: 2a4e143516950dca2fa4e28e843f777861f2dcdf671a21c1f1a4479dc40d8579
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: "skiff-role-name"
+                  operator: "In"
+                  values:
+                  - "role"
+              topologyKey: "beta.kubernetes.io/os"
+            weight: 100
+        nodeAffinity: "snafu"
+      containers:
+      - env:
+        - name: "KUBERNETES_NAMESPACE"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+          value: "domestic"
+        image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "/opt/fissile/pre-stop.sh"
+        livenessProbe: ~
+        name: "role"
+        ports: ~
+        readinessProbe: ~
+        resources: ~
+        securityContext: ~
+        volumeMounts: ~
+      dnsPolicy: "ClusterFirst"
+      imagePullSecrets:
+      - name: "registry-credentials"
+      restartPolicy: "Always"
+      terminationGracePeriodSeconds: 600
+      volumes: ~
+`
+	assert.Equal(expectedYAML, string(deploymentYAML))
 }
 
 func TestGetAffinityBlock(t *testing.T) {

@@ -10,8 +10,7 @@ import (
 )
 
 // MakeSecrets creates Secret KubeConfig filled with the
-// key/value pairs from the specified map. It further returns a map
-// showing which original CV name maps to what secret+key combination.
+// key/value pairs from the specified map.
 func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error) {
 	data := helm.NewMapping()
 	generated := helm.NewMapping()

@@ -170,3 +170,206 @@ func TestJobWithAnnotations(t *testing.T) {
 
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
+
+func TestJobHelmWithDefaults(t *testing.T) {
+	assert := assert.New(t)
+	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
+	if role == nil {
+		return
+	}
+
+	job, err := NewJob(role, ExportSettings{
+		Opinions:        model.NewEmptyOpinions(),
+		CreateHelmChart: true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create job from role pre-role") {
+		return
+	}
+	assert.NotNil(job)
+
+	// Render should fail due to the template referencing a number
+	// of variables which must be non-nil to work.
+	_, err = testhelpers.RenderNode(job, nil)
+	if !assert.Error(err) {
+		return
+	}
+
+	assert.Equal(`template: :5:155: executing "" at <trimSuffix>: wrong number of args for trimSuffix: want 2 got 1`,
+		err.Error())
+}
+
+func TestJobHelmFilledKube15(t *testing.T) {
+	assert := assert.New(t)
+	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
+	if role == nil {
+		return
+	}
+
+	job, err := NewJob(role, ExportSettings{
+		Opinions:        model.NewEmptyOpinions(),
+		CreateHelmChart: true,
+		Repository:      "the_repos",
+	}, nil)
+	if !assert.NoError(err, "Failed to create job from role pre-role") {
+		return
+	}
+	assert.NotNil(job)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+	fakeTemplateDir := filepath.Join(workDir, "../test-assets/fake-templates")
+
+	config := map[string]interface{}{
+		"Capabilities.KubeVersion.Major": "1",
+		"Capabilities.KubeVersion.Minor": "5",
+		// Fake location for a fake `secrets.yaml`.
+		"Template.BasePath": fakeTemplateDir,
+	}
+
+	jobYAML, err := testhelpers.RenderNode(job, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	// The various <no value> seen below come from, in order:
+	// - Release.Revision
+	// - Values.kube.registry.hostname
+	// - Values.kube.organization
+	// none of which are defined in the config.
+	//
+	// Another undefined variable,
+	// Values.env.KUBE_SERVICE_DOMAIN_SUFFIX, yields an empty
+	// field, see the value of KUBE_SERVICE_DOMAIN_SUFFIX.
+
+	expectedJobYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: extensions/v1beta1
+kind: "Job"
+metadata:
+  name: "pre-role-<no value>"
+spec:
+  template:
+    metadata:
+      name: "pre-role"
+      labels:
+        skiff-role-name: "pre-role"
+      annotations:
+        checksum/config: 12c060c7c3824cddab3f33ec8af7c98d6b35bd891d6282e8d829b6d7663b1d5a
+    spec:
+      containers:
+      - env:
+        - name: "KUBERNETES_NAMESPACE"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+          value: 
+        image: "<no value>/<no value>/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "/opt/fissile/pre-stop.sh"
+        livenessProbe: ~
+        name: "pre-role"
+        ports: ~
+        readinessProbe: ~
+        resources: ~
+        securityContext: ~
+        volumeMounts: ~
+      dnsPolicy: "ClusterFirst"
+      imagePullSecrets:
+      - name: "registry-credentials"
+      restartPolicy: "OnFailure"
+      terminationGracePeriodSeconds: 600
+      volumes: ~
+`
+	assert.Equal(expectedJobYAML, string(jobYAML))
+}
+
+func TestJobHelmFilledKube16(t *testing.T) {
+	assert := assert.New(t)
+	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
+	if role == nil {
+		return
+	}
+
+	job, err := NewJob(role, ExportSettings{
+		Opinions:        model.NewEmptyOpinions(),
+		CreateHelmChart: true,
+		Repository:      "the_repos",
+	}, nil)
+	if !assert.NoError(err, "Failed to create job from role pre-role") {
+		return
+	}
+	assert.NotNil(job)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+	fakeTemplateDir := filepath.Join(workDir, "../test-assets/fake-templates")
+
+	config := map[string]interface{}{
+		"Capabilities.KubeVersion.Major": "1",
+		"Capabilities.KubeVersion.Minor": "6",
+		// Fake location for a fake `secrets.yaml`.
+		"Template.BasePath":                     fakeTemplateDir,
+		"Release.Revision":                      "42",
+		"Values.kube.registry.hostname":         "docker.suse.fake",
+		"Values.kube.organization":              "splat",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
+	}
+
+	jobYAML, err := testhelpers.RenderNode(job, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedJobYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: batch/v1
+kind: "Job"
+metadata:
+  name: "pre-role-42"
+spec:
+  template:
+    metadata:
+      name: "pre-role"
+      labels:
+        skiff-role-name: "pre-role"
+      annotations:
+        checksum/config: 12c060c7c3824cddab3f33ec8af7c98d6b35bd891d6282e8d829b6d7663b1d5a
+    spec:
+      containers:
+      - env:
+        - name: "KUBERNETES_NAMESPACE"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+          value: "domestic"
+        image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "/opt/fissile/pre-stop.sh"
+        livenessProbe: ~
+        name: "pre-role"
+        ports: ~
+        readinessProbe: ~
+        resources: ~
+        securityContext: ~
+        volumeMounts: ~
+      dnsPolicy: "ClusterFirst"
+      imagePullSecrets:
+      - name: "registry-credentials"
+      restartPolicy: "OnFailure"
+      terminationGracePeriodSeconds: 600
+      volumes: ~
+`
+	assert.Equal(expectedJobYAML, string(jobYAML))
+}

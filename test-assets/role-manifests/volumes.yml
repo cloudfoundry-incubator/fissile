@@ -5,6 +5,8 @@ roles:
   - name: tor
     release_name: tor
   run:
+    capabilities:
+    - something
     scaling:
       min: 1
       max: 2

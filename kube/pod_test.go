@@ -94,6 +94,30 @@ func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
 	})
 }
 
+func TestPodGetNonClaimVolumes(t *testing.T) {
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	mounts := getNonClaimVolumes(role)
+	assert.NotNil(mounts)
+
+	mountYAML, err := testhelpers.RenderNode(mounts, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "host-volume"
+  hostPath:
+    path: "/sys/fs/cgroup"
+    type: "Directory"
+`
+	assert.Equal(expectedYAML, string(mountYAML))
+}
+
 func TestPodGetVolumes(t *testing.T) {
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
@@ -160,6 +184,147 @@ func TestPodGetVolumes(t *testing.T) {
 	}
 	for _, sample := range samples {
 		sample.check(t, sample.input.(helm.Node), nil)
+	}
+}
+
+func TestPodGetVolumesHelmDefault(t *testing.T) {
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	claims := getVolumeClaims(role, true)
+	assert.Len(claims, 2, "expected two claims")
+
+	var persistentVolume, sharedVolume *model.RoleRunVolume
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent:
+			persistentVolume = volume
+		case model.VolumeTypeShared:
+			sharedVolume = volume
+		}
+	}
+
+	var persistentClaim, sharedClaim helm.Node
+	for _, claim := range claims {
+		switch claim.Get("metadata", "name").String() {
+		case string(persistentVolume.Tag):
+			persistentClaim = claim
+		case string(sharedVolume.Tag):
+			sharedClaim = claim
+		default:
+			assert.Fail("Got unexpected claim", "%s", claim)
+		}
+	}
+
+	pcYAML, err := testhelpers.RenderNode(persistentClaim, nil)
+	if assert.NoError(err) {
+		expectedYAML := `---
+metadata:
+  name: "persistent-volume"
+  annotations:
+    volume.beta.kubernetes.io/storage-class: 
+spec:
+  accessModes:
+  - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "<no value>G"
+`
+		assert.Equal(expectedYAML, string(pcYAML))
+	}
+
+	scYAML, err := testhelpers.RenderNode(sharedClaim, nil)
+	if assert.NoError(err) {
+		expectedYAML := `---
+metadata:
+  name: "shared-volume"
+  annotations:
+    volume.beta.kubernetes.io/storage-class: 
+spec:
+  accessModes:
+  - "ReadWriteMany"
+  resources:
+    requests:
+      storage: "<no value>G"
+`
+		assert.Equal(expectedYAML, string(scYAML))
+	}
+}
+
+func TestPodGetVolumesHelmConfigured(t *testing.T) {
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	claims := getVolumeClaims(role, true)
+	assert.Len(claims, 2, "expected two claims")
+
+	var persistentVolume, sharedVolume *model.RoleRunVolume
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent:
+			persistentVolume = volume
+		case model.VolumeTypeShared:
+			sharedVolume = volume
+		}
+	}
+
+	var persistentClaim, sharedClaim helm.Node
+	for _, claim := range claims {
+		switch claim.Get("metadata", "name").String() {
+		case string(persistentVolume.Tag):
+			persistentClaim = claim
+		case string(sharedVolume.Tag):
+			sharedClaim = claim
+		default:
+			assert.Fail("Got unexpected claim", "%s", claim)
+		}
+	}
+
+	config := map[string]interface{}{
+		"Values.kube.storage_class.persistent":              "Persistent",
+		"Values.kube.storage_class.shared":                  "Shared",
+		"Values.sizing.myrole.disk_sizes.persistent_volume": "42",
+		"Values.sizing.myrole.disk_sizes.shared_volume":     "84",
+	}
+
+	pcYAML, err := testhelpers.RenderNode(persistentClaim, config)
+	if assert.NoError(err) {
+		expectedYAML := `---
+metadata:
+  name: "persistent-volume"
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "Persistent"
+spec:
+  accessModes:
+  - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "42G"
+`
+		assert.Equal(expectedYAML, string(pcYAML))
+	}
+
+	scYAML, err := testhelpers.RenderNode(sharedClaim, config)
+	if assert.NoError(err) {
+		expectedYAML := `---
+metadata:
+  name: "shared-volume"
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "Shared"
+spec:
+  accessModes:
+  - "ReadWriteMany"
+  resources:
+    requests:
+      storage: "84G"
+`
+		assert.Equal(expectedYAML, string(scYAML))
 	}
 }
 
@@ -739,11 +904,11 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 	}
 }
 
-func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
+func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName string) *model.Role {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/pods.yml")
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 
@@ -761,6 +926,10 @@ func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	}
 
 	return role
+}
+
+func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
+	return podTestLoadRoleFrom(assert, roleName, "pods.yml")
 }
 
 func TestPodPreFlight(t *testing.T) {
@@ -947,4 +1116,180 @@ func TestPodCPU(t *testing.T) {
 	}
 
 	testhelpers.IsYAMLSubset(assert, expected, actual)
+}
+
+func TestGetSecurityContext(t *testing.T) {
+	assert := assert.New(t)
+
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
+
+	scYAML, err := testhelpers.RenderNode(sc, nil)
+
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+capabilities:
+  add:
+  - "SOMETHING"
+`
+	assert.Equal(expectedYAML, string(scYAML))
+}
+
+func TestPodGetContainerImageNameKube(t *testing.T) {
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		Repository:   "theRepos",
+		Opinions:     model.NewEmptyOpinions(),
+		Organization: "O",
+		Registry:     "R",
+	}
+	grapher := FakeGrapher{}
+
+	name, err := getContainerImageName(role, settings, grapher)
+
+	assert.Nil(err)
+	assert.NotNil(name)
+	assert.Equal(`R/O/theRepos-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
+}
+
+func TestPodGetContainerImageNameHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepos",
+		Opinions:        model.NewEmptyOpinions(),
+		Organization:    "O",
+		Registry:        "R",
+	}
+	grapher := FakeGrapher{}
+
+	name, err := getContainerImageName(role, settings, grapher)
+
+	assert.Nil(err)
+	assert.NotNil(name)
+	assert.Equal(`{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/theRepos-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
+}
+
+func TestPodGetContainerPortsKube(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRoleFrom(assert, "myrole", "exposed-ports.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{}
+
+	ports, err := getContainerPorts(role, settings)
+	assert.Nil(err)
+	assert.NotNil(ports)
+
+	portsYAML, err := testhelpers.RenderNode(ports, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- containerPort: 8080
+  name: "http"
+  protocol: "TCP"
+- containerPort: 443
+  name: "https"
+  protocol: "TCP"
+`
+	assert.Equal(expectedYAML, string(portsYAML))
+}
+
+func TestPodGetContainerPortsHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRoleFrom(assert, "myrole", "exposed-ports.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+	}
+
+	ports, err := getContainerPorts(role, settings)
+	assert.Nil(err)
+	assert.NotNil(ports)
+
+	portsYAML, err := testhelpers.RenderNode(ports, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- containerPort: 8080
+  name: "http"
+  protocol: "TCP"
+- containerPort: 443
+  name: "https"
+  protocol: "TCP"
+`
+	assert.Equal(expectedYAML, string(portsYAML))
+}
+
+func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRoleFrom(assert, "myrole", "bosh-run-count-configurable.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+	}
+
+	ports, err := getContainerPorts(role, settings)
+	assert.Nil(err)
+	assert.NotNil(ports)
+
+	config := map[string]interface{}{
+		"Values.sizing.myrole.ports.tcp_route.count": "5",
+	}
+
+	portsYAML, err := testhelpers.RenderNode(ports, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- containerPort: 20000
+  name: "tcp-route-0"
+  protocol: "TCP"
+- containerPort: 20001
+  name: "tcp-route-1"
+  protocol: "TCP"
+- containerPort: 20002
+  name: "tcp-route-2"
+  protocol: "TCP"
+- containerPort: 20003
+  name: "tcp-route-3"
+  protocol: "TCP"
+- containerPort: 20004
+  name: "tcp-route-4"
+  protocol: "TCP"
+`
+	assert.Equal(expectedYAML, string(portsYAML))
 }

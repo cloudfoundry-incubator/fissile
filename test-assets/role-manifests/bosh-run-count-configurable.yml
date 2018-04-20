@@ -1,0 +1,12 @@
+---
+roles:
+- name: myrole
+  jobs: []
+  run:
+    exposed-ports:
+    - name: tcp-route
+      protocol: TCP
+      count-configurable: true
+      internal: 20000-20002
+      public: true
+      max: 30
