@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -80,6 +81,16 @@ from other specs.  At most one is allowed.
 				fissile.GraphEnd()
 			}()
 		}
+
+		labels := map[string]string{}
+		for _, label := range flagLabels {
+			parts := strings.Split(label, "=")
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid label format '%s'. Use: --add-label \"foo=bar\"", label)
+			}
+			labels[parts[0]] = parts[1]
+		}
+
 		return fissile.GenerateRoleImages(
 			workPathDockerDir,
 			flagDockerRegistry,
@@ -98,7 +109,7 @@ from other specs.  At most one is allowed.
 			flagLightOpinions,
 			flagDarkOpinions,
 			flagOutputDirectory,
-			flagLabels,
+			labels,
 		)
 	},
 }
@@ -169,7 +180,7 @@ func init() {
 	buildImagesCmd.PersistentFlags().StringSliceP(
 		"add-label",
 		"",
-		[]string{},
+		nil,
 		"Additional label which will be set for the base layer image. Format: label=value",
 	)
 

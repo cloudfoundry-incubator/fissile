@@ -82,8 +82,8 @@ func TestGenerateDockerfile(t *testing.T) {
 		"FROM scratch:latest",
 		"ADD packages-src /var/vcap/packages-src/",
 		"LABEL version.generator.fissile=3.14.15",
-		`LABEL "version.cap=1.2.3"`,
-		`LABEL "publisher=SUSE Linux Products GmbH"`,
+		`LABEL "publisher"="SUSE Linux Products GmbH"`,
+		`LABEL "version.cap"="1.2.3"`,
 	}, lines, "Unexpected dockerfile contents found")
 }
 
@@ -120,7 +120,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
 	assert.NoError(err)
 
-	labels := []string{"version.cap=1.2.3", "publisher=SUSE Linux Products GmbH"}
+	labels := map[string]string{"version.cap": "1.2.3", "publisher": "SUSE Linux Products GmbH"}
 
 	tarFile := &bytes.Buffer{}
 
@@ -156,10 +156,10 @@ func TestNewDockerPopulator(t *testing.T) {
 					assert.Equal("LABEL version.generator.fissile=3.14.15", line, "line 4 mismatch (LABEL, generator version)")
 				},
 				func() {
-					assert.Equal(`LABEL "version.cap=1.2.3"`, line, "line 5 mismatch (LABEL, additional label)")
+					assert.Equal(`LABEL "publisher"="SUSE Linux Products GmbH"`, line, "line 5 mismatch (LABEL, additional label)")
 				},
 				func() {
-					assert.Equal(`LABEL "publisher=SUSE Linux Products GmbH"`, line, "line 6 mismatch (LABEL, additional label)")
+					assert.Equal(`LABEL "version.cap"="1.2.3"`, line, "line 6 mismatch (LABEL, additional label)")
 				},
 				func() {
 					expected := []string{
