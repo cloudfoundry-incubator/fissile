@@ -72,7 +72,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	dockerfile := bytes.Buffer{}
-	labels := []string{"version.cap=1.2.3", "publisher=SUSE Linux Products GmbH"}
+	labels := map[string]string{"version.cap": "1.2.3", "publisher": "SUSE Linux Products GmbH"}
 
 	err = packagesImageBuilder.generateDockerfile("scratch:latest", nil, labels, &dockerfile)
 	assert.NoError(err)
