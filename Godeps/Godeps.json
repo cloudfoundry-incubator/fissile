@@ -1,7 +1,7 @@
 {
-    "ImportPath": "github.com/SUSE/fissile",
+	"ImportPath": "github.com/SUSE/fissile",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v79",
+	"GodepVersion": "v80",
 	"Packages": [
 		"./..."
 	],
@@ -341,7 +341,8 @@
 		},
 		{
 			"ImportPath": "github.com/spf13/viper",
-			"Rev": "5ed0fc31f7f453625df314d8e66b9791e8d13003"
+			"Comment": "v1.0.0",
+			"Rev": "25b30aa063fc18e48662b86996252eabdcf2f0c7"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
