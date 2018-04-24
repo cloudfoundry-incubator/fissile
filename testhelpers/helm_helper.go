@@ -8,6 +8,7 @@ import (
 
 	"github.com/SUSE/fissile/helm"
 
+	"github.com/Masterminds/sprig"
 	"gopkg.in/yaml.v2"
 )
 
@@ -24,6 +25,12 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 				"hostpath_available": true,
 			},
 		},
+		"Capabilities": map[string]interface{}{
+			"KubeVersion": map[string]interface{}{
+				"Major": "1",
+				"Minor": "8",
+			},
+		},
 	}
 	if overrides, ok := config.(map[string]interface{}); ok {
 		for k, v := range overrides {
@@ -38,7 +45,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	if err := helm.NewEncoder(&helmConfig).Encode(node); err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("").Parse(string(helmConfig.Bytes()))
+	tmpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(helmConfig.Bytes()))
 	if err != nil {
 		return nil, err
 	}
