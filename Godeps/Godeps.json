@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/SUSE/fissile",
-	"GoVersion": "go1.10",
+	"GoVersion": "go1.9",
 	"GodepVersion": "v80",
 	"Packages": [
 		"./..."
@@ -393,13 +393,13 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.3",
-			"Rev": "f390dcf405f7b83c997eac1b06768bb9f44dec18"
+			"Comment": "v1.2.1",
+			"Rev": "12b6f73e6084dad08a7c6e575284b177ecafbc71"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.1.3",
-			"Rev": "f390dcf405f7b83c997eac1b06768bb9f44dec18"
+			"Comment": "v1.2.1",
+			"Rev": "12b6f73e6084dad08a7c6e575284b177ecafbc71"
 		},
 		{
 			"ImportPath": "github.com/termie/go-shutil",
@@ -469,13 +469,13 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",
-			"Comment": "v1.1.3",
-			"Rev": "f390dcf405f7b83c997eac1b06768bb9f44dec18"
+			"Comment": "v1.2.1",
+			"Rev": "12b6f73e6084dad08a7c6e575284b177ecafbc71"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/vendor/github.com/pmezard/go-difflib/difflib",
-			"Comment": "v1.1.3",
-			"Rev": "f390dcf405f7b83c997eac1b06768bb9f44dec18"
+			"Comment": "v1.2.1",
+			"Rev": "12b6f73e6084dad08a7c6e575284b177ecafbc71"
 		}
 	]
 }
