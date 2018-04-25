@@ -35,7 +35,7 @@ roles:
   - name: nats
     release_name: nats             # The name of the BOSH release this is from
   tags:
-  - clustered                      # Mark this role as self-clustering => StatefulSet
+  - indexed                        # Mark this role as indexed (load-balanced) => StatefulSet
   run:                             # Runtime configuration
     scaling:                       # Auto-scaling limits
       min: 1
@@ -134,57 +134,65 @@ headers (for example, to set the `Accept:` header to request JSON responses).
 
 ## Tagging
 
-The NATS role above was tagged as `clustered`, causing fissile to emit
+The NATS role above was tagged as `indexed`, causing fissile to emit
 it as a [StatefulSet].
 
 The second way of causing fissile to do that is to tag a role as
-`indexed`. The main difference between `clustered` and `indexed` roles
-is that fissile creates a public service (of type `LoadBalancer`) for
-the latter, providing a single point of access to the pods for the
-role.
-
-Therefore index roles which require load balancing and need a 0-based,
-incremented index, and cluster otherwise.
+`clustered`. The main difference between `clustered` and `indexed`
+roles is that fissile creates a public service (of type
+`LoadBalancer`) for the latter, providing a single point of access to
+the pods for the role.
 
 Note that both `clustered` and `indexed` roles can take advantage of
 volume claim templates for local storage.
 
-An example of an indexed role is the BLOBSTORE of CF. See the example
-below.
+Therefore the user should index roles which require load balancing and
+need a 0-based, incremented index, and mark them as clustered
+otherwise.
+
+An example of a clustered role is the MYSQL database of CF. See the
+example below. While mysql actually needs a load balancer for access
+this role is made explicit in CF through role `mysql-proxy`.
 
 ```yaml
 roles:
-- name: blobstore
+- name: mysql
   jobs:
-  - name: blobstore
-    release_name: capi
+  - name: mysql
+    release_name: cf-mysql
+    provides:
+      mysql: {}
   processes:
-  - name: blobstore_nginx
-  - name: blobstore_url_signer
+  - name: mariadb_ctrl
+  - name: galera-healthcheck
+  - name: gra-log-purger-executable
   tags:
-  - indexed                      # Mark this role as indexed => StatefulSet
+  - clustered
+  # No implicit LB, handled by mysql-proxy, and use of volumes.
   run:
     scaling:
       min: 1
-      max: 1
-      # Not HA capable; use external HA storage instead
+      max: 3
+      ha: 2
     capabilities: []
-    persistent-volumes:          # Local persistent storage, shared across the set
+    volumes:
     - path: /var/vcap/store
-      tag: blobstore-data
-      size: 50
-    shared-volumes: []
-    memory: 420
+      tag: mysql-data
+      size: 20
+      type: persistent
+    memory: 2841
     virtual-cpus: 2
     exposed-ports:
-    - name: blobstore-ext
+    - name: mysql
       protocol: TCP
-      internal: 8080
-    - name: blobstore
-      protocol: TCP
-      internal: 4443
-  configuration:
+      internal: 3306
     [...]
+    healthcheck:
+      readiness:
+        url: http://container-ip:9200/
+  configuration:
+    templates:
+      [...]
 ```
 
 [StatefulSet]: https://kubernetes.io/docs/resources-reference/v1.6/#statefulset-v1beta1-apps

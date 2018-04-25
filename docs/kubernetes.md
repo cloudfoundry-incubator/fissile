@@ -40,14 +40,14 @@ Fissile emits a [StatefulSet] under two circumstances.
 
 Any self-clustering roles (i.e. any role with the `clustered` tag)
 will be a StatefulSet, in order for each pod to be addressable (so
-that they can talk to each other). For example, a NATS role would fall
-under this category.
+that they can talk to each other). For example, a `doppler` role would
+fall under this category.
 
 Secondly, any roles tagged as `indexed`. An example of such would be
-the CF role `blobstore`. These are roles which require load balancing
-and need a 0-based, incremented index. To support this fissile creates
-a public service (of type `LoadBalancer`) for indexed roles, providing
-a single point of access to the pods for the role.
+the CF role `nats`. These are roles which require load balancing and
+need a 0-based, incremented index. To support this fissile creates a
+public service (of type `LoadBalancer`) for indexed roles, providing a
+single point of access to the pods for the role.
 
 Note that both `clustered` and `indexed` roles can take advantage of
 volume claim templates for local storage.
