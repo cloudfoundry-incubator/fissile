@@ -450,6 +450,754 @@ func TestPodGetEnvVars(t *testing.T) {
 	}
 }
 
+func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_COUNT",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+					Run: &model.RoleRun{
+						Scaling: &model.RoleRunScaling{
+							Min: 33,
+						},
+					},
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SIZING_FOO_COUNT"
+  value: "33"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_COUNT",
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.sizing.foo.count": "22",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SIZING_FOO_COUNT"
+  value: "22"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
+		},
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+					Run: &model.RoleRun{
+						ExposedPorts: []*model.RoleRunExposedPort{
+							&model.RoleRunExposedPort{
+								Name:                "store",
+								CountIsConfigurable: true,
+								InternalPort:        333,
+								Count:               55,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
+  value: "387"
+- name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
+  value: "333"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
+		},
+		&model.ConfigurationVariable{
+			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+					Run: &model.RoleRun{
+						ExposedPorts: []*model.RoleRunExposedPort{
+							&model.RoleRunExposedPort{
+								Name:                "store",
+								CountIsConfigurable: true,
+								InternalPort:        333,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.sizing.foo.ports.store.count": "22",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
+  value: "354"
+- name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
+  value: "333"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SECRETS_GENERATION_COUNTER",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SECRETS_GENERATION_COUNTER"
+  value: "1"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SECRETS_GENERATION_COUNTER",
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.kube.secrets_generation_counter": "3",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SECRETS_GENERATION_COUNTER"
+  value: "3"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SECRETS_GENERATION_NAME",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SECRETS_GENERATION_NAME"
+  value: "secrets-1"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "KUBE_SECRETS_GENERATION_NAME",
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Chart.Version":                          "CV",
+		"Values.kube.secrets_generation_counter": "SGC",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "KUBE_SECRETS_GENERATION_NAME"
+  value: "secrets-CV-SGC"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:   "A_SECRET",
+			Secret: true,
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "A_SECRET"
+  valueFrom:
+    secretKeyRef:
+      key: "a-secret"
+      name: "secrets"
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:   "A_SECRET",
+			Secret: true,
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "A_SECRET"
+  valueFrom:
+    secretKeyRef:
+      key: "a-secret"
+      name: "secrets"
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSecretsGeneratedHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:   "A_SECRET",
+			Secret: true,
+			Generator: &model.ConfigurationVariableGenerator{
+				ID:        "no",
+				Type:      model.GeneratorTypePassword,
+				ValueType: "foo-login",
+			},
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Chart.Version":                          "CV",
+		"Values.kube.secrets_generation_counter": "SGC",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "A_SECRET"
+  valueFrom:
+    secretKeyRef:
+      key: "a-secret"
+      name: "secrets-CV-SGC"
+
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSecretsGeneratedOverrideHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:   "A_SECRET",
+			Secret: true,
+			Generator: &model.ConfigurationVariableGenerator{
+				ID:        "no",
+				Type:      model.GeneratorTypePassword,
+				ValueType: "foo-login",
+			},
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.secrets.A_SECRET": "user's choice",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "A_SECRET"
+  valueFrom:
+    secretKeyRef:
+      key: "a-secret"
+      name: "secrets"
+
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigSecretsGeneratedImmutableHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:      "A_SECRET",
+			Immutable: true,
+			Secret:    true,
+			Generator: &model.ConfigurationVariableGenerator{
+				ID:        "no",
+				Type:      model.GeneratorTypePassword,
+				ValueType: "foo-login",
+			},
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Chart.Version":                          "CV",
+		"Values.kube.secrets_generation_counter": "SGC",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "A_SECRET"
+  valueFrom:
+    secretKeyRef:
+      key: "a-secret"
+      name: "secrets-CV-SGC"
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:    "SOMETHING",
+			Default: "or other",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "SOMETHING"
+  value: "or other"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretWithoutValueKube(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "SOMETHING",
+		},
+	}, ExportSettings{
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndMissingHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "SOMETHING",
+			Type: model.CVTypeUser,
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	evYAML, err := testhelpers.RenderNode(ev, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "SOMETHING"
+  value: 
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndPresentHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name: "SOMETHING",
+			Type: model.CVTypeUser,
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.env.SOMETHING": "else",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "SOMETHING"
+  value: "else"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndMissingHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:     "SOMETHING",
+			Type:     model.CVTypeUser,
+			Required: true,
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	_, err = testhelpers.RenderNode(ev, nil)
+	if !assert.Error(err) {
+		return
+	}
+
+	assert.Equal(`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`,
+		err.Error())
+}
+
+func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndPresentHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+		&model.ConfigurationVariable{
+			Name:     "SOMETHING",
+			Type:     model.CVTypeUser,
+			Required: true,
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			Roles: []*model.Role{
+				&model.Role{
+					Name: "foo",
+				},
+			},
+		},
+	})
+
+	config := map[string]interface{}{
+		"Values.env.SOMETHING": "needed",
+	}
+
+	evYAML, err := testhelpers.RenderNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+- name: "KUBERNETES_NAMESPACE"
+  valueFrom:
+    fieldRef:
+      fieldPath: "metadata.namespace"
+- name: "SOMETHING"
+  value: "needed"
+`
+	assert.Equal(expectedYAML, string(evYAML))
+}
+
 func TestPodGetContainerLivenessProbe(t *testing.T) {
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
@@ -1292,4 +2040,49 @@ func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
   protocol: "TCP"
 `
 	assert.Equal(expectedYAML, string(portsYAML))
+}
+
+func TestPodMakeSecretVarPlain(t *testing.T) {
+	assert := assert.New(t)
+
+	sv := makeSecretVar("foo", false)
+
+	svYAML, err := testhelpers.RenderNode(sv, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+name: "foo"
+valueFrom:
+  secretKeyRef:
+    key: "foo"
+    name: "secrets"
+`
+	assert.Equal(expectedYAML, string(svYAML))
+}
+
+func TestPodMakeSecretVarGenerated(t *testing.T) {
+	assert := assert.New(t)
+
+	sv := makeSecretVar("foo", true)
+
+	config := map[string]interface{}{
+		"Chart.Version":                          "CV",
+		"Values.kube.secrets_generation_counter": "SGC",
+	}
+
+	svYAML, err := testhelpers.RenderNode(sv, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+name: "foo"
+valueFrom:
+  secretKeyRef:
+    key: "foo"
+    name: "secrets-CV-SGC"
+`
+	assert.Equal(expectedYAML, string(svYAML))
 }

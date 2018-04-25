@@ -295,6 +295,10 @@ func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
 		return nil, err
 	}
 
+	return getEnvVarsFromConfigs(configs, settings)
+}
+
+func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings ExportSettings) (helm.Node, error) {
 	sizingCountRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
 	sizingPortsRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_PORTS_([A-Z][A-Z_]*)_(MIN|MAX)$")
 
