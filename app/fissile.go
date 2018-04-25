@@ -1065,6 +1065,18 @@ func (f *Fissile) roleIsStateful(role *model.Role) bool {
 	return false
 }
 
+// roleHasStorage returns true if a given role uses shared or
+// persistent volumes.
+func (f *Fissile) roleHasStorage(role *model.Role) bool {
+	for _, volume := range role.Run.Volumes {
+		switch volume.Type {
+		case model.VolumeTypePersistent, model.VolumeTypeShared:
+			return true
+		}
+	}
+	return false
+}
+
 func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() {
@@ -1106,7 +1118,18 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		case model.RoleTypeBosh:
 			enc := helm.NewEncoder(outputFile)
 
-			if f.roleIsStateful(role) {
+			isStateful := f.roleIsStateful(role)
+			hasStorage := f.roleHasStorage(role)
+
+			if hasStorage && !isStateful {
+				// A role with storage has to be
+				// stateful and was not tagged as
+				// such. Bail out to prevent use of
+				// this broken setup
+				return fmt.Errorf("Role %s uses storage, and is not tagged as indexed, nor as clustered", role.Name)
+			}
+
+			if isStateful {
 				statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
 				if err != nil {
 					return err
