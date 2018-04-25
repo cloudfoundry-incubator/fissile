@@ -1723,6 +1723,75 @@ func TestPodPreFlight(t *testing.T) {
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
+func TestPodPreFlightHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "pre-role"
+  labels:
+    skiff-role-name: "pre-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "pre-role"
+    ports: ~
+    readinessProbe: ~
+    resources: ~
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
+}
+
 func TestPodPostFlight(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "post-role")
@@ -1764,6 +1833,75 @@ func TestPodPostFlight(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubset(assert, expected, actual)
+}
+
+func TestPodPostFlightHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "post-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role post-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The post-role role contains the following jobs:
+#
+# tor
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "post-role"
+  labels:
+    skiff-role-name: "post-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-post-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "post-role"
+    ports: ~
+    readinessProbe: ~
+    resources: ~
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
 }
 
 func TestPodMemory(t *testing.T) {
@@ -1817,6 +1955,156 @@ func TestPodMemory(t *testing.T) {
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
+func TestPodMemoryDisabledHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+		UseMemoryLimits: true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "pre-role"
+  labels:
+    skiff-role-name: "pre-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "pre-role"
+    ports: ~
+    readinessProbe: ~
+    resources:
+      requests:
+      limits:
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
+}
+
+func TestPodMemoryActiveHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+		UseMemoryLimits: true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.memory.requests":         "true",
+		"Values.sizing.pre_role.memory.request": "1",
+		"Values.sizing.memory.limits":           "true",
+		"Values.sizing.pre_role.memory.limit":   "10",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "pre-role"
+  labels:
+    skiff-role-name: "pre-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "pre-role"
+    ports: ~
+    readinessProbe: ~
+    resources:
+      requests:
+        memory: "1Mi"
+      limits:
+        memory: "10Mi"
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
+}
+
 func TestPodCPU(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
@@ -1866,6 +2154,156 @@ func TestPodCPU(t *testing.T) {
 	testhelpers.IsYAMLSubset(assert, expected, actual)
 }
 
+func TestPodCPUDisabledHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+		UseCPULimits:    true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "pre-role"
+  labels:
+    skiff-role-name: "pre-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "pre-role"
+    ports: ~
+    readinessProbe: ~
+    resources:
+      requests:
+      limits:
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
+}
+
+func TestPodCPUActiveHelm(t *testing.T) {
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "pre-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+		UseCPULimits:    true,
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role pre-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname":         "R",
+		"Values.kube.organization":              "O",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.cpu.requests":            "true",
+		"Values.sizing.pre_role.cpu.request":    "1",
+		"Values.sizing.cpu.limits":              "true",
+		"Values.sizing.pre_role.cpu.limit":      "10",
+	}
+
+	podYAML, err := testhelpers.RenderNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expectedYAML := `---
+# The pre-role role contains the following jobs:
+#
+# new_hostname
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "pre-role"
+  labels:
+    skiff-role-name: "pre-role"
+spec:
+  containers:
+  - env:
+    - name: "KUBERNETES_NAMESPACE"
+      valueFrom:
+        fieldRef:
+          fieldPath: "metadata.namespace"
+    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+      value: "KSDS"
+    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - "/opt/fissile/pre-stop.sh"
+    livenessProbe: ~
+    name: "pre-role"
+    ports: ~
+    readinessProbe: ~
+    resources:
+      requests:
+        cpu: "1m"
+      limits:
+        cpu: "10m"
+    securityContext: ~
+    volumeMounts: ~
+  dnsPolicy: "ClusterFirst"
+  imagePullSecrets:
+  - name: "registry-credentials"
+  restartPolicy: "OnFailure"
+  terminationGracePeriodSeconds: 600
+  volumes: ~
+`
+	assert.Equal(expectedYAML, string(podYAML))
+}
+
 func TestGetSecurityContext(t *testing.T) {
 	assert := assert.New(t)
 
@@ -1901,7 +2339,7 @@ func TestPodGetContainerImageNameKube(t *testing.T) {
 	}
 
 	settings := ExportSettings{
-		Repository:   "theRepos",
+		Repository:   "theRepo",
 		Opinions:     model.NewEmptyOpinions(),
 		Organization: "O",
 		Registry:     "R",
@@ -1912,7 +2350,7 @@ func TestPodGetContainerImageNameKube(t *testing.T) {
 
 	assert.Nil(err)
 	assert.NotNil(name)
-	assert.Equal(`R/O/theRepos-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
+	assert.Equal(`R/O/theRepo-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
 }
 
 func TestPodGetContainerImageNameHelm(t *testing.T) {
@@ -1924,7 +2362,7 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 
 	settings := ExportSettings{
 		CreateHelmChart: true,
-		Repository:      "theRepos",
+		Repository:      "theRepo",
 		Opinions:        model.NewEmptyOpinions(),
 		Organization:    "O",
 		Registry:        "R",
@@ -1935,7 +2373,7 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 
 	assert.Nil(err)
 	assert.NotNil(name)
-	assert.Equal(`{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/theRepos-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
+	assert.Equal(`{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/theRepo-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
 }
 
 func TestPodGetContainerPortsKube(t *testing.T) {
