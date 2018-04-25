@@ -46,10 +46,11 @@ corresponding Kubernetes resource definition
 [usage reference]: ./docs/generated/fissile.md
 
 ## Developing Fissile
-In general, use the default `make` target is preferred before making a
-[pull request].  This will run the tests, as well as the linters.  To manually
-build fissile only, run `make bindata build`.  This will first run the necessary
-code generation before building the binary.
+In general, use of the default `make` target is preferred before
+making a [pull request].  This will run the unit tests, as well as
+various linters.  To manually build fissile only, run
+`make bindata build`.  This will run the necessary code generation
+before building the binary.
 
 [pull request]: https://github.com/SUSE/fissile/pulls
 

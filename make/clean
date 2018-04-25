@@ -2,6 +2,10 @@
 
 set -o errexit -o nounset
 
+. make/include/colors.sh
+
+printf "%b==> Cleaning %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
+
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
 rm -rf ${GIT_ROOT}/build
@@ -12,3 +16,5 @@ rm -f ${GIT_ROOT}/scripts/dockerfiles/dockerfiles.go
 rm -f ${GIT_ROOT}/scripts/templates/transformations.go
 rm -f ${GIT_ROOT}/scripts/configgin/configgin.go
 rm -rf ${GIT_ROOT}/scripts/configgin/output
+
+printf "%b" "${NO_COLOR}"

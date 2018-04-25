@@ -35,7 +35,7 @@ roles:
   - name: nats
     release_name: nats             # The name of the BOSH release this is from
   tags:
-  - clustered                      # Mark this role as self-clustering
+  - indexed                        # Mark this role as indexed (load-balanced) => StatefulSet
   run:                             # Runtime configuration
     scaling:                       # Auto-scaling limits
       min: 1
@@ -132,7 +132,73 @@ headers (for example, to set the `Accept:` header to request JSON responses).
 
 [Kubernetes container probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
 
+## Tagging
+
+The NATS role above was tagged as `indexed`, causing fissile to emit
+it as a [StatefulSet].
+
+The second way of causing fissile to do that is to tag a role as
+`clustered`. The main difference between `clustered` and `indexed`
+roles is that fissile creates a public service (of type
+`LoadBalancer`) for the latter, providing a single point of access to
+the pods for the role.
+
+Note that both `clustered` and `indexed` roles can take advantage of
+volume claim templates for local storage.
+
+Therefore the user should index roles which require load balancing and
+need a 0-based, incremented index, and mark them as clustered
+otherwise.
+
+An example of a clustered role is the MYSQL database of CF. See the
+example below. While mysql actually needs a load balancer for access
+this role is made explicit in CF through role `mysql-proxy`.
+
+```yaml
+roles:
+- name: mysql
+  jobs:
+  - name: mysql
+    release_name: cf-mysql
+    provides:
+      mysql: {}
+  processes:
+  - name: mariadb_ctrl
+  - name: galera-healthcheck
+  - name: gra-log-purger-executable
+  tags:
+  - clustered
+  # No implicit LB, handled by mysql-proxy, and use of volumes.
+  run:
+    scaling:
+      min: 1
+      max: 3
+      ha: 2
+    capabilities: []
+    volumes:
+    - path: /var/vcap/store
+      tag: mysql-data
+      size: 20
+      type: persistent
+    memory: 2841
+    virtual-cpus: 2
+    exposed-ports:
+    - name: mysql
+      protocol: TCP
+      internal: 3306
+    [...]
+    healthcheck:
+      readiness:
+        url: http://container-ip:9200/
+  configuration:
+    templates:
+      [...]
+```
+
+[StatefulSet]: https://kubernetes.io/docs/resources-reference/v1.6/#statefulset-v1beta1-apps
+
 ## Opinions, Dark Opinions, and Environment
+
 For BOSH properties that are constant across deployments, but that do not match
 the upstream defaults, they can be stored in an opinions file which will be
 embedded within the docker image.  An additional dark opinions file is used to
@@ -161,6 +227,7 @@ section of the role manifest.  For the NATS role, we can use the following files
   ```
 
 ## Fissile command line options
+
 All fissile options are also available as environment variables.  For that NATS
 release, we are just setting the paths to the things we created above.  For
 additional options, please refer to the [command documentation]:
@@ -189,6 +256,7 @@ export FISSILE_STEMCELL="splatform/fissile-stemcell-opensuse:42.2-6.ga651b2d-28.
 ```
 
 ## Building the NATS Image
+
 We can now assemble all the files necessary from the information above:
 
 ```bash
