@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -125,5 +126,6 @@ func renderInclude(name string, data interface{}) (string, error) {
 	// require adding the handling of `associated` templates.  A
 	// first run at this generated a stack overflow.  The fake
 	// simply shows what path/name would have been included.
+	name = filepath.Base (name)
 	return name, nil
 }

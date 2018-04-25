@@ -157,7 +157,7 @@ spec:
       labels:
         skiff-role-name: "role"
       annotations:
-        checksum/config: 2a4e143516950dca2fa4e28e843f777861f2dcdf671a21c1f1a4479dc40d8579
+        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
     spec:
       affinity:
         podAntiAffinity:

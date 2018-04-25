@@ -256,7 +256,7 @@ spec:
       labels:
         skiff-role-name: "pre-role"
       annotations:
-        checksum/config: 12c060c7c3824cddab3f33ec8af7c98d6b35bd891d6282e8d829b6d7663b1d5a
+        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
     spec:
       containers:
       - env:
@@ -341,7 +341,7 @@ spec:
       labels:
         skiff-role-name: "pre-role"
       annotations:
-        checksum/config: 12c060c7c3824cddab3f33ec8af7c98d6b35bd891d6282e8d829b6d7663b1d5a
+        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
     spec:
       containers:
       - env:
