@@ -1,18 +1,14 @@
 package kube
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *model.Role {
@@ -55,17 +51,11 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(job, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: extensions/v1beta1
 		kind: Job
 		metadata:
@@ -79,11 +69,7 @@ func TestJobPreFlight(t *testing.T) {
 					-
 						name: pre-role
 					restartPolicy: OnFailure
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestJobPostFlight(t *testing.T) {
@@ -101,16 +87,11 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(job, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: extensions/v1beta1
 		kind: Job
 		metadata:
@@ -124,11 +105,7 @@ func TestJobPostFlight(t *testing.T) {
 					-
 						name: post-role
 					restartPolicy: OnFailure
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestJobWithAnnotations(t *testing.T) {
@@ -147,28 +124,18 @@ func TestJobWithAnnotations(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(job); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(job, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: extensions/v1beta1
 		kind: Job
 		metadata:
 			name: role
 			annotations:
 				helm.sh/hook: post-install
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestJobHelmWithDefaults(t *testing.T) {

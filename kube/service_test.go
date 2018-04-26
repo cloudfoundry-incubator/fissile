@@ -1,19 +1,15 @@
 package kube
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
@@ -59,15 +55,11 @@ func TestServiceOK(t *testing.T) {
 	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(service, nil)
+	if !assert.NoError(err) {
 		return
 	}
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole
 		spec:
@@ -83,11 +75,7 @@ func TestServiceOK(t *testing.T) {
 			selector:
 				skiff-role-name: myrole
 			type: ClusterIP
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestServiceHelmOKDefaults(t *testing.T) {
@@ -212,15 +200,11 @@ func TestHeadlessServiceOK(t *testing.T) {
 	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(service, nil)
+	if !assert.NoError(err) {
 		return
 	}
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-set
 		spec:
@@ -239,11 +223,7 @@ func TestHeadlessServiceOK(t *testing.T) {
 				skiff-role-name: myrole
 			type: ClusterIP
 			clusterIP: None
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestHeadlessServiceHelmOKDefaults(t *testing.T) {
@@ -369,15 +349,11 @@ func TestPublicServiceOK(t *testing.T) {
 	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(service); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(service, nil)
+	if !assert.NoError(err) {
 		return
 	}
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-public
 		spec:
@@ -390,11 +366,7 @@ func TestPublicServiceOK(t *testing.T) {
 			selector:
 				skiff-role-name: myrole
 			type: ClusterIP
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestPublicServiceHelmOKDefaults(t *testing.T) {

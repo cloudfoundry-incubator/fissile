@@ -10,7 +10,22 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// IsYAMLSubset asserts that all items in the expected properties are in the actual properties
+// IsYAMLSubsetString asserts that all items in the expected
+// properties are in the actual properties.  Note, the actual
+// properties may contain more than expected. The expected properties
+// are specified as YAML string. Go-specific indentation in the string
+// (tabs) is replaced with proper YAML indentation.
+func IsYAMLSubsetString(assert *assert.Assertions, expected string, actual interface{}) bool {
+	var expectedYAML interface{}
+	if !assert.NoError(yaml.Unmarshal([]byte(strings.Replace(expected, "\t", "    ", -1)),
+		&expectedYAML)) {
+		return false
+	}
+	return IsYAMLSubset(assert, expectedYAML, actual)
+}
+
+// IsYAMLSubset asserts that all items in the expected properties are in the actual properties.
+// Note, the actual properties may contain more than expected.
 func IsYAMLSubset(assert *assert.Assertions, expected, actual interface{}) bool {
 	result := isYAMLSubsetInner(assert, expected, actual, nil)
 	if !result {

@@ -1689,17 +1689,11 @@ func TestPodPreFlight(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(pod, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: v1
 		kind: Pod
 		metadata:
@@ -1710,12 +1704,7 @@ func TestPodPreFlight(t *testing.T) {
 				name: pre-role
 			restartPolicy: OnFailure
 			terminationGracePeriodSeconds: 600
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestPodPreFlightHelm(t *testing.T) {
@@ -1802,17 +1791,11 @@ func TestPodPostFlight(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(pod, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: v1
 		kind: Pod
 		metadata:
@@ -1823,11 +1806,7 @@ func TestPodPostFlight(t *testing.T) {
 				name: post-role
 				resources: ~
 			restartPolicy: OnFailure
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestPodPostFlightHelm(t *testing.T) {
@@ -1916,17 +1895,11 @@ func TestPodMemory(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(pod, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: v1
 		kind: Pod
 		metadata:
@@ -1942,12 +1915,7 @@ func TestPodMemory(t *testing.T) {
 						memory: 384Mi
 			restartPolicy: OnFailure
 			terminationGracePeriodSeconds: 600
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestPodMemoryDisabledHelm(t *testing.T) {
@@ -2115,17 +2083,11 @@ func TestPodCPU(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	yamlConfig := &bytes.Buffer{}
-	if err := helm.NewEncoder(yamlConfig).Encode(pod); !assert.NoError(err) {
+	actual, err := testhelpers.RoundtripNode(pod, nil)
+	if !assert.NoError(err) {
 		return
 	}
-
-	var expected, actual interface{}
-	if !assert.NoError(yaml.Unmarshal(yamlConfig.Bytes(), &actual)) {
-		return
-	}
-
-	expectedYAML := strings.Replace(`---
+	testhelpers.IsYAMLSubsetString(assert, `---
 		apiVersion: v1
 		kind: Pod
 		metadata:
@@ -2141,12 +2103,7 @@ func TestPodCPU(t *testing.T) {
 						cpu: 4000m
 			restartPolicy: OnFailure
 			terminationGracePeriodSeconds: 600
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`, actual)
 }
 
 func TestPodCPUDisabledHelm(t *testing.T) {

@@ -3,15 +3,12 @@ package kube
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
-
-	yaml "gopkg.in/yaml.v2"
 )
 
 func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
@@ -88,9 +85,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	var expected interface{}
-
-	expectedYAML := strings.Replace(`---
+	expected := `---
 		items:
 		-
 			# This is the per-pod naming port
@@ -165,11 +160,8 @@ func TestStatefulSetPorts(t *testing.T) {
 							-
 								name: https
 								containerPort: 443
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
 
 func TestStatefulSetVolumes(t *testing.T) {
@@ -191,9 +183,8 @@ func TestStatefulSetVolumes(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-	var expected interface{}
 
-	expectedYAML := strings.Replace(`---
+	expected := `---
 		metadata:
 			name: myrole
 		spec:
@@ -245,11 +236,8 @@ func TestStatefulSetVolumes(t *testing.T) {
 						resources:
 							requests:
 								storage: 40G
-	`, "\t", "    ", -1)
-	if !assert.NoError(yaml.Unmarshal([]byte(expectedYAML), &expected)) {
-		return
-	}
-	testhelpers.IsYAMLSubset(assert, expected, actual)
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 
 	// Check that not having hostpath disables the hostpath volume
 	overrides := map[string]interface{}{
