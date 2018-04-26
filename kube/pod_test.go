@@ -1150,12 +1150,7 @@ func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndMissingHelm(t *testing.T
 	})
 
 	_, err = testhelpers.RenderNode(ev, nil)
-	if !assert.Error(err) {
-		return
-	}
-
-	assert.Equal(`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`,
-		err.Error())
+	assert.EqualError(err, `template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndPresentHelm(t *testing.T) {

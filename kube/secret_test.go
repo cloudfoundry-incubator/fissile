@@ -171,12 +171,7 @@ func TestMakeSecretsForHelmWithDefaults(t *testing.T) {
 	// Render with defaults (is expected to) fail(s) due to a
 	// number of guards (secrets.FOO, FOO a variable) not having a
 	// proper (non-nil) value.
-	if !assert.Error(err) {
-		return
-	}
-
-	assert.Equal(`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`,
-		err.Error())
+	assert.EqualError(err, `template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 }
 
 func TestMakeSecretsForHelmOk(t *testing.T) {

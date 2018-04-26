@@ -190,12 +190,7 @@ func TestJobHelmWithDefaults(t *testing.T) {
 	// Render should fail due to the template referencing a number
 	// of variables which must be non-nil to work.
 	_, err = testhelpers.RenderNode(job, nil)
-	if !assert.Error(err) {
-		return
-	}
-
-	assert.Equal(`template: :5:155: executing "" at <trimSuffix>: wrong number of args for trimSuffix: want 2 got 1`,
-		err.Error())
+	assert.EqualError(err, `template: :5:155: executing "" at <trimSuffix>: wrong number of args for trimSuffix: want 2 got 1`)
 }
 
 func TestJobHelmFilledKube15(t *testing.T) {

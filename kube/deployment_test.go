@@ -93,12 +93,7 @@ func TestNewDeploymentHelmDefaults(t *testing.T) {
 
 	// Rendering fails with defaults, template needs information about sizing and the like.
 	_, err = testhelpers.RenderNode(deployment, nil)
-	if !assert.Error(err) {
-		return
-	}
-
-	assert.Equal(`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`,
-		err.Error())
+	assert.EqualError(err, `template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 }
 
 func TestNewDeploymentHelmConfigured(t *testing.T) {
