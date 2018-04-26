@@ -91,7 +91,8 @@ func TestNewDeploymentHelmDefaults(t *testing.T) {
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 
-	// Rendering fails with defaults, template needs information about sizing and the like.
+	// Rendering fails with defaults, template needs information
+	// about sizing and the like.
 	_, err = testhelpers.RenderNode(deployment, nil)
 	assert.EqualError(err, `template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 }
@@ -127,75 +128,71 @@ func TestNewDeploymentHelmConfigured(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 	}
 
-	deploymentYAML, err := testhelpers.RenderNode(deployment, config)
+	actual, err := testhelpers.RoundtripNode(deployment, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The role role contains the following jobs:
-
-apiVersion: "extensions/v1beta1"
-kind: "Deployment"
-metadata:
-  name: "role"
-  labels:
-    skiff-role-name: "role"
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      skiff-role-name: "role"
-  template:
-    metadata:
-      name: "role"
-      labels:
-        skiff-role-name: "role"
-      annotations:
-        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
-    spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: "skiff-role-name"
-                  operator: "In"
-                  values:
-                  - "role"
-              topologyKey: "beta.kubernetes.io/os"
-            weight: 100
-        nodeAffinity: "snafu"
-      containers:
-      - env:
-        - name: "KUBERNETES_NAMESPACE"
-          valueFrom:
-            fieldRef:
-              fieldPath: "metadata.namespace"
-        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-          value: "domestic"
-        image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - "/opt/fissile/pre-stop.sh"
-        livenessProbe: ~
-        name: "role"
-        ports: ~
-        readinessProbe: ~
-        resources: ~
-        securityContext: ~
-        volumeMounts: ~
-      dnsPolicy: "ClusterFirst"
-      imagePullSecrets:
-      - name: "registry-credentials"
-      restartPolicy: "Always"
-      terminationGracePeriodSeconds: 600
-      volumes: ~
-`
-	assert.Equal(expectedYAML, string(deploymentYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "extensions/v1beta1"
+		kind: "Deployment"
+		metadata:
+			name: "role"
+			labels:
+				skiff-role-name: "role"
+		spec:
+			replicas: 1
+			selector:
+				matchLabels:
+					skiff-role-name: "role"
+			template:
+				metadata:
+					name: "role"
+					labels:
+						skiff-role-name: "role"
+					annotations:
+						checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+				spec:
+					affinity:
+						podAntiAffinity:
+							preferredDuringSchedulingIgnoredDuringExecution:
+							-	podAffinityTerm:
+									labelSelector:
+										matchExpressions:
+										-	key: "skiff-role-name"
+											operator: "In"
+											values:
+											-	"role"
+									topologyKey: "beta.kubernetes.io/os"
+								weight: 100
+						nodeAffinity: "snafu"
+					containers:
+					-	env:
+						-	name: "KUBERNETES_NAMESPACE"
+							valueFrom:
+								fieldRef:
+									fieldPath: "metadata.namespace"
+						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+							value: "domestic"
+						image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
+						lifecycle:
+							preStop:
+								exec:
+									command:
+									-	"/opt/fissile/pre-stop.sh"
+						livenessProbe: ~
+						name: "role"
+						ports: ~
+						readinessProbe: ~
+						resources: ~
+						securityContext: ~
+						volumeMounts: ~
+					dnsPolicy: "ClusterFirst"
+					imagePullSecrets:
+					- name: "registry-credentials"
+					restartPolicy: "Always"
+					terminationGracePeriodSeconds: 600
+					volumes: ~
+	`, actual)
 }
 
 func TestGetAffinityBlock(t *testing.T) {

@@ -188,67 +188,62 @@ func TestJobHelmFilledKube15(t *testing.T) {
 		"Template.BasePath": fakeTemplateDir,
 	}
 
-	jobYAML, err := testhelpers.RenderNode(job, config)
-	if !assert.NoError(err) {
-		return
-	}
-
 	// The various <no value> seen below come from, in order:
 	// - Release.Revision
 	// - Values.kube.registry.hostname
 	// - Values.kube.organization
-	// none of which are defined in the config.
+	// None of these are defined in the config. Rendering does not fail.
 	//
 	// Another undefined variable,
-	// Values.env.KUBE_SERVICE_DOMAIN_SUFFIX, yields an empty
-	// field, see the value of KUBE_SERVICE_DOMAIN_SUFFIX.
+	// - Values.env.KUBE_SERVICE_DOMAIN_SUFFIX
+	// yields an empty field, see the value of KUBE_SERVICE_DOMAIN_SUFFIX.
 
-	expectedJobYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: extensions/v1beta1
-kind: "Job"
-metadata:
-  name: "pre-role-<no value>"
-spec:
-  template:
-    metadata:
-      name: "pre-role"
-      labels:
-        skiff-role-name: "pre-role"
-      annotations:
-        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
-    spec:
-      containers:
-      - env:
-        - name: "KUBERNETES_NAMESPACE"
-          valueFrom:
-            fieldRef:
-              fieldPath: "metadata.namespace"
-        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-          value: 
-        image: "<no value>/<no value>/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - "/opt/fissile/pre-stop.sh"
-        livenessProbe: ~
-        name: "pre-role"
-        ports: ~
-        readinessProbe: ~
-        resources: ~
-        securityContext: ~
-        volumeMounts: ~
-      dnsPolicy: "ClusterFirst"
-      imagePullSecrets:
-      - name: "registry-credentials"
-      restartPolicy: "OnFailure"
-      terminationGracePeriodSeconds: 600
-      volumes: ~
-`
-	assert.Equal(expectedJobYAML, string(jobYAML))
+	actual, err := testhelpers.RoundtripNode(job, config)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: extensions/v1beta1
+		kind: "Job"
+		metadata:
+			name: "pre-role-<no value>"
+		spec:
+			template:
+				metadata:
+					name: "pre-role"
+					labels:
+						skiff-role-name: "pre-role"
+					annotations:
+						checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+				spec:
+					containers:
+					-	env:
+						-	name: "KUBERNETES_NAMESPACE"
+							valueFrom:
+								fieldRef:
+									fieldPath: "metadata.namespace"
+						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+							value: 
+						image: "<no value>/<no value>/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+						lifecycle:
+							preStop:
+								exec:
+									command:
+									-	"/opt/fissile/pre-stop.sh"
+						livenessProbe: ~
+						name: "pre-role"
+						ports: ~
+						readinessProbe: ~
+						resources: ~
+						securityContext: ~
+						volumeMounts: ~
+					dnsPolicy: "ClusterFirst"
+					imagePullSecrets:
+					-	name: "registry-credentials"
+					restartPolicy: "OnFailure"
+					terminationGracePeriodSeconds: 600
+					volumes: ~
+	`, actual)
 }
 
 func TestJobHelmFilledKube16(t *testing.T) {
@@ -283,55 +278,50 @@ func TestJobHelmFilledKube16(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
 	}
 
-	jobYAML, err := testhelpers.RenderNode(job, config)
+	actual, err := testhelpers.RoundtripNode(job, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedJobYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: batch/v1
-kind: "Job"
-metadata:
-  name: "pre-role-42"
-spec:
-  template:
-    metadata:
-      name: "pre-role"
-      labels:
-        skiff-role-name: "pre-role"
-      annotations:
-        checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
-    spec:
-      containers:
-      - env:
-        - name: "KUBERNETES_NAMESPACE"
-          valueFrom:
-            fieldRef:
-              fieldPath: "metadata.namespace"
-        - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-          value: "domestic"
-        image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - "/opt/fissile/pre-stop.sh"
-        livenessProbe: ~
-        name: "pre-role"
-        ports: ~
-        readinessProbe: ~
-        resources: ~
-        securityContext: ~
-        volumeMounts: ~
-      dnsPolicy: "ClusterFirst"
-      imagePullSecrets:
-      - name: "registry-credentials"
-      restartPolicy: "OnFailure"
-      terminationGracePeriodSeconds: 600
-      volumes: ~
-`
-	assert.Equal(expectedJobYAML, string(jobYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: batch/v1
+		kind: "Job"
+		metadata:
+			name: "pre-role-42"
+		spec:
+			template:
+				metadata:
+					name: "pre-role"
+					labels:
+						skiff-role-name: "pre-role"
+					annotations:
+						checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+				spec:
+					containers:
+					-	env:
+						-	name: "KUBERNETES_NAMESPACE"
+							valueFrom:
+								fieldRef:
+									fieldPath: "metadata.namespace"
+						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+							value: "domestic"
+						image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+						lifecycle:
+							preStop:
+								exec:
+									command:
+									-	"/opt/fissile/pre-stop.sh"
+						livenessProbe: ~
+						name: "pre-role"
+						ports: ~
+						readinessProbe: ~
+						resources: ~
+						securityContext: ~
+						volumeMounts: ~
+					dnsPolicy: "ClusterFirst"
+					imagePullSecrets:
+					-	name: "registry-credentials"
+					restartPolicy: "OnFailure"
+					terminationGracePeriodSeconds: 600
+					volumes: ~
+	`, actual)
 }

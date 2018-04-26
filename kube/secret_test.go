@@ -17,21 +17,19 @@ func TestMakeSecretsEmptyForKube(t *testing.T) {
 		return
 	}
 
-	secretYAML, err := testhelpers.RenderNode(secret, nil)
+	actual, err := testhelpers.RoundtripNode(secret, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedAccountYAML := `---
-apiVersion: "v1"
-data: {}
-kind: "Secret"
-metadata:
-  name: "secrets"
-  labels:
-    skiff-role-name: "secrets"
-`
-	assert.Equal(expectedAccountYAML, string(secretYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		data: {}
+		kind: "Secret"
+		metadata:
+			name: "secrets"
+			labels:
+				skiff-role-name: "secrets"
+	`, actual)
 }
 
 func TestMakeSecretsEmptyForHelm(t *testing.T) {
@@ -44,21 +42,19 @@ func TestMakeSecretsEmptyForHelm(t *testing.T) {
 		return
 	}
 
-	secretYAML, err := testhelpers.RenderNode(secret, nil)
+	actual, err := testhelpers.RoundtripNode(secret, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedAccountYAML := `---
-apiVersion: "v1"
-data: {}
-kind: "Secret"
-metadata:
-  name: "secrets"
-  labels:
-    skiff-role-name: "secrets"
-`
-	assert.Equal(expectedAccountYAML, string(secretYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		data: {}
+		kind: "Secret"
+		metadata:
+			name: "secrets"
+			labels:
+				skiff-role-name: "secrets"
+	`, actual)
 }
 
 // name
@@ -121,39 +117,42 @@ func TestMakeSecretsForKube(t *testing.T) {
 		return
 	}
 
-	secretYAML, err := testhelpers.RenderNode(secret, nil)
-	// config - helm only
+	actual, err := testhelpers.RenderNode(secret, nil)
 	if !assert.NoError(err) {
 		return
 	}
 
-	expectedAccountYAML := `---
-apiVersion: "v1"
-data:
-  # <<<don't change>>>
-  const: "cm9jayBzb2xpZA=="
+	// Check the comments, and also that they are associated with
+	// the correct variables.
 
-  # <<<a description>>>
-  desc: ""
+	astring := string(actual)
 
-  # <<<here is jeannie>>>
-  genie: ""
+	assert.Contains(astring, "# <<<don't change>>>\n  const: \"cm9jayBzb2xpZA==\"")
+	assert.Contains(astring, "# <<<a description>>>\n  desc: \"\"")
+	assert.Contains(astring, "\n  min: \"\"")
+	assert.Contains(astring, "# <<<invaluable>>>\n  valued: \"eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ=\"")
+	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
+	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
-  # <<<helm hidden>>>
-  guinevere: ""
-
-  min: ""
-
-  # <<<invaluable>>>
-  valued: "eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ="
-
-kind: "Secret"
-metadata:
-  name: "secrets"
-  labels:
-    skiff-role-name: "secrets"
-`
-	assert.Equal(expectedAccountYAML, string(secretYAML))
+	actualh, err := testhelpers.RoundtripNode(secret, nil)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		data:
+			const: "cm9jayBzb2xpZA=="
+			desc: ""
+			genie: ""
+			guinevere: ""
+			min: ""
+			valued: "eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ="
+		kind: "Secret"
+		metadata:
+			name: "secrets"
+			labels:
+				skiff-role-name: "secrets"
+	`, actualh)
 }
 
 func TestMakeSecretsForHelmWithDefaults(t *testing.T) {
@@ -166,11 +165,12 @@ func TestMakeSecretsForHelmWithDefaults(t *testing.T) {
 		return
 	}
 
-	_, err = testhelpers.RenderNode(secret, nil)
 	// config - helm only
 	// Render with defaults (is expected to) fail(s) due to a
 	// number of guards (secrets.FOO, FOO a variable) not having a
 	// proper (non-nil) value.
+
+	_, err = testhelpers.RenderNode(secret, nil)
 	assert.EqualError(err, `template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 }
 
@@ -192,37 +192,43 @@ func TestMakeSecretsForHelmOk(t *testing.T) {
 		"Values.secrets.genie":  "djinn",            // ZGppbm4=
 	}
 
-	secretYAML, err := testhelpers.RenderNode(secret, config)
-	// config - helm only
+	actual, err := testhelpers.RenderNode(secret, config)
 	if !assert.NoError(err) {
 		return
 	}
 
-	expectedAccountYAML := `---
-apiVersion: "v1"
-data:
-  # <<<don't change>>>
-  # This value is immutable and must not be changed once set.
-  const: "Y2Fubm90IGNoYW5nZQ=="
+	// Check the comments, and also that they are associated with
+	// the correct variables.
 
-  # <<<a description>>>
-  desc: "c2VsZi1leHBsYW5hdG9yeQ=="
+	astring := string(actual)
 
-  min: "cm9jay1ib3R0b20="
+	assert.Contains(astring, "# <<<don't change>>>\n  # This value is")
+	assert.Contains(astring, "# This value is immutable and must not be changed once set.\n  const: \"Y2Fubm90IGNoYW5nZQ==\"")
+	assert.Contains(astring, "# <<<a description>>>\n  desc: \"c2VsZi1leHBsYW5hdG9yeQ==\"")
+	assert.Contains(astring, "\n  min: \"cm9jay1ib3R0b20=\"")
+	assert.Contains(astring, "# <<<invaluable>>>\n  valued: \"c2t5IGhpZ2g=\"")
+	assert.Contains(astring, "# <<<here is jeannie>>>\n  # This value uses ")
+	assert.Contains(astring, "# This value uses a generated default.\n  genie: \"ZGppbm4=\"")
 
-  # <<<invaluable>>>
-  valued: "c2t5IGhpZ2g="
+	// And check overall structure
 
-  # <<<here is jeannie>>>
-  # This value uses a generated default.
-  genie: "ZGppbm4="
+	actualh, err := testhelpers.RoundtripNode(secret, config)
+	if !assert.NoError(err) {
+		return
+	}
 
-kind: "Secret"
-metadata:
-  name: "secrets"
-  labels:
-    skiff-role-name: "secrets"
-`
-
-	assert.Equal(expectedAccountYAML, string(secretYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		data:
+			const: "Y2Fubm90IGNoYW5nZQ=="
+			desc: "c2VsZi1leHBsYW5hdG9yeQ=="
+			min: "cm9jay1ib3R0b20="
+			valued: "c2t5IGhpZ2g="
+			genie: "ZGppbm4="
+		kind: "Secret"
+		metadata:
+			name: "secrets"
+			labels:
+				skiff-role-name: "secrets"
+	`, actualh)
 }

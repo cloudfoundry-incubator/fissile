@@ -104,18 +104,16 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 	mounts := getNonClaimVolumes(role)
 	assert.NotNil(mounts)
 
-	mountYAML, err := testhelpers.RenderNode(mounts, nil)
+	actual, err := testhelpers.RoundtripNode(mounts, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "host-volume"
-  hostPath:
-    path: "/sys/fs/cgroup"
-    type: "Directory"
-`
-	assert.Equal(expectedYAML, string(mountYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "host-volume"
+			hostPath:
+				path: "/sys/fs/cgroup"
+				type: "Directory"
+	`, actual)
 }
 
 func TestPodGetVolumes(t *testing.T) {
@@ -219,38 +217,36 @@ func TestPodGetVolumesHelmDefault(t *testing.T) {
 		}
 	}
 
-	pcYAML, err := testhelpers.RenderNode(persistentClaim, nil)
+	actual, err := testhelpers.RoundtripNode(persistentClaim, nil)
 	if assert.NoError(err) {
-		expectedYAML := `---
-metadata:
-  name: "persistent-volume"
-  annotations:
-    volume.beta.kubernetes.io/storage-class: 
-spec:
-  accessModes:
-  - "ReadWriteOnce"
-  resources:
-    requests:
-      storage: "<no value>G"
-`
-		assert.Equal(expectedYAML, string(pcYAML))
+		testhelpers.IsYAMLEqualString(assert, `---
+		metadata:
+			name: "persistent-volume"
+			annotations:
+				volume.beta.kubernetes.io/storage-class: 
+		spec:
+			accessModes:
+			-	"ReadWriteOnce"
+			resources:
+				requests:
+					storage: "<no value>G"
+		`, actual)
 	}
 
-	scYAML, err := testhelpers.RenderNode(sharedClaim, nil)
+	actual, err = testhelpers.RoundtripNode(sharedClaim, nil)
 	if assert.NoError(err) {
-		expectedYAML := `---
-metadata:
-  name: "shared-volume"
-  annotations:
-    volume.beta.kubernetes.io/storage-class: 
-spec:
-  accessModes:
-  - "ReadWriteMany"
-  resources:
-    requests:
-      storage: "<no value>G"
-`
-		assert.Equal(expectedYAML, string(scYAML))
+		testhelpers.IsYAMLEqualString(assert, `---
+		metadata:
+			name: "shared-volume"
+			annotations:
+				volume.beta.kubernetes.io/storage-class: 
+		spec:
+			accessModes:
+			-	"ReadWriteMany"
+			resources:
+				requests:
+					storage: "<no value>G"
+		`, actual)
 	}
 }
 
@@ -293,38 +289,36 @@ func TestPodGetVolumesHelmConfigured(t *testing.T) {
 		"Values.sizing.myrole.disk_sizes.shared_volume":     "84",
 	}
 
-	pcYAML, err := testhelpers.RenderNode(persistentClaim, config)
+	actual, err := testhelpers.RoundtripNode(persistentClaim, config)
 	if assert.NoError(err) {
-		expectedYAML := `---
-metadata:
-  name: "persistent-volume"
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "Persistent"
-spec:
-  accessModes:
-  - "ReadWriteOnce"
-  resources:
-    requests:
-      storage: "42G"
-`
-		assert.Equal(expectedYAML, string(pcYAML))
+		testhelpers.IsYAMLEqualString(assert, `---
+		metadata:
+			name: "persistent-volume"
+			annotations:
+				volume.beta.kubernetes.io/storage-class: "Persistent"
+		spec:
+			accessModes:
+			-	"ReadWriteOnce"
+			resources:
+				requests:
+					storage: "42G"
+		`, actual)
 	}
 
-	scYAML, err := testhelpers.RenderNode(sharedClaim, config)
+	actual, err = testhelpers.RoundtripNode(sharedClaim, config)
 	if assert.NoError(err) {
-		expectedYAML := `---
-metadata:
-  name: "shared-volume"
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "Shared"
-spec:
-  accessModes:
-  - "ReadWriteMany"
-  resources:
-    requests:
-      storage: "84G"
-`
-		assert.Equal(expectedYAML, string(scYAML))
+		testhelpers.IsYAMLEqualString(assert, `---
+		metadata:
+			name: "shared-volume"
+			annotations:
+				volume.beta.kubernetes.io/storage-class: "Shared"
+		spec:
+			accessModes:
+			-	"ReadWriteMany"
+			resources:
+				requests:
+					storage: "84G"
+		`, actual)
 	}
 }
 
@@ -472,20 +466,18 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SIZING_FOO_COUNT"
-  value: "33"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SIZING_FOO_COUNT"
+			value: "33"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
@@ -510,20 +502,18 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 		"Values.sizing.foo.count": "22",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SIZING_FOO_COUNT"
-  value: "22"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SIZING_FOO_COUNT"
+			value: "22"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
@@ -556,22 +546,20 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
-  value: "387"
-- name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
-  value: "333"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
+			value: "387"
+		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
+			value: "333"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
@@ -608,22 +596,20 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 		"Values.sizing.foo.ports.store.count": "22",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
-  value: "354"
-- name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
-  value: "333"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MAX"
+			value: "354"
+		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
+			value: "333"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
@@ -643,20 +629,18 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_COUNTER"
-  value: "1"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_COUNTER"
+			value: "1"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
@@ -681,20 +665,18 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "3",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_COUNTER"
-  value: "3"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_COUNTER"
+			value: "3"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
@@ -714,20 +696,18 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_NAME"
-  value: "secrets-1"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_NAME"
+			value: "secrets-1"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
@@ -753,20 +733,18 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_NAME"
-  value: "secrets-CV-SGC"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_NAME"
+			value: "secrets-CV-SGC"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
@@ -787,23 +765,21 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets"
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets"
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
@@ -825,23 +801,21 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets"
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets"
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsGeneratedHelm(t *testing.T) {
@@ -873,24 +847,22 @@ func TestPodGetEnvVarsFromConfigSecretsGeneratedHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets-CV-SGC"
-
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets-CV-SGC"
+		
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsGeneratedOverrideHelm(t *testing.T) {
@@ -921,24 +893,22 @@ func TestPodGetEnvVarsFromConfigSecretsGeneratedOverrideHelm(t *testing.T) {
 		"Values.secrets.A_SECRET": "user's choice",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets"
-
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets"
+		
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsGeneratedImmutableHelm(t *testing.T) {
@@ -971,23 +941,21 @@ func TestPodGetEnvVarsFromConfigSecretsGeneratedImmutableHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets-CV-SGC"
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets-CV-SGC"
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
@@ -1008,20 +976,18 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "SOMETHING"
-  value: "or other"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "SOMETHING"
+			value: "or other"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretWithoutValueKube(t *testing.T) {
@@ -1041,18 +1007,16 @@ func TestPodGetEnvVarsFromConfigNonSecretWithoutValueKube(t *testing.T) {
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndMissingHelm(t *testing.T) {
@@ -1074,20 +1038,18 @@ func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndMissingHelm(t *testing.T
 		},
 	})
 
-	evYAML, err := testhelpers.RenderNode(ev, nil)
+	actual, err := testhelpers.RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "SOMETHING"
-  value: 
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "SOMETHING"
+			value: 
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndPresentHelm(t *testing.T) {
@@ -1113,20 +1075,18 @@ func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndPresentHelm(t *testing.T
 		"Values.env.SOMETHING": "else",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "SOMETHING"
-  value: "else"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "SOMETHING"
+			value: "else"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndMissingHelm(t *testing.T) {
@@ -1177,20 +1137,18 @@ func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndPresentHelm(t *testing.T
 		"Values.env.SOMETHING": "needed",
 	}
 
-	evYAML, err := testhelpers.RenderNode(ev, config)
+	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "SOMETHING"
-  value: "needed"
-`
-	assert.Equal(expectedYAML, string(evYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "SOMETHING"
+			value: "needed"
+	`, actual)
 }
 
 func TestPodGetContainerLivenessProbe(t *testing.T) {
@@ -1729,51 +1687,46 @@ func TestPodPreFlightHelm(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "pre-role"
-  labels:
-    skiff-role-name: "pre-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "pre-role"
-    ports: ~
-    readinessProbe: ~
-    resources: ~
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "pre-role"
+			labels:
+				skiff-role-name: "pre-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "pre-role"
+				ports: ~
+				readinessProbe: ~
+				resources: ~
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestPodPostFlight(t *testing.T) {
@@ -1831,51 +1784,46 @@ func TestPodPostFlightHelm(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The post-role role contains the following jobs:
-#
-# tor
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "post-role"
-  labels:
-    skiff-role-name: "post-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-post-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "post-role"
-    ports: ~
-    readinessProbe: ~
-    resources: ~
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "post-role"
+			labels:
+				skiff-role-name: "post-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-post-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "post-role"
+				ports: ~
+				readinessProbe: ~
+				resources: ~
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestPodMemory(t *testing.T) {
@@ -1941,53 +1889,48 @@ func TestPodMemoryDisabledHelm(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "pre-role"
-  labels:
-    skiff-role-name: "pre-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "pre-role"
-    ports: ~
-    readinessProbe: ~
-    resources:
-      requests:
-      limits:
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "pre-role"
+			labels:
+				skiff-role-name: "pre-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "pre-role"
+				ports: ~
+				readinessProbe: ~
+				resources:
+					requests:
+					limits:
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestPodMemoryActiveHelm(t *testing.T) {
@@ -2017,55 +1960,50 @@ func TestPodMemoryActiveHelm(t *testing.T) {
 		"Values.sizing.pre_role.memory.limit":   "10",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "pre-role"
-  labels:
-    skiff-role-name: "pre-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "pre-role"
-    ports: ~
-    readinessProbe: ~
-    resources:
-      requests:
-        memory: "1Mi"
-      limits:
-        memory: "10Mi"
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "pre-role"
+			labels:
+				skiff-role-name: "pre-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "pre-role"
+				ports: ~
+				readinessProbe: ~
+				resources:
+					requests:
+						memory: "1Mi"
+					limits:
+						memory: "10Mi"
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestPodCPU(t *testing.T) {
@@ -2129,53 +2067,48 @@ func TestPodCPUDisabledHelm(t *testing.T) {
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "pre-role"
-  labels:
-    skiff-role-name: "pre-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "pre-role"
-    ports: ~
-    readinessProbe: ~
-    resources:
-      requests:
-      limits:
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "pre-role"
+			labels:
+				skiff-role-name: "pre-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "pre-role"
+				ports: ~
+				readinessProbe: ~
+				resources:
+					requests:
+					limits:
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestPodCPUActiveHelm(t *testing.T) {
@@ -2205,55 +2138,50 @@ func TestPodCPUActiveHelm(t *testing.T) {
 		"Values.sizing.pre_role.cpu.limit":      "10",
 	}
 
-	podYAML, err := testhelpers.RenderNode(pod, config)
+	actual, err := testhelpers.RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-# The pre-role role contains the following jobs:
-#
-# new_hostname
-apiVersion: "v1"
-kind: "Pod"
-metadata:
-  name: "pre-role"
-  labels:
-    skiff-role-name: "pre-role"
-spec:
-  containers:
-  - env:
-    - name: "KUBERNETES_NAMESPACE"
-      valueFrom:
-        fieldRef:
-          fieldPath: "metadata.namespace"
-    - name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-      value: "KSDS"
-    image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
-    lifecycle:
-      preStop:
-        exec:
-          command:
-          - "/opt/fissile/pre-stop.sh"
-    livenessProbe: ~
-    name: "pre-role"
-    ports: ~
-    readinessProbe: ~
-    resources:
-      requests:
-        cpu: "1m"
-      limits:
-        cpu: "10m"
-    securityContext: ~
-    volumeMounts: ~
-  dnsPolicy: "ClusterFirst"
-  imagePullSecrets:
-  - name: "registry-credentials"
-  restartPolicy: "OnFailure"
-  terminationGracePeriodSeconds: 600
-  volumes: ~
-`
-	assert.Equal(expectedYAML, string(podYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "pre-role"
+			labels:
+				skiff-role-name: "pre-role"
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+					value: "KSDS"
+				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "pre-role"
+				ports: ~
+				readinessProbe: ~
+				resources:
+					requests:
+						cpu: "1m"
+					limits:
+						cpu: "10m"
+				securityContext: ~
+				volumeMounts: ~
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes: ~
+	`, actual)
 }
 
 func TestGetSecurityContext(t *testing.T) {
@@ -2269,18 +2197,15 @@ func TestGetSecurityContext(t *testing.T) {
 		return
 	}
 
-	scYAML, err := testhelpers.RenderNode(sc, nil)
-
+	actual, err := testhelpers.RoundtripNode(sc, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-capabilities:
-  add:
-  - "SOMETHING"
-`
-	assert.Equal(expectedYAML, string(scYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		capabilities:
+			add:
+			-	"SOMETHING"
+	`, actual)
 }
 
 func TestPodGetContainerImageNameKube(t *testing.T) {
@@ -2341,20 +2266,18 @@ func TestPodGetContainerPortsKube(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(ports)
 
-	portsYAML, err := testhelpers.RenderNode(ports, nil)
+	actual, err := testhelpers.RoundtripNode(ports, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- containerPort: 8080
-  name: "http"
-  protocol: "TCP"
-- containerPort: 443
-  name: "https"
-  protocol: "TCP"
-`
-	assert.Equal(expectedYAML, string(portsYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	containerPort: 8080
+			name: "http"
+			protocol: "TCP"
+		-	containerPort: 443
+			name: "https"
+			protocol: "TCP"
+	`, actual)
 }
 
 func TestPodGetContainerPortsHelm(t *testing.T) {
@@ -2372,20 +2295,18 @@ func TestPodGetContainerPortsHelm(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(ports)
 
-	portsYAML, err := testhelpers.RenderNode(ports, nil)
+	actual, err := testhelpers.RoundtripNode(ports, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- containerPort: 8080
-  name: "http"
-  protocol: "TCP"
-- containerPort: 443
-  name: "https"
-  protocol: "TCP"
-`
-	assert.Equal(expectedYAML, string(portsYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	containerPort: 8080
+			name: "http"
+			protocol: "TCP"
+		-	containerPort: 443
+			name: "https"
+			protocol: "TCP"
+	`, actual)
 }
 
 func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
@@ -2407,29 +2328,27 @@ func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
 		"Values.sizing.myrole.ports.tcp_route.count": "5",
 	}
 
-	portsYAML, err := testhelpers.RenderNode(ports, config)
+	actual, err := testhelpers.RoundtripNode(ports, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-- containerPort: 20000
-  name: "tcp-route-0"
-  protocol: "TCP"
-- containerPort: 20001
-  name: "tcp-route-1"
-  protocol: "TCP"
-- containerPort: 20002
-  name: "tcp-route-2"
-  protocol: "TCP"
-- containerPort: 20003
-  name: "tcp-route-3"
-  protocol: "TCP"
-- containerPort: 20004
-  name: "tcp-route-4"
-  protocol: "TCP"
-`
-	assert.Equal(expectedYAML, string(portsYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	containerPort: 20000
+			name: "tcp-route-0"
+			protocol: "TCP"
+		-	containerPort: 20001
+			name: "tcp-route-1"
+			protocol: "TCP"
+		-	containerPort: 20002
+			name: "tcp-route-2"
+			protocol: "TCP"
+		-	containerPort: 20003
+			name: "tcp-route-3"
+			protocol: "TCP"
+		-	containerPort: 20004
+			name: "tcp-route-4"
+			protocol: "TCP"
+	`, actual)
 }
 
 func TestPodMakeSecretVarPlain(t *testing.T) {
@@ -2437,19 +2356,17 @@ func TestPodMakeSecretVarPlain(t *testing.T) {
 
 	sv := makeSecretVar("foo", false)
 
-	svYAML, err := testhelpers.RenderNode(sv, nil)
+	actual, err := testhelpers.RoundtripNode(sv, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-name: "foo"
-valueFrom:
-  secretKeyRef:
-    key: "foo"
-    name: "secrets"
-`
-	assert.Equal(expectedYAML, string(svYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		name: "foo"
+		valueFrom:
+			secretKeyRef:
+				key: "foo"
+				name: "secrets"
+	`, actual)
 }
 
 func TestPodMakeSecretVarGenerated(t *testing.T) {
@@ -2462,17 +2379,15 @@ func TestPodMakeSecretVarGenerated(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	svYAML, err := testhelpers.RenderNode(sv, config)
+	actual, err := testhelpers.RoundtripNode(sv, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-name: "foo"
-valueFrom:
-  secretKeyRef:
-    key: "foo"
-    name: "secrets-CV-SGC"
-`
-	assert.Equal(expectedYAML, string(svYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		name: "foo"
+		valueFrom:
+			secretKeyRef:
+				key: "foo"
+				name: "secrets-CV-SGC"
+	`, actual)
 }

@@ -100,31 +100,29 @@ func TestServiceHelmOKDefaults(t *testing.T) {
 	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
-	serviceYAML, err := testhelpers.RenderNode(service, nil)
+	actual, err := testhelpers.RoundtripNode(service, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole"
-spec:
-  ports:
-  - name: "http"
-    port: 80
-    protocol: "TCP"
-    targetPort: "http"
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: "https"
-  selector:
-    skiff-role-name: "myrole"
-  type:  ClusterIP 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole"
+		spec:
+			ports:
+			-	name: "http"
+				port: 80
+				protocol: "TCP"
+				targetPort: "http"
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: "https"
+			selector:
+				skiff-role-name: "myrole"
+			type:	ClusterIP
+	`, actual)
 }
 
 func TestServiceHelmOKConfigured(t *testing.T) {
@@ -153,31 +151,29 @@ func TestServiceHelmOKConfigured(t *testing.T) {
 		"Values.services.loadbalanced": "true",
 	}
 
-	serviceYAML, err := testhelpers.RenderNode(service, config)
+	actual, err := testhelpers.RoundtripNode(service, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole"
-spec:
-  ports:
-  - name: "http"
-    port: 80
-    protocol: "TCP"
-    targetPort: "http"
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: "https"
-  selector:
-    skiff-role-name: "myrole"
-  type:  LoadBalancer 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole"
+		spec:
+			ports:
+			-	name: "http"
+				port: 80
+				protocol: "TCP"
+				targetPort: "http"
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: "https"
+			selector:
+				skiff-role-name: "myrole"
+			type:	LoadBalancer
+	`, actual)
 }
 
 func TestHeadlessServiceOK(t *testing.T) {
@@ -248,32 +244,30 @@ func TestHeadlessServiceHelmOKDefaults(t *testing.T) {
 	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
-	serviceYAML, err := testhelpers.RenderNode(service, nil)
+	actual, err := testhelpers.RoundtripNode(service, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole-set"
-spec:
-  clusterIP: "None"
-  ports:
-  - name: "http"
-    port: 80
-    protocol: "TCP"
-    targetPort: 0
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: 0
-  selector:
-    skiff-role-name: "myrole"
-  type:  ClusterIP 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole-set"
+		spec:
+			clusterIP: "None"
+			ports:
+			-	name: "http"
+				port: 80
+				protocol: "TCP"
+				targetPort: 0
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: 0
+			selector:
+				skiff-role-name: "myrole"
+			type:	ClusterIP
+	`, actual)
 }
 
 func TestHeadlessServiceHelmOKConfigured(t *testing.T) {
@@ -302,31 +296,29 @@ func TestHeadlessServiceHelmOKConfigured(t *testing.T) {
 		"Values.services.loadbalanced": "true",
 	}
 
-	serviceYAML, err := testhelpers.RenderNode(service, config)
+	actual, err := testhelpers.RoundtripNode(service, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole-set"
-spec:
-  ports:
-  - name: "http"
-    port: 80
-    protocol: "TCP"
-    targetPort: 0
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: 0
-  selector:
-    skiff-role-name: "myrole"
-  type:  LoadBalancer 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole-set"
+		spec:
+			ports:
+			-	name: "http"
+				port: 80
+				protocol: "TCP"
+				targetPort: 0
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: 0
+			selector:
+				skiff-role-name: "myrole"
+			type:	LoadBalancer
+	`, actual)
 }
 
 func TestPublicServiceOK(t *testing.T) {
@@ -396,28 +388,26 @@ func TestPublicServiceHelmOKDefaults(t *testing.T) {
 		"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
 	}
 
-	serviceYAML, err := testhelpers.RenderNode(service, config)
+	actual, err := testhelpers.RoundtripNode(service, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole-public"
-spec:
-  externalIPs: "[127.0.0.1,127.0.0.2]"
-  ports:
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: "https"
-  selector:
-    skiff-role-name: "myrole"
-  type:  ClusterIP 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole-public"
+		spec:
+			externalIPs: "[127.0.0.1,127.0.0.2]"
+			ports:
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: "https"
+			selector:
+				skiff-role-name: "myrole"
+			type:	ClusterIP
+	`, actual)
 }
 
 func TestPublicServiceHelmOKConfigured(t *testing.T) {
@@ -446,29 +436,24 @@ func TestPublicServiceHelmOKConfigured(t *testing.T) {
 		"Values.kube.external_ips":     "",
 	}
 
-	serviceYAML, err := testhelpers.RenderNode(service, config)
+	actual, err := testhelpers.RoundtripNode(service, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expected := `---
-apiVersion: "v1"
-kind: "Service"
-metadata:
-  name: "myrole-public"
-spec:
-  externalIPs: ""
-  ports:
-  - name: "https"
-    port: 443
-    protocol: "TCP"
-    targetPort: "https"
-  selector:
-    skiff-role-name: "myrole"
-  type:  LoadBalancer 
-`
-	assert.Equal(expected, string(serviceYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Service"
+		metadata:
+			name: "myrole-public"
+		spec:
+			externalIPs: ""
+			ports:
+			-	name: "https"
+				port: 443
+				protocol: "TCP"
+				targetPort: "https"
+			selector:
+				skiff-role-name: "myrole"
+			type:	LoadBalancer
+	`, actual)
 }
-
-// Values.sizing.%s.ports.%s.port : rolename, portname
-// port.CountIsConfigurable

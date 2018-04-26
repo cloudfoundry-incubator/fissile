@@ -11,71 +11,66 @@ import (
 func TestNewTypeMeta(t *testing.T) {
 	assert := assert.New(t)
 
-	typemeta := newTypeMeta("the-api-version", "thekind")
-	typemetaYAML, err := testhelpers.RenderNode(typemeta, nil)
+	typeMeta := newTypeMeta("the-api-version", "thekind")
+
+	actual, err := testhelpers.RoundtripNode(typeMeta, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-apiVersion: "the-api-version"
-kind: "thekind"
-`
-	assert.Equal(expectedYAML, string(typemetaYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "the-api-version"
+		kind: "thekind"
+	`, actual)
 }
 
 func TestNewObjectMeta(t *testing.T) {
 	assert := assert.New(t)
 
-	meta := newObjectMeta("thename")
-	metaYAML, err := testhelpers.RenderNode(meta, nil)
+	objectMeta := newObjectMeta("thename")
+
+	actual, err := testhelpers.RoundtripNode(objectMeta, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-name: "thename"
-labels:
-  skiff-role-name: "thename"
-`
-	assert.Equal(expectedYAML, string(metaYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		name: "thename"
+		labels:
+			skiff-role-name: "thename"
+	`, actual)
 }
 
 func TestNewSelector(t *testing.T) {
 	assert := assert.New(t)
 
-	sel := newSelector("thename")
-	selYAML, err := testhelpers.RenderNode(sel, nil)
+	selector := newSelector("thename")
+
+	actual, err := testhelpers.RoundtripNode(selector, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-matchLabels:
-  skiff-role-name: "thename"
-`
-	assert.Equal(expectedYAML, string(selYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		matchLabels:
+			skiff-role-name: "thename"
+	`, actual)
 }
 
 func TestNewKubeConfig(t *testing.T) {
 	assert := assert.New(t)
 
-	kc := newKubeConfig("theApiVersion", "thekind", "thename")
+	kubeConfig := newKubeConfig("theApiVersion", "thekind", "thename")
 
-	kcYAML, err := testhelpers.RenderNode(kc, nil)
+	actual, err := testhelpers.RoundtripNode(kubeConfig, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-apiVersion: "theApiVersion"
-kind: "thekind"
-metadata:
-  name: "thename"
-  labels:
-    skiff-role-name: "thename"
-`
-	assert.Equal(expectedYAML, string(kcYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "theApiVersion"
+		kind: "thekind"
+		metadata:
+			name: "thename"
+			labels:
+				skiff-role-name: "thename"
+	`, actual)
 }
 
 func TestMakeVarName(t *testing.T) {

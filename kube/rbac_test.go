@@ -25,42 +25,36 @@ func TestNewRBACAccountForKube(t *testing.T) {
 	}
 
 	rbacAccount := resources[0]
-	accountYAML, err := testhelpers.RenderNode(rbacAccount, nil)
-
+	actual, err := testhelpers.RoundtripNode(rbacAccount, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedAccountYAML := `---
-apiVersion: "v1"
-kind: "ServiceAccount"
-metadata:
-  name: "the-name"
-`
-	assert.Equal(expectedAccountYAML, string(accountYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "ServiceAccount"
+		metadata:
+			name: "the-name"
+	`, actual)
 
 	rbacRole := resources[1]
-	roleYAML, err := testhelpers.RenderNode(rbacRole, nil)
-	// config: .Values.kube.auth helm only ("", "rbac")
-
+	// config: .Values.kube.auth -- helm only ("", "rbac")
+	actual, err = testhelpers.RoundtripNode(rbacRole, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedRoleYAML := `---
-apiVersion: "rbac.authorization.k8s.io/v1beta1"
-kind: "RoleBinding"
-metadata:
-  name: "the-name-a-role-binding"
-subjects:
-- kind: "ServiceAccount"
-  name: "the-name"
-roleRef:
-  kind: "Role"
-  name: "a-role"
-  apiGroup: "rbac.authorization.k8s.io"
-`
-	assert.Equal(expectedRoleYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1beta1"
+		kind: "RoleBinding"
+		metadata:
+			name: "the-name-a-role-binding"
+		subjects:
+		-	kind: "ServiceAccount"
+			name: "the-name"
+		roleRef:
+			kind: "Role"
+			name: "a-role"
+			apiGroup: "rbac.authorization.k8s.io"
+	`, actual)
 }
 
 func TestNewRBACAccountForHelmNoAuth(t *testing.T) {
@@ -81,28 +75,22 @@ func TestNewRBACAccountForHelmNoAuth(t *testing.T) {
 	}
 
 	rbacAccount := resources[0]
-	accountYAML, err := testhelpers.RenderNode(rbacAccount, nil)
-	// config: .Values.kube.auth helm only ("", "rbac")
-
+	// config: .Values.kube.auth -- helm only ("", "rbac")
+	actual, err := testhelpers.RoundtripNode(rbacAccount, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedAccountYAML := `---
-`
-	assert.Equal(expectedAccountYAML, string(accountYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+	`, actual)
 
 	rbacRole := resources[1]
-	roleYAML, err := testhelpers.RenderNode(rbacRole, nil)
 	// config: .Values.kube.auth helm only ("", "rbac")
-
+	actual, err = testhelpers.RoundtripNode(rbacRole, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedRoleYAML := `---
-`
-	assert.Equal(expectedRoleYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+	`, actual)
 }
 
 func TestNewRBACAccountForHelmWithAuth(t *testing.T) {
@@ -127,41 +115,35 @@ func TestNewRBACAccountForHelmWithAuth(t *testing.T) {
 	}
 
 	rbacAccount := resources[0]
-	accountYAML, err := testhelpers.RenderNode(rbacAccount, authConfig)
-
+	actual, err := testhelpers.RoundtripNode(rbacAccount, authConfig)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedAccountYAML := `---
-apiVersion: "v1"
-kind: "ServiceAccount"
-metadata:
-  name: "the-name"
-`
-	assert.Equal(expectedAccountYAML, string(accountYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "ServiceAccount"
+		metadata:
+			name: "the-name"
+	`, actual)
 
 	rbacRole := resources[1]
-	roleYAML, err := testhelpers.RenderNode(rbacRole, authConfig)
-
+	actual, err = testhelpers.RoundtripNode(rbacRole, authConfig)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedRoleYAML := `---
-apiVersion: "rbac.authorization.k8s.io/v1beta1"
-kind: "RoleBinding"
-metadata:
-  name: "the-name-a-role-binding"
-subjects:
-- kind: "ServiceAccount"
-  name: "the-name"
-roleRef:
-  kind: "Role"
-  name: "a-role"
-  apiGroup: "rbac.authorization.k8s.io"
-`
-	assert.Equal(expectedRoleYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1beta1"
+		kind: "RoleBinding"
+		metadata:
+			name: "the-name-a-role-binding"
+		subjects:
+		-	kind: "ServiceAccount"
+			name: "the-name"
+		roleRef:
+			kind: "Role"
+			name: "a-role"
+			apiGroup: "rbac.authorization.k8s.io"
+	`, actual)
 }
 
 func TestNewRBACRoleForKube(t *testing.T) {
@@ -181,27 +163,24 @@ func TestNewRBACRoleForKube(t *testing.T) {
 		return
 	}
 
-	roleYAML, err := testhelpers.RenderNode(rbacRole, nil)
 	// config: .Values.kube.auth true/false - Helm only
-
+	actual, err := testhelpers.RoundtripNode(rbacRole, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-apiVersion: "rbac.authorization.k8s.io/v1beta1"
-kind: "Role"
-metadata:
-  name: "the-name"
-rules:
-- apiGroups:
-  - "api-group-1"
-  resources:
-  - "resource-b"
-  verbs:
-  - "verb-iii"
-`
-	assert.Equal(expectedYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1beta1"
+		kind: "Role"
+		metadata:
+			name: "the-name"
+		rules:
+		-	apiGroups:
+			-	"api-group-1"
+			resources:
+			-	"resource-b"
+			verbs:
+			-	"verb-iii"
+	`, actual)
 }
 
 func TestNewRBACRoleForHelmNoAuth(t *testing.T) {
@@ -223,16 +202,13 @@ func TestNewRBACRoleForHelmNoAuth(t *testing.T) {
 		return
 	}
 
-	roleYAML, err := testhelpers.RenderNode(rbacRole, nil)
 	// config: .Values.kube.auth helm only ("", "rbac")
-
+	actual, err := testhelpers.RoundtripNode(rbacRole, nil)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-`
-	assert.Equal(expectedYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+	`, actual)
 }
 
 func TestNewRBACRoleForHelmWithAuth(t *testing.T) {
@@ -254,27 +230,25 @@ func TestNewRBACRoleForHelmWithAuth(t *testing.T) {
 		return
 	}
 
-	roleYAML, err := testhelpers.RenderNode(rbacRole,
-		map[string]interface{}{
-			"Values.kube.auth": "rbac",
-		})
+	config := map[string]interface{}{
+		"Values.kube.auth": "rbac",
+	}
 
+	actual, err := testhelpers.RoundtripNode(rbacRole, config)
 	if !assert.NoError(err) {
 		return
 	}
-
-	expectedYAML := `---
-apiVersion: "rbac.authorization.k8s.io/v1beta1"
-kind: "Role"
-metadata:
-  name: "the-name"
-rules:
-- apiGroups:
-  - "api-group-1"
-  resources:
-  - "resource-b"
-  verbs:
-  - "verb-iii"
-`
-	assert.Equal(expectedYAML, string(roleYAML))
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1beta1"
+		kind: "Role"
+		metadata:
+			name: "the-name"
+		rules:
+		-	apiGroups:
+			-	"api-group-1"
+			resources:
+			-	"resource-b"
+			verbs:
+			-	"verb-iii"
+	`, actual)
 }
