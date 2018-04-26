@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,14 +78,12 @@ func testCVMap() model.CVMap {
 			Name:        "valued",
 			Description: "<<<invaluable>>>",
 			Default:     "you are very valued indeed",
-			// eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ=
 		},
 		"const": &model.ConfigurationVariable{
 			Name:        "const",
 			Description: "<<<don't change>>>",
 			Default:     "rock solid",
-			// cm9jayBzb2xpZA==
-			Immutable: true,
+			Immutable:   true,
 		},
 		"genie": &model.ConfigurationVariable{
 			Name:        "genie",
@@ -112,7 +111,9 @@ func testCVMap() model.CVMap {
 func TestMakeSecretsForKube(t *testing.T) {
 	assert := assert.New(t)
 
-	secret, err := MakeSecrets(testCVMap(), ExportSettings{})
+	testCV := testCVMap()
+
+	secret, err := MakeSecrets(testCV, ExportSettings{})
 	if !assert.NoError(err) {
 		return
 	}
@@ -122,15 +123,18 @@ func TestMakeSecretsForKube(t *testing.T) {
 		return
 	}
 
+	varConstB64 := testhelpers.RenderEncodeBase64(testCV["const"].Default.(string))
+	varValuedB64 := testhelpers.RenderEncodeBase64(testCV["valued"].Default.(string))
+
 	// Check the comments, and also that they are associated with
 	// the correct variables.
 
 	astring := string(actual)
 
-	assert.Contains(astring, "# <<<don't change>>>\n  const: \"cm9jayBzb2xpZA==\"")
+	assert.Contains(astring, fmt.Sprintf("# <<<don't change>>>\n  const: \"%s\"", varConstB64))
 	assert.Contains(astring, "# <<<a description>>>\n  desc: \"\"")
 	assert.Contains(astring, "\n  min: \"\"")
-	assert.Contains(astring, "# <<<invaluable>>>\n  valued: \"eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ=\"")
+	assert.Contains(astring, fmt.Sprintf("# <<<invaluable>>>\n  valued: \"%s\"", varValuedB64))
 	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
 	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
@@ -138,21 +142,21 @@ func TestMakeSecretsForKube(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-	testhelpers.IsYAMLEqualString(assert, `---
+	testhelpers.IsYAMLEqualString(assert, fmt.Sprintf(`---
 		apiVersion: "v1"
 		data:
-			const: "cm9jayBzb2xpZA=="
+			const: "%s"
 			desc: ""
 			genie: ""
 			guinevere: ""
 			min: ""
-			valued: "eW91IGFyZSB2ZXJ5IHZhbHVlZCBpbmRlZWQ="
+			valued: "%s"
 		kind: "Secret"
 		metadata:
 			name: "secrets"
 			labels:
 				skiff-role-name: "secrets"
-	`, actualh)
+	`, varConstB64, varValuedB64), actualh)
 }
 
 func TestMakeSecretsForHelmWithDefaults(t *testing.T) {
@@ -184,12 +188,24 @@ func TestMakeSecretsForHelmOk(t *testing.T) {
 		return
 	}
 
+	varConst := "cannot change"
+	varDesc := "self-explanatory"
+	varMin := "rock-bottom"
+	varValued := "sky high"
+	varGenie := "djinn"
+
+	varConstB64 := testhelpers.RenderEncodeBase64(varConst)
+	varDescB64 := testhelpers.RenderEncodeBase64(varDesc)
+	varMinB64 := testhelpers.RenderEncodeBase64(varMin)
+	varValuedB64 := testhelpers.RenderEncodeBase64(varValued)
+	varGenieB64 := testhelpers.RenderEncodeBase64(varGenie)
+
 	config := map[string]interface{}{
-		"Values.secrets.const":  "cannot change",    // Y2Fubm90IGNoYW5nZQ==
-		"Values.secrets.desc":   "self-explanatory", // c2VsZi1leHBsYW5hdG9yeQ==
-		"Values.secrets.min":    "rock-bottom",      // cm9jay1ib3R0b20=
-		"Values.secrets.valued": "sky high",         // c2t5IGhpZ2g=
-		"Values.secrets.genie":  "djinn",            // ZGppbm4=
+		"Values.secrets.const":  varConst,
+		"Values.secrets.desc":   varDesc,
+		"Values.secrets.min":    varMin,
+		"Values.secrets.valued": varValued,
+		"Values.secrets.genie":  varGenie,
 	}
 
 	actual, err := testhelpers.RenderNode(secret, config)
@@ -203,12 +219,12 @@ func TestMakeSecretsForHelmOk(t *testing.T) {
 	astring := string(actual)
 
 	assert.Contains(astring, "# <<<don't change>>>\n  # This value is")
-	assert.Contains(astring, "# This value is immutable and must not be changed once set.\n  const: \"Y2Fubm90IGNoYW5nZQ==\"")
-	assert.Contains(astring, "# <<<a description>>>\n  desc: \"c2VsZi1leHBsYW5hdG9yeQ==\"")
-	assert.Contains(astring, "\n  min: \"cm9jay1ib3R0b20=\"")
-	assert.Contains(astring, "# <<<invaluable>>>\n  valued: \"c2t5IGhpZ2g=\"")
+	assert.Contains(astring, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: \"%s\"", varConstB64))
+	assert.Contains(astring, fmt.Sprintf("# <<<a description>>>\n  desc: \"%s\"", varDescB64))
+	assert.Contains(astring, fmt.Sprintf("\n  min: \"%s\"", varMinB64))
+	assert.Contains(astring, fmt.Sprintf("# <<<invaluable>>>\n  valued: \"%s\"", varValuedB64))
 	assert.Contains(astring, "# <<<here is jeannie>>>\n  # This value uses ")
-	assert.Contains(astring, "# This value uses a generated default.\n  genie: \"ZGppbm4=\"")
+	assert.Contains(astring, fmt.Sprintf("# This value uses a generated default.\n  genie: \"%s\"", varGenieB64))
 
 	// And check overall structure
 
@@ -217,18 +233,18 @@ func TestMakeSecretsForHelmOk(t *testing.T) {
 		return
 	}
 
-	testhelpers.IsYAMLEqualString(assert, `---
+	testhelpers.IsYAMLEqualString(assert, fmt.Sprintf(`---
 		apiVersion: "v1"
 		data:
-			const: "Y2Fubm90IGNoYW5nZQ=="
-			desc: "c2VsZi1leHBsYW5hdG9yeQ=="
-			min: "cm9jay1ib3R0b20="
-			valued: "c2t5IGhpZ2g="
-			genie: "ZGppbm4="
+			const: "%s"
+			desc: "%s"
+			min: "%s"
+			valued: "%s"
+			genie: "%s"
 		kind: "Secret"
 		metadata:
 			name: "secrets"
 			labels:
 				skiff-role-name: "secrets"
-	`, actualh)
+	`, varConstB64, varDescB64, varMinB64, varValuedB64, varGenieB64), actualh)
 }
