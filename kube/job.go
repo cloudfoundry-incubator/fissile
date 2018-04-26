@@ -26,11 +26,9 @@ func NewJob(role *model.Role, settings ExportSettings, grapher util.ModelGrapher
 	}
 
 	name := role.Name
-	apiVersion := "extensions/v1beta1"
+	apiVersion := "batch/v1"
 	if settings.CreateHelmChart {
 		name += "-{{ .Release.Revision }}"
-		// Job objects become a regular feature in kube 1.6
-		apiVersion = fmt.Sprintf("{{ if %s -}} batch/v1 {{- else -}} %s {{- end }}", minKubeVersion(1, 6), apiVersion)
 	}
 
 	metadata := helm.NewMapping()

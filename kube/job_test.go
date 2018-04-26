@@ -56,7 +56,7 @@ func TestJobPreFlight(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: extensions/v1beta1
+		apiVersion: batch/v1
 		kind: Job
 		metadata:
 			name: pre-role
@@ -92,7 +92,7 @@ func TestJobPostFlight(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: extensions/v1beta1
+		apiVersion: batch/v1
 		kind: Job
 		metadata:
 			name: post-role
@@ -129,7 +129,7 @@ func TestJobWithAnnotations(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: extensions/v1beta1
+		apiVersion: batch/v1
 		kind: Job
 		metadata:
 			name: role
@@ -139,28 +139,6 @@ func TestJobWithAnnotations(t *testing.T) {
 }
 
 func TestJobHelmWithDefaults(t *testing.T) {
-	assert := assert.New(t)
-	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
-	if role == nil {
-		return
-	}
-
-	job, err := NewJob(role, ExportSettings{
-		Opinions:        model.NewEmptyOpinions(),
-		CreateHelmChart: true,
-	}, nil)
-	if !assert.NoError(err, "Failed to create job from role pre-role") {
-		return
-	}
-	assert.NotNil(job)
-
-	// Render should fail due to the template referencing a number
-	// of variables which must be non-nil to work.
-	_, err = testhelpers.RenderNode(job, nil)
-	assert.EqualError(err, `template: :5:155: executing "" at <trimSuffix>: wrong number of args for trimSuffix: want 2 got 1`)
-}
-
-func TestJobHelmFilledKube15(t *testing.T) {
 	assert := assert.New(t)
 	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
 	if role == nil {
@@ -183,30 +161,24 @@ func TestJobHelmFilledKube15(t *testing.T) {
 
 	config := map[string]interface{}{
 		"Capabilities.KubeVersion.Major": "1",
-		"Capabilities.KubeVersion.Minor": "5",
+		"Capabilities.KubeVersion.Minor": "6",
 		// Fake location for a fake `secrets.yaml`.
-		"Template.BasePath": fakeTemplateDir,
+		"Template.BasePath":                     fakeTemplateDir,
+		"Release.Revision":                      "42",
+		"Values.kube.registry.hostname":         "docker.suse.fake",
+		"Values.kube.organization":              "splat",
+		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
 	}
-
-	// The various <no value> seen below come from, in order:
-	// - Release.Revision
-	// - Values.kube.registry.hostname
-	// - Values.kube.organization
-	// None of these are defined in the config. Rendering does not fail.
-	//
-	// Another undefined variable,
-	// - Values.env.KUBE_SERVICE_DOMAIN_SUFFIX
-	// yields an empty field, see the value of KUBE_SERVICE_DOMAIN_SUFFIX.
 
 	actual, err := testhelpers.RoundtripNode(job, config)
 	if !assert.NoError(err) {
 		return
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: extensions/v1beta1
+		apiVersion: batch/v1
 		kind: "Job"
 		metadata:
-			name: "pre-role-<no value>"
+			name: "pre-role-42"
 		spec:
 			template:
 				metadata:
@@ -223,8 +195,8 @@ func TestJobHelmFilledKube15(t *testing.T) {
 								fieldRef:
 									fieldPath: "metadata.namespace"
 						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-							value: 
-						image: "<no value>/<no value>/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
+							value: "domestic"
+						image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 						lifecycle:
 							preStop:
 								exec:
@@ -244,9 +216,10 @@ func TestJobHelmFilledKube15(t *testing.T) {
 					terminationGracePeriodSeconds: 600
 					volumes: ~
 	`, actual)
+
 }
 
-func TestJobHelmFilledKube16(t *testing.T) {
+func TestJobHelmFilledKube(t *testing.T) {
 	assert := assert.New(t)
 	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
 	if role == nil {
@@ -266,6 +239,17 @@ func TestJobHelmFilledKube16(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 	fakeTemplateDir := filepath.Join(workDir, "../test-assets/fake-templates")
+
+	// Notes. The variables
+	// - Release.Revision
+	// - Values.kube.registry.hostname
+	// - Values.kube.organization
+	// - Values.env.KUBE_SERVICE_DOMAIN_SUFFIX
+	// can all be removed without causing an error during render.
+	// The output simply gains <no value>, and empty string.
+	//
+	// TODO: Rework NewJob to make these `required` in the template.
+	//       (and add tests demonstrating that)
 
 	config := map[string]interface{}{
 		"Capabilities.KubeVersion.Major": "1",
