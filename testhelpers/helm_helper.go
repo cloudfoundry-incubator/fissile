@@ -106,6 +106,7 @@ func mergeMap(obj map[string]interface{}, value interface{}, key ...string) map[
 // helm for our testing. Avoid vendoring of entire sprig, and of the
 // whole helm rendering engine.
 
+// RenderEncodeBase64 provides easy base64 encoding for strings.
 func RenderEncodeBase64(in string) string {
 	return base64.StdEncoding.EncodeToString([]byte(in))
 }
