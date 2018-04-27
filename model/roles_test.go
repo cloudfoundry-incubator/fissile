@@ -544,7 +544,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	for _, tc := range tests {
 		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests", tc.manifest)
 		roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-		if assert.Error(err, "Expected errors: %s", tc.message) {
+		if assert.Errorf(err, "Expected errors: %s", tc.message) {
 			assert.Equal(tc.message, strings.Split(err.Error(), "\n"))
 			assert.Nil(roleManifest)
 		}

@@ -276,7 +276,8 @@ func getNonClaimVolumes(role *model.Role) helm.Node {
 	for _, volume := range role.Run.Volumes {
 		switch volume.Type {
 		case model.VolumeTypeHost:
-			hostPathInfo := helm.NewMapping("path", volume.Path, "type", "Directory")
+			hostPathInfo := helm.NewMapping("path", volume.Path)
+			hostPathInfo.Add("type", "Directory", helm.Block(fmt.Sprintf("if (%s)", minKubeVersion(1, 8))))
 			volumeEntry := helm.NewMapping("name", volume.Tag, "hostPath", hostPathInfo)
 			volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
 			mounts = append(mounts, volumeEntry)
