@@ -48,7 +48,7 @@ func (f FakeGrapher) GraphEdge(fromNode, toNode string, attrs map[string]string)
 	return nil
 }
 
-func TestNewDeployment(t *testing.T) {
+func TestNewDeploymentKube(t *testing.T) {
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
@@ -69,35 +69,7 @@ func TestNewDeployment(t *testing.T) {
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 }
 
-func TestNewDeploymentHelmDefaults(t *testing.T) {
-	assert := assert.New(t)
-
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
-		return
-	}
-
-	settings := ExportSettings{
-		CreateHelmChart: true,
-	}
-
-	grapher := FakeGrapher{}
-
-	deployment, svc, err := NewDeployment(role, settings, grapher)
-
-	assert.NoError(err)
-	assert.Nil(svc)
-	assert.NotNil(deployment)
-	assert.Equal(deployment.Get("kind").String(), "Deployment")
-	assert.Equal(deployment.Get("metadata", "name").String(), "role")
-
-	// Rendering fails with defaults, template needs information
-	// about sizing and the like.
-	_, err = testhelpers.RenderNode(deployment, nil)
-	assert.EqualError(err, `template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
-}
-
-func TestNewDeploymentHelmConfigured(t *testing.T) {
+func TestNewDeploymentHelm(t *testing.T) {
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
@@ -120,79 +92,89 @@ func TestNewDeploymentHelmConfigured(t *testing.T) {
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 
-	config := map[string]interface{}{
-		"Values.sizing.role.count":                 "1",
-		"Values.sizing.role.affinity.nodeAffinity": "snafu",
-		"Values.kube.registry.hostname":            "docker.suse.fake",
-		"Values.kube.organization":                 "splat",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
-	}
+	t.Run("Defaults", func(t *testing.T) {
+		// Rendering fails with defaults, template needs information
+		// about sizing and the like.
+		_, err = testhelpers.RenderNode(deployment, nil)
+		assert.EqualError(err,
+			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+	})
 
-	actual, err := testhelpers.RoundtripNode(deployment, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "extensions/v1beta1"
-		kind: "Deployment"
-		metadata:
-			name: "role"
-			labels:
-				skiff-role-name: "role"
-		spec:
-			replicas: 1
-			selector:
-				matchLabels:
+	t.Run("Configured", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.sizing.role.count":                 "1",
+			"Values.sizing.role.affinity.nodeAffinity": "snafu",
+			"Values.kube.registry.hostname":            "docker.suse.fake",
+			"Values.kube.organization":                 "splat",
+			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
+		}
+
+		actual, err := testhelpers.RoundtripNode(deployment, config)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "extensions/v1beta1"
+			kind: "Deployment"
+			metadata:
+				name: "role"
+				labels:
 					skiff-role-name: "role"
-			template:
-				metadata:
-					name: "role"
-					labels:
+			spec:
+				replicas: 1
+				selector:
+					matchLabels:
 						skiff-role-name: "role"
-					annotations:
-						checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
-				spec:
-					affinity:
-						podAntiAffinity:
-							preferredDuringSchedulingIgnoredDuringExecution:
-							-	podAffinityTerm:
-									labelSelector:
-										matchExpressions:
-										-	key: "skiff-role-name"
-											operator: "In"
-											values:
-											-	"role"
-									topologyKey: "beta.kubernetes.io/os"
-								weight: 100
-						nodeAffinity: "snafu"
-					containers:
-					-	env:
-						-	name: "KUBERNETES_NAMESPACE"
-							valueFrom:
-								fieldRef:
-									fieldPath: "metadata.namespace"
-						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-							value: "domestic"
-						image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
-						lifecycle:
-							preStop:
-								exec:
-									command:
-									-	"/opt/fissile/pre-stop.sh"
-						livenessProbe: ~
+				template:
+					metadata:
 						name: "role"
-						ports: ~
-						readinessProbe: ~
-						resources: ~
-						securityContext: ~
-						volumeMounts: ~
-					dnsPolicy: "ClusterFirst"
-					imagePullSecrets:
-					- name: "registry-credentials"
-					restartPolicy: "Always"
-					terminationGracePeriodSeconds: 600
-					volumes: ~
-	`, actual)
+						labels:
+							skiff-role-name: "role"
+						annotations:
+							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+					spec:
+						affinity:
+							podAntiAffinity:
+								preferredDuringSchedulingIgnoredDuringExecution:
+								-	podAffinityTerm:
+										labelSelector:
+											matchExpressions:
+											-	key: "skiff-role-name"
+												operator: "In"
+												values:
+												-	"role"
+										topologyKey: "beta.kubernetes.io/os"
+									weight: 100
+							nodeAffinity: "snafu"
+						containers:
+						-	env:
+							-	name: "KUBERNETES_NAMESPACE"
+								valueFrom:
+									fieldRef:
+										fieldPath: "metadata.namespace"
+							-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
+								value: "domestic"
+							image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
+							lifecycle:
+								preStop:
+									exec:
+										command:
+										-	"/opt/fissile/pre-stop.sh"
+							livenessProbe: ~
+							name: "role"
+							ports: ~
+							readinessProbe: ~
+							resources: ~
+							securityContext: ~
+							volumeMounts: ~
+						dnsPolicy: "ClusterFirst"
+						imagePullSecrets:
+						- name: "registry-credentials"
+						restartPolicy: "Always"
+						terminationGracePeriodSeconds: 600
+						volumes: ~
+		`, actual)
+	})
 }
 
 func TestGetAffinityBlock(t *testing.T) {

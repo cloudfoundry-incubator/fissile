@@ -720,12 +720,7 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:   "A_SECRET",
-			Secret: true,
-		},
-	}, ExportSettings{
+	settings := ExportSettings{
 		CreateHelmChart: true,
 		RoleManifest: &model.RoleManifest{
 			Roles: []*model.Role{
@@ -734,174 +729,132 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 				},
 			},
 		},
+	}
+
+	t.Run("Plain", func(t *testing.T) {
+		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+			&model.ConfigurationVariable{
+				Name:   "A_SECRET",
+				Secret: true,
+			},
+		}, settings)
+		if !assert.NoError(err) {
+			return
+		}
+
+		actual, err := testhelpers.RoundtripNode(ev, nil)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "A_SECRET"
+				valueFrom:
+					secretKeyRef:
+						key: "a-secret"
+						name: "secrets"
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+		`, actual)
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "A_SECRET"
-			valueFrom:
-				secretKeyRef:
-					key: "a-secret"
-					name: "secrets"
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-	`, actual)
-}
-
-func TestPodGetEnvVarsFromConfigSecretsGeneratedHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:   "A_SECRET",
-			Secret: true,
-			Generator: &model.ConfigurationVariableGenerator{
-				ID:        "no",
-				Type:      model.GeneratorTypePassword,
-				ValueType: "foo-login",
-			},
-		},
-	}, ExportSettings{
-		CreateHelmChart: true,
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
+	t.Run("Generated", func(t *testing.T) {
+		cv := []*model.ConfigurationVariable{
+			&model.ConfigurationVariable{
+				Name:   "A_SECRET",
+				Secret: true,
+				Generator: &model.ConfigurationVariableGenerator{
+					ID:        "no",
+					Type:      model.GeneratorTypePassword,
+					ValueType: "foo-login",
 				},
 			},
-		},
+		}
+
+		config := map[string]interface{}{
+			"Chart.Version":                          "CV",
+			"Values.kube.secrets_generation_counter": "SGC",
+		}
+
+		ev, err := getEnvVarsFromConfigs(cv, settings)
+		if !assert.NoError(err) {
+			return
+		}
+
+		t.Run("AsIs", func(t *testing.T) {
+			actual, err := testhelpers.RoundtripNode(ev, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				-	name: "A_SECRET"
+					valueFrom:
+						secretKeyRef:
+							key: "a-secret"
+							name: "secrets-CV-SGC"
+				
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+			`, actual)
+		})
+
+		t.Run("Overidden", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.secrets.A_SECRET": "user's choice",
+			}
+
+			actual, err := testhelpers.RoundtripNode(ev, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				-	name: "A_SECRET"
+					valueFrom:
+						secretKeyRef:
+							key: "a-secret"
+							name: "secrets"
+				
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+			`, actual)
+		})
+
+		cv[0].Immutable = true
+		ev, err = getEnvVarsFromConfigs(cv, settings)
+		if !assert.NoError(err) {
+			return
+		}
+
+		t.Run("Immutable", func(t *testing.T) {
+			actual, err := testhelpers.RoundtripNode(ev, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				-	name: "A_SECRET"
+					valueFrom:
+						secretKeyRef:
+							key: "a-secret"
+							name: "secrets-CV-SGC"
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+			`, actual)
+		})
 	})
-
-	config := map[string]interface{}{
-		"Chart.Version":                          "CV",
-		"Values.kube.secrets_generation_counter": "SGC",
-	}
-
-	actual, err := testhelpers.RoundtripNode(ev, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "A_SECRET"
-			valueFrom:
-				secretKeyRef:
-					key: "a-secret"
-					name: "secrets-CV-SGC"
-		
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-	`, actual)
-}
-
-func TestPodGetEnvVarsFromConfigSecretsGeneratedOverrideHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:   "A_SECRET",
-			Secret: true,
-			Generator: &model.ConfigurationVariableGenerator{
-				ID:        "no",
-				Type:      model.GeneratorTypePassword,
-				ValueType: "foo-login",
-			},
-		},
-	}, ExportSettings{
-		CreateHelmChart: true,
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
-				},
-			},
-		},
-	})
-
-	config := map[string]interface{}{
-		"Values.secrets.A_SECRET": "user's choice",
-	}
-
-	actual, err := testhelpers.RoundtripNode(ev, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "A_SECRET"
-			valueFrom:
-				secretKeyRef:
-					key: "a-secret"
-					name: "secrets"
-		
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-	`, actual)
-}
-
-func TestPodGetEnvVarsFromConfigSecretsGeneratedImmutableHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:      "A_SECRET",
-			Immutable: true,
-			Secret:    true,
-			Generator: &model.ConfigurationVariableGenerator{
-				ID:        "no",
-				Type:      model.GeneratorTypePassword,
-				ValueType: "foo-login",
-			},
-		},
-	}, ExportSettings{
-		CreateHelmChart: true,
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
-				},
-			},
-		},
-	})
-
-	config := map[string]interface{}{
-		"Chart.Version":                          "CV",
-		"Values.kube.secrets_generation_counter": "SGC",
-	}
-
-	actual, err := testhelpers.RoundtripNode(ev, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "A_SECRET"
-			valueFrom:
-				secretKeyRef:
-					key: "a-secret"
-					name: "secrets-CV-SGC"
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:    "SOMETHING",
-			Default: "or other",
-		},
-	}, ExportSettings{
+	settings := ExportSettings{
 		RoleManifest: &model.RoleManifest{
 			Roles: []*model.Role{
 				&model.Role{
@@ -909,85 +862,52 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 				},
 			},
 		},
-	})
-
-	actual, err := testhelpers.RoundtripNode(ev, nil)
-	if !assert.NoError(err) {
-		return
 	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-		-	name: "SOMETHING"
-			value: "or other"
-	`, actual)
-}
 
-func TestPodGetEnvVarsFromConfigNonSecretWithoutValueKube(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name: "SOMETHING",
-		},
-	}, ExportSettings{
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
-				},
+	t.Run("Present", func(t *testing.T) {
+		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+			&model.ConfigurationVariable{
+				Name:    "SOMETHING",
+				Default: "or other",
 			},
-		},
+		}, settings)
+
+		actual, err := testhelpers.RoundtripNode(ev, nil)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: "or other"
+		`, actual)
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-	`, actual)
-}
-
-func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndMissingHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name: "SOMETHING",
-			Type: model.CVTypeUser,
-		},
-	}, ExportSettings{
-		CreateHelmChart: true,
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
-				},
+	t.Run("Missing", func(t *testing.T) {
+		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
+			&model.ConfigurationVariable{
+				Name: "SOMETHING",
 			},
-		},
-	})
+		}, settings)
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-		-	name: "SOMETHING"
-			value: 
-	`, actual)
+		actual, err := testhelpers.RoundtripNode(ev, nil)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+		`, actual)
+	})
 }
 
-func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndPresentHelm(t *testing.T) {
+func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -1005,26 +925,48 @@ func TestPodGetEnvVarsFromConfigNonSecretUserOptionalAndPresentHelm(t *testing.T
 			},
 		},
 	})
-
-	config := map[string]interface{}{
-		"Values.env.SOMETHING": "else",
-	}
-
-	actual, err := testhelpers.RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-		-	name: "SOMETHING"
-			value: "else"
-	`, actual)
+
+	t.Run("Missing", func(t *testing.T) {
+		actual, err := testhelpers.RoundtripNode(ev, nil)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: 
+		`, actual)
+	})
+
+	t.Run("Present", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.env.SOMETHING": "else",
+		}
+
+		actual, err := testhelpers.RoundtripNode(ev, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: "else"
+		`, actual)
+	})
 }
 
-func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndMissingHelm(t *testing.T) {
+func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -1044,46 +986,31 @@ func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndMissingHelm(t *testing.T
 		},
 	})
 
-	_, err = testhelpers.RenderNode(ev, nil)
-	assert.EqualError(err, `template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
-}
-
-func TestPodGetEnvVarsFromConfigNonSecretUserRequiredAndPresentHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:     "SOMETHING",
-			Type:     model.CVTypeUser,
-			Required: true,
-		},
-	}, ExportSettings{
-		CreateHelmChart: true,
-		RoleManifest: &model.RoleManifest{
-			Roles: []*model.Role{
-				&model.Role{
-					Name: "foo",
-				},
-			},
-		},
+	t.Run("Missing", func(t *testing.T) {
+		_, err = testhelpers.RenderNode(ev, nil)
+		assert.EqualError(err,
+			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
 
-	config := map[string]interface{}{
-		"Values.env.SOMETHING": "needed",
-	}
+	t.Run("Present", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.env.SOMETHING": "needed",
+		}
 
-	actual, err := testhelpers.RoundtripNode(ev, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		-	name: "KUBERNETES_NAMESPACE"
-			valueFrom:
-				fieldRef:
-					fieldPath: "metadata.namespace"
-		-	name: "SOMETHING"
-			value: "needed"
-	`, actual)
+		actual, err := testhelpers.RoundtripNode(ev, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: "needed"
+		`, actual)
+	})
 }
 
 func TestPodGetContainerLivenessProbe(t *testing.T) {
@@ -1568,7 +1495,7 @@ func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 	return podTestLoadRoleFrom(assert, roleName, "pods.yml")
 }
 
-func TestPodPreFlight(t *testing.T) {
+func TestPodPreFlightKube(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1664,7 +1591,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 	`, actual)
 }
 
-func TestPodPostFlight(t *testing.T) {
+func TestPodPostFlightKube(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "post-role")
 	if role == nil {
@@ -1761,7 +1688,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 	`, actual)
 }
 
-func TestPodMemory(t *testing.T) {
+func TestPodMemoryKube(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1801,7 +1728,7 @@ func TestPodMemory(t *testing.T) {
 	`, actual)
 }
 
-func TestPodMemoryDisabledHelm(t *testing.T) {
+func TestPodMemoryHelmDisabled(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1868,7 +1795,7 @@ func TestPodMemoryDisabledHelm(t *testing.T) {
 	`, actual)
 }
 
-func TestPodMemoryActiveHelm(t *testing.T) {
+func TestPodMemoryHelmActive(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1941,7 +1868,7 @@ func TestPodMemoryActiveHelm(t *testing.T) {
 	`, actual)
 }
 
-func TestPodCPU(t *testing.T) {
+func TestPodCPUKube(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1979,7 +1906,7 @@ func TestPodCPU(t *testing.T) {
 	`, actual)
 }
 
-func TestPodCPUDisabledHelm(t *testing.T) {
+func TestPodCPUHelmDisabled(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -2046,7 +1973,7 @@ func TestPodCPUDisabledHelm(t *testing.T) {
 	`, actual)
 }
 
-func TestPodCPUActiveHelm(t *testing.T) {
+func TestPodCPUAHelmActive(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -2067,10 +1994,11 @@ func TestPodCPUActiveHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
-		"Values.sizing.cpu.requests":            "true",
-		"Values.sizing.pre_role.cpu.request":    "1",
-		"Values.sizing.cpu.limits":              "true",
-		"Values.sizing.pre_role.cpu.limit":      "10",
+
+		"Values.sizing.cpu.requests":         "true",
+		"Values.sizing.pre_role.cpu.request": "1",
+		"Values.sizing.cpu.limits":           "true",
+		"Values.sizing.pre_role.cpu.limit":   "10",
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -2176,8 +2104,6 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 		CreateHelmChart: true,
 		Repository:      "theRepo",
 		Opinions:        model.NewEmptyOpinions(),
-		Organization:    "O",
-		Registry:        "R",
 	}
 	grapher := FakeGrapher{}
 
@@ -2185,7 +2111,25 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 
 	assert.Nil(err)
 	assert.NotNil(name)
-	assert.Equal(`{{ .Values.kube.registry.hostname }}/{{ .Values.kube.organization }}/theRepo-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c`, name)
+
+	// Wrapping the name into a helm node for rendering
+	// (avoid tests against the raw template)
+
+	nameNode := helm.NewNode(name)
+
+	config := map[string]interface{}{
+		"Values.kube.registry.hostname": "R",
+		"Values.kube.organization":      "O",
+	}
+
+	actual, err := testhelpers.RoundtripNode(nameNode, config)
+	if !assert.NoError(err) {
+		return
+	}
+
+	testhelpers.IsYAMLEqualString(assert, `---
+		R/O/theRepo-myrole:d0aca33ba5bc55dce697d9d57b46e1b23688659c
+	`, actual)
 }
 
 func TestPodGetContainerPortsKube(t *testing.T) {

@@ -35,7 +35,7 @@ func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model
 	return manifest, role
 }
 
-func TestServiceOK(t *testing.T) {
+func TestServiceKube(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -78,7 +78,7 @@ func TestServiceOK(t *testing.T) {
 	`, actual)
 }
 
-func TestServiceHelmOKDefaults(t *testing.T) {
+func TestServiceHelm(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -99,82 +99,66 @@ func TestServiceHelmOKDefaults(t *testing.T) {
 	require.NotNil(t, service)
 	assert.Nil(service.Get("spec", "clusterIP"))
 
-	actual, err := testhelpers.RoundtripNode(service, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole"
-		spec:
-			ports:
-			-	name: "http"
-				port: 80
-				protocol: "TCP"
-				targetPort: "http"
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: "https"
-			selector:
-				skiff-role-name: "myrole"
-			type:	ClusterIP
-	`, actual)
-}
+	t.Run("ClusterIP", func(t *testing.T) {
+		actual, err := testhelpers.RoundtripNode(service, nil)
+		if !assert.NoError(err) {
+			return
+		}
 
-func TestServiceHelmOKConfigured(t *testing.T) {
-	assert := assert.New(t)
-
-	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
-	if manifest == nil || role == nil {
-		return
-	}
-
-	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
-	service, err := NewClusterIPService(role, false, false, ExportSettings{
-		CreateHelmChart: true,
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: "http"
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: "https"
+				selector:
+					skiff-role-name: "myrole"
+				type:	ClusterIP
+		`, actual)
 	})
-	if !assert.NoError(err) {
-		return
-	}
-	require.NotNil(t, service)
-	assert.Nil(service.Get("spec", "clusterIP"))
 
-	config := map[string]interface{}{
-		"Values.services.loadbalanced": "true",
-	}
+	t.Run("LoadBalancer", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": "true",
+		}
 
-	actual, err := testhelpers.RoundtripNode(service, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole"
-		spec:
-			ports:
-			-	name: "http"
-				port: 80
-				protocol: "TCP"
-				targetPort: "http"
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: "https"
-			selector:
-				skiff-role-name: "myrole"
-			type:	LoadBalancer
-	`, actual)
+		actual, err := testhelpers.RoundtripNode(service, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: "http"
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: "https"
+				selector:
+					skiff-role-name: "myrole"
+				type:	LoadBalancer
+		`, actual)
+	})
 }
 
-func TestHeadlessServiceOK(t *testing.T) {
+func TestHeadlessServiceKube(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -191,7 +175,6 @@ func TestHeadlessServiceOK(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
 	actual, err := testhelpers.RoundtripNode(service, nil)
@@ -220,7 +203,7 @@ func TestHeadlessServiceOK(t *testing.T) {
 	`, actual)
 }
 
-func TestHeadlessServiceHelmOKDefaults(t *testing.T) {
+func TestHeadlessServiceHelm(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -241,83 +224,67 @@ func TestHeadlessServiceHelmOKDefaults(t *testing.T) {
 	require.NotNil(t, service)
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
-	actual, err := testhelpers.RoundtripNode(service, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole-set"
-		spec:
-			clusterIP: "None"
-			ports:
-			-	name: "http"
-				port: 80
-				protocol: "TCP"
-				targetPort: 0
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: 0
-			selector:
-				skiff-role-name: "myrole"
-			type:	ClusterIP
-	`, actual)
-}
+	t.Run("ClusterIP", func(t *testing.T) {
+		actual, err := testhelpers.RoundtripNode(service, nil)
+		if !assert.NoError(err) {
+			return
+		}
 
-func TestHeadlessServiceHelmOKConfigured(t *testing.T) {
-	assert := assert.New(t)
-
-	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
-	if manifest == nil || role == nil {
-		return
-	}
-
-	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
-	service, err := NewClusterIPService(role, true, false, ExportSettings{
-		CreateHelmChart: true,
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-set"
+			spec:
+				clusterIP: "None"
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 0
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 0
+				selector:
+					skiff-role-name: "myrole"
+				type:	ClusterIP
+		`, actual)
 	})
-	if !assert.NoError(err) {
-		return
-	}
-	require.NotNil(t, service)
-	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
-	config := map[string]interface{}{
-		"Values.services.loadbalanced": "true",
-	}
+	t.Run("LoadBalancer", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": "true",
+		}
 
-	actual, err := testhelpers.RoundtripNode(service, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole-set"
-		spec:
-			ports:
-			-	name: "http"
-				port: 80
-				protocol: "TCP"
-				targetPort: 0
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: 0
-			selector:
-				skiff-role-name: "myrole"
-			type:	LoadBalancer
-	`, actual)
+		actual, err := testhelpers.RoundtripNode(service, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-set"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 0
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 0
+				selector:
+					skiff-role-name: "myrole"
+				type:	LoadBalancer
+		`, actual)
+	})
 }
 
-func TestPublicServiceOK(t *testing.T) {
+func TestPublicServiceKube(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -334,7 +301,6 @@ func TestPublicServiceOK(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
 	actual, err := testhelpers.RoundtripNode(service, nil)
@@ -357,7 +323,7 @@ func TestPublicServiceOK(t *testing.T) {
 	`, actual)
 }
 
-func TestPublicServiceHelmOKDefaults(t *testing.T) {
+func TestPublicServiceHelm(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -377,77 +343,60 @@ func TestPublicServiceHelmOKDefaults(t *testing.T) {
 	}
 	require.NotNil(t, service)
 
-	// Well, not quite just defaults. Provide the one piece of
-	// information required by the template to not fail rendering.
-	config := map[string]interface{}{
-		"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
-	}
+	t.Run("ClusterIP", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
+		}
 
-	actual, err := testhelpers.RoundtripNode(service, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole-public"
-		spec:
-			externalIPs: "[127.0.0.1,127.0.0.2]"
-			ports:
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: "https"
-			selector:
-				skiff-role-name: "myrole"
-			type:	ClusterIP
-	`, actual)
-}
+		actual, err := testhelpers.RoundtripNode(service, config)
+		if !assert.NoError(err) {
+			return
+		}
 
-func TestPublicServiceHelmOKConfigured(t *testing.T) {
-	assert := assert.New(t)
-
-	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
-	if manifest == nil || role == nil {
-		return
-	}
-
-	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
-	service, err := NewClusterIPService(role, false, true, ExportSettings{
-		CreateHelmChart: true,
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-public"
+			spec:
+				externalIPs: "[127.0.0.1,127.0.0.2]"
+				ports:
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: "https"
+				selector:
+					skiff-role-name: "myrole"
+				type:	ClusterIP
+		`, actual)
 	})
-	if !assert.NoError(err) {
-		return
-	}
-	require.NotNil(t, service)
 
-	config := map[string]interface{}{
-		"Values.services.loadbalanced": "true",
-		"Values.kube.external_ips":     "",
-	}
+	t.Run("LoadBalanced", func(t *testing.T) {
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": "true",
+			"Values.kube.external_ips":     "",
+		}
 
-	actual, err := testhelpers.RoundtripNode(service, config)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "Service"
-		metadata:
-			name: "myrole-public"
-		spec:
-			externalIPs: ""
-			ports:
-			-	name: "https"
-				port: 443
-				protocol: "TCP"
-				targetPort: "https"
-			selector:
-				skiff-role-name: "myrole"
-			type:	LoadBalancer
-	`, actual)
+		actual, err := testhelpers.RoundtripNode(service, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-public"
+			spec:
+				externalIPs: ""
+				ports:
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: "https"
+				selector:
+					skiff-role-name: "myrole"
+				type:	LoadBalancer
+		`, actual)
+	})
 }
