@@ -97,7 +97,6 @@ func TestServiceHelmOKDefaults(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
 	actual, err := testhelpers.RoundtripNode(service, nil)
@@ -144,7 +143,6 @@ func TestServiceHelmOKConfigured(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Nil(service.Get("spec", "clusterIP"))
 
 	config := map[string]interface{}{
@@ -241,7 +239,6 @@ func TestHeadlessServiceHelmOKDefaults(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
 	actual, err := testhelpers.RoundtripNode(service, nil)
@@ -289,7 +286,6 @@ func TestHeadlessServiceHelmOKConfigured(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
 	config := map[string]interface{}{
@@ -380,7 +376,6 @@ func TestPublicServiceHelmOKDefaults(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 
 	// Well, not quite just defaults. Provide the one piece of
 	// information required by the template to not fail rendering.
@@ -429,7 +424,6 @@ func TestPublicServiceHelmOKConfigured(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}", service.Get("spec", "type").String())
 
 	config := map[string]interface{}{
 		"Values.services.loadbalanced": "true",
