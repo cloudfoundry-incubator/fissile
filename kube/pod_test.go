@@ -185,72 +185,7 @@ func TestPodGetVolumes(t *testing.T) {
 	}
 }
 
-func TestPodGetVolumesHelmDefault(t *testing.T) {
-	assert := assert.New(t)
-	role := podTemplateTestLoadRole(assert)
-	if role == nil {
-		return
-	}
-
-	claims := getVolumeClaims(role, true)
-	assert.Len(claims, 2, "expected two claims")
-
-	var persistentVolume, sharedVolume *model.RoleRunVolume
-	for _, volume := range role.Run.Volumes {
-		switch volume.Type {
-		case model.VolumeTypePersistent:
-			persistentVolume = volume
-		case model.VolumeTypeShared:
-			sharedVolume = volume
-		}
-	}
-
-	var persistentClaim, sharedClaim helm.Node
-	for _, claim := range claims {
-		switch claim.Get("metadata", "name").String() {
-		case string(persistentVolume.Tag):
-			persistentClaim = claim
-		case string(sharedVolume.Tag):
-			sharedClaim = claim
-		default:
-			assert.Fail("Got unexpected claim", "%s", claim)
-		}
-	}
-
-	actual, err := testhelpers.RoundtripNode(persistentClaim, nil)
-	if assert.NoError(err) {
-		testhelpers.IsYAMLEqualString(assert, `---
-		metadata:
-			name: "persistent-volume"
-			annotations:
-				volume.beta.kubernetes.io/storage-class: 
-		spec:
-			accessModes:
-			-	"ReadWriteOnce"
-			resources:
-				requests:
-					storage: "<no value>G"
-		`, actual)
-	}
-
-	actual, err = testhelpers.RoundtripNode(sharedClaim, nil)
-	if assert.NoError(err) {
-		testhelpers.IsYAMLEqualString(assert, `---
-		metadata:
-			name: "shared-volume"
-			annotations:
-				volume.beta.kubernetes.io/storage-class: 
-		spec:
-			accessModes:
-			-	"ReadWriteMany"
-			resources:
-				requests:
-					storage: "<no value>G"
-		`, actual)
-	}
-}
-
-func TestPodGetVolumesHelmConfigured(t *testing.T) {
+func TestPodGetVolumesHelm(t *testing.T) {
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
