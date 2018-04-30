@@ -101,7 +101,7 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 		return
 	}
 
-	mounts := getNonClaimVolumes(role)
+	mounts := getNonClaimVolumes(role, true)
 	assert.NotNil(mounts)
 
 	actual, err := testhelpers.RoundtripNode(mounts, nil)
@@ -270,7 +270,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	for caseName, caseOverrides := range cases {
 		t.Run(caseName, func(t *testing.T) {
 
-			volumeMountNodes := getVolumeMounts(role)
+			volumeMountNodes := getVolumeMounts(role, true)
 			volumeMounts, err := testhelpers.RoundtripNode(volumeMountNodes, caseOverrides)
 			if !assert.NoError(t, err) {
 				return
@@ -1883,7 +1883,7 @@ func TestPodCPUKube(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	actual, err := testhelpers.RoundtripNode(pod, nil)
+	actual, err := testhelpers.RoundtripKube(pod)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2060,7 +2060,7 @@ func TestGetSecurityContext(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripNode(sc, nil)
+	actual, err := testhelpers.RoundtripKube(sc)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2145,7 +2145,7 @@ func TestPodGetContainerPortsKube(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(ports)
 
-	actual, err := testhelpers.RoundtripNode(ports, nil)
+	actual, err := testhelpers.RoundtripKube(ports)
 	if !assert.NoError(err) {
 		return
 	}

@@ -18,7 +18,7 @@ func TestMakeRegistryCredentialsKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripNode(registryCredentials, nil)
+	actual, err := testhelpers.RoundtripKube(registryCredentials)
 	if !assert.NoError(err) {
 		return
 	}

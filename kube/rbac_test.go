@@ -25,7 +25,7 @@ func TestNewRBACAccountKube(t *testing.T) {
 	}
 
 	rbacAccount := resources[0]
-	actual, err := testhelpers.RoundtripNode(rbacAccount, nil)
+	actualAccount, err := testhelpers.RoundtripKube(rbacAccount)
 	if !assert.NoError(err) {
 		return
 	}
@@ -34,11 +34,10 @@ func TestNewRBACAccountKube(t *testing.T) {
 		kind: "ServiceAccount"
 		metadata:
 			name: "the-name"
-	`, actual)
+	`, actualAccount)
 
 	rbacRole := resources[1]
-	// config: .Values.kube.auth -- helm only ("", "rbac")
-	actual, err = testhelpers.RoundtripNode(rbacRole, nil)
+	actualRole, err := testhelpers.RoundtripKube(rbacRole)
 	if !assert.NoError(err) {
 		return
 	}
@@ -54,7 +53,7 @@ func TestNewRBACAccountKube(t *testing.T) {
 			kind: "Role"
 			name: "a-role"
 			apiGroup: "rbac.authorization.k8s.io"
-	`, actual)
+	`, actualRole)
 }
 
 func TestNewRBACAccountHelmNoAuth(t *testing.T) {
@@ -79,21 +78,21 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 
 	t.Run("NoAuth", func(t *testing.T) {
 		// config: .Values.kube.auth -- helm only ("", "rbac")
-		actual, err := testhelpers.RoundtripNode(rbacAccount, nil)
+		actualAccount, err := testhelpers.RoundtripNode(rbacAccount, nil)
 		if !assert.NoError(err) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
-		`, actual)
+		`, actualAccount)
 
 		// config: .Values.kube.auth helm only ("", "rbac")
-		actual, err = testhelpers.RoundtripNode(rbacRole, nil)
+		actualRole, err := testhelpers.RoundtripNode(rbacRole, nil)
 		if !assert.NoError(err) {
 			return
 		}
 
 		testhelpers.IsYAMLEqualString(assert, `---
-		`, actual)
+		`, actualRole)
 	})
 
 	t.Run("HasAuth", func(t *testing.T) {
@@ -101,7 +100,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 			"Values.kube.auth": "rbac",
 		}
 
-		actual, err := testhelpers.RoundtripNode(rbacAccount, config)
+		actualAccount, err := testhelpers.RoundtripNode(rbacAccount, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -111,9 +110,9 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
-		`, actual)
+		`, actualAccount)
 
-		actual, err = testhelpers.RoundtripNode(rbacRole, config)
+		actualRole, err := testhelpers.RoundtripNode(rbacRole, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -130,7 +129,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 				kind: "Role"
 				name: "a-role"
 				apiGroup: "rbac.authorization.k8s.io"
-		`, actual)
+		`, actualRole)
 	})
 }
 
@@ -151,8 +150,7 @@ func TestNewRBACRoleKube(t *testing.T) {
 		return
 	}
 
-	// config: .Values.kube.auth true/false - Helm only
-	actual, err := testhelpers.RoundtripNode(rbacRole, nil)
+	actual, err := testhelpers.RoundtripKube(rbacRole)
 	if !assert.NoError(err) {
 		return
 	}

@@ -105,7 +105,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	container.Add("name", role.Name)
 	container.Add("image", image)
 	container.Add("ports", ports)
-	container.Add("volumeMounts", getVolumeMounts(role))
+	container.Add("volumeMounts", getVolumeMounts(role, settings.CreateHelmChart))
 	container.Add("env", vars)
 	container.Add("resources", resources)
 	container.Add("securityContext", securityContext)
@@ -124,7 +124,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 	spec.Add("containers", helm.NewList(container))
 	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
 	spec.Add("dnsPolicy", "ClusterFirst")
-	spec.Add("volumes", getNonClaimVolumes(role))
+	spec.Add("volumes", getNonClaimVolumes(role, settings.CreateHelmChart))
 	spec.Add("restartPolicy", "Always")
 	if role.Run.ServiceAccount != "" {
 		// This role requires a custom service account
@@ -239,11 +239,11 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
-func getVolumeMounts(role *model.Role) helm.Node {
+func getVolumeMounts(role *model.Role, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
 		mount := helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
-		if volume.Type == model.VolumeTypeHost {
+		if volume.Type == model.VolumeTypeHost && createHelmChart {
 			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
 		}
 		mounts = append(mounts, mount)
@@ -271,15 +271,19 @@ func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) 
 }
 
 // getNonClaimVolumes returns the list of pod volumes that are _not_ bound with volume claims
-func getNonClaimVolumes(role *model.Role) helm.Node {
+func getNonClaimVolumes(role *model.Role, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
 		switch volume.Type {
 		case model.VolumeTypeHost:
 			hostPathInfo := helm.NewMapping("path", volume.Path)
-			hostPathInfo.Add("type", "Directory", helm.Block(fmt.Sprintf("if (%s)", minKubeVersion(1, 8))))
+			if createHelmChart {
+				hostPathInfo.Add("type", "Directory", helm.Block(fmt.Sprintf("if (%s)", minKubeVersion(1, 8))))
+			}
 			volumeEntry := helm.NewMapping("name", volume.Tag, "hostPath", hostPathInfo)
-			volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
+			if createHelmChart {
+				volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
+			}
 			mounts = append(mounts, volumeEntry)
 		}
 	}

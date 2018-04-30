@@ -18,7 +18,7 @@ func TestMakeSecretsEmptyKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripNode(secret, nil)
+	actual, err := testhelpers.RoundtripKube(secret)
 	if !assert.NoError(err) {
 		return
 	}
@@ -138,7 +138,7 @@ func TestMakeSecretsKube(t *testing.T) {
 	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
 	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
-	actualh, err := testhelpers.RoundtripNode(secret, nil)
+	actualh, err := testhelpers.RoundtripKube(secret)
 	if !assert.NoError(err) {
 		return
 	}

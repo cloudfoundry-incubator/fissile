@@ -52,10 +52,8 @@ func TestServiceKube(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("ClusterIP", service.Get("spec", "type").String())
-	assert.Nil(service.Get("spec", "clusterIP"))
 
-	actual, err := testhelpers.RoundtripNode(service, nil)
+	actual, err := testhelpers.RoundtripKube(service)
 	if !assert.NoError(err) {
 		return
 	}
@@ -97,7 +95,6 @@ func TestServiceHelm(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Nil(service.Get("spec", "clusterIP"))
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		actual, err := testhelpers.RoundtripNode(service, nil)
@@ -175,9 +172,8 @@ func TestHeadlessServiceKube(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
-	actual, err := testhelpers.RoundtripNode(service, nil)
+	actual, err := testhelpers.RoundtripKube(service)
 	if !assert.NoError(err) {
 		return
 	}
@@ -222,7 +218,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Equal("None", service.Get("spec", "clusterIP").String())
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		actual, err := testhelpers.RoundtripNode(service, nil)
@@ -301,9 +296,8 @@ func TestPublicServiceKube(t *testing.T) {
 		return
 	}
 	require.NotNil(t, service)
-	assert.Nil(service.Get("spec", "clusterIP"))
 
-	actual, err := testhelpers.RoundtripNode(service, nil)
+	actual, err := testhelpers.RoundtripKube(service)
 	if !assert.NoError(err) {
 		return
 	}

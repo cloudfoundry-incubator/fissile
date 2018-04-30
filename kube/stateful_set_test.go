@@ -80,7 +80,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	items = append(items, statefulset)
 	objects := helm.NewMapping("items", helm.NewNode(items))
 
-	actual, err := testhelpers.RoundtripNode(objects, nil)
+	actual, err := testhelpers.RoundtripKube(objects)
 	if !assert.NoError(err) {
 		return
 	}
@@ -164,7 +164,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
 
-func TestStatefulSetVolumes(t *testing.T) {
+func TestStatefulSetVolumesKube(t *testing.T) {
 	assert := assert.New(t)
 
 	manifest, role := statefulSetTestLoadManifest(assert, "volumes.yml")
@@ -179,7 +179,91 @@ func TestStatefulSetVolumes(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripNode(statefulset, nil)
+	actual, err := testhelpers.RoundtripKube(statefulset)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expected := `---
+		metadata:
+			name: myrole
+		spec:
+			replicas: 1
+			serviceName: myrole-set
+			template:
+				metadata:
+					labels:
+						skiff-role-name: myrole
+					name: myrole
+				spec:
+					containers:
+					-
+						name: myrole
+						volumeMounts:
+						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+						-
+							name: persistent-volume
+							mountPath: /mnt/persistent
+						-
+							name: shared-volume
+							mountPath: /mnt/shared
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+			volumeClaimTemplates:
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: persistent
+						name: persistent-volume
+					spec:
+						accessModes: [ReadWriteOnce]
+						resources:
+							requests:
+								storage: 5G
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: shared
+						name: shared-volume
+					spec:
+						accessModes: [ReadWriteMany]
+						resources:
+							requests:
+								storage: 40G
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+}
+
+func TestStatefulSetVolumesHelm(t *testing.T) {
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "volumes.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	statefulset, _, err := NewStatefulSet(role, ExportSettings{
+		Opinions:        model.NewEmptyOpinions(),
+		CreateHelmChart: true,
+	}, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	config := map[string]interface{}{
+		"Values.sizing.myrole.count":                        "1",
+		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
+		"Values.sizing.myrole.disk_sizes.shared_volume":     "40",
+		"Values.kube.storage_class.shared":                  "shared",
+		"Values.kube.storage_class.persistent":              "persistent",
+	}
+
+	actual, err := testhelpers.RoundtripNode(statefulset, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -242,6 +326,7 @@ func TestStatefulSetVolumes(t *testing.T) {
 	// Check that not having hostpath disables the hostpath volume
 	overrides := map[string]interface{}{
 		"Values.kube.hostpath_available": false,
+		"Values.sizing.myrole.count":     "1",
 	}
 	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
 	if !assert.NoError(err) {

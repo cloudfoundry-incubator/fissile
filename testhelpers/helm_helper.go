@@ -60,7 +60,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	tmpl, err := template.New("").Funcs(functions).Parse(string(helmConfig.Bytes()))
 
 	if err != nil {
-		fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))
+		//fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))
 		return nil, err
 	}
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {
@@ -80,6 +80,26 @@ func RoundtripNode(node helm.Node, config interface{}) (interface{}, error) {
 
 	var actual interface{}
 	if err := yaml.Unmarshal(actualBytes, &actual); err != nil {
+		return nil, err
+	}
+	return actual, nil
+}
+
+// RoundtripKube serializes and then unserializes a helm node without
+// performing any type of template resolution. As such the
+// unserialization step will only work if the helm node has no
+// templating (blocks), i.e. is destined for a kube output.
+func RoundtripKube(node helm.Node) (interface{}, error) {
+	var yamlConfig bytes.Buffer
+
+	if err := helm.NewEncoder(&yamlConfig).Encode(node); err != nil {
+		return nil, err
+	}
+
+	//fmt.Printf("YAML FAIL\n%s\nEXEC END\n", string(yamlConfig.Bytes()))
+
+	var actual interface{}
+	if err := yaml.Unmarshal(yamlConfig.Bytes(), &actual); err != nil {
 		return nil, err
 	}
 	return actual, nil

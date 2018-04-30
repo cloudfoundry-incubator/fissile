@@ -51,7 +51,7 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripNode(job, nil)
+	actual, err := testhelpers.RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
@@ -87,7 +87,7 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripNode(job, nil)
+	actual, err := testhelpers.RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
@@ -124,7 +124,7 @@ func TestJobWithAnnotations(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripNode(job, nil)
+	actual, err := testhelpers.RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
