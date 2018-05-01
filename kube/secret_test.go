@@ -10,19 +10,10 @@ import (
 	"github.com/SUSE/fissile/testhelpers"
 )
 
-func TestMakeSecretsEmptyKube(t *testing.T) {
+func TestMakeSecretsEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	secret, err := MakeSecrets(model.CVMap{}, ExportSettings{})
-	if !assert.NoError(err) {
-		return
-	}
-
-	actual, err := testhelpers.RoundtripKube(secret)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
+	expected := `---
 		apiVersion: "v1"
 		data: {}
 		kind: "Secret"
@@ -30,32 +21,33 @@ func TestMakeSecretsEmptyKube(t *testing.T) {
 			name: "secrets"
 			labels:
 				skiff-role-name: "secrets"
-	`, actual)
-}
+	`
 
-func TestMakeSecretsEmptyHelm(t *testing.T) {
-	assert := assert.New(t)
-
-	secret, err := MakeSecrets(model.CVMap{}, ExportSettings{
-		CreateHelmChart: true,
+	t.Run("Kube", func(t *testing.T) {
+		secret, err := MakeSecrets(model.CVMap{}, ExportSettings{})
+		if !assert.NoError(err) {
+			return
+		}
+		actual, err := testhelpers.RoundtripKube(secret)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, expected, actual)
 	})
-	if !assert.NoError(err) {
-		return
-	}
 
-	actual, err := testhelpers.RoundtripNode(secret, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		data: {}
-		kind: "Secret"
-		metadata:
-			name: "secrets"
-			labels:
-				skiff-role-name: "secrets"
-	`, actual)
+	t.Run("Helm", func(t *testing.T) {
+		secret, err := MakeSecrets(model.CVMap{}, ExportSettings{
+			CreateHelmChart: true,
+		})
+		if !assert.NoError(err) {
+			return
+		}
+		actual, err := testhelpers.RoundtripNode(secret, nil)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, expected, actual)
+	})
 }
 
 // name
