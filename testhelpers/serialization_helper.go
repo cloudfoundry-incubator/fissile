@@ -10,7 +10,66 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// IsYAMLSubset asserts that all items in the expected properties are in the actual properties
+// Dedent converts Go-specific indentation (tabs) into proper YAML
+// indentation.
+func Dedent(x string) string {
+	x = strings.Replace(x, "-\t", "-  ", -1)
+	x = strings.Replace(x, "\t", "   ", -1)
+	// fmt.Printf("YAML_________\n%s\n_____END\n", x)
+	return x
+}
+
+// IsYAMLEqualString asserts that all items in the expected properties
+// are in the actual properties, and vice versa. The expected
+// properties are specified as YAML string. Go-specific indentation in
+// the string (tabs) is replaced with proper YAML indentation.
+func IsYAMLEqualString(assert *assert.Assertions, expected string, actual interface{}) bool {
+	var expectedYAML interface{}
+	if !assert.NoError(yaml.Unmarshal([]byte(Dedent(expected)),
+		&expectedYAML)) {
+		return false
+	}
+	return IsYAMLEqual(assert, expectedYAML, actual)
+}
+
+// IsYAMLEqual asserts that all items in the expected properties are
+// in the actual properties, and vice versa.
+func IsYAMLEqual(assert *assert.Assertions, expected, actual interface{}) bool {
+	result := isYAMLSubsetInner(assert, expected, actual, nil)
+	if !result {
+		buf, err := yaml.Marshal(actual)
+		if assert.NoError(err) {
+			_, err := os.Stderr.Write(buf)
+			assert.NoError(err)
+		}
+	}
+	result = isYAMLSubsetInner(assert, actual, expected, nil)
+	if !result {
+		buf, err := yaml.Marshal(actual)
+		if assert.NoError(err) {
+			_, err := os.Stderr.Write(buf)
+			assert.NoError(err)
+		}
+	}
+	return result
+}
+
+// IsYAMLSubsetString asserts that all items in the expected
+// properties are in the actual properties.  Note, the actual
+// properties may contain more than expected. The expected properties
+// are specified as YAML string. Go-specific indentation in the string
+// (tabs) is replaced with proper YAML indentation.
+func IsYAMLSubsetString(assert *assert.Assertions, expected string, actual interface{}) bool {
+	var expectedYAML interface{}
+	if !assert.NoError(yaml.Unmarshal([]byte(Dedent(expected)),
+		&expectedYAML)) {
+		return false
+	}
+	return IsYAMLSubset(assert, expectedYAML, actual)
+}
+
+// IsYAMLSubset asserts that all items in the expected properties are in the actual properties.
+// Note, the actual properties may contain more than expected.
 func IsYAMLSubset(assert *assert.Assertions, expected, actual interface{}) bool {
 	result := isYAMLSubsetInner(assert, expected, actual, nil)
 	if !result {

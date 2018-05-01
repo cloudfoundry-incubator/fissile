@@ -2,7 +2,9 @@ package testhelpers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -45,11 +47,24 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	if err := helm.NewEncoder(&helmConfig).Encode(node); err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(helmConfig.Bytes()))
+
+	// The functions added here are implementations of the helm
+	// functions used by fissile-generated templates. While we get
+	// most of them from sprig we need two which are implemented
+	// by helm itself. We provide fakes.
+
+	functions := sprig.TxtFuncMap()
+	functions["include"] = renderInclude
+	functions["required"] = renderRequired
+
+	tmpl, err := template.New("").Funcs(functions).Parse(string(helmConfig.Bytes()))
+
 	if err != nil {
+		//fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))
 		return nil, err
 	}
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {
+		fmt.Printf("TEMPLATE EXEC FAIL\n%s\nEXEC END\n", string(helmConfig.Bytes()))
 		return nil, err
 	}
 	return yamlConfig.Bytes(), nil
@@ -70,6 +85,26 @@ func RoundtripNode(node helm.Node, config interface{}) (interface{}, error) {
 	return actual, nil
 }
 
+// RoundtripKube serializes and then unserializes a helm node without
+// performing any type of template resolution. As such the
+// unserialization step will only work if the helm node has no
+// templating (blocks), i.e. is destined for a kube output.
+func RoundtripKube(node helm.Node) (interface{}, error) {
+	var yamlConfig bytes.Buffer
+
+	if err := helm.NewEncoder(&yamlConfig).Encode(node); err != nil {
+		return nil, err
+	}
+
+	//fmt.Printf("YAML FAIL\n%s\nEXEC END\n", string(yamlConfig.Bytes()))
+
+	var actual interface{}
+	if err := yaml.Unmarshal(yamlConfig.Bytes(), &actual); err != nil {
+		return nil, err
+	}
+	return actual, nil
+}
+
 // mergeMap returns the input map, but with an override applied.  An override
 // is a key path and a value to replace with.
 func mergeMap(obj map[string]interface{}, value interface{}, key ...string) map[string]interface{} {
@@ -85,4 +120,33 @@ func mergeMap(obj map[string]interface{}, value interface{}, key ...string) map[
 	}
 	obj[key[0]] = mergeMap(obj[key[0]].(map[string]interface{}), value, key[1:]...)
 	return obj
+}
+
+// Helper functions for the template engine. Semi-snarfed from helm
+// for our testing. Avoid vendoring of the whole helm rendering
+// engine.
+
+// RenderEncodeBase64 provides easy base64 encoding for strings.
+func RenderEncodeBase64(in string) string {
+	return base64.StdEncoding.EncodeToString([]byte(in))
+}
+
+func renderRequired(msg string, v interface{}) (interface{}, error) {
+	if v == nil {
+		return v, fmt.Errorf(msg)
+	} else if _, ok := v.(string); ok {
+		if v == "" {
+			return v, fmt.Errorf(msg)
+		}
+	}
+	return v, nil
+}
+
+func renderInclude(name string, data interface{}) (string, error) {
+	// Fake include -- Actually implementing this function would
+	// require adding the handling of `associated` templates.  A
+	// first run at this generated a stack overflow.  The fake
+	// simply shows what path/name would have been included.
+	name = filepath.Base(name)
+	return name, nil
 }
