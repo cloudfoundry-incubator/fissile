@@ -110,7 +110,7 @@ func TestMakeSecretsKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RenderNode(secret, nil)
+	renderedYAML, err := testhelpers.RenderNode(secret, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -121,7 +121,7 @@ func TestMakeSecretsKube(t *testing.T) {
 	// Check the comments, and also that they are associated with
 	// the correct variables.
 
-	astring := string(actual)
+	astring := string(renderedYAML)
 
 	assert.Contains(astring, fmt.Sprintf("# <<<don't change>>>\n  const: \"%s\"", varConstB64))
 	assert.Contains(astring, "# <<<a description>>>\n  desc: \"\"")
@@ -130,7 +130,7 @@ func TestMakeSecretsKube(t *testing.T) {
 	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
 	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
-	actualh, err := testhelpers.RoundtripKube(secret)
+	actual, err := testhelpers.RoundtripKube(secret)
 	if !assert.NoError(err) {
 		return
 	}
@@ -148,7 +148,7 @@ func TestMakeSecretsKube(t *testing.T) {
 			name: "secrets"
 			labels:
 				skiff-role-name: "secrets"
-	`, varConstB64, varValuedB64), actualh)
+	`, varConstB64, varValuedB64), actual)
 }
 
 func TestMakeSecretsHelm(t *testing.T) {
@@ -193,7 +193,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 			"Values.secrets.genie":  varGenie,
 		}
 
-		actual, err := testhelpers.RenderNode(secret, config)
+		renderedYAML, err := testhelpers.RenderNode(secret, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -201,7 +201,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 		// Check the comments, and also that they are associated with
 		// the correct variables.
 
-		astring := string(actual)
+		astring := string(renderedYAML)
 
 		assert.Contains(astring, "# <<<don't change>>>\n  # This value is")
 		assert.Contains(astring, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: \"%s\"", varConstB64))
@@ -213,7 +213,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		// And check overall structure
 
-		actualh, err := testhelpers.RoundtripNode(secret, config)
+		actual, err := testhelpers.RoundtripNode(secret, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -231,6 +231,6 @@ func TestMakeSecretsHelm(t *testing.T) {
 				name: "secrets"
 				labels:
 					skiff-role-name: "secrets"
-		`, varConstB64, varDescB64, varMinB64, varValuedB64, varGenieB64), actualh)
+		`, varConstB64, varDescB64, varMinB64, varValuedB64, varGenieB64), actual)
 	})
 }
