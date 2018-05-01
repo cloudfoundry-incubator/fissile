@@ -48,15 +48,11 @@ func TestServiceKube(t *testing.T) {
 		return
 	}
 	service, err := NewClusterIPService(role, false, false, ExportSettings{})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	actual, err := testhelpers.RoundtripKube(service)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole
@@ -85,23 +81,16 @@ func TestServiceHelm(t *testing.T) {
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
 	service, err := NewClusterIPService(role, false, false, ExportSettings{
 		CreateHelmChart: true,
 	})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		actual, err := testhelpers.RoundtripNode(service, nil)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
@@ -129,10 +118,7 @@ func TestServiceHelm(t *testing.T) {
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
@@ -164,19 +150,14 @@ func TestHeadlessServiceKube(t *testing.T) {
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
+
 	service, err := NewClusterIPService(role, true, false, ExportSettings{})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	actual, err := testhelpers.RoundtripKube(service)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-set
@@ -208,23 +189,17 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
+
 	service, err := NewClusterIPService(role, true, false, ExportSettings{
 		CreateHelmChart: true,
 	})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		actual, err := testhelpers.RoundtripNode(service, nil)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
@@ -253,10 +228,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
@@ -288,19 +260,14 @@ func TestPublicServiceKube(t *testing.T) {
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
+
 	service, err := NewClusterIPService(role, false, true, ExportSettings{})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	actual, err := testhelpers.RoundtripKube(service)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-public
@@ -326,15 +293,12 @@ func TestPublicServiceHelm(t *testing.T) {
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
+
 	service, err := NewClusterIPService(role, false, true, ExportSettings{
 		CreateHelmChart: true,
 	})
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
@@ -343,10 +307,7 @@ func TestPublicServiceHelm(t *testing.T) {
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
@@ -372,10 +333,7 @@ func TestPublicServiceHelm(t *testing.T) {
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)
-		if !assert.NoError(err) {
-			return
-		}
-
+		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
 			kind: "Service"
