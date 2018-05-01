@@ -189,8 +189,11 @@ func TestNewRBACRoleHelm(t *testing.T) {
 	}
 
 	t.Run("NoAuth", func(t *testing.T) {
-		// config: .Values.kube.auth helm only ("", "rbac")
-		actual, err := testhelpers.RoundtripNode(rbacRole, nil)
+		config := map[string]interface{}{
+			"Values.kube.auth": "",
+		}
+
+		actual, err := testhelpers.RoundtripNode(rbacRole, config)
 		if !assert.NoError(err) {
 			return
 		}
