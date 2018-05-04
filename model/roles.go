@@ -1501,6 +1501,17 @@ func (r *Role) LookupJob(name string) *RoleJob {
 	return nil
 }
 
+// IsPrivileged tests if the role capabilities enable fully privileged
+// mode.
+func (r *Role) IsPrivileged() bool {
+	for _, cap := range r.Run.Capabilities {
+		if strings.ToUpper(cap) == "ALL" {
+			return true
+		}
+	}
+	return false
+}
+
 // IsDevRole tests if the role is tagged for development, or not. It
 // returns true for development-roles, and false otherwise.
 func (r *Role) IsDevRole() bool {

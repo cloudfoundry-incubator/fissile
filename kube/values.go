@@ -77,7 +77,10 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 		entry := helm.NewMapping()
 
-		entry.Add("capabilities", helm.NewList())
+		if !role.IsPrivileged() {
+			entry.Add("capabilities", helm.NewList(),
+				helm.Comment("Additional privileges can be specified here"))
+		}
 
 		var comment string
 		if role.Run.Scaling.Min == role.Run.Scaling.Max {
