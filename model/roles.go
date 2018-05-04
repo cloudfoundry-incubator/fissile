@@ -25,9 +25,10 @@ type RoleType string
 
 // These are the types of roles available
 const (
-	RoleTypeBoshTask = RoleType("bosh-task") // A role that is a BOSH task
-	RoleTypeBosh     = RoleType("bosh")      // A role that is a BOSH job
-	RoleTypeDocker   = RoleType("docker")    // A role that is a raw Docker image
+	RoleTypeBoshTask           = RoleType("bosh-task")           // A role that is a BOSH task
+	RoleTypeBosh               = RoleType("bosh")                // A role that is a BOSH job
+	RoleTypeDocker             = RoleType("docker")              // A role that is a raw Docker image
+	RoleTypeColocatedContainer = RoleType("colocated-container") // A role that is supposed to be used by other roles to specify a colocated container
 )
 
 // FlightStage describes when a role should be executed
@@ -71,16 +72,17 @@ type RoleJob struct {
 
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
-	Name              string         `yaml:"name"`
-	Description       string         `yaml:"description"`
-	EnvironScripts    []string       `yaml:"environment_scripts"`
-	Scripts           []string       `yaml:"scripts"`
-	PostConfigScripts []string       `yaml:"post_config_scripts"`
-	Type              RoleType       `yaml:"type,omitempty"`
-	RoleJobs          []*RoleJob     `yaml:"jobs"`
-	Configuration     *Configuration `yaml:"configuration"`
-	Run               *RoleRun       `yaml:"run"`
-	Tags              []string       `yaml:"tags"`
+	Name                string         `yaml:"name"`
+	Description         string         `yaml:"description"`
+	EnvironScripts      []string       `yaml:"environment_scripts"`
+	Scripts             []string       `yaml:"scripts"`
+	PostConfigScripts   []string       `yaml:"post_config_scripts"`
+	Type                RoleType       `yaml:"type,omitempty"`
+	RoleJobs            []*RoleJob     `yaml:"jobs"`
+	Configuration       *Configuration `yaml:"configuration"`
+	Run                 *RoleRun       `yaml:"run"`
+	Tags                []string       `yaml:"tags"`
+	ColocatedContainers []string       `yaml:"colocated_containers,omitempty"`
 
 	roleManifest *RoleManifest
 }
@@ -375,14 +377,14 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		switch role.Type {
 		case "":
 			role.Type = RoleTypeBosh
-		case RoleTypeBosh, RoleTypeBoshTask:
+		case RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer:
 			// Nothing to do.
 		case RoleTypeDocker:
 			roleManifest.Roles = append(roleManifest.Roles[:i], roleManifest.Roles[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
-				role.Type, "Expected one of bosh, bosh-task, or docker"))
+				role.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
 		}
 
 		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
@@ -428,6 +430,22 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 
 		role.calculateRoleConfigurationTemplates()
 
+		// Validate that specified colocated containers are configured and of the
+		// correct type
+		for idx, roleName := range role.ColocatedContainers {
+			if lookupRole := roleManifest.LookupRole(roleName); lookupRole == nil {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
+					roleName,
+					"There is no such role defined"))
+
+			} else if lookupRole.Type != RoleTypeColocatedContainer {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
+					roleName,
+					"The role is not of required type colocated-container"))
+			}
+		}
 	}
 
 	// Skip further validation if we fail to resolve any jobs
@@ -441,6 +459,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
 		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
 		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
+		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
+		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -794,7 +814,7 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 }
 
 // getRoleJobAndPackagesSignature gets the aggregate signature of all jobs and packages
-// It also returns a list of all hashes invovled in calculating the final result
+// It also returns a list of all hashes involved in calculating the final result
 func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string, []string, error) {
 	roleSignature := ""
 	var inputs []string
@@ -1491,6 +1511,85 @@ func validateServiceAccounts(roleManifest *RoleManifest) validation.ErrorList {
 	return allErrs
 }
 
+func validateUnusedColocatedContainerRoles(RoleManifest *RoleManifest) validation.ErrorList {
+	counterMap := map[string]int{}
+	for _, role := range RoleManifest.Roles {
+		// Initialise any role of type colocated container in the counter map
+		if role.Type == RoleTypeColocatedContainer {
+			if _, ok := counterMap[role.Name]; !ok {
+				counterMap[role.Name] = 0
+			}
+		}
+
+		// Increase counter of configured colocated container names
+		for _, roleName := range role.ColocatedContainers {
+			if _, ok := counterMap[roleName]; !ok {
+				counterMap[roleName] = 0
+			}
+
+			counterMap[roleName]++
+		}
+	}
+
+	allErrs := validation.ErrorList{}
+	for roleName, usageCount := range counterMap {
+		if usageCount == 0 {
+			allErrs = append(allErrs, validation.NotFound(
+				fmt.Sprintf("role[%s]", roleName),
+				"role is of type colocated container, but is not used by any other role as such"))
+		}
+	}
+
+	return allErrs
+}
+
+func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, role := range RoleManifest.Roles {
+		if len(role.ColocatedContainers) > 0 {
+			portsMap := map[int][]string{}
+
+			// Iterate over this role and all colocated container roles and store the
+			// names of the roles for each port (there should be no list with more
+			// than one entry)
+			for _, toBeChecked := range append([]*Role{role}, role.GetColocatedRoles()...) {
+				for _, exposedPort := range toBeChecked.Run.ExposedPorts {
+					for i := 0; i < exposedPort.Count; i++ {
+						port := exposedPort.ExternalPort + i
+						if _, ok := portsMap[port]; !ok {
+							portsMap[port] = []string{}
+						}
+
+						portsMap[port] = append(portsMap[port], toBeChecked.Name)
+					}
+				}
+			}
+
+			// Get a sorted list of the keys (port)
+			ports := []int{}
+			for port := range portsMap {
+				ports = append(ports, port)
+			}
+			sort.Ints(ports)
+
+			// Now check if we have port collisions
+			for _, port := range ports {
+				names := portsMap[port]
+
+				if len(names) > 1 {
+					allErrs = append(allErrs, validation.Invalid(
+						fmt.Sprintf("role[%s]", role.Name),
+						port,
+						fmt.Sprintf("port collision, the same port is used by: %s", strings.Join(names, ", "))))
+				}
+			}
+		}
+	}
+
+	return allErrs
+}
+
 // LookupJob will find the given job in this role, or nil if not found
 func (r *Role) LookupJob(name string) *RoleJob {
 	for _, roleJob := range r.RoleJobs {
@@ -1523,6 +1622,24 @@ func (r *Role) IsStopOnFailureRole() bool {
 		}
 	}
 	return false
+}
+
+// IsColocatedContainerRole tests if the role is of type ColocatedContainer, or
+// not. It returns true if this role is of that type, or false otherwise.
+func (r *Role) IsColocatedContainerRole() bool {
+	return r.Type == RoleTypeColocatedContainer
+}
+
+// GetColocatedRoles lists all colocation roles references by this role
+func (r *Role) GetColocatedRoles() []*Role {
+	result := make([]*Role, len(r.ColocatedContainers))
+	for i, name := range r.ColocatedContainers {
+		if role := r.roleManifest.LookupRole(name); role != nil {
+			result[i] = role
+		}
+	}
+
+	return result
 }
 
 // AggregateSignatures returns the SHA1 for a slice of strings
