@@ -104,6 +104,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.sizing.role.count":                 "1",
 			"Values.sizing.role.affinity.nodeAffinity": "snafu",
+			"Values.sizing.role.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
@@ -165,7 +166,9 @@ func TestNewDeploymentHelm(t *testing.T) {
 							ports: ~
 							readinessProbe: ~
 							resources: ~
-							securityContext: ~
+							securityContext:
+								capabilities:
+									add:	[]
 							volumeMounts: ~
 						dnsPolicy: "ClusterFirst"
 						imagePullSecrets:

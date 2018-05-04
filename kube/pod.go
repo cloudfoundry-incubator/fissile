@@ -83,7 +83,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		}
 	}
 
-	securityContext := getSecurityContext(role)
+	securityContext := getSecurityContext(role, settings.CreateHelmChart)
 	ports, err := getContainerPorts(role, settings)
 	if err != nil {
 		return nil, err
@@ -440,7 +440,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 	return helm.NewNode(env), nil
 }
 
-func getSecurityContext(role *model.Role) helm.Node {
+func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 	var capabilities []string
 	for _, cap := range role.Run.Capabilities {
 		cap = strings.ToUpper(cap)

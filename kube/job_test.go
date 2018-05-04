@@ -179,6 +179,7 @@ func TestJobHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "docker.suse.fake",
 		"Values.kube.organization":              "splat",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(job, config)
@@ -218,7 +219,9 @@ func TestJobHelm(t *testing.T) {
 						ports: ~
 						readinessProbe: ~
 						resources: ~
-						securityContext: ~
+						securityContext:
+							capabilities:
+								add:	[]
 						volumeMounts: ~
 					dnsPolicy: "ClusterFirst"
 					imagePullSecrets:

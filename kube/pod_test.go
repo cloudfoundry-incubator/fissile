@@ -1547,6 +1547,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1580,7 +1581,9 @@ func TestPodPreFlightHelm(t *testing.T) {
 				ports: ~
 				readinessProbe: ~
 				resources: ~
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1644,6 +1647,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.post_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1677,7 +1681,9 @@ func TestPodPostFlightHelm(t *testing.T) {
 				ports: ~
 				readinessProbe: ~
 				resources: ~
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1749,6 +1755,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1784,7 +1791,9 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				resources:
 					requests:
 					limits:
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1816,6 +1825,8 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
+
 		"Values.sizing.memory.requests":         "true",
 		"Values.sizing.pre_role.memory.request": "1",
 		"Values.sizing.memory.limits":           "true",
@@ -1857,7 +1868,9 @@ func TestPodMemoryHelmActive(t *testing.T) {
 						memory: "1Mi"
 					limits:
 						memory: "10Mi"
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1927,6 +1940,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1962,7 +1976,9 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				resources:
 					requests:
 					limits:
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1973,7 +1989,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 	`, actual)
 }
 
-func TestPodCPUAHelmActive(t *testing.T) {
+func TestPodCPUHelmActive(t *testing.T) {
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1994,6 +2010,7 @@ func TestPodCPUAHelmActive(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 
 		"Values.sizing.cpu.requests":         "true",
 		"Values.sizing.pre_role.cpu.request": "1",
@@ -2036,7 +2053,9 @@ func TestPodCPUAHelmActive(t *testing.T) {
 						cpu: "1m"
 					limits:
 						cpu: "10m"
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	[]
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -2055,20 +2074,73 @@ func TestGetSecurityContextCapList(t *testing.T) {
 		return
 	}
 
-	sc := getSecurityContext(role)
-	if !assert.NotNil(sc) {
-		return
-	}
+	t.Run("Kube", func(t *testing.T) {
+		sc := getSecurityContext(role, false)
+		if !assert.NotNil(sc) {
+			return
+		}
 
-	actual, err := testhelpers.RoundtripKube(sc)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		capabilities:
-			add:
-			-	"SOMETHING"
-	`, actual)
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			capabilities:
+				add:
+				-	"SOMETHING"
+		`, actual)
+	})
+
+	t.Run("Helm", func(t *testing.T) {
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		t.Run("OverrideNone", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	"SOMETHING"
+			`, actual)
+		})
+
+		t.Run("OverrideALL", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				privileged: true
+			`, actual)
+		})
+
+		t.Run("OverrideSomething", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"something"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	"SOMETHING"
+					-	"something"
+			`, actual)
+		})
+	})
 }
 
 func TestGetSecurityContextNil(t *testing.T) {
@@ -2083,17 +2155,59 @@ func TestGetSecurityContextNil(t *testing.T) {
 
 	role.Run.Capabilities = []string{}
 
-	sc := getSecurityContext(role)
-	if !assert.NotNil(sc) {
-		return
-	}
+	t.Run("Kube", func(t *testing.T) {
+		sc := getSecurityContext(role, false)
+		assert.Nil(sc)
+	})
 
-	actual, err := testhelpers.RoundtripKube(sc)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-	`, actual)
+	t.Run("Helm", func(t *testing.T) {
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		t.Run("OverrideNone", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:	[]
+			`, actual)
+		})
+
+		t.Run("OverrideALL", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				privileged: true
+			`, actual)
+		})
+
+		t.Run("OverrideSomething", func(t *testing.T) {
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"something"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	something
+			`, actual)
+		})
+	})
 }
 
 func TestGetSecurityContextPrivileged(t *testing.T) {
@@ -2108,19 +2222,35 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 
 	role.Run.Capabilities[0] = "all"
 
-	sc := getSecurityContext(role)
-	if !assert.NotNil(sc) {
-		return
-	}
+	t.Run("Kube", func(t *testing.T) {
+		sc := getSecurityContext(role, false)
+		if !assert.NotNil(sc) {
+			return
+		}
 
-	actual, err := testhelpers.RoundtripKube(sc)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		capabilities:
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
 			privileged: true
-	`, actual)
+		`, actual)
+	})
+
+	t.Run("Helm", func(t *testing.T) {
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			privileged: true
+		`, actual)
+	})
 }
 
 func TestPodGetContainerImageNameKube(t *testing.T) {
