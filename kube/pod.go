@@ -441,6 +441,15 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 }
 
 func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
+	var hasAll string
+	var notAll string
+	var config string
+	if createHelmChart {
+		config = fmt.Sprintf(".Values.sizing.%s.capabilities", makeVarName(role.Name))
+		hasAll = fmt.Sprintf("if has \"ALL\" %s", config)
+		notAll = fmt.Sprintf("if not (has \"ALL\" %s)", config)
+	}
+
 	var capabilities []string
 	for _, cap := range role.Run.Capabilities {
 		cap = strings.ToUpper(cap)
@@ -450,7 +459,35 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 		capabilities = append(capabilities, cap)
 	}
 	if len(capabilities) == 0 {
+		if createHelmChart {
+			// Conditional capabilities, pass the entire operator-specified set
+			cla := helm.NewMapping("add", helm.NewNode(fmt.Sprintf("{{ %s }}", config)))
+			cla.Set(helm.Block(notAll))
+
+			// Complete the context, with conditional privileged mode
+			sc := helm.NewMapping()
+			sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
+			sc.Add("capabilities", cla)
+			return sc
+		}
 		return nil
+	}
+	if createHelmChart {
+		// Conditional capabilities, fixed set, and range over
+		// operator-specified dynamic set.
+		caplist := helm.NewList()
+		for _, cap := range capabilities {
+			caplist.Add(cap)
+		}
+		caplist.Add(helm.NewNode("{{ . }}", helm.Block(fmt.Sprintf("range %s", config))))
+		cla := helm.NewMapping("add", caplist)
+		cla.Set(helm.Block(notAll))
+
+		// Complete the context, with conditional privileged mode
+		sc := helm.NewMapping()
+		sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
+		sc.Add("capabilities", cla)
+		return sc
 	}
 	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
 }
