@@ -2047,7 +2047,7 @@ func TestPodCPUAHelmActive(t *testing.T) {
 	`, actual)
 }
 
-func TestGetSecurityContext(t *testing.T) {
+func TestGetSecurityContextCapList(t *testing.T) {
 	assert := assert.New(t)
 
 	role := podTemplateTestLoadRole(assert)
@@ -2068,6 +2068,58 @@ func TestGetSecurityContext(t *testing.T) {
 		capabilities:
 			add:
 			-	"SOMETHING"
+	`, actual)
+}
+
+func TestGetSecurityContextNil(t *testing.T) {
+	assert := assert.New(t)
+
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	// Clear the capability list from the manifest to force fully-privileged mode.
+
+	role.Run.Capabilities = []string{}
+
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
+
+	actual, err := testhelpers.RoundtripKube(sc)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+	`, actual)
+}
+
+func TestGetSecurityContextPrivileged(t *testing.T) {
+	assert := assert.New(t)
+
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	// Override the capability from the manifest to force privileged mode.
+
+	role.Run.Capabilities[0] = "all"
+
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
+
+	actual, err := testhelpers.RoundtripKube(sc)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		capabilities:
+			privileged: true
 	`, actual)
 }
 
