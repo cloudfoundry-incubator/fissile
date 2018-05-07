@@ -1,0 +1,26 @@
+---
+roles:
+- name: role
+  run:
+    memory: 128
+    scaling:
+      min: 1
+      max: 1
+    volumes:
+    - path: /mnt/shared-data
+      type: emptyDir
+      tag: shared-data
+  colocated_containers:
+  - colocated
+
+- name: colocated
+  type: colocated-container
+  run:
+    memory: 128
+    scaling:
+      min: 1
+      max: 1
+    volumes:
+    - path: /mnt/shared-data
+      type: emptyDir
+      tag: shared-data

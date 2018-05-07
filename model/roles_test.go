@@ -930,8 +930,11 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	assert.Len(roleManifest.Roles, 2)
 	assert.EqualValues(RoleTypeBosh, roleManifest.LookupRole("main-role").Type)
 	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupRole("to-be-colocated").Type)
-
 	assert.Len(roleManifest.LookupRole("main-role").ColocatedContainers, 1)
+
+	for _, roleName := range []string{"main-role", "to-be-colocated"} {
+		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupRole(roleName).Run.Volumes)
+	}
 }
 
 func TestLoadRoleManifestColocatedContainersValidationMissingRole(t *testing.T) {

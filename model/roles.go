@@ -51,6 +51,7 @@ const (
 	VolumeTypeShared     = VolumeType("shared")     // A volume that acts as shared storage between multiple roles / instances
 	VolumeTypeHost       = VolumeType("host")       // A volume that is a mount of a host directory
 	VolumeTypeNone       = VolumeType("none")       // A volume that isn't mounted to anything
+	VolumeTypeEmptyDir   = VolumeType("emptyDir")   // A volume that is shared between containers
 )
 
 // RoleManifest represents a collection of roles
@@ -1222,6 +1223,7 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 		case VolumeTypeShared:
 		case VolumeTypeHost:
 		case VolumeTypeNone:
+		case VolumeTypeEmptyDir:
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].run.volumes[%s]", role.Name, volume.Tag),

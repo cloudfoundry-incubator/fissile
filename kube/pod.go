@@ -160,7 +160,14 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 func getVolumeMounts(role *model.Role, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
-		mount := helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		var mount helm.Node
+		switch volume.Type {
+		case model.VolumeTypeEmptyDir:
+			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag)
+		default:
+			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		}
+
 		if volume.Type == model.VolumeTypeHost && createHelmChart {
 			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
 		}
@@ -202,6 +209,11 @@ func getNonClaimVolumes(role *model.Role, createHelmChart bool) helm.Node {
 			if createHelmChart {
 				volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
 			}
+			mounts = append(mounts, volumeEntry)
+
+		case model.VolumeTypeEmptyDir:
+			var emptyMap = map[interface{}]interface{}{}
+			volumeEntry := helm.NewMapping("name", volume.Tag, "emptyDir", emptyMap)
 			mounts = append(mounts, volumeEntry)
 		}
 	}

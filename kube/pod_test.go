@@ -2270,3 +2270,51 @@ func TestPodMakeSecretVarGenerated(t *testing.T) {
 				name: "secrets-CV-SGC"
 	`, actual)
 }
+
+func TestPodVolumeTypeEmptyDir(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torRelease, err := model.NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpRelease, err := model.NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers.yml")
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{torRelease, ntpRelease}, nil)
+	assert.NoError(err)
+	assert.NotNil(roleManifest)
+
+	// Check non-claim volumes
+	mounts := getNonClaimVolumes(roleManifest.LookupRole("main-role"), true)
+	assert.NotNil(mounts)
+	actual, err := testhelpers.RoundtripNode(mounts, nil)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "shared-data"
+			emptyDir: {}
+`, actual)
+
+	// Check each role for its volume mount
+	for _, roleName := range []string{"main-role", "to-be-colocated"} {
+		role := roleManifest.LookupRole(roleName)
+
+		mounts := getVolumeMounts(role, true)
+		assert.NotNil(mounts)
+		actual, err := testhelpers.RoundtripNode(mounts, nil)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			- mountPath: "/var/vcap/store"
+			  name: "shared-data"
+`, actual)
+	}
+}

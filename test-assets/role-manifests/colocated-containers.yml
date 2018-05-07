@@ -4,6 +4,10 @@ roles:
   scripts: ["myrole.sh"]
   run:
     memory: 1
+    volumes:
+    - path: /var/vcap/store
+      type: emptyDir
+      tag: shared-data
   jobs:
   - name: new_hostname
     release_name: tor
@@ -19,3 +23,7 @@ roles:
     release_name: ntp
   run:
     memory: 1
+    volumes:
+    - path: /var/vcap/store
+      type: emptyDir
+      tag: shared-data
