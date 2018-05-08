@@ -168,7 +168,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 							resources: ~
 							securityContext:
 								capabilities:
-									add:	[]
+									add:	~
 							volumeMounts: ~
 						dnsPolicy: "ClusterFirst"
 						imagePullSecrets:

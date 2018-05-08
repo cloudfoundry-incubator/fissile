@@ -458,27 +458,16 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 		}
 		capabilities = append(capabilities, cap)
 	}
-	if len(capabilities) == 0 {
-		if createHelmChart {
-			// Conditional capabilities, pass the entire operator-specified set
-			cla := helm.NewMapping("add", helm.NewNode(fmt.Sprintf("{{ %s }}", config)))
-			cla.Set(helm.Block(notAll))
-
-			// Complete the context, with conditional privileged mode
-			sc := helm.NewMapping()
-			sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
-			sc.Add("capabilities", cla)
-			return sc
-		}
-		return nil
-	}
 	if createHelmChart {
-		// Conditional capabilities, fixed set, and range over
-		// operator-specified dynamic set.
+		// This code handles manifest modes `caplist` and `nil` (empty caplist).
+		//
+		// Conditional capabilities, fixed set, and ...
 		caplist := helm.NewList()
 		for _, cap := range capabilities {
+			// Never run when the manifest caplist is empty
 			caplist.Add(cap)
 		}
+		// ... and range over operator-specified dynamic set.
 		caplist.Add(helm.NewNode("{{ . | upper }}", helm.Block(fmt.Sprintf("range %s", config))))
 		cla := helm.NewMapping("add", caplist)
 		cla.Set(helm.Block(notAll))
@@ -488,6 +477,9 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 		sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
 		sc.Add("capabilities", cla)
 		return sc
+	}
+	if len(capabilities) == 0 {
+		return nil
 	}
 	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
 }

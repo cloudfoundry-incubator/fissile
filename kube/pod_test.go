@@ -1583,7 +1583,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 				resources: ~
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1683,7 +1683,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 				resources: ~
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1793,7 +1793,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					limits:
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1870,7 +1870,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 						memory: "10Mi"
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1978,7 +1978,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					limits:
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -2055,7 +2055,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 						cpu: "10m"
 				securityContext:
 					capabilities:
-						add:	[]
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -2176,7 +2176,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
 				capabilities:
-					add:	[]
+					add:	~
 			`, actual)
 		})
 
@@ -2204,7 +2204,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 			testhelpers.IsYAMLEqualString(assert, `---
 				capabilities:
 					add:
-					-	something
+					-	SOMETHING
 			`, actual)
 		})
 	})
