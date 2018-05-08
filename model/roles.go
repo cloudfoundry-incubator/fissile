@@ -462,6 +462,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
+		allErrs = append(allErrs, validateColocatedContainerInvalidTags(&roleManifest)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -1584,6 +1585,26 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 						fmt.Sprintf("role[%s]", role.Name),
 						port,
 						fmt.Sprintf("port collision, the same port is used by: %s", strings.Join(names, ", "))))
+				}
+			}
+		}
+	}
+
+	return allErrs
+}
+
+func validateColocatedContainerInvalidTags(RoleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, role := range RoleManifest.Roles {
+		if role.Type == RoleTypeColocatedContainer {
+			for _, tag := range role.Tags {
+				switch tag {
+				case "clustered", "indexed":
+					allErrs = append(allErrs, validation.Invalid(
+						fmt.Sprintf("role[%s]", role.Name),
+						tag,
+						"tags clustered, or indexed are not supported for colocated-containers"))
 				}
 			}
 		}

@@ -999,3 +999,23 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.
 	assert.EqualError(err, "role[main-role]: Invalid value: 80: port collision, the same port is used by: main-role, to-be-colocated\n"+
 		"role[main-role]: Invalid value: 10443: port collision, the same port is used by: main-role, to-be-colocated")
 }
+
+func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-clustered-tag.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	assert.Nil(roleManifest)
+	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"clustered\": tags clustered, or indexed are not supported for colocated-containers")
+}
