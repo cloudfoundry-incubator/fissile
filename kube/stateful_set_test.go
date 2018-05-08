@@ -165,6 +165,7 @@ func TestStatefulSetPorts(t *testing.T) {
 }
 
 func TestStatefulSetVolumesKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := statefulSetTestLoadManifest(assert, "volumes.yml")
@@ -240,6 +241,7 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 }
 
 func TestStatefulSetVolumesHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := statefulSetTestLoadManifest(assert, "volumes.yml")

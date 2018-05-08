@@ -10,6 +10,7 @@ import (
 )
 
 func TestMakeRegistryCredentialsKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	registryCredentials, err := MakeRegistryCredentials(ExportSettings{})
@@ -36,6 +37,7 @@ func TestMakeRegistryCredentialsKube(t *testing.T) {
 }
 
 func TestMakeRegistryCredentialsHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	registryCredentials, err := MakeRegistryCredentials(ExportSettings{
