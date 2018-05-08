@@ -2334,7 +2334,7 @@ func TestPodGetContainerImageNameKube(t *testing.T) {
 }
 
 func TestPodGetContainerImageNameHelm(t *testing.T) {
-		t.Parallel()
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {

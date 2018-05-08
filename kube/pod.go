@@ -446,8 +446,8 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 	var config string
 	if createHelmChart {
 		config = fmt.Sprintf(".Values.sizing.%s.capabilities", makeVarName(role.Name))
-		hasAll = fmt.Sprintf("if has \"ALL\" %s", config)
-		notAll = fmt.Sprintf("if not (has \"ALL\" %s)", config)
+		hasAll = fmt.Sprintf(`if has "ALL" %s`, config)
+		notAll = fmt.Sprintf(`if not (has "ALL" %s)`, config)
 	}
 
 	var capabilities []string
