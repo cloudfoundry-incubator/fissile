@@ -1086,7 +1086,7 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	// See also 'GetVariablesForRole' (mustache.go), and LoadManifest (caller, this file)
+	// See also 'GetVariablesForRole' (mustache.go), and LoadRoleManifest (caller, this file)
 	declaredConfigs := MakeMapOfVariables(roleManifest)
 
 	// Iterate over all roles, jobs, templates, extract the used
@@ -1209,6 +1209,13 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 				fmt.Sprintf("Invalid volume type '%s'", volume.Type)))
 		}
 	}
+
+	// Normalize capabilities to upper case, if any.
+	var capabilities []string
+	for _, cap := range role.Run.Capabilities {
+		capabilities = append(capabilities, strings.ToUpper(cap))
+	}
+	role.Run.Capabilities = capabilities
 
 	if len(role.Run.Environment) == 0 {
 		return allErrs
@@ -1505,7 +1512,7 @@ func (r *Role) LookupJob(name string) *RoleJob {
 // mode.
 func (r *Role) IsPrivileged() bool {
 	for _, cap := range r.Run.Capabilities {
-		if strings.ToUpper(cap) == "ALL" {
+		if cap == "ALL" {
 			return true
 		}
 	}

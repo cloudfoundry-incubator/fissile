@@ -452,7 +452,6 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 
 	var capabilities []string
 	for _, cap := range role.Run.Capabilities {
-		cap = strings.ToUpper(cap)
 		if cap == "ALL" {
 			return helm.NewMapping("privileged", true)
 		}

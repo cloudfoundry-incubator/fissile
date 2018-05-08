@@ -2218,9 +2218,12 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 		return
 	}
 
-	// Override the capability from the manifest to force privileged mode.
-
-	role.Run.Capabilities[0] = "all"
+	// Override the capability from the manifest to force
+	// privileged mode. As we are doing this after
+	// LoadRoleManifest has normalized capabilities we have to use
+	// all-uppercase now ourselves, to match the expectations of
+	// the backend code.
+	role.Run.Capabilities[0] = "ALL"
 
 	t.Run("Kube", func(t *testing.T) {
 		sc := getSecurityContext(role, false)
