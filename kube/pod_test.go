@@ -2151,7 +2151,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 		return
 	}
 
-	// Clear the capability list from the manifest to force fully-privileged mode.
+	// Clear the capability list from the manifest to force default privileges.
 
 	role.Run.Capabilities = []string{}
 
