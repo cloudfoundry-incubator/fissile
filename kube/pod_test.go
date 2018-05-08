@@ -95,6 +95,7 @@ func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
 }
 
 func TestPodGetNonClaimVolumes(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -117,6 +118,7 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 }
 
 func TestPodGetVolumes(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -186,6 +188,7 @@ func TestPodGetVolumes(t *testing.T) {
 }
 
 func TestPodGetVolumesHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -258,6 +261,7 @@ func TestPodGetVolumesHelm(t *testing.T) {
 }
 
 func TestPodGetVolumeMounts(t *testing.T) {
+	t.Parallel()
 	role := podTemplateTestLoadRole(assert.New(t))
 	if role == nil {
 		return
@@ -310,6 +314,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 }
 
 func TestPodGetEnvVars(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -380,6 +385,7 @@ func TestPodGetEnvVars(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -416,6 +422,7 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -452,6 +459,7 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -498,6 +506,7 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -548,6 +557,7 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -579,6 +589,7 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -615,6 +626,7 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -646,6 +658,7 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -718,6 +731,7 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	settings := ExportSettings{
@@ -732,6 +746,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 	}
 
 	t.Run("Plain", func(t *testing.T) {
+		t.Parallel()
 		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
 			&model.ConfigurationVariable{
 				Name:   "A_SECRET",
@@ -761,6 +776,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 	})
 
 	t.Run("Generated", func(t *testing.T) {
+		t.Parallel()
 		cv := []*model.ConfigurationVariable{
 			&model.ConfigurationVariable{
 				Name:   "A_SECRET",
@@ -782,6 +798,8 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		if !assert.NoError(err) {
 			return
 		}
+
+		// Mutation of cv below between tests prevents parallel execution
 
 		t.Run("AsIs", func(t *testing.T) {
 			actual, err := testhelpers.RoundtripNode(ev, config)
@@ -852,6 +870,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	settings := ExportSettings{
@@ -865,6 +884,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 	}
 
 	t.Run("Present", func(t *testing.T) {
+		t.Parallel()
 		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
 			&model.ConfigurationVariable{
 				Name:    "SOMETHING",
@@ -888,6 +908,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 	})
 
 	t.Run("Missing", func(t *testing.T) {
+		t.Parallel()
 		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
 			&model.ConfigurationVariable{
 				Name: "SOMETHING",
@@ -908,6 +929,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -930,6 +952,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 	}
 
 	t.Run("Missing", func(t *testing.T) {
+		t.Parallel()
 		actual, err := testhelpers.RoundtripNode(ev, nil)
 		if !assert.NoError(err) {
 			return
@@ -946,6 +969,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 	})
 
 	t.Run("Present", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": "else",
 		}
@@ -967,6 +991,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 }
 
 func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
@@ -987,12 +1012,14 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 	})
 
 	t.Run("Missing", func(t *testing.T) {
+		t.Parallel()
 		_, err = testhelpers.RenderNode(ev, nil)
 		assert.EqualError(err,
 			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
 
 	t.Run("Present", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": "needed",
 		}
@@ -1014,6 +1041,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 }
 
 func TestPodGetContainerLivenessProbe(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -1248,6 +1276,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 }
 
 func TestPodGetContainerReadinessProbe(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -1496,6 +1525,7 @@ func podTestLoadRole(assert *assert.Assertions, roleName string) *model.Role {
 }
 
 func TestPodPreFlightKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1528,6 +1558,7 @@ func TestPodPreFlightKube(t *testing.T) {
 }
 
 func TestPodPreFlightHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1547,6 +1578,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1580,7 +1612,9 @@ func TestPodPreFlightHelm(t *testing.T) {
 				ports: ~
 				readinessProbe: ~
 				resources: ~
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1592,6 +1626,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 }
 
 func TestPodPostFlightKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "post-role")
 	if role == nil {
@@ -1625,6 +1660,7 @@ func TestPodPostFlightKube(t *testing.T) {
 }
 
 func TestPodPostFlightHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "post-role")
 	if role == nil {
@@ -1644,6 +1680,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.post_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1677,7 +1714,9 @@ func TestPodPostFlightHelm(t *testing.T) {
 				ports: ~
 				readinessProbe: ~
 				resources: ~
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1689,6 +1728,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 }
 
 func TestPodMemoryKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1729,6 +1769,7 @@ func TestPodMemoryKube(t *testing.T) {
 }
 
 func TestPodMemoryHelmDisabled(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1749,6 +1790,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1784,7 +1826,9 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				resources:
 					requests:
 					limits:
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1796,6 +1840,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 }
 
 func TestPodMemoryHelmActive(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1816,6 +1861,8 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
+
 		"Values.sizing.memory.requests":         "true",
 		"Values.sizing.pre_role.memory.request": "1",
 		"Values.sizing.memory.limits":           "true",
@@ -1857,7 +1904,9 @@ func TestPodMemoryHelmActive(t *testing.T) {
 						memory: "1Mi"
 					limits:
 						memory: "10Mi"
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1869,6 +1918,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 }
 
 func TestPodCPUKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1907,6 +1957,7 @@ func TestPodCPUKube(t *testing.T) {
 }
 
 func TestPodCPUHelmDisabled(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1927,6 +1978,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1962,7 +2014,9 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				resources:
 					requests:
 					limits:
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -1973,7 +2027,8 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 	`, actual)
 }
 
-func TestPodCPUAHelmActive(t *testing.T) {
+func TestPodCPUHelmActive(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRole(assert, "pre-role")
 	if role == nil {
@@ -1994,6 +2049,7 @@ func TestPodCPUAHelmActive(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 
 		"Values.sizing.cpu.requests":         "true",
 		"Values.sizing.pre_role.cpu.request": "1",
@@ -2036,7 +2092,9 @@ func TestPodCPUAHelmActive(t *testing.T) {
 						cpu: "1m"
 					limits:
 						cpu: "10m"
-				securityContext: ~
+				securityContext:
+					capabilities:
+						add:	~
 				volumeMounts: ~
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
@@ -2047,7 +2105,8 @@ func TestPodCPUAHelmActive(t *testing.T) {
 	`, actual)
 }
 
-func TestGetSecurityContext(t *testing.T) {
+func TestGetSecurityContextCapList(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := podTemplateTestLoadRole(assert)
@@ -2055,23 +2114,204 @@ func TestGetSecurityContext(t *testing.T) {
 		return
 	}
 
-	sc := getSecurityContext(role)
-	if !assert.NotNil(sc) {
+	t.Run("Kube", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, false)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			capabilities:
+				add:
+				-	"SOMETHING"
+		`, actual)
+	})
+
+	t.Run("Helm", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		t.Run("OverrideNone", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	"SOMETHING"
+			`, actual)
+		})
+
+		t.Run("OverrideALL", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				privileged: true
+			`, actual)
+		})
+
+		t.Run("OverrideSomething", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"something"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	"SOMETHING"
+					-	"SOMETHING"
+			`, actual)
+		})
+	})
+}
+
+func TestGetSecurityContextNil(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(sc)
-	if !assert.NoError(err) {
+	// Clear the capability list from the manifest to force default privileges.
+
+	role.Run.Capabilities = []string{}
+
+	t.Run("Kube", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, false)
+		assert.Nil(sc)
+	})
+
+	t.Run("Helm", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		t.Run("OverrideNone", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:	~
+			`, actual)
+		})
+
+		t.Run("OverrideALL", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				privileged: true
+			`, actual)
+		})
+
+		t.Run("OverrideSomething", func(t *testing.T) {
+			t.Parallel()
+			config := map[string]interface{}{
+				"Values.sizing.myrole.capabilities": []interface{}{"something"},
+			}
+			actual, err := testhelpers.RoundtripNode(sc, config)
+			if !assert.NoError(err) {
+				return
+			}
+			testhelpers.IsYAMLEqualString(assert, `---
+				capabilities:
+					add:
+					-	SOMETHING
+			`, actual)
+		})
+	})
+}
+
+func TestGetSecurityContextPrivileged(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
 		return
 	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		capabilities:
-			add:
-			-	"SOMETHING"
-	`, actual)
+
+	// Override the capability from the manifest to force
+	// privileged mode. As we are doing this after
+	// LoadRoleManifest has normalized capabilities we have to use
+	// all-uppercase now ourselves, to match the expectations of
+	// the backend code.
+	role.Run.Capabilities[0] = "ALL"
+
+	t.Run("Kube", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, false)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			privileged: true
+		`, actual)
+	})
+
+	t.Run("Helm", func(t *testing.T) {
+		t.Parallel()
+		sc := getSecurityContext(role, true)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := testhelpers.RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			privileged: true
+		`, actual)
+	})
 }
 
 func TestPodGetContainerImageNameKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -2094,6 +2334,7 @@ func TestPodGetContainerImageNameKube(t *testing.T) {
 }
 
 func TestPodGetContainerImageNameHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTemplateTestLoadRole(assert)
 	if role == nil {
@@ -2133,6 +2374,7 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 }
 
 func TestPodGetContainerPortsKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRoleFrom(assert, "myrole", "exposed-ports.yml")
 	if role == nil {
@@ -2160,6 +2402,7 @@ func TestPodGetContainerPortsKube(t *testing.T) {
 }
 
 func TestPodGetContainerPortsHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRoleFrom(assert, "myrole", "exposed-ports.yml")
 	if role == nil {
@@ -2189,6 +2432,7 @@ func TestPodGetContainerPortsHelm(t *testing.T) {
 }
 
 func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := podTestLoadRoleFrom(assert, "myrole", "bosh-run-count-configurable.yml")
 	if role == nil {
@@ -2231,6 +2475,7 @@ func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
 }
 
 func TestPodMakeSecretVarPlain(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	sv := makeSecretVar("foo", false)
@@ -2249,6 +2494,7 @@ func TestPodMakeSecretVarPlain(t *testing.T) {
 }
 
 func TestPodMakeSecretVarGenerated(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	sv := makeSecretVar("foo", true)

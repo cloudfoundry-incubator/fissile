@@ -49,6 +49,7 @@ func (f FakeGrapher) GraphEdge(fromNode, toNode string, attrs map[string]string)
 }
 
 func TestNewDeploymentKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
@@ -70,6 +71,7 @@ func TestNewDeploymentKube(t *testing.T) {
 }
 
 func TestNewDeploymentHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
@@ -93,6 +95,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 
 	t.Run("Defaults", func(t *testing.T) {
+		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
 		_, err = testhelpers.RenderNode(deployment, nil)
@@ -101,9 +104,11 @@ func TestNewDeploymentHelm(t *testing.T) {
 	})
 
 	t.Run("Configured", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.sizing.role.count":                 "1",
 			"Values.sizing.role.affinity.nodeAffinity": "snafu",
+			"Values.sizing.role.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
@@ -165,7 +170,9 @@ func TestNewDeploymentHelm(t *testing.T) {
 							ports: ~
 							readinessProbe: ~
 							resources: ~
-							securityContext: ~
+							securityContext:
+								capabilities:
+									add:	~
 							volumeMounts: ~
 						dnsPolicy: "ClusterFirst"
 						imagePullSecrets:
@@ -178,6 +185,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 }
 
 func TestGetAffinityBlock(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
@@ -221,6 +229,7 @@ func createEmptySpec() *helm.Mapping {
 }
 
 func TestAddAffinityRules(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	emptySpec := createEmptySpec()

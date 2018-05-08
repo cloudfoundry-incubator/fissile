@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/testhelpers"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +19,39 @@ func TestMakeValues(t *testing.T) {
 	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
 	require.NoError(t, err)
 	defer os.RemoveAll(outDir)
+
+	t.Run("Capabilities", func(t *testing.T) {
+		t.Parallel()
+		settings := ExportSettings{
+			OutputDir: outDir,
+			RoleManifest: &model.RoleManifest{
+				Roles: model.Roles{
+					&model.Role{
+						Name: "arole",
+						Run: &model.RoleRun{
+							Scaling: &model.RoleRunScaling{},
+						},
+					},
+				},
+				Configuration: &model.Configuration{},
+			},
+		}
+
+		node, err := MakeValues(settings)
+
+		assert.NotNil(node)
+		assert.NoError(err)
+
+		actual, err := testhelpers.RoundtripKube(node)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLSubsetString(assert, `---
+			sizing:
+				arole:
+					capabilities:	[]
+		`, actual)
+	})
 
 	t.Run("Check Default Registry", func(t *testing.T) {
 		t.Parallel()

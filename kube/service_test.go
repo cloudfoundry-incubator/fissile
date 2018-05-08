@@ -36,6 +36,7 @@ func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model
 }
 
 func TestServiceKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -73,6 +74,7 @@ func TestServiceKube(t *testing.T) {
 }
 
 func TestServiceHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -89,6 +91,7 @@ func TestServiceHelm(t *testing.T) {
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
+		t.Parallel()
 		actual, err := testhelpers.RoundtripNode(service, nil)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
@@ -113,6 +116,7 @@ func TestServiceHelm(t *testing.T) {
 	})
 
 	t.Run("LoadBalancer", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": "true",
 		}
@@ -142,6 +146,7 @@ func TestServiceHelm(t *testing.T) {
 }
 
 func TestHeadlessServiceKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -181,6 +186,7 @@ func TestHeadlessServiceKube(t *testing.T) {
 }
 
 func TestHeadlessServiceHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -198,6 +204,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
+		t.Parallel()
 		actual, err := testhelpers.RoundtripNode(service, nil)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
@@ -223,6 +230,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	})
 
 	t.Run("LoadBalancer", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": "true",
 		}
@@ -252,6 +260,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 }
 
 func TestPublicServiceKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -285,6 +294,7 @@ func TestPublicServiceKube(t *testing.T) {
 }
 
 func TestPublicServiceHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
@@ -302,6 +312,7 @@ func TestPublicServiceHelm(t *testing.T) {
 	require.NotNil(t, service)
 
 	t.Run("ClusterIP", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
 		}
@@ -327,6 +338,7 @@ func TestPublicServiceHelm(t *testing.T) {
 	})
 
 	t.Run("LoadBalanced", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": "true",
 			"Values.kube.external_ips":     "",
