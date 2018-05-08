@@ -2137,7 +2137,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				capabilities:
 					add:
 					-	"SOMETHING"
-					-	"something"
+					-	"SOMETHING"
 			`, actual)
 		})
 	})

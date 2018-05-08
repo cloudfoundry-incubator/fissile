@@ -479,7 +479,7 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 		for _, cap := range capabilities {
 			caplist.Add(cap)
 		}
-		caplist.Add(helm.NewNode("{{ . }}", helm.Block(fmt.Sprintf("range %s", config))))
+		caplist.Add(helm.NewNode("{{ . | upper }}", helm.Block(fmt.Sprintf("range %s", config))))
 		cla := helm.NewMapping("add", caplist)
 		cla.Set(helm.Block(notAll))
 
