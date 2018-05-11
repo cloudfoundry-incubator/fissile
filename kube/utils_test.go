@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewTypeMeta(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	typeMeta := newTypeMeta("the-api-version", "thekind")
@@ -27,6 +28,7 @@ func TestNewTypeMeta(t *testing.T) {
 }
 
 func TestNewObjectMeta(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	objectMeta := newObjectMeta("thename")
@@ -43,6 +45,7 @@ func TestNewObjectMeta(t *testing.T) {
 }
 
 func TestNewSelector(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	selector := newSelector("thename")
@@ -58,6 +61,7 @@ func TestNewSelector(t *testing.T) {
 }
 
 func TestNewKubeConfig(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	kubeConfig := newKubeConfig("theApiVersion", "thekind", "thename")
@@ -77,6 +81,7 @@ func TestNewKubeConfig(t *testing.T) {
 }
 
 func TestMakeVarName(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	testcases := []struct {
@@ -96,6 +101,7 @@ func TestMakeVarName(t *testing.T) {
 }
 
 func TestMinKubeVersion(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	// The template condition we wish to check: 3.1 <= version

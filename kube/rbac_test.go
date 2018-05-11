@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewRBACAccountKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	resources, err := NewRBACAccount("the-name",
@@ -57,6 +58,7 @@ func TestNewRBACAccountKube(t *testing.T) {
 }
 
 func TestNewRBACAccountHelmNoAuth(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	resources, err := NewRBACAccount("the-name",
@@ -77,6 +79,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 	rbacRole := resources[1]
 
 	t.Run("NoAuth", func(t *testing.T) {
+		t.Parallel()
 		// config: .Values.kube.auth -- helm only ("", "rbac")
 		actualAccount, err := testhelpers.RoundtripNode(rbacAccount, nil)
 		if !assert.NoError(err) {
@@ -96,6 +99,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 	})
 
 	t.Run("HasAuth", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.auth": "rbac",
 		}
@@ -134,6 +138,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 }
 
 func TestNewRBACRoleKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	rbacRole, err := NewRBACRole("the-name",
@@ -170,6 +175,7 @@ func TestNewRBACRoleKube(t *testing.T) {
 }
 
 func TestNewRBACRoleHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	rbacRole, err := NewRBACRole("the-name",
@@ -189,6 +195,7 @@ func TestNewRBACRoleHelm(t *testing.T) {
 	}
 
 	t.Run("NoAuth", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.auth": "",
 		}
@@ -203,6 +210,7 @@ func TestNewRBACRoleHelm(t *testing.T) {
 	})
 
 	t.Run("HasAuth", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.auth": "rbac",
 		}

@@ -37,6 +37,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 }
 
 func TestJobPreFlight(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
 	if role == nil {
@@ -73,6 +74,7 @@ func TestJobPreFlight(t *testing.T) {
 }
 
 func TestJobPostFlight(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := jobTestLoadRole(assert, "post-role", "jobs.yml")
 	if role == nil {
@@ -109,6 +111,7 @@ func TestJobPostFlight(t *testing.T) {
 }
 
 func TestJobWithAnnotations(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := jobTestLoadRole(assert, "role", "job-with-annotation.yml")
@@ -139,6 +142,7 @@ func TestJobWithAnnotations(t *testing.T) {
 }
 
 func TestJobHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
 	if role == nil {
@@ -179,6 +183,7 @@ func TestJobHelm(t *testing.T) {
 		"Values.kube.registry.hostname":         "docker.suse.fake",
 		"Values.kube.organization":              "splat",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
+		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(job, config)
@@ -218,7 +223,9 @@ func TestJobHelm(t *testing.T) {
 						ports: ~
 						readinessProbe: ~
 						resources: ~
-						securityContext: ~
+						securityContext:
+							capabilities:
+								add:	~
 						volumeMounts: ~
 					dnsPolicy: "ClusterFirst"
 					imagePullSecrets:

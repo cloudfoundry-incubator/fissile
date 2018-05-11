@@ -11,6 +11,7 @@ import (
 )
 
 func TestMakeSecretsEmpty(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	expected := `---
@@ -24,6 +25,7 @@ func TestMakeSecretsEmpty(t *testing.T) {
 	`
 
 	t.Run("Kube", func(t *testing.T) {
+		t.Parallel()
 		secret, err := MakeSecrets(model.CVMap{}, ExportSettings{})
 		if !assert.NoError(err) {
 			return
@@ -36,6 +38,7 @@ func TestMakeSecretsEmpty(t *testing.T) {
 	})
 
 	t.Run("Helm", func(t *testing.T) {
+		t.Parallel()
 		secret, err := MakeSecrets(model.CVMap{}, ExportSettings{
 			CreateHelmChart: true,
 		})
@@ -101,6 +104,7 @@ func testCVMap() model.CVMap {
 }
 
 func TestMakeSecretsKube(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	testCV := testCVMap()
@@ -152,6 +156,7 @@ func TestMakeSecretsKube(t *testing.T) {
 }
 
 func TestMakeSecretsHelm(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	secret, err := MakeSecrets(testCVMap(), ExportSettings{
@@ -162,6 +167,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 	}
 
 	t.Run("Missing", func(t *testing.T) {
+		t.Parallel()
 		// config - helm only
 		// Render with defaults (is expected to) fail(s) due to a
 		// number of guards (secrets.FOO, FOO a variable) not having a
@@ -173,6 +179,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 	})
 
 	t.Run("Present", func(t *testing.T) {
+		t.Parallel()
 		varConst := "cannot change"
 		varDesc := "self-explanatory"
 		varMin := "rock-bottom"
