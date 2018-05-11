@@ -300,6 +300,7 @@ func TestAddAffinityRules(t *testing.T) {
 }
 
 func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	role := deploymentTestLoadRole(assert, "role", "colocated-container-with-deployment-and-empty-dir.yml")
@@ -321,6 +322,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 
 	t.Run("Defaults", func(t *testing.T) {
+		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
 		_, err = testhelpers.RenderNode(deployment, nil)
@@ -329,8 +331,11 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	})
 
 	t.Run("Configured", func(t *testing.T) {
+		t.Parallel()
 		config := map[string]interface{}{
 			"Values.sizing.role.count":              "1",
+			"Values.sizing.role.capabilities":       []interface{}{},
+			"Values.sizing.colocated.capabilities":  []interface{}{},
 			"Values.kube.registry.hostname":         "docker.suse.fake",
 			"Values.kube.organization":              "splat",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
