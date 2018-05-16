@@ -1079,7 +1079,7 @@ func (f *Fissile) roleHasStorage(role *model.Role) bool {
 
 func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 	for _, role := range settings.RoleManifest.Roles {
-		if role.IsDevRole() || role.IsColocatedContainerRole() {
+		if role.IsColocatedContainerRole() {
 			continue
 		}
 		if settings.CreateHelmChart && role.Run.FlightStage == model.FlightStageManual {

@@ -1724,18 +1724,6 @@ func (r *Role) IsPrivileged() bool {
 	return false
 }
 
-// IsDevRole tests if the role is tagged for development, or not. It
-// returns true for development-roles, and false otherwise.
-func (r *Role) IsDevRole() bool {
-	for _, tag := range r.Tags {
-		switch tag {
-		case "dev-only":
-			return true
-		}
-	}
-	return false
-}
-
 // IsColocatedContainerRole tests if the role is of type ColocatedContainer, or
 // not. It returns true if this role is of that type, or false otherwise.
 func (r *Role) IsColocatedContainerRole() bool {

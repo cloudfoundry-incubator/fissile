@@ -72,7 +72,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 	sizing := helm.NewMapping()
 	for _, role := range settings.RoleManifest.Roles {
-		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
+		if role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
