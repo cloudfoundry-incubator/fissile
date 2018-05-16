@@ -68,7 +68,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 		return nil, err
 	}
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {
-		fmt.Printf("TEMPLATE EXEC FAIL\n%s\nEXEC END\n", string(helmConfig.Bytes()))
+		//fmt.Printf("TEMPLATE EXEC FAIL\n%s\n%s\nEXEC END\n", string(helmConfig.Bytes()), err)
 		return nil, err
 	}
 	return yamlConfig.Bytes(), nil
