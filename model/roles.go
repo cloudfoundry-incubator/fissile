@@ -76,9 +76,10 @@ type RoleTag string
 
 // The list of acceptable tags
 const (
-	RoleTagClustered     = RoleTag("clustered")
-	RoleTagIndexed       = RoleTag("indexed")
-	RoleTagStopOnFailure = RoleTag("stop-on-failure")
+	RoleTagClustered         = RoleTag("clustered")
+	RoleTagIndexed           = RoleTag("indexed")
+	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
+	RoleTagSequentialStartup = RoleTag("sequential-startup")
 )
 
 // Role represents a collection of jobs that are colocated on a container

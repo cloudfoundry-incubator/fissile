@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
@@ -162,6 +164,60 @@ func TestStatefulSetPorts(t *testing.T) {
 								containerPort: 443
 	`
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+}
+
+// TestStatefulSetStart checks that roles with the `sequential-startup` tag will
+// be of OrderedReady podManagementPolicy; and that roles without have Parallel.
+func TestStatefulSetStartupPolicy(t *testing.T) {
+	t.SkipNow()
+	t.Parallel()
+	_, roleTemplate := statefulSetTestLoadManifest(assert.New(t), "volumes.yml")
+	require.NotNil(t, roleTemplate)
+	testCases := map[string][]model.RoleTag{
+		"OrderedReady": []model.RoleTag{model.RoleTagSequentialStartup},
+		"Parallel":     []model.RoleTag{},
+	}
+	for policy, tags := range testCases {
+		t.Run(policy, func(t *testing.T) {
+			t.Parallel()
+			role := *roleTemplate
+			role.Tags = tags
+
+			t.Run("kube", func(t *testing.T) {
+				t.Parallel()
+				statefulset, _, err := NewStatefulSet(&role, ExportSettings{
+					Opinions: model.NewEmptyOpinions(),
+				}, nil)
+				require.NoError(t, err)
+				actual, err := testhelpers.RoundtripKube(statefulset)
+				require.NoError(t, err)
+				expected := `---
+					spec:
+						podManagementPolicy: %s
+					`
+				testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
+			})
+
+			t.Run("helm", func(t *testing.T) {
+				t.Parallel()
+				statefulset, _, err := NewStatefulSet(&role, ExportSettings{
+					Opinions:        model.NewEmptyOpinions(),
+					CreateHelmChart: true,
+				}, nil)
+				require.NoError(t, err)
+				actual, err := testhelpers.RoundtripNode(statefulset, map[string]interface{}{
+					"Values.sizing.myrole.count":        "1",
+					"Values.sizing.myrole.capabilities": []string{},
+				})
+				require.NoError(t, err)
+				expected := `---
+					spec:
+						podManagementPolicy: %s
+					`
+				testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
+			})
+		})
+	}
 }
 
 func TestStatefulSetVolumesKube(t *testing.T) {
