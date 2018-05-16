@@ -71,6 +71,16 @@ type RoleJob struct {
 	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
 }
 
+// RoleTag are the acceptable tags
+type RoleTag string
+
+// The list of acceptable tags
+const (
+	RoleTagClustered     = RoleTag("clustered")
+	RoleTagIndexed       = RoleTag("indexed")
+	RoleTagStopOnFailure = RoleTag("stop-on-failure")
+)
+
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
 	Name                string         `yaml:"name"`
@@ -82,7 +92,7 @@ type Role struct {
 	RoleJobs            []*RoleJob     `yaml:"jobs"`
 	Configuration       *Configuration `yaml:"configuration"`
 	Run                 *RoleRun       `yaml:"run"`
-	Tags                []string       `yaml:"tags"`
+	Tags                []RoleTag      `yaml:"tags"`
 	ColocatedContainers []string       `yaml:"colocated_containers,omitempty"`
 
 	roleManifest *RoleManifest
@@ -387,6 +397,19 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
 				role.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
+		}
+
+		for tagNum, tag := range role.Tags {
+			switch tag {
+			case RoleTagClustered:
+			case RoleTagIndexed:
+			case RoleTagStopOnFailure:
+				// Ignore the known tags
+			default:
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+					string(tag), "Unknown tag"))
+			}
 		}
 
 		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
@@ -871,7 +894,7 @@ func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string
 }
 
 // HasTag returns true if the role has a specific tag
-func (r *Role) HasTag(tag string) bool {
+func (r *Role) HasTag(tag RoleTag) bool {
 	for _, t := range r.Tags {
 		if t == tag {
 			return true
@@ -1707,18 +1730,6 @@ func (r *Role) IsDevRole() bool {
 	for _, tag := range r.Tags {
 		switch tag {
 		case "dev-only":
-			return true
-		}
-	}
-	return false
-}
-
-// IsStopOnFailureRole tests if the role is tagged to stop on a failure, or
-// not.
-func (r *Role) IsStopOnFailureRole() bool {
-	for _, tag := range r.Tags {
-		switch tag {
-		case "stop-on-failure":
 			return true
 		}
 	}

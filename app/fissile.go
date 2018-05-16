@@ -1034,7 +1034,7 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 }
 
 func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings kube.ExportSettings) error {
-	if role.IsStopOnFailureRole() {
+	if role.HasTag(model.RoleTagStopOnFailure) {
 		pod, err := kube.NewPod(role, settings, f)
 		if err != nil {
 			return err
@@ -1059,7 +1059,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 
 // roleIsStateful returns true if a given role needs to be a StatefulSet
 func (f *Fissile) roleIsStateful(role *model.Role) bool {
-	if role.HasTag("clustered") || role.HasTag("indexed") {
+	if role.HasTag(model.RoleTagClustered) || role.HasTag(model.RoleTagIndexed) {
 		return true
 	}
 	return false
