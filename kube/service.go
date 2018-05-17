@@ -7,11 +7,20 @@ import (
 	"github.com/SUSE/fissile/model"
 )
 
+// ClusterIPServiceFlag describes the kinds of services to enable
+type ClusterIPServiceFlag int
+
+// Valid values for ClusterIPServiceFlag
+const (
+	ClusterIPHeadless = ClusterIPServiceFlag(1 << iota)
+	ClusterIPPrivate  = ClusterIPServiceFlag(1 << iota)
+)
+
 // NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, headless, private bool, settings ExportSettings) (helm.Node, error) {
+func NewClusterIPServiceList(role *model.Role, flags ClusterIPServiceFlag, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
-	if headless {
+	if flags&ClusterIPHeadless != 0 {
 		// Create headless, private service
 		svc, err := NewClusterIPService(role, true, false, settings)
 		if err != nil {
@@ -22,7 +31,7 @@ func NewClusterIPServiceList(role *model.Role, headless, private bool, settings 
 		}
 	}
 
-	if private {
+	if flags&ClusterIPPrivate != 0 {
 		// Create private service
 		svc, err := NewClusterIPService(role, false, false, settings)
 		if err != nil {

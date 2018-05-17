@@ -16,7 +16,7 @@ func NewDeployment(role *model.Role, settings ExportSettings, grapher util.Model
 		return nil, nil, err
 	}
 
-	svc, err := NewClusterIPServiceList(role, false, true, settings)
+	svc, err := NewClusterIPServiceList(role, ClusterIPPrivate, settings)
 	if err != nil {
 		return nil, nil, err
 	}
