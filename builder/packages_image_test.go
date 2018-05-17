@@ -113,7 +113,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(err)
 
@@ -230,7 +230,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
 	assert.NoError(t, err)
 
-	roleManifestDir := filepath.Join(workDir, "../test-assets/role-manifests/")
+	roleManifestDir := filepath.Join(workDir, "../test-assets/role-manifests/builder/")
 	roleManifestPath := filepath.Join(roleManifestDir, "tor-good.yml")
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
 	assert.NoError(t, err)
