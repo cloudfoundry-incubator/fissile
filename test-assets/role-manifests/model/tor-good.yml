@@ -20,19 +20,7 @@ roles:
 - name: foorole
   type: bosh-task
   run:
-    foo: x
+     foo: x
   jobs:
   - name: tor
     release_name: tor
-configuration:
-  variables:
-  - name: BAR
-    type: environment
-    internal: true
-  - name: FOO
-  - name: HOME
-  - name: PELERINUL
-  templates:
-    properties.tor.hostname: '((FOO))'
-    properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

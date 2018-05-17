@@ -1,0 +1,18 @@
+# This role manifest tests that an undeclared variable is an error
+---
+roles:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release_name: tor
+configuration:
+  variables:
+  - name: BAR
+  - name: FOO
+  - name: PELERINUL
+  templates:
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))' # HOME is not declared
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
