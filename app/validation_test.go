@@ -10,30 +10,31 @@ import (
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidation(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-issues.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-issues.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 	f := NewFissileApplication(".", ui)
 
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(err)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
@@ -64,62 +65,61 @@ func TestValidation(t *testing.T) {
 		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
 	}
 	for _, expected := range allExpected {
-		assert.Contains(actual, expected)
+		assert.Contains(t, actual, expected)
 	}
-	assert.Len(errs, len(allExpected))
+	assert.Len(t, errs, len(allExpected))
 }
 
 func TestValidationOk(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-validation-ok.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
 
 	f := NewFissileApplication(".", ui)
 
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(err)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
-	assert.Empty(errs)
+	assert.Empty(t, errs)
 }
 
 func TestValidationHash(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/hashmat.yml")
-	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-light.yml")
-	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/hashmat-dark.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/hashmat.yml")
+	emptyManifestPath := filepath.Join(workDir, "../test-assets/misc/empty.yml")
 	f := NewFissileApplication(".", ui)
 
 	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(err)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
 
-	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	assert.NoError(err)
+	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
+	assert.NoError(t, err)
 
 	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
@@ -129,7 +129,7 @@ func TestValidationHash(t *testing.T) {
 		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
 	}
 	for _, expected := range allExpected {
-		assert.Contains(actual, expected)
+		assert.Contains(t, actual, expected)
 	}
-	assert.Len(errs, len(allExpected))
+	assert.Len(t, errs, len(allExpected))
 }
