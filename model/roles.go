@@ -80,6 +80,7 @@ const (
 	RoleTagIndexed           = RoleTag("indexed")
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
+	RoleTagHeadless          = RoleTag("headless")
 )
 
 // Role represents a collection of jobs that are colocated on a container
@@ -405,6 +406,8 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 			case RoleTagClustered:
 			case RoleTagIndexed:
 			case RoleTagStopOnFailure:
+			case RoleTagSequentialStartup:
+			case RoleTagHeadless:
 				// Ignore the known tags
 			default:
 				allErrs = append(allErrs, validation.Invalid(

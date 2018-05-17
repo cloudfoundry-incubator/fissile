@@ -38,26 +38,20 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 }
 
 func TestStatefulSetPorts(t *testing.T) {
-	assert := assert.New(t)
-
-	manifest, role := statefulSetTestLoadManifest(assert, "exposed-ports.yml")
+	manifest, role := statefulSetTestLoadManifest(assert.New(t), "exposed-ports.yml")
 	if manifest == nil || role == nil {
 		return
 	}
 
 	portDef := role.Run.ExposedPorts[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
+	require.NotNil(t, portDef)
 
 	statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(items, 3, "Should have three services per stateful role") {
+	if assert.Len(t, items, 3, "Should have three services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
@@ -69,23 +63,21 @@ func TestStatefulSetPorts(t *testing.T) {
 			}
 		}
 	}
-	if assert.NotNil(endpointService, "endpoint service not found") {
-		assert.Equal(role.Name+"-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
+	if assert.NotNil(t, endpointService, "endpoint service not found") {
+		assert.Equal(t, role.Name+"-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
 	}
-	if assert.NotNil(headlessService, "headless service not found") {
-		assert.Equal(role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
+	if assert.NotNil(t, headlessService, "headless service not found") {
+		assert.Equal(t, role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
 	}
-	if assert.NotNil(privateService, "private service not found") {
-		assert.Equal(role.Name, privateService.Get("metadata", "name").String(), "unexpected private service name")
+	if assert.NotNil(t, privateService, "private service not found") {
+		assert.Equal(t, role.Name, privateService.Get("metadata", "name").String(), "unexpected private service name")
 	}
 
 	items = append(items, statefulset)
 	objects := helm.NewMapping("items", helm.NewNode(items))
 
 	actual, err := testhelpers.RoundtripKube(objects)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 
 	expected := `---
 		items:
@@ -163,7 +155,151 @@ func TestStatefulSetPorts(t *testing.T) {
 								name: https
 								containerPort: 443
 	`
-	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+	testhelpers.IsYAMLSubsetString(assert.New(t), expected, actual)
+}
+
+// TestStatefulSetServices checks that the services associated with a service
+// are created correctly.
+func TestStatefulSetServices(t *testing.T) {
+	for _, variant := range []string{"headless", "headed"} {
+		t.Run(variant, func(t *testing.T) {
+			manifestName := "service-" + variant + ".yml"
+			manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
+			require.NotNil(t, manifest)
+			require.NotNil(t, role)
+			require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
+
+			statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
+			require.NoError(t, err)
+			assert.NotNil(t, statefulset)
+			assert.NotNil(t, deps)
+			items := deps.Get("items").Values()
+
+			var headlessService, internalService, publicService helm.Node
+			for _, item := range items {
+				switch item.Get("metadata").Get("name").String() {
+				case "myrole-set":
+					assert.Nil(t, headlessService, "Multiple headless services found")
+					headlessService = item
+				case "myrole":
+					assert.Nil(t, internalService, "Multiple internal services found")
+					internalService = item
+				case "myrole-public":
+					assert.Nil(t, publicService, "Multiple public services found")
+					publicService = item
+				default:
+					assert.Failf(t, "Found unexpected service: \n%s", item.String())
+				}
+			}
+			for _, style := range []string{"kube", "helm"} {
+				t.Run(style, func(t *testing.T) {
+					if assert.NotNil(t, headlessService, "Headless service not found") {
+						var actual interface{}
+						var err error
+						switch style {
+						case "helm":
+							actual, err = testhelpers.RoundtripNode(headlessService, nil)
+						case "kube":
+							actual, err = testhelpers.RoundtripKube(headlessService)
+						default:
+							panic("Unexpected style " + style)
+						}
+						require.NoError(t, err)
+						testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole-set
+							spec:
+								clusterIP: None
+								ports:
+								-
+									name: http
+									port: 80
+									protocol: TCP
+									targetPort: 0
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: 0
+								selector:
+									skiff-role-name: myrole
+								type: ClusterIP
+							`, actual)
+					}
+					if assert.NotNil(t, publicService, "Public service not found") {
+						var actual interface{}
+						var err error
+						switch style {
+						case "helm":
+							actual, err = testhelpers.RoundtripNode(publicService, nil)
+						case "kube":
+							actual, err = testhelpers.RoundtripKube(publicService)
+						default:
+							panic("Unexpected style " + style)
+						}
+						require.NoError(t, err)
+						testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole-public
+							spec:
+								externalIPs: '[ 192.168.77.77 ]'
+								ports:
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: https
+								selector:
+									skiff-role-name: myrole
+								type: ClusterIP
+							`, actual)
+					}
+					if variant == "headless" {
+						assert.Nil(t, internalService, "headless roles should not have internal services")
+						return
+					}
+					if assert.NotNil(t, internalService, "Internal service not found") {
+						var actual interface{}
+						var err error
+						switch style {
+						case "helm":
+							actual, err = testhelpers.RoundtripNode(internalService, nil)
+						case "kube":
+							actual, err = testhelpers.RoundtripKube(internalService)
+						default:
+							panic("Unexpected style " + style)
+						}
+						require.NoError(t, err)
+						testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole
+							spec:
+								ports:
+								-
+									name: http
+									port: 80
+									protocol: TCP
+									targetPort: http
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: https
+								selector:
+									skiff-role-name: myrole
+								type: ClusterIP
+							`, actual)
+					}
+				})
+			}
+		})
+	}
 }
 
 // TestStatefulSetStart checks that roles with the `sequential-startup` tag will
