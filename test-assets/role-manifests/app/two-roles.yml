@@ -9,7 +9,6 @@ roles:
       max: 2
 - name: myrole-clustered
   jobs: []
-  tags: [ clustered ]
   run:
     scaling:
       min: 1

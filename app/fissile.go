@@ -1057,14 +1057,6 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-// roleIsStateful returns true if a given role needs to be a StatefulSet
-func (f *Fissile) roleIsStateful(role *model.Role) bool {
-	if role.HasTag(model.RoleTagClustered) || role.HasTag(model.RoleTagIndexed) {
-		return true
-	}
-	return false
-}
-
 // roleHasStorage returns true if a given role uses shared or
 // persistent volumes.
 func (f *Fissile) roleHasStorage(role *model.Role) bool {
@@ -1118,45 +1110,16 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		case model.RoleTypeBosh:
 			enc := helm.NewEncoder(outputFile)
 
-			isStateful := f.roleIsStateful(role)
-			hasStorage := f.roleHasStorage(role)
-
-			if hasStorage && !isStateful {
-				// A role with storage has to be
-				// stateful and was not tagged as
-				// such. Bail out to prevent use of
-				// this broken setup
-				return fmt.Errorf("Role %s uses storage, and is not tagged as indexed, nor as clustered", role.Name)
-			}
-
-			if isStateful {
-				statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
-				if err != nil {
-					return err
-				}
-				err = enc.Encode(statefulSet)
-				if err != nil {
-					return err
-				}
-				if deps != nil {
-					err = enc.Encode(deps)
-					if err != nil {
-						return err
-					}
-				}
-
-				continue
-			}
-			deployment, svc, err := kube.NewDeployment(role, settings, f)
+			statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
 			if err != nil {
 				return err
 			}
-			err = enc.Encode(deployment)
+			err = enc.Encode(statefulSet)
 			if err != nil {
 				return err
 			}
-			if svc != nil {
-				err = enc.Encode(svc)
+			if deps != nil {
+				err = enc.Encode(deps)
 				if err != nil {
 					return err
 				}

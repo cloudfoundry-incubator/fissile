@@ -76,7 +76,6 @@ type RoleTag string
 
 // The list of acceptable tags
 const (
-	RoleTagClustered         = RoleTag("clustered")
 	RoleTagIndexed           = RoleTag("indexed")
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
@@ -403,7 +402,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 
 		for tagNum, tag := range role.Tags {
 			switch tag {
-			case RoleTagClustered:
 			case RoleTagIndexed:
 			case RoleTagStopOnFailure:
 			case RoleTagSequentialStartup:
