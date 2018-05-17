@@ -19,6 +19,7 @@ import (
 
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -172,10 +173,8 @@ func TestCompilationSkipCompiled(t *testing.T) {
 }
 
 func TestCompilationRoleManifest(t *testing.T) {
-	assert := assert.New(t)
-
 	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	compileChan := make(chan string, 2)
 	c.compilePackage = func(c *Compilator, pkg *model.Package) error {
@@ -184,21 +183,21 @@ func TestCompilationRoleManifest(t *testing.T) {
 	}
 
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	// This release has 3 packages:
 	// `tor` is in the role manifest, and will be included
 	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
 	// `boguspackage` is neither, and will not be included
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/compilator/tor-good.yml")
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
-	assert.NoError(err)
-	assert.NotNil(roleManifest)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
 
 	waitCh := make(chan struct{})
 	errCh := make(chan error)
@@ -207,9 +206,9 @@ func TestCompilationRoleManifest(t *testing.T) {
 	}()
 	go func() {
 		// `libevent` is a dependency of `tor` and will be compiled first
-		assert.NoError(<-errCh)
-		assert.Equal(<-compileChan, "libevent")
-		assert.Equal(<-compileChan, "tor")
+		assert.NoError(t, <-errCh)
+		assert.Equal(t, <-compileChan, "libevent")
+		assert.Equal(t, <-compileChan, "tor")
 		close(waitCh)
 	}()
 
@@ -217,7 +216,7 @@ func TestCompilationRoleManifest(t *testing.T) {
 	case <-waitCh:
 		return
 	case <-time.After(5 * time.Second):
-		assert.Fail("Test timeout")
+		assert.Fail(t, "Test timeout")
 	}
 }
 
