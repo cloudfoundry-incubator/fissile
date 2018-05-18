@@ -1,9 +1,8 @@
 ---
 roles:
 - name: myrole
-  scripts: ["myrole.sh"]
   run:
-    memory: 1
+    foo: x
   jobs:
   - name: new_hostname
     release_name: tor
@@ -12,14 +11,7 @@ roles:
 - name: foorole
   type: bosh-task
   run:
-    foo: x
+     foo: x
   jobs:
   - name: tor
     release_name: tor
-- name: dockerrole
-  type: docker
-  fookey: somevalue
-  run:
-    memory: 1
-    env:
-    - UNKNOWN

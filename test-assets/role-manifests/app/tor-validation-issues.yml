@@ -1,15 +1,7 @@
+# This role manifest is used to check that various validation issues are found
 ---
 roles:
 - name: myrole
-  environment_scripts:
-  - environ.sh
-  - /environ/script/with/absolute/path.sh
-  scripts:
-  - myrole.sh
-  - /script/with/absolute/path.sh
-  post_config_scripts:
-  - post_config_script.sh
-  - /var/vcap/jobs/myrole/pre-start
   run:
     foo: x
   jobs:
@@ -17,6 +9,9 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
+  configuration:
+    templates:
+      properties.tor.bogus: BOGUS
 - name: foorole
   type: bosh-task
   run:
@@ -27,12 +22,11 @@ roles:
 configuration:
   variables:
   - name: BAR
-    type: environment
-    internal: true
   - name: FOO
   - name: HOME
   - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
-    properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+    properties.fox: '((FOO): Not specified in any release'

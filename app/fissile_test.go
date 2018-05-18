@@ -344,7 +344,7 @@ func TestGenerateAuth(t *testing.T) {
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	require.NoError(t, err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/generate-auth.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/generate-auth.yml")
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, f)
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
@@ -546,26 +546,21 @@ func TestDevDiffConfigurations(t *testing.T) {
 }
 
 func TestFissileSelectRolesToBuild(t *testing.T) {
-	assert := assert.New(t)
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	// Set up the test params
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/roles-to-build.yml")
 
 	f := NewFissileApplication(",", ui)
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	if !assert.NoError(err, "Failed to load role manifest: %s", roleManifestPath) {
-		return
-	}
+	require.NoError(t, err, "Failed to load role manifest: %s", roleManifestPath)
 
 	testSamples := []struct {
 		roleNames     []string
@@ -587,18 +582,20 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 	}
 
 	for _, sample := range testSamples {
-		results, err := roleManifest.SelectRoles(sample.roleNames)
-		if sample.err != "" {
-			assert.EqualError(err, sample.err, "while testing %v", sample.roleNames)
-		} else {
-			assert.NoError(err, "while testing %v", sample.roleNames)
-			var actualNames []string
-			for _, role := range results {
-				actualNames = append(actualNames, role.Name)
+		t.Run(strings.Join(sample.roleNames, ","), func(t *testing.T) {
+			results, err := roleManifest.SelectRoles(sample.roleNames)
+			if sample.err != "" {
+				assert.EqualError(t, err, sample.err, "while testing %v", sample.roleNames)
+			} else {
+				assert.NoError(t, err, "while testing %v", sample.roleNames)
+				var actualNames []string
+				for _, role := range results {
+					actualNames = append(actualNames, role.Name)
+				}
+				sort.Strings(actualNames)
+				assert.Equal(t, sample.expectedNames, actualNames, "while testing %v", sample.roleNames)
 			}
-			sort.Strings(actualNames)
-			assert.Equal(sample.expectedNames, actualNames, "while testing %v", sample.roleNames)
-		}
+		})
 	}
 }
 
@@ -655,7 +652,7 @@ func TestFissileGenerateKubeRoles(t *testing.T) {
 	// Set up the test params
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/exposed-ports-no-ports.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/two-roles.yml")
 
 	f := NewFissileApplication(".", ui)
 	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)

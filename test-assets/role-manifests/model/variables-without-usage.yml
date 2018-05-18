@@ -1,0 +1,11 @@
+# This role manifest tests that unused variables are an error
+---
+roles:
+- name: myrole
+  jobs:
+  - name: tor
+    release_name: tor
+  run: {}
+configuration:
+  variables:
+  - name: SOME_VAR # Unused

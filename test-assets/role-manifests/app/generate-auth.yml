@@ -1,3 +1,4 @@
+# This role manifest is used to test generating kube roles
 ---
 roles:
 - name: non-default

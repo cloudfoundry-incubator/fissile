@@ -1,3 +1,4 @@
+# This role manifest contains two roles
 ---
 roles:
 - name: myrole-deployment

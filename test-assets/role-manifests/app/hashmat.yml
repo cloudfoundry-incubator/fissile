@@ -1,3 +1,4 @@
+# This role manifest is used to test validation
 ---
 roles:
 - name: myrole

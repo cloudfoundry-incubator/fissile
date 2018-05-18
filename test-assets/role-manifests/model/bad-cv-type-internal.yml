@@ -1,0 +1,16 @@
+# This role manifest checks for an internal environment variable (which is invalid)
+---
+roles:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: new_hostname
+    release_name: tor
+configuration:
+  variables:
+  - name: BAR
+    type: environment
+    internal: true
+  templates:
+    properties.tor.hostname: '((BAR))'

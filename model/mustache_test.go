@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -33,25 +34,23 @@ func TestParsing(t *testing.T) {
 }
 
 func TestRoleVariables(t *testing.T) {
-	assert := assert.New(t)
-
 	workDir, err := os.Getwd()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/tor-good.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variable-expansion.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.NoError(err)
-	assert.NotNil(roleManifest)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
 
 	vars, err := roleManifest.Roles[0].GetVariablesForRole()
 
-	assert.NoError(err)
-	assert.NotNil(vars)
+	assert.NoError(t, err)
+	assert.NotNil(t, vars)
 
 	expected := []string{"HOME", "FOO", "BAR", "KUBE_SERVICE_DOMAIN_SUFFIX", "PELERINUL"}
 	sort.Strings(expected)
@@ -60,5 +59,5 @@ func TestRoleVariables(t *testing.T) {
 		actual = append(actual, variable.Name)
 	}
 	sort.Strings(actual)
-	assert.Equal(expected, actual)
+	assert.Equal(t, expected, actual)
 }

@@ -1,0 +1,18 @@
+# This role manifest is used to test selecting which roles to build
+---
+roles:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
+- name: foorole
+  type: bosh-task
+  run:
+     foo: x
+  jobs:
+  - name: tor
+    release_name: tor

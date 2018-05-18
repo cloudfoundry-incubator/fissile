@@ -9,6 +9,11 @@ roles:
     exposed-ports:
       - name: http
         protocol: TCP
-        external: 80-90
-        internal: 8080-8090
+        external: 80
+        internal: 8080
+        public: false
+      - name: https
+        protocol: TCP
+        external: 443
+        internal: 443
         public: true
