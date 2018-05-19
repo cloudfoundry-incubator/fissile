@@ -256,7 +256,9 @@ func TestNewDeploymentHelm(t *testing.T) {
 							livenessProbe: ~
 							name: "role"
 							ports: ~
-							readinessProbe: ~
+							readinessProbe:
+								exec:
+									command: [ /opt/fissile/readiness-probe.sh ]
 							resources: ~
 							securityContext:
 								capabilities:

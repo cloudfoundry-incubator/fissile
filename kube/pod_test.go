@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -1294,85 +1293,116 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 
 func TestPodGetContainerReadinessProbe(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
-	role := podTemplateTestLoadRole(assert)
-	if role == nil {
-		return
-	}
 
-	samples := []Sample{
+	samples := []struct {
+		desc  string
+		input *model.HealthProbe
+		// We have different expected behaviours for docker roles (supporting
+		// all three probe types) and BOSH roles (only commands are allowed)
+		dockerExpected string
+		dockerError    string
+		boshExpected   string
+		boshError      string
+	}{
 		{
-			desc:     "No probe",
-			input:    nil,
-			expected: `---`,
+			desc:           "No probe",
+			input:          nil,
+			dockerExpected: ``,
+			boshExpected: `---
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "Port probe",
 			input: &model.HealthProbe{
 				Port: 1234,
 			},
-			expected: `---
+			dockerExpected: `---
 				tcpSocket:
 					port: 1234`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "Command probe",
 			input: &model.HealthProbe{
 				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
 			},
-			expected: `---
+			dockerExpected: `---
 				exec:
 					command: [ rm, "-rf", "--no-preserve-root", /]`,
+			boshExpected: `---
+				exec:
+					# Note that this is being interpreted as five separate commands
+					command: [ /opt/fissile/readiness-probe.sh, rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple)",
 			input: &model.HealthProbe{
 				URL: "http://example.com/path",
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTP
 					host:   "example.com"
 					port:   80
 					path:   "/path"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (custom port)",
 			input: &model.HealthProbe{
 				URL: "https://example.com:1234/path",
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTPS
 					host:   "example.com"
 					port:   1234
 					path:   "/path"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (Invalid scheme)",
 			input: &model.HealthProbe{
 				URL: "file:///etc/shadow",
 			},
-			err: "Health check for myrole has unsupported URI scheme \"file\"",
+			dockerError: "Health check for myrole has unsupported URI scheme \"file\"",
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (query)",
 			input: &model.HealthProbe{
 				URL: "http://example.com/path?query#hash",
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTP
 					host:   "example.com"
 					port:   80
 					path:   "/path?query"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (auth)",
 			input: &model.HealthProbe{
 				URL: "http://user:pass@example.com/path",
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTP
 					host:   "example.com"
@@ -1381,6 +1411,10 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					httpHeaders:
 					-	name:  Authorization
 						value: dXNlcjpwYXNz`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (custom headers)",
@@ -1388,7 +1422,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				URL:     "http://example.com/path",
 				Headers: map[string]string{"x-header": "some value"},
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTP
 					host:   "example.com"
@@ -1397,31 +1431,47 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					httpHeaders:
 					-	name:  "X-Header"
 						value: "some value"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (invalid URL)",
 			input: &model.HealthProbe{
 				URL: "://",
 			},
-			err: "Invalid readiness URL health check for myrole: parse ://: missing protocol scheme",
+			dockerError: "Invalid readiness URL health check for myrole: parse ://: missing protocol scheme",
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (invalid port)",
 			input: &model.HealthProbe{
 				URL: "http://example.com:port_number/",
 			},
-			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+			dockerError: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "URL probe (localhost)",
 			input: &model.HealthProbe{
 				URL: "http://container-ip/path",
 			},
-			expected: `---
+			dockerExpected: `---
 				httpGet:
 					scheme: HTTP
 					port:   80
 					path:   "/path"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "Port probe, readiness timeout",
@@ -1429,10 +1479,15 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				Port:    1234,
 				Timeout: 20,
 			},
-			expected: `---
+			dockerExpected: `---
 				timeoutSeconds: 20
 				tcpSocket:
 					port: 1234`,
+			boshExpected: `---
+				# This would have failed validation
+				timeoutSeconds: 20
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "Command probe, readiness timeout",
@@ -1440,10 +1495,15 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				Command: []string{"rm", "-rf", "--no-preserve-root", "/"},
 				Timeout: 20,
 			},
-			expected: `---
+			dockerExpected: `---
 				timeoutSeconds: 20
 				exec:
 					command: [ rm, "-rf", "--no-preserve-root", /]`,
+			boshExpected: `---
+				timeoutSeconds: 20
+				exec:
+					# This is interpreted as five separate commands
+					command: [ /opt/fissile/readiness-probe.sh, rm, "-rf", "--no-preserve-root", /]`,
 		},
 		{
 			desc: "URL probe (simple), readiness timeout",
@@ -1451,65 +1511,156 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 				URL:     "http://example.com/path",
 				Timeout: 20,
 			},
-			expected: `---
+			dockerExpected: `---
 				timeoutSeconds: 20
 				httpGet:
 					scheme: HTTP
 					host:   "example.com"
 					port:   80
 					path:   "/path"`,
+			boshExpected: `---
+				# This would have failed validation
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh ]`,
 		},
 		{
 			desc: "Initial Delay Seconds",
 			input: &model.HealthProbe{
 				InitialDelay: 22,
-				Port:         2289,
+				Command:      []string{"/bin/true"},
 			},
-			expected: `---
+			dockerExpected: `---
 				initialDelaySeconds: 22
-				tcpSocket:
-					port: 2289`,
+				exec:
+					command: [ /bin/true ]`,
+			boshExpected: `---
+				initialDelaySeconds: 22
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh, /bin/true ]`,
 		},
 		{
 			desc: "Success Threshold",
 			input: &model.HealthProbe{
 				SuccessThreshold: 20,
-				Port:             2289,
+				Command:          []string{"/bin/true"},
 			},
-			expected: `---
+			dockerExpected: `---
 				successThreshold: 20
-				tcpSocket:
-					port: 2289`,
+				exec:
+					command: [ /bin/true ]`,
+			boshExpected: `---
+				successThreshold: 20
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh, /bin/true ]`,
 		},
 		{
 			desc: "Failure Threshold",
 			input: &model.HealthProbe{
 				FailureThreshold: 20,
-				Port:             2289,
+				Command:          []string{"/bin/true"},
 			},
-			expected: `---
+			dockerExpected: `---
 				failureThreshold: 20
-				tcpSocket:
-					port: 2289`,
+				exec:
+					command: [ /bin/true ]`,
+			boshExpected: `---
+				failureThreshold: 20
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh, /bin/true ]`,
 		},
 		{
 			desc: "Period Seconds",
 			input: &model.HealthProbe{
-				Period: 20,
-				Port:   2289,
+				Period:  20,
+				Command: []string{"/bin/true"},
 			},
-			expected: `---
+			dockerExpected: `---
 				periodSeconds: 20
-				tcpSocket:
-					port: 2289`,
+				exec:
+					command: [ /bin/true ]`,
+			boshExpected: `---
+				periodSeconds: 20
+				exec:
+					command: [ /opt/fissile/readiness-probe.sh, /bin/true ]`,
 		},
 	}
 
 	for _, sample := range samples {
-		probe, _ := sample.input.(*model.HealthProbe)
-		role.Run.HealthCheck = &model.HealthCheck{Readiness: probe}
-		actual, err := getContainerReadinessProbe(role)
-		sample.check(t, actual, err)
+		t.Run(sample.desc, func(t *testing.T) {
+			t.Parallel()
+			t.Run("docker", func(t *testing.T) {
+				t.Parallel()
+				role := podTemplateTestLoadRole(assert.New(t))
+				require.NotNil(t, role)
+				role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
+				role.Type = model.RoleTypeDocker
+				probe, err := getContainerReadinessProbe(role)
+				if sample.dockerError != "" {
+					assert.EqualError(t, err, sample.dockerError)
+					return
+				}
+				require.NoError(t, err)
+				if sample.dockerExpected == "" {
+					assert.Nil(t, probe)
+					return
+				}
+				require.NotNil(t, probe, "No error getting readiness probe but it was nil")
+				t.Run("kube", func(t *testing.T) {
+					t.Parallel()
+					actual, err := testhelpers.RoundtripKube(probe)
+					if assert.NoError(t, err) {
+						// We use subset testing here because we don't want to bother with the
+						// default timeout lengths
+						testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+					}
+				})
+				t.Run("helm", func(t *testing.T) {
+					t.Parallel()
+					actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+					if assert.NoError(t, err) {
+						// We use subset testing here because we don't want to bother with the
+						// default timeout lengths
+						testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+					}
+				})
+			})
+			t.Run("bosh", func(t *testing.T) {
+				t.Parallel()
+				role := podTemplateTestLoadRole(assert.New(t))
+				require.NotNil(t, role)
+				role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
+				role.Type = model.RoleTypeBosh
+				probe, err := getContainerReadinessProbe(role)
+				if sample.boshError != "" {
+					assert.EqualError(t, err, sample.boshError)
+					return
+				}
+				require.NoError(t, err)
+				if sample.boshExpected == "" {
+					assert.Nil(t, probe)
+					return
+				}
+				require.NotNil(t, probe, "No error getting readiness probe but it was nil")
+				t.Run("kube", func(t *testing.T) {
+					t.Parallel()
+					actual, err := testhelpers.RoundtripKube(probe)
+					if assert.NoError(t, err) {
+						// We use subset testing here because we don't want to bother with the
+						// default timeout lengths
+						testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
+					}
+				})
+				t.Run("helm", func(t *testing.T) {
+					t.Parallel()
+					actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+					if assert.NoError(t, err) {
+						// We use subset testing here because we don't want to bother with the
+						// default timeout lengths
+						testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
+					}
+				})
+			})
+		})
 	}
 }
 

@@ -76,10 +76,10 @@ type RoleTag string
 
 // The list of acceptable tags
 const (
-	RoleTagIndexed           = RoleTag("indexed")
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
 	RoleTagHeadless          = RoleTag("headless")
+	RoleTagActivePassive     = RoleTag("active-passive")
 )
 
 // Role represents a collection of jobs that are colocated on a container
@@ -101,22 +101,23 @@ type Role struct {
 
 // RoleRun describes how a role should behave at runtime
 type RoleRun struct {
-	Scaling           *RoleRunScaling       `yaml:"scaling"`
-	Capabilities      []string              `yaml:"capabilities"`
-	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
-	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
-	Volumes           []*RoleRunVolume      `yaml:"volumes"`
-	MemRequest        *int64                `yaml:"memory"`
-	Memory            *RoleRunMemory        `yaml:"mem"`
-	VirtualCPUs       *float64              `yaml:"virtual-cpus"`
-	CPU               *RoleRunCPU           `yaml:"cpu"`
-	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
-	FlightStage       FlightStage           `yaml:"flight-stage"`
-	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
-	ServiceAccount    string                `yaml:"service-account,omitempty"`
-	Affinity          *RoleRunAffinity      `yaml:"affinity,omitempty"`
-	Environment       []string              `yaml:"env"`
-	ObjectAnnotations *map[string]string    `yaml:"object-annotations,omitempty"`
+	Scaling            *RoleRunScaling       `yaml:"scaling"`
+	Capabilities       []string              `yaml:"capabilities"`
+	PersistentVolumes  []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
+	SharedVolumes      []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
+	Volumes            []*RoleRunVolume      `yaml:"volumes"`
+	MemRequest         *int64                `yaml:"memory"`
+	Memory             *RoleRunMemory        `yaml:"mem"`
+	VirtualCPUs        *float64              `yaml:"virtual-cpus"`
+	CPU                *RoleRunCPU           `yaml:"cpu"`
+	ExposedPorts       []*RoleRunExposedPort `yaml:"exposed-ports"`
+	FlightStage        FlightStage           `yaml:"flight-stage"`
+	HealthCheck        *HealthCheck          `yaml:"healthcheck,omitempty"`
+	ActivePassiveProbe string                `yaml:"active-passive-probe,omitempty"`
+	ServiceAccount     string                `yaml:"service-account,omitempty"`
+	Affinity           *RoleRunAffinity      `yaml:"affinity,omitempty"`
+	Environment        []string              `yaml:"env"`
+	ObjectAnnotations  *map[string]string    `yaml:"object-annotations,omitempty"`
 }
 
 // RoleRunAffinity describes how a role should behave with regard to node / pod selection
@@ -181,7 +182,7 @@ type HealthCheck struct {
 type HealthProbe struct {
 	URL              string            `yaml:"url"`                         // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
 	Headers          map[string]string `yaml:"headers"`                     // Custom headers; only used for URL.
-	Command          []string          `yaml:"command"`                     // Custom command. Cannot be used with other checks.
+	Command          []string          `yaml:"command,omitempty"`           // Individual commands to run inside the container; each is interpreted as a shell command. Cannot be used with other checks.
 	Port             int               `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
 	InitialDelay     int               `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
 	Period           int               `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
@@ -400,20 +401,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 				role.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
 		}
 
-		for tagNum, tag := range role.Tags {
-			switch tag {
-			case RoleTagIndexed:
-			case RoleTagStopOnFailure:
-			case RoleTagSequentialStartup:
-			case RoleTagHeadless:
-				// Ignore the known tags
-			default:
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
-					string(tag), "Unknown tag"))
-			}
-		}
-
+		allErrs = append(allErrs, validateRoleTags(role)...)
 		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
 	}
 
@@ -488,7 +476,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerInvalidTags(&roleManifest)...)
 		allErrs = append(allErrs, validateColocatedContainerVolumeShares(&roleManifest)...)
 	}
 
@@ -1442,18 +1429,21 @@ func validateRoleCPU(role *Role) validation.ErrorList {
 func validateHealthCheck(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
+	if role.Run.HealthCheck == nil {
+		// No health checks, nothing to validate
+		return allErrs
+	}
+
 	// Ensure that we don't have conflicting health checks
-	if role.Run.HealthCheck != nil {
-		if role.Run.HealthCheck.Readiness != nil {
-			allErrs = append(allErrs,
-				validateHealthProbe(role, "readiness",
-					role.Run.HealthCheck.Readiness)...)
-		}
-		if role.Run.HealthCheck.Liveness != nil {
-			allErrs = append(allErrs,
-				validateHealthProbe(role, "liveness",
-					role.Run.HealthCheck.Liveness)...)
-		}
+	if role.Run.HealthCheck.Readiness != nil {
+		allErrs = append(allErrs,
+			validateHealthProbe(role, "readiness",
+				role.Run.HealthCheck.Readiness)...)
+	}
+	if role.Run.HealthCheck.Liveness != nil {
+		allErrs = append(allErrs,
+			validateHealthProbe(role, "liveness",
+				role.Run.HealthCheck.Liveness)...)
 	}
 
 	return allErrs
@@ -1478,6 +1468,41 @@ func validateHealthProbe(role *Role, probeName string, probe *HealthProbe) valid
 		allErrs = append(allErrs, validation.Invalid(
 			fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
 			checks, "Expected at most one of url, command, or port"))
+	}
+	switch role.Type {
+
+	case RoleTypeBosh:
+		if len(checks) == 0 {
+			allErrs = append(allErrs, validation.Required(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				"Health check requires a command"))
+		} else if checks[0] != "command" {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				checks, "Only command health checks are supported for BOSH roles"))
+		} else if probeName != "readiness" && len(probe.Command) > 1 {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				probe.Command, fmt.Sprintf("%s check can only have one command", probeName)))
+		}
+
+	case RoleTypeBoshTask:
+		if len(checks) > 0 {
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				"bosh-task roles cannot have health checks"))
+		}
+
+	case RoleTypeDocker:
+		if len(probe.Command) > 1 {
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				"docker roles do not support multiple commands"))
+		}
+
+	default:
+		// We should have caught the invalid role type when loading the role manifest
+		panic("Unexpected role type " + string(role.Type) + " in role " + role.Name)
 	}
 
 	return allErrs
@@ -1627,20 +1652,53 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 	return allErrs
 }
 
-func validateColocatedContainerInvalidTags(RoleManifest *RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
+func validateRoleTags(role *Role) validation.ErrorList {
+	var allErrs validation.ErrorList
 
-	for _, role := range RoleManifest.Roles {
-		if role.Type == RoleTypeColocatedContainer {
-			for _, tag := range role.Tags {
-				switch tag {
-				case "clustered", "indexed":
-					allErrs = append(allErrs, validation.Invalid(
-						fmt.Sprintf("role[%s]", role.Name),
-						tag,
-						"tags clustered, or indexed are not supported for colocated-containers"))
-				}
+	acceptableRoleTypes := map[RoleTag][]RoleType{
+		RoleTagActivePassive:     []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagHeadless:          []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagSequentialStartup: []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
+	}
+
+	for tagNum, tag := range role.Tags {
+		switch tag {
+		case RoleTagStopOnFailure:
+		case RoleTagSequentialStartup:
+		case RoleTagHeadless:
+		case RoleTagActivePassive:
+			// Ignore the known tags
+		default:
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				string(tag), "Unknown tag"))
+			continue
+		}
+
+		if _, ok := acceptableRoleTypes[tag]; !ok {
+			allErrs = append(allErrs, validation.InternalError(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				fmt.Errorf("Tag %s has no acceptable role list", tag)))
+			continue
+		}
+
+		validTypeForTag := false
+		for _, roleType := range acceptableRoleTypes[tag] {
+			if roleType == role.Type {
+				validTypeForTag = true
+				break
 			}
+		}
+		if !validTypeForTag {
+			var roleNames []string
+			for _, roleType := range acceptableRoleTypes[tag] {
+				roleNames = append(roleNames, string(roleType))
+			}
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				tag,
+				fmt.Sprintf("%s tag is only supported in [%s] roles, not %s", tag, strings.Join(roleNames, ", "), role.Type)))
 		}
 	}
 

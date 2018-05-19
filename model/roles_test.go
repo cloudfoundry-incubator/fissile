@@ -989,7 +989,7 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"clustered\": tags clustered, or indexed are not supported for colocated-containers")
+	assert.EqualError(err, `roles[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] roles, not colocated-container`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {
