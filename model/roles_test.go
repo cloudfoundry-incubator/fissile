@@ -742,12 +742,26 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 
 		roleManifest.Roles[0].Type = RoleTypeBoshTask
 		roleManifest.Roles[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.Roles[0].Run = &RoleRun{
-			ActivePassiveProbe: "/bin/false",
-		}
+		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
 			`roles[myrole].tags[0]: Invalid value: "active-passive": active-passive roles must be BOSH roles`)
+	})
+
+	t.Run("headless active/passive role", func(t *testing.T) {
+		t.Parallel()
+		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		err := yaml.Unmarshal(manifestContents, roleManifest)
+		require.NoError(t, err, "Error unmarshalling role manifest")
+		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+
+		roleManifest.Roles[0].Type = RoleTypeBosh
+		roleManifest.Roles[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
+		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		assert.EqualError(t, err,
+			`roles[myrole].tags[1]: Invalid value: "active-passive": headless roles may not be active-passive`)
 	})
 }
 
