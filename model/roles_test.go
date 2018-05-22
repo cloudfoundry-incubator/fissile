@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 func TestLoadRoleManifestOK(t *testing.T) {
@@ -150,6 +151,50 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
 			`roles[foorole].jobs[ntpd]: Invalid value: "foo": Referenced release is not loaded`)
+	}
+}
+
+func TestRoleManifestTagList(t *testing.T) {
+	t.Parallel()
+	workDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	require.NoError(t, err, "Error reading BOSH release")
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
+	manifestContents, err := ioutil.ReadFile(roleManifestPath)
+	require.NoError(t, err, "Error reading role manifest")
+
+	for tag, acceptable := range map[string]bool{
+		"stop-on-failure":    true,
+		"sequential-startup": true,
+		"headless":           true,
+		"active-passive":     true,
+		"indexed":            false,
+		"clustered":          false,
+		"invalid":            false,
+		"no-monit":           false,
+	} {
+		func(tag string, acceptable bool) {
+			t.Run(tag, func(t *testing.T) {
+				t.Parallel()
+				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+				err := yaml.Unmarshal(manifestContents, roleManifest)
+				require.NoError(t, err, "Error unmarshalling role manifest")
+				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+				roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
+				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+				if acceptable {
+					assert.NoError(t, err)
+				} else {
+					assert.EqualError(t, err, `roles[myrole].tags[0]: Invalid value: "`+tag+`": Unknown tag`)
+				}
+			})
+		}(tag, acceptable)
 	}
 }
 
