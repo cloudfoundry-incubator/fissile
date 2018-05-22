@@ -161,51 +161,54 @@ func TestStatefulSetPorts(t *testing.T) {
 // TestStatefulSetServices checks that the services associated with a service
 // are created correctly.
 func TestStatefulSetServices(t *testing.T) {
+	t.Parallel()
 	for _, variant := range []string{"headless", "headed"} {
-		t.Run(variant, func(t *testing.T) {
-			manifestName := "service-" + variant + ".yml"
-			manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
-			require.NotNil(t, manifest)
-			require.NotNil(t, role)
-			require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
+		func(variant string) {
+			t.Run(variant, func(t *testing.T) {
+				t.Parallel()
+				manifestName := "service-" + variant + ".yml"
+				manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
+				require.NotNil(t, manifest)
+				require.NotNil(t, role)
+				require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
 
-			statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
-			require.NoError(t, err)
-			assert.NotNil(t, statefulset)
-			assert.NotNil(t, deps)
-			items := deps.Get("items").Values()
+				statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
+				require.NoError(t, err)
+				assert.NotNil(t, statefulset)
+				assert.NotNil(t, deps)
+				items := deps.Get("items").Values()
 
-			var headlessService, internalService, publicService helm.Node
-			for _, item := range items {
-				switch item.Get("metadata").Get("name").String() {
-				case "myrole-set":
-					assert.Nil(t, headlessService, "Multiple headless services found")
-					headlessService = item
-				case "myrole":
-					assert.Nil(t, internalService, "Multiple internal services found")
-					internalService = item
-				case "myrole-public":
-					assert.Nil(t, publicService, "Multiple public services found")
-					publicService = item
-				default:
-					assert.Failf(t, "Found unexpected service: \n%s", item.String())
+				var headlessService, internalService, publicService helm.Node
+				for _, item := range items {
+					switch item.Get("metadata").Get("name").String() {
+					case "myrole-set":
+						assert.Nil(t, headlessService, "Multiple headless services found")
+						headlessService = item
+					case "myrole":
+						assert.Nil(t, internalService, "Multiple internal services found")
+						internalService = item
+					case "myrole-public":
+						assert.Nil(t, publicService, "Multiple public services found")
+						publicService = item
+					default:
+						assert.Failf(t, "Found unexpected service: \n%s", item.String())
+					}
 				}
-			}
-			for _, style := range []string{"kube", "helm"} {
-				t.Run(style, func(t *testing.T) {
-					if assert.NotNil(t, headlessService, "Headless service not found") {
-						var actual interface{}
-						var err error
-						switch style {
-						case "helm":
-							actual, err = testhelpers.RoundtripNode(headlessService, nil)
-						case "kube":
-							actual, err = testhelpers.RoundtripKube(headlessService)
-						default:
-							panic("Unexpected style " + style)
-						}
-						require.NoError(t, err)
-						testhelpers.IsYAMLEqualString(assert.New(t), `---
+				for _, style := range []string{"kube", "helm"} {
+					t.Run(style, func(t *testing.T) {
+						if assert.NotNil(t, headlessService, "Headless service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = testhelpers.RoundtripNode(headlessService, nil)
+							case "kube":
+								actual, err = testhelpers.RoundtripKube(headlessService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
 							apiVersion: v1
 							kind: Service
 							metadata:
@@ -227,20 +230,20 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 								type: ClusterIP
 							`, actual)
-					}
-					if assert.NotNil(t, publicService, "Public service not found") {
-						var actual interface{}
-						var err error
-						switch style {
-						case "helm":
-							actual, err = testhelpers.RoundtripNode(publicService, nil)
-						case "kube":
-							actual, err = testhelpers.RoundtripKube(publicService)
-						default:
-							panic("Unexpected style " + style)
 						}
-						require.NoError(t, err)
-						testhelpers.IsYAMLEqualString(assert.New(t), `---
+						if assert.NotNil(t, publicService, "Public service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = testhelpers.RoundtripNode(publicService, nil)
+							case "kube":
+								actual, err = testhelpers.RoundtripKube(publicService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
 							apiVersion: v1
 							kind: Service
 							metadata:
@@ -257,24 +260,24 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 								type: ClusterIP
 							`, actual)
-					}
-					if variant == "headless" {
-						assert.Nil(t, internalService, "headless roles should not have internal services")
-						return
-					}
-					if assert.NotNil(t, internalService, "Internal service not found") {
-						var actual interface{}
-						var err error
-						switch style {
-						case "helm":
-							actual, err = testhelpers.RoundtripNode(internalService, nil)
-						case "kube":
-							actual, err = testhelpers.RoundtripKube(internalService)
-						default:
-							panic("Unexpected style " + style)
 						}
-						require.NoError(t, err)
-						testhelpers.IsYAMLEqualString(assert.New(t), `---
+						if variant == "headless" {
+							assert.Nil(t, internalService, "headless roles should not have internal services")
+							return
+						}
+						if assert.NotNil(t, internalService, "Internal service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = testhelpers.RoundtripNode(internalService, nil)
+							case "kube":
+								actual, err = testhelpers.RoundtripKube(internalService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
 							apiVersion: v1
 							kind: Service
 							metadata:
@@ -295,17 +298,17 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 								type: ClusterIP
 							`, actual)
-					}
-				})
-			}
-		})
+						}
+					})
+				}
+			})
+		}(variant)
 	}
 }
 
 // TestStatefulSetStart checks that roles with the `sequential-startup` tag will
 // be of OrderedReady podManagementPolicy; and that roles without have Parallel.
 func TestStatefulSetStartupPolicy(t *testing.T) {
-	t.SkipNow()
 	t.Parallel()
 	_, roleTemplate := statefulSetTestLoadManifest(assert.New(t), "volumes.yml")
 	require.NotNil(t, roleTemplate)
@@ -314,45 +317,47 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 		"Parallel":     []model.RoleTag{},
 	}
 	for policy, tags := range testCases {
-		t.Run(policy, func(t *testing.T) {
-			t.Parallel()
-			role := *roleTemplate
-			role.Tags = tags
-
-			t.Run("kube", func(t *testing.T) {
+		func(policy string, tags []model.RoleTag) {
+			t.Run(policy, func(t *testing.T) {
 				t.Parallel()
-				statefulset, _, err := NewStatefulSet(&role, ExportSettings{
-					Opinions: model.NewEmptyOpinions(),
-				}, nil)
-				require.NoError(t, err)
-				actual, err := testhelpers.RoundtripKube(statefulset)
-				require.NoError(t, err)
-				expected := `---
+				role := *roleTemplate
+				role.Tags = tags
+
+				t.Run("kube", func(t *testing.T) {
+					t.Parallel()
+					statefulset, _, err := NewStatefulSet(&role, ExportSettings{
+						Opinions: model.NewEmptyOpinions(),
+					}, nil)
+					require.NoError(t, err)
+					actual, err := testhelpers.RoundtripKube(statefulset)
+					require.NoError(t, err)
+					expected := `---
 					spec:
 						podManagementPolicy: %s
 					`
-				testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
-			})
-
-			t.Run("helm", func(t *testing.T) {
-				t.Parallel()
-				statefulset, _, err := NewStatefulSet(&role, ExportSettings{
-					Opinions:        model.NewEmptyOpinions(),
-					CreateHelmChart: true,
-				}, nil)
-				require.NoError(t, err)
-				actual, err := testhelpers.RoundtripNode(statefulset, map[string]interface{}{
-					"Values.sizing.myrole.count":        "1",
-					"Values.sizing.myrole.capabilities": []string{},
+					testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
 				})
-				require.NoError(t, err)
-				expected := `---
+
+				t.Run("helm", func(t *testing.T) {
+					t.Parallel()
+					statefulset, _, err := NewStatefulSet(&role, ExportSettings{
+						Opinions:        model.NewEmptyOpinions(),
+						CreateHelmChart: true,
+					}, nil)
+					require.NoError(t, err)
+					actual, err := testhelpers.RoundtripNode(statefulset, map[string]interface{}{
+						"Values.sizing.myrole.count":        "1",
+						"Values.sizing.myrole.capabilities": []string{},
+					})
+					require.NoError(t, err)
+					expected := `---
 					spec:
 						podManagementPolicy: %s
 					`
-				testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
+					testhelpers.IsYAMLSubsetString(assert.New(t), fmt.Sprintf(expected, policy), actual)
+				})
 			})
-		})
+		}(policy, tags)
 	}
 }
 

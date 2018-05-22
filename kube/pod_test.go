@@ -1294,7 +1294,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 func TestPodGetContainerReadinessProbe(t *testing.T) {
 	t.Parallel()
 
-	samples := []struct {
+	type sampleStruct struct {
 		desc  string
 		input *model.HealthProbe
 		// We have different expected behaviours for docker roles (supporting
@@ -1303,7 +1303,9 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		dockerError    string
 		boshExpected   string
 		boshError      string
-	}{
+	}
+
+	samples := []sampleStruct{
 		{
 			desc:           "No probe",
 			input:          nil,
@@ -1586,81 +1588,83 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 	}
 
 	for _, sample := range samples {
-		t.Run(sample.desc, func(t *testing.T) {
-			t.Parallel()
-			t.Run("docker", func(t *testing.T) {
+		func(sample sampleStruct) {
+			t.Run(sample.desc, func(t *testing.T) {
 				t.Parallel()
-				role := podTemplateTestLoadRole(assert.New(t))
-				require.NotNil(t, role)
-				role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
-				role.Type = model.RoleTypeDocker
-				probe, err := getContainerReadinessProbe(role)
-				if sample.dockerError != "" {
-					assert.EqualError(t, err, sample.dockerError)
-					return
-				}
-				require.NoError(t, err)
-				if sample.dockerExpected == "" {
-					assert.Nil(t, probe)
-					return
-				}
-				require.NotNil(t, probe, "No error getting readiness probe but it was nil")
-				t.Run("kube", func(t *testing.T) {
+				t.Run("docker", func(t *testing.T) {
 					t.Parallel()
-					actual, err := testhelpers.RoundtripKube(probe)
-					if assert.NoError(t, err) {
-						// We use subset testing here because we don't want to bother with the
-						// default timeout lengths
-						testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+					role := podTemplateTestLoadRole(assert.New(t))
+					require.NotNil(t, role)
+					role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
+					role.Type = model.RoleTypeDocker
+					probe, err := getContainerReadinessProbe(role)
+					if sample.dockerError != "" {
+						assert.EqualError(t, err, sample.dockerError)
+						return
 					}
+					require.NoError(t, err)
+					if sample.dockerExpected == "" {
+						assert.Nil(t, probe)
+						return
+					}
+					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
+					t.Run("kube", func(t *testing.T) {
+						t.Parallel()
+						actual, err := testhelpers.RoundtripKube(probe)
+						if assert.NoError(t, err) {
+							// We use subset testing here because we don't want to bother with the
+							// default timeout lengths
+							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+						}
+					})
+					t.Run("helm", func(t *testing.T) {
+						t.Parallel()
+						actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+						if assert.NoError(t, err) {
+							// We use subset testing here because we don't want to bother with the
+							// default timeout lengths
+							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+						}
+					})
 				})
-				t.Run("helm", func(t *testing.T) {
+				t.Run("bosh", func(t *testing.T) {
 					t.Parallel()
-					actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
-					if assert.NoError(t, err) {
-						// We use subset testing here because we don't want to bother with the
-						// default timeout lengths
-						testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
+					role := podTemplateTestLoadRole(assert.New(t))
+					require.NotNil(t, role)
+					role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
+					role.Type = model.RoleTypeBosh
+					probe, err := getContainerReadinessProbe(role)
+					if sample.boshError != "" {
+						assert.EqualError(t, err, sample.boshError)
+						return
 					}
+					require.NoError(t, err)
+					if sample.boshExpected == "" {
+						assert.Nil(t, probe)
+						return
+					}
+					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
+					t.Run("kube", func(t *testing.T) {
+						t.Parallel()
+						actual, err := testhelpers.RoundtripKube(probe)
+						if assert.NoError(t, err) {
+							// We use subset testing here because we don't want to bother with the
+							// default timeout lengths
+							testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
+						}
+					})
+					t.Run("helm", func(t *testing.T) {
+						t.Parallel()
+						actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+						if assert.NoError(t, err) {
+							// We use subset testing here because we don't want to bother with the
+							// default timeout lengths
+							testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
+						}
+					})
 				})
 			})
-			t.Run("bosh", func(t *testing.T) {
-				t.Parallel()
-				role := podTemplateTestLoadRole(assert.New(t))
-				require.NotNil(t, role)
-				role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
-				role.Type = model.RoleTypeBosh
-				probe, err := getContainerReadinessProbe(role)
-				if sample.boshError != "" {
-					assert.EqualError(t, err, sample.boshError)
-					return
-				}
-				require.NoError(t, err)
-				if sample.boshExpected == "" {
-					assert.Nil(t, probe)
-					return
-				}
-				require.NotNil(t, probe, "No error getting readiness probe but it was nil")
-				t.Run("kube", func(t *testing.T) {
-					t.Parallel()
-					actual, err := testhelpers.RoundtripKube(probe)
-					if assert.NoError(t, err) {
-						// We use subset testing here because we don't want to bother with the
-						// default timeout lengths
-						testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
-					}
-				})
-				t.Run("helm", func(t *testing.T) {
-					t.Parallel()
-					actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
-					if assert.NoError(t, err) {
-						// We use subset testing here because we don't want to bother with the
-						// default timeout lengths
-						testhelpers.IsYAMLSubsetString(assert.New(t), sample.boshExpected, actual)
-					}
-				})
-			})
-		})
+		}(sample)
 	}
 }
 
