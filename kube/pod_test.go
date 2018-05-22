@@ -1021,7 +1021,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		t.Parallel()
 		_, err := testhelpers.RenderNode(ev, nil)
 		assert.EqualError(err,
-			`template: :7:62: executing "" at <.Values.env.SOMETHIN...>: can't evaluate field SOMETHING in type interface {}`)
+			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {

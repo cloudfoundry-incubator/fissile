@@ -593,3 +593,36 @@ func (enc *Encoder) writeNode(node Node, prefix *string, label string, emptyLine
 		enc.pendingNewline = emptyLines
 	}
 }
+
+// MakeBasicValues returns a Mapping with the default values that do not depend
+// on any configuration.  This is exported so the tests from other packages can
+// access them.
+func MakeBasicValues() *Mapping {
+	return NewMapping(
+		"kube", NewMapping(
+			"external_ips", NewList(),
+			"secrets_generation_counter", NewNode(1, Comment("Increment this counter to rotate all generated secrets")),
+			"storage_class", NewMapping("persistent", "persistent", "shared", "shared"),
+			"hostpath_available", NewNode(false, Comment("Whether HostPath volume mounts are available")),
+			"registry", NewMapping(
+				"hostname", "docker.io",
+				"username", "",
+				"password", ""),
+			"organization", "",
+			"auth", nil),
+		"config", NewMapping(
+			"HA", NewNode(false, Comment("Flag to activate high-availability mode")),
+			"memory", NewNode(NewMapping(
+				"requests", NewNode(false, Comment("Flag to activate memory requests")),
+				"limits", NewNode(false, Comment("Flag to activate memory limits")),
+			), Comment("Global memory configuration")),
+			"cpu", NewNode(NewMapping(
+				"requests", NewNode(false, Comment("Flag to activate cpu requests")),
+				"limits", NewNode(false, Comment("Flag to activate cpu limits")),
+			), Comment("Global CPU configuration"))),
+		"env", NewMapping(),
+		"sizing", NewMapping(),
+		"secrets", NewMapping(),
+		"services", NewMapping(
+			"loadbalanced", false))
+}

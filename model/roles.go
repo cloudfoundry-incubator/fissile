@@ -420,6 +420,15 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 	for _, role := range m.Roles {
 		role.roleManifest = m
 
+		if role.Run != nil && role.Run.ActivePassiveProbe != "" {
+			if !role.HasTag(RoleTagActivePassive) {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
+					role.Run.ActivePassiveProbe,
+					"Active/passive probes are only valid on roles with active-passive tag"))
+			}
+		}
+
 		for _, roleJob := range role.RoleJobs {
 			release, ok := mappedReleases[roleJob.ReleaseName]
 
@@ -460,7 +469,7 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 		// Validate that specified colocated containers are configured and of the
 		// correct type
 		for idx, roleName := range role.ColocatedContainers {
-			if lookupRole := roleManifest.LookupRole(roleName); lookupRole == nil {
+			if lookupRole := m.LookupRole(roleName); lookupRole == nil {
 				allErrs = append(allErrs, validation.Invalid(
 					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
 					roleName,
@@ -1668,7 +1677,7 @@ func validateRoleTags(role *Role) validation.ErrorList {
 	var allErrs validation.ErrorList
 
 	acceptableRoleTypes := map[RoleTag][]RoleType{
-		RoleTagActivePassive:     []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagActivePassive:     []RoleType{RoleTypeBosh},
 		RoleTagHeadless:          []RoleType{RoleTypeBosh, RoleTypeDocker},
 		RoleTagSequentialStartup: []RoleType{RoleTypeBosh, RoleTypeDocker},
 		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
@@ -1680,7 +1689,11 @@ func validateRoleTags(role *Role) validation.ErrorList {
 		case RoleTagSequentialStartup:
 		case RoleTagHeadless:
 		case RoleTagActivePassive:
-			// Ignore the known tags
+			if role.Run == nil || role.Run.ActivePassiveProbe == "" {
+				allErrs = append(allErrs, validation.Required(
+					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
+					"active-passive roles must specify the correct probe"))
+			}
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),

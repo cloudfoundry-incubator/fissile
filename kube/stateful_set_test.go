@@ -346,8 +346,9 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 					}, nil)
 					require.NoError(t, err)
 					actual, err := testhelpers.RoundtripNode(statefulset, map[string]interface{}{
-						"Values.sizing.myrole.count":        "1",
-						"Values.sizing.myrole.capabilities": []string{},
+						"Values.sizing.myrole.count":                        "1",
+						"Values.sizing.myrole.capabilities":                 []string{},
+						"Values.sizing.myrole.disk_sizes.persistent_volume": 1,
 					})
 					require.NoError(t, err)
 					expected := `---
