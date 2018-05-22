@@ -350,20 +350,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	if err != nil {
 		return nil, err
 	}
-	mappedReleases := map[string]*Release{}
-
-	for _, release := range releases {
-		_, ok := mappedReleases[release.Name]
-
-		if ok {
-			return nil, fmt.Errorf("Error - release %s has been loaded more than once", release.Name)
-		}
-
-		mappedReleases[release.Name] = release
-		if grapher != nil {
-			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
-		}
-	}
 
 	roleManifest := RoleManifest{}
 	roleManifest.manifestFilePath = manifestFilePath
@@ -377,13 +363,39 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		roleManifest.Configuration.Templates = map[string]string{}
 	}
 
+	err = roleManifest.resolveRoleManifest(releases, grapher)
+	if err != nil {
+		return nil, err
+	}
+	return &roleManifest, nil
+}
+
+// resolveRoleManifest takes a role manifest as loaded from disk, and validates
+// it to ensure it has no errors, and that the various ancillary structures are
+// correctly populated.
+func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.ModelGrapher) error {
+	mappedReleases := map[string]*Release{}
+
+	for _, release := range releases {
+		_, ok := mappedReleases[release.Name]
+
+		if ok {
+			return fmt.Errorf("Error - release %s has been loaded more than once", release.Name)
+		}
+
+		mappedReleases[release.Name] = release
+		if grapher != nil {
+			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
+		}
+	}
+
 	// See also 'GetVariablesForRole' (mustache.go).
-	declaredConfigs := MakeMapOfVariables(&roleManifest)
+	declaredConfigs := MakeMapOfVariables(m)
 
 	allErrs := validation.ErrorList{}
 
-	for i := len(roleManifest.Roles) - 1; i >= 0; i-- {
-		role := roleManifest.Roles[i]
+	for i := len(m.Roles) - 1; i >= 0; i-- {
+		role := m.Roles[i]
 
 		// Remove all roles that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
@@ -394,7 +406,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		case RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer:
 			// Nothing to do.
 		case RoleTypeDocker:
-			roleManifest.Roles = append(roleManifest.Roles[:i], roleManifest.Roles[i+1:]...)
+			m.Roles = append(m.Roles[:i], m.Roles[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
@@ -402,11 +414,11 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		}
 
 		allErrs = append(allErrs, validateRoleTags(role)...)
-		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
+		allErrs = append(allErrs, validateRoleRun(role, m, declaredConfigs)...)
 	}
 
-	for _, role := range roleManifest.Roles {
-		role.roleManifest = &roleManifest
+	for _, role := range m.Roles {
+		role.roleManifest = m
 
 		for _, roleJob := range role.RoleJobs {
 			release, ok := mappedReleases[roleJob.ReleaseName]
@@ -466,24 +478,24 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	// Skip further validation if we fail to resolve any jobs
 	// This lets us assume valid jobs in the validation routines
 	if len(allErrs) == 0 {
-		allErrs = append(allErrs, roleManifest.resolveLinks()...)
-		allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariablePreviousNames(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
-		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
-		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
-		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
-		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerVolumeShares(&roleManifest)...)
+		allErrs = append(allErrs, m.resolveLinks()...)
+		allErrs = append(allErrs, validateVariableType(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableSorting(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariablePreviousNames(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableUsage(m)...)
+		allErrs = append(allErrs, validateTemplateUsage(m)...)
+		allErrs = append(allErrs, validateNonTemplates(m)...)
+		allErrs = append(allErrs, validateServiceAccounts(m)...)
+		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(m)...)
+		allErrs = append(allErrs, validateColocatedContainerPortCollisions(m)...)
+		allErrs = append(allErrs, validateColocatedContainerVolumeShares(m)...)
 	}
 
 	if len(allErrs) != 0 {
-		return nil, fmt.Errorf(allErrs.Errors())
+		return fmt.Errorf(allErrs.Errors())
 	}
 
-	return &roleManifest, nil
+	return nil
 }
 
 // LookupRole will find the given role in the role manifest
