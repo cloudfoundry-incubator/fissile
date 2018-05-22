@@ -578,6 +578,127 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	})
 }
 
+func TestLoadRoleManifestHealthChecks(t *testing.T) {
+	t.Parallel()
+	workDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	require.NoError(t, err, "Error reading BOSH release")
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
+	manifestContents, err := ioutil.ReadFile(roleManifestPath)
+	require.NoError(t, err, "Error reading role manifest")
+
+	type sampleStruct struct {
+		name        string
+		roleType    RoleType
+		healthCheck HealthCheck
+		err         []string
+	}
+	for _, sample := range []sampleStruct{
+		{
+			name: "empty",
+		},
+		{
+			name:     "too many kinds",
+			roleType: RoleTypeDocker,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello"},
+					URL:     "about:blank",
+					Port:    6667,
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
+			},
+		},
+		{
+			name:     "docker multi-arg commands",
+			roleType: RoleTypeDocker,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello", "world"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Forbidden: docker roles do not support multiple commands`,
+			},
+		},
+		{
+			name:     "bosh task with health check",
+			roleType: RoleTypeBoshTask,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Forbidden: bosh-task roles cannot have health checks`,
+			},
+		},
+		{
+			name:     "bosh role with command",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"/bin/echo", "hello"},
+				},
+			},
+		},
+		{
+			name:     "bosh role with url",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					URL: "about:crashes",
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url"]: Only command health checks are supported for BOSH roles`,
+			},
+		},
+		{
+			name:     "bosh role with liveness check with multiple commands",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Liveness: &HealthProbe{
+					Command: []string{"hello", "world"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.liveness.command: Invalid value: ["hello","world"]: liveness check can only have one command`,
+			},
+		},
+	} {
+		func(sample sampleStruct) {
+			t.Run(sample.name, func(t *testing.T) {
+				t.Parallel()
+				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+				err := yaml.Unmarshal(manifestContents, roleManifest)
+				require.NoError(t, err, "Error unmarshalling role manifest")
+				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+				if sample.roleType != RoleType("") {
+					roleManifest.Roles[0].Type = sample.roleType
+				}
+				roleManifest.Roles[0].Run = &RoleRun{
+					HealthCheck: &sample.healthCheck,
+				}
+				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+				if len(sample.err) > 0 {
+					assert.EqualError(t, err, strings.Join(sample.err, "\n"))
+					return
+				}
+				assert.NoError(t, err)
+			})
+		}(sample)
+	}
+}
+
 func TestResolveLinks(t *testing.T) {
 	workDir, err := os.Getwd()
 
