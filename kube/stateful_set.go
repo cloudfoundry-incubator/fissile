@@ -21,11 +21,7 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, nil, err
 	}
 
-	flags := ClusterIPHeadless
-	if !role.HasTag(model.RoleTagHeadless) {
-		flags |= ClusterIPPrivate
-	}
-	svcList, err := NewClusterIPServiceList(role, flags, settings)
+	svcList, err := NewServiceList(role, true, settings)
 	if err != nil {
 		return nil, nil, err
 	}

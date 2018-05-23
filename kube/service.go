@@ -7,22 +7,15 @@ import (
 	"github.com/SUSE/fissile/model"
 )
 
-// ClusterIPServiceFlag describes the kinds of services to enable
-type ClusterIPServiceFlag int
-
-// Valid values for ClusterIPServiceFlag
-const (
-	ClusterIPHeadless = ClusterIPServiceFlag(1 << iota)
-	ClusterIPPrivate  = ClusterIPServiceFlag(1 << iota)
-)
-
-// NewClusterIPServiceList creates a list of ClusterIP services
-func NewClusterIPServiceList(role *model.Role, flags ClusterIPServiceFlag, settings ExportSettings) (helm.Node, error) {
+// NewServiceList creates a list of services
+// clustering should be true if a kubernetes headless service should be created
+// (for self-clustering roles, to reach each pod individually)
+func NewServiceList(role *model.Role, clustering bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
-	if flags&ClusterIPHeadless != 0 {
+	if clustering {
 		// Create headless, private service
-		svc, err := NewClusterIPService(role, true, false, settings)
+		svc, err := newService(role, newServiceTypeHeadless, settings)
 		if err != nil {
 			return nil, err
 		}
@@ -31,9 +24,18 @@ func NewClusterIPServiceList(role *model.Role, flags ClusterIPServiceFlag, setti
 		}
 	}
 
-	if flags&ClusterIPPrivate != 0 {
+	if !role.HasTag(model.RoleTagHeadless) {
 		// Create private service
-		svc, err := NewClusterIPService(role, false, false, settings)
+		svc, err := newService(role, newServiceTypePrivate, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
+
+		// Create public service
+		svc, err = newService(role, newServiceTypePublic, settings)
 		if err != nil {
 			return nil, err
 		}
@@ -42,14 +44,6 @@ func NewClusterIPServiceList(role *model.Role, flags ClusterIPServiceFlag, setti
 		}
 	}
 
-	// Create public service
-	svc, err := NewClusterIPService(role, false, true, settings)
-	if err != nil {
-		return nil, err
-	}
-	if svc != nil {
-		items = append(items, svc)
-	}
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -60,19 +54,29 @@ func NewClusterIPServiceList(role *model.Role, flags ClusterIPServiceFlag, setti
 	return list.Sort(), nil
 }
 
-// NewClusterIPService creates a new k8s ClusterIP service
-func NewClusterIPService(role *model.Role, headless bool, public bool, settings ExportSettings) (helm.Node, error) {
+// newServiceType is the type of the service to create
+type newServiceType int
+
+const (
+	_                      = iota
+	newServiceTypeHeadless // Create a headless service (for clustering)
+	newServiceTypePrivate  // Create a private endpoint service (internal traffic)
+	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
+)
+
+// newService creates a new k8s service (ClusterIP or LoadBalanced)
+func newService(role *model.Role, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
-		if public && !port.Public {
+		if serviceType == newServiceTypePublic && !port.Public {
+			// Skip non-public ports when creating public services
 			continue
 		}
+
 		if settings.CreateHelmChart && port.CountIsConfigurable {
 			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
 			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
-			newPort := helm.NewMapping()
-			newPort.Set(helm.Block(block))
 
 			portName := port.Name
 			if port.Max > 1 {
@@ -86,10 +90,13 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 				portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
 			}
 
-			newPort.Add("name", portName)
-			newPort.Add("port", portNumber)
-			newPort.Add("protocol", port.Protocol)
-			if headless {
+			newPort := helm.NewMapping(
+				"name", portName,
+				"port", portNumber,
+				"protocol", port.Protocol,
+			)
+			newPort.Set(helm.Block(block))
+			if serviceType == newServiceTypeHeadless {
 				newPort.Add("targetPort", 0)
 			} else {
 				newPort.Add("targetPort", portName)
@@ -116,7 +123,7 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 					"protocol", port.Protocol,
 				)
 
-				if headless {
+				if serviceType == newServiceTypeHeadless {
 					newPort.Add("targetPort", 0)
 				} else {
 					newPort.Add("targetPort", portName)
@@ -132,36 +139,45 @@ func NewClusterIPService(role *model.Role, headless bool, public bool, settings 
 	}
 
 	spec := helm.NewMapping()
-	spec.Add("selector", helm.NewMapping(RoleNameLabel, role.Name))
+
+	selector := helm.NewMapping(RoleNameLabel, role.Name)
+	if role.HasTag(model.RoleTagActivePassive) {
+		selector.Add("skiff-role-active", "true")
+	}
+	spec.Add("selector", selector)
 
 	if settings.CreateHelmChart {
 		spec.Add("type", "{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}")
 	} else {
 		spec.Add("type", "ClusterIP")
 	}
-	if headless {
+	if serviceType == newServiceTypeHeadless {
 		if settings.CreateHelmChart {
 			spec.Add("clusterIP", "None", helm.Block("if not .Values.services.loadbalanced"))
 		} else {
 			spec.Add("clusterIP", "None")
 		}
 	}
-	if public {
-		externalIPs := "[ 192.168.77.77 ]"
+	if serviceType == newServiceTypePublic {
 		if settings.CreateHelmChart {
-			externalIPs = "{{ .Values.kube.external_ips | toJson }}"
+			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}")
+		} else {
+			spec.Add("externalIPs", []string{"192.168.77.77"})
 		}
-		spec.Add("externalIPs", externalIPs)
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
-	serviceName := role.Name
-	if headless {
-		serviceName = fmt.Sprintf("%s-set", role.Name)
-	} else if public {
-		serviceName = fmt.Sprintf("%s-public", role.Name)
+	var serviceName string
+	switch serviceType {
+	case newServiceTypeHeadless:
+		serviceName = role.Name + "-set"
+	case newServiceTypePrivate:
+		serviceName = role.Name
+	case newServiceTypePublic:
+		serviceName = role.Name + "-public"
+	default:
+		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
-
 	service := newTypeMeta("v1", "Service")
 	service.Add("metadata", helm.NewMapping("name", serviceName))
 	service.Add("spec", spec.Sort())

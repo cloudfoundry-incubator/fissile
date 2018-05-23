@@ -187,6 +187,10 @@ func TestRoleManifestTagList(t *testing.T) {
 				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
 				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
 				roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
+				if RoleTag(tag) == RoleTagActivePassive {
+					// An active/passive probe is required when tagged as active/passive
+					roleManifest.Roles[0].Run.ActivePassiveProbe = "hello"
+				}
 				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 				if acceptable {
 					assert.NoError(t, err)

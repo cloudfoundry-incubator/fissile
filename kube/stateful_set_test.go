@@ -231,6 +231,11 @@ func TestStatefulSetServices(t *testing.T) {
 								type: ClusterIP
 							`, actual)
 						}
+						if variant == "headless" {
+							assert.Nil(t, publicService, "headless roles should not have public services")
+							assert.Nil(t, internalService, "headless roles should not have internal services")
+							return
+						}
 						if assert.NotNil(t, publicService, "Public service not found") {
 							var actual interface{}
 							var err error
@@ -249,7 +254,7 @@ func TestStatefulSetServices(t *testing.T) {
 							metadata:
 								name: myrole-public
 							spec:
-								externalIPs: '[ 192.168.77.77 ]'
+								externalIPs: [ 192.168.77.77 ]
 								ports:
 								-
 									name: https
@@ -260,10 +265,6 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 								type: ClusterIP
 							`, actual)
-						}
-						if variant == "headless" {
-							assert.Nil(t, internalService, "headless roles should not have internal services")
-							return
 						}
 						if assert.NotNil(t, internalService, "Internal service not found") {
 							var actual interface{}
