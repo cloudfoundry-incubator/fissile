@@ -1019,3 +1019,25 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"clustered\": tags clustered, or indexed are not supported for colocated-containers")
 }
+
+func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
+	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	assert.NoError(err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-volume-share-issues.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	assert.Nil(roleManifest)
+	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"/mnt/foobAr\": colocated role specifies a shared volume with tag mount-share, which path does not match the path of the main role shared volume with the same tag\n"+
+		"role[main-role]: Required value: container must use shared volumes of the main role: vcap-logs\n"+
+		"role[main-role]: Required value: container must use shared volumes of the main role: vcap-store")
+}

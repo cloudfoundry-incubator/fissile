@@ -463,6 +463,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
 		allErrs = append(allErrs, validateColocatedContainerInvalidTags(&roleManifest)...)
+		allErrs = append(allErrs, validateColocatedContainerVolumeShares(&roleManifest)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -1612,6 +1613,64 @@ func validateColocatedContainerInvalidTags(RoleManifest *RoleManifest) validatio
 						fmt.Sprintf("role[%s]", role.Name),
 						tag,
 						"tags clustered, or indexed are not supported for colocated-containers"))
+				}
+			}
+		}
+	}
+
+	return allErrs
+}
+
+func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, role := range RoleManifest.Roles {
+		numberOfColocatedContainers := len(role.ColocatedContainers)
+
+		if numberOfColocatedContainers > 0 {
+			emptyDirVolumesTags := []string{}
+			emptyDirVolumesPath := map[string]string{}
+			emptyDirVolumesCount := map[string]int{}
+
+			// Compile a map of all emptyDir volumes with tag -> path of the main role
+			for _, volume := range role.Run.Volumes {
+				if volume.Type == VolumeTypeEmptyDir {
+					emptyDirVolumesTags = append(emptyDirVolumesTags, volume.Tag)
+					emptyDirVolumesPath[volume.Tag] = volume.Path
+					emptyDirVolumesCount[volume.Tag] = 0
+				}
+			}
+
+			for _, colocatedRole := range role.GetColocatedRoles() {
+				for _, volume := range colocatedRole.Run.Volumes {
+					if volume.Type == VolumeTypeEmptyDir {
+						if _, ok := emptyDirVolumesCount[volume.Tag]; !ok {
+							emptyDirVolumesCount[volume.Tag] = 0
+						}
+
+						emptyDirVolumesCount[volume.Tag]++
+
+						if path, ok := emptyDirVolumesPath[volume.Tag]; ok {
+							if path != volume.Path {
+								// Same tag, but different paths
+								allErrs = append(allErrs, validation.Invalid(
+									fmt.Sprintf("role[%s]", colocatedRole.Name),
+									volume.Path,
+									fmt.Sprintf("colocated role specifies a shared volume with tag %s, which path does not match the path of the main role shared volume with the same tag", volume.Tag)))
+							}
+						}
+					}
+				}
+			}
+
+			// Check the counters
+			sort.Strings(emptyDirVolumesTags)
+			for _, tag := range emptyDirVolumesTags {
+				count := emptyDirVolumesCount[tag]
+				if count != numberOfColocatedContainers {
+					allErrs = append(allErrs, validation.Required(
+						fmt.Sprintf("role[%s]", role.Name),
+						fmt.Sprintf("container must use shared volumes of the main role: %s", tag)))
 				}
 			}
 		}
