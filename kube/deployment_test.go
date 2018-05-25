@@ -95,7 +95,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 	assert.Equal(deployment.Get("metadata", "name").String(), "role")
 
 	t.Run("Defaults", func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
 		_, err = testhelpers.RenderNode(deployment, nil)
@@ -103,8 +103,38 @@ func TestNewDeploymentHelm(t *testing.T) {
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
 
+	t.Run("Configured, not enough replicas", func(t *testing.T) {
+		// t.Parallel()
+		config := map[string]interface{}{
+			"Values.sizing.role.count":                 "0",
+			"Values.sizing.role.affinity.nodeAffinity": "snafu",
+			"Values.sizing.role.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":            "docker.suse.fake",
+			"Values.kube.organization":                 "splat",
+			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
+		}
+		_, err = testhelpers.RenderNode(deployment, config)
+		assert.EqualError(err,
+			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+	})
+
+	t.Run("Configured, too many replicas", func(t *testing.T) {
+		// t.Parallel()
+		config := map[string]interface{}{
+			"Values.sizing.role.count":                 "10",
+			"Values.sizing.role.affinity.nodeAffinity": "snafu",
+			"Values.sizing.role.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":            "docker.suse.fake",
+			"Values.kube.organization":                 "splat",
+			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
+		}
+		_, err = testhelpers.RenderNode(deployment, config)
+		assert.EqualError(err,
+			`template: :5:17: executing "" at <fail "role cannot ha...>: error calling fail: role cannot have more than 1 instances`)
+	})
+
 	t.Run("Configured", func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
 		config := map[string]interface{}{
 			"Values.sizing.role.count":                 "1",
 			"Values.sizing.role.affinity.nodeAffinity": "snafu",
