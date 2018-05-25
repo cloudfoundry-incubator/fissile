@@ -115,6 +115,7 @@ func generalCheck(role *model.Role, controller *helm.Mapping, settings ExportSet
 		controller.Add(guardVariable, fail, helm.Block(block))
 	}
 
+	controller.Sort()
 	return nil
 }
 
