@@ -1,0 +1,7 @@
+---
+roles:
+- name: dockerrole
+  type: docker
+  run:
+    env:
+    - UNKNOWN

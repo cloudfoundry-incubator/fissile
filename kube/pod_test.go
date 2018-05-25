@@ -21,7 +21,7 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.Role {
 		return nil
 	}
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/volumes.yml")
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/volumes.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 
@@ -1500,7 +1500,7 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 

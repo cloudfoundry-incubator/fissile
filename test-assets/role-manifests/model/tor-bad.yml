@@ -12,5 +12,5 @@ roles:
     run:
       memory: 1
     jobs:
-      - name: foo
-        release_name: tor	
+      - name: foo # This job should not exist
+        release_name: tor

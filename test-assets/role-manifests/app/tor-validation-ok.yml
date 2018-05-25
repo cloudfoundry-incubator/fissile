@@ -1,3 +1,4 @@
+# This role manifest should pass validation with no issues
 ---
 roles:
 - name: myrole
@@ -17,12 +18,22 @@ roles:
     release_name: tor
   - name: tor
     release_name: tor
+- name: foorole
+  type: bosh-task
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release_name: tor
 configuration:
   variables:
   - name: BAR
   - name: FOO
-    previous_names: [BAR, BAZ]
-  - name: QUX
-    previous_names: [BAZ]
+  - name: HOME
+  - name: KUPRIES
+    internal: true
+  - name: PELERINUL
   templates:
-    properties.tor.hostname: '((FOO))((BAR))((QUX))'
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

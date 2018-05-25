@@ -1,3 +1,4 @@
+# This role manifest checks for an invalid variable type
 ---
 roles:
 - name: myrole
@@ -26,12 +27,12 @@ roles:
     release_name: tor
 configuration:
   variables:
-  - name: FOO
   - name: BAR
+    type: bogus
+  - name: FOO
+  - name: HOME
   - name: PELERINUL
-  - name: PELERINUL
-  - name: ALPHA
   templates:
-    properties.tor.hostname: '((FOO))((ALPHA))'
-    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

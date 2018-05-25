@@ -15,7 +15,7 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests", manifestName)
+	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 
