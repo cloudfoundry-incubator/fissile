@@ -1858,15 +1858,14 @@ func TestPodMemoryHelmActive(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":         "R",
-		"Values.kube.organization":              "O",
+		"Values.config.memory.limits":           "true",
+		"Values.config.memory.requests":         "true",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.kube.organization":              "O",
+		"Values.kube.registry.hostname":         "R",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
-
-		"Values.sizing.memory.requests":         "true",
-		"Values.sizing.pre_role.memory.request": "1",
-		"Values.sizing.memory.limits":           "true",
 		"Values.sizing.pre_role.memory.limit":   "10",
+		"Values.sizing.pre_role.memory.request": "1",
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -2046,15 +2045,14 @@ func TestPodCPUHelmActive(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":         "R",
-		"Values.kube.organization":              "O",
+		"Values.config.cpu.limits":              "true",
+		"Values.config.cpu.requests":            "true",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.kube.organization":              "O",
+		"Values.kube.registry.hostname":         "R",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
-
-		"Values.sizing.cpu.requests":         "true",
-		"Values.sizing.pre_role.cpu.request": "1",
-		"Values.sizing.cpu.limits":           "true",
-		"Values.sizing.pre_role.cpu.limit":   "10",
+		"Values.sizing.pre_role.cpu.limit":      "10",
+		"Values.sizing.pre_role.cpu.request":    "1",
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
