@@ -15,7 +15,6 @@ import (
 func TestMakeValues(t *testing.T) {
 	t.Parallel()
 
-	assert := assert.New(t)
 	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
 	require.NoError(t, err)
 	defer os.RemoveAll(outDir)
@@ -39,18 +38,44 @@ func TestMakeValues(t *testing.T) {
 
 		node, err := MakeValues(settings)
 
-		assert.NotNil(node)
-		assert.NoError(err)
+		assert.NotNil(t, node)
+		assert.NoError(t, err)
 
 		actual, err := testhelpers.RoundtripKube(node)
-		if !assert.NoError(err) {
+		if !assert.NoError(t, err) {
 			return
 		}
-		testhelpers.IsYAMLSubsetString(assert, `---
+		testhelpers.IsYAMLSubsetString(assert.New(t), `---
 			sizing:
 				arole:
 					capabilities:	[]
 		`, actual)
+	})
+
+	t.Run("Sizing", func(t *testing.T) {
+		t.Parallel()
+		settings := ExportSettings{
+			OutputDir: outDir,
+			RoleManifest: &model.RoleManifest{
+				Roles: model.Roles{
+					&model.Role{
+						Name: "arole",
+						Run: &model.RoleRun{
+							Scaling: &model.RoleRunScaling{},
+						},
+					},
+				},
+				Configuration: &model.Configuration{},
+			},
+		}
+
+		node, err := MakeValues(settings)
+		assert.NoError(t, err)
+		require.NotNil(t, node)
+
+		sizing := node.Get("sizing")
+		require.NotNil(t, sizing)
+		assert.Contains(t, sizing.Comment(), "underscore")
 	})
 
 	t.Run("Check Default Registry", func(t *testing.T) {
@@ -64,12 +89,12 @@ func TestMakeValues(t *testing.T) {
 
 		node, err := MakeValues(settings)
 
-		assert.NotNil(node)
-		assert.NoError(err)
+		assert.NotNil(t, node)
+		assert.NoError(t, err)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
-		assert.Equal(registry.String(), "docker.io")
+		assert.Equal(t, registry.String(), "docker.io")
 	})
 
 	t.Run("Check Custom Registry", func(t *testing.T) {
@@ -85,12 +110,12 @@ func TestMakeValues(t *testing.T) {
 
 		node, err := MakeValues(settings)
 
-		assert.NotNil(node)
-		assert.NoError(err)
+		assert.NotNil(t, node)
+		assert.NoError(t, err)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
-		assert.Equal(registry.String(), "example.com")
+		assert.Equal(t, registry.String(), "example.com")
 	})
 
 	t.Run("Check Default Auth", func(t *testing.T) {
@@ -104,12 +129,12 @@ func TestMakeValues(t *testing.T) {
 
 		node, err := MakeValues(settings)
 
-		assert.NotNil(node)
-		assert.NoError(err)
+		assert.NotNil(t, node)
+		assert.NoError(t, err)
 
 		auth := node.Get("kube").Get("auth")
 
-		assert.Equal(auth.String(), "~", "Default value should be nil")
+		assert.Equal(t, auth.String(), "~", "Default value should be nil")
 	})
 
 	t.Run("Check Custom Auth", func(t *testing.T) {
@@ -127,11 +152,11 @@ func TestMakeValues(t *testing.T) {
 
 		node, err := MakeValues(settings)
 
-		assert.NotNil(node)
-		assert.NoError(err)
+		assert.NotNil(t, node)
+		assert.NoError(t, err)
 
 		auth := node.Get("kube").Get("auth")
 
-		assert.Equal(auth.String(), authString)
+		assert.Equal(t, auth.String(), authString)
 	})
 }
