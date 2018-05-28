@@ -1,0 +1,29 @@
+---
+roles:
+- name: myrole
+  jobs:
+  - name: tor
+    release_name: tor
+  run:
+    capabilities:
+    - something
+    scaling:
+      min: 1
+      max: 2
+    volumes:
+    - path: /mnt/persistent
+      type: persistent
+      tag: persistent-volume
+      size: 5 # parsecs
+      annotations:
+        volume.beta.kubernetes.io/storage-class: a-company-file-gold
+        volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+    - path: /mnt/shared
+      type: shared
+      tag: shared-volume
+      size: 40 # cakes
+      annotations:
+        volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+    - path: /sys/fs/cgroup
+      type: host
+      tag: host-volume

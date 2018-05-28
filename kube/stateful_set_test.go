@@ -240,6 +240,84 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
 
+func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "volumes-with-annotation.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	statefulset, _, err := NewStatefulSet(role, ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	actual, err := testhelpers.RoundtripKube(statefulset)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expected := `---
+		metadata:
+			name: myrole
+		spec:
+			replicas: 1
+			serviceName: myrole-set
+			template:
+				metadata:
+					labels:
+						skiff-role-name: myrole
+					name: myrole
+				spec:
+					containers:
+					-
+						name: myrole
+						volumeMounts:
+						-
+							name: persistent-volume
+							mountPath: /mnt/persistent
+						-
+							name: shared-volume
+							mountPath: /mnt/shared
+						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+			volumeClaimTemplates:
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: a-company-file-gold
+							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+						name: persistent-volume
+					spec:
+						accessModes: [ReadWriteOnce]
+						resources:
+							requests:
+								storage: 5G
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: shared
+							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+						name: shared-volume
+					spec:
+						accessModes: [ReadWriteMany]
+						resources:
+							requests:
+								storage: 40G
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+}
+
 func TestStatefulSetVolumesHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
