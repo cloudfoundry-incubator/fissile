@@ -278,14 +278,14 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 						name: myrole
 						volumeMounts:
 						-
-							name: host-volume
-							mountPath: /sys/fs/cgroup
-						-
 							name: persistent-volume
 							mountPath: /mnt/persistent
 						-
 							name: shared-volume
 							mountPath: /mnt/shared
+						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
 					volumes:
 					-
 						name: host-volume
@@ -307,6 +307,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 					metadata:
 						annotations:
 							volume.beta.kubernetes.io/storage-class: shared
+							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
 						name: shared-volume
 					spec:
 						accessModes: [ReadWriteMany]
