@@ -3,6 +3,7 @@ package kube
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -27,6 +28,10 @@ func NewDeployment(role *model.Role, settings ExportSettings, grapher util.Model
 	deployment := newKubeConfig("extensions/v1beta1", "Deployment", role.Name, helm.Comment(role.GetLongDescription()))
 	deployment.Add("spec", spec)
 	err = replicaCheck(role, deployment, svc, settings)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = generalCheck(role, deployment, settings)
 	return deployment, svc, err
 }
 
@@ -79,6 +84,44 @@ func addAffinityRules(role *model.Role, spec *helm.Mapping, settings ExportSetti
 	return nil
 }
 
+// generalCheck adds common guards to the pod described by the
+// controller. This only applies to helm charts, not basic kube
+// definitions.
+func generalCheck(role *model.Role, controller *helm.Mapping, settings ExportSettings) error {
+	if !settings.CreateHelmChart {
+		return nil
+	}
+
+	// The global config keys found under `sizing` in
+	// `values.yaml` (HA, cpu, memory) were moved out of that
+	// hierarchy into `config`. This gives `sizing` a uniform
+	// structure, containing only the per-role descriptions. It
+	// also means that we now have to guard ourselves against use
+	// of the old keys. Here we add the necessary guard
+	// conditions.
+
+	for _, key := range []string{
+		"HA",
+		"cpu.limits",
+		"cpu.requests",
+		"memory.limits",
+		"memory.requests",
+	} {
+		guardVariable := fmt.Sprintf("_moved_sizing_%s", strings.Replace(key, ".", "_", -1))
+		block := fmt.Sprintf("if .Values.sizing.%s", key)
+		fail := fmt.Sprintf(`{{ fail "Bad use of moved variable sizing.%s. The new name to use is config.%s" }}`,
+			key, key)
+
+		controller.Add(guardVariable, fail, helm.Block(block))
+	}
+
+	controller.Sort()
+	return nil
+}
+
+// replicaCheck adds various guards to validate the number of replicas
+// for the pod described by the controller. It further adds the
+// replicas specification itself as well.
 func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node, settings ExportSettings) error {
 	spec := controller.Get("spec").(*helm.Mapping)
 
@@ -97,7 +140,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
 	if role.Run.Scaling.HA != role.Run.Scaling.Min {
 		// Under HA use HA count if the user hasn't explicitly modified the default count
-		count = fmt.Sprintf("{{ if and .Values.sizing.HA (eq (int %s) %d) -}} %d {{- else -}} {{ %s }} {{- end }}",
+		count = fmt.Sprintf("{{ if and .Values.config.HA (eq (int %s) %d) -}} %d {{- else -}} {{ %s }} {{- end }}",
 			count, role.Run.Scaling.Min, role.Run.Scaling.HA, count)
 	} else {
 		count = "{{ " + count + " }}"
@@ -120,7 +163,7 @@ func replicaCheck(role *model.Role, controller *helm.Mapping, service helm.Node,
 			fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, role.Run.Scaling.HA)
 			count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
 			// If count != Min then count must be >= HA
-			block := fmt.Sprintf("if and .Values.sizing.HA (and (ne (int %s) %d) (lt (int %s) %d))",
+			block := fmt.Sprintf("if and .Values.config.HA (and (ne (int %s) %d) (lt (int %s) %d))",
 				count, role.Run.Scaling.Min, count, role.Run.Scaling.HA)
 			controller.Add("_minHAReplicas", fail, helm.Block(block))
 		}

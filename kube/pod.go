@@ -48,10 +48,10 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		if settings.CreateHelmChart {
 			requests.Add("memory",
 				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.request }}Mi", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.requests .Values.sizing.%s.memory.request", roleVarName))))
+					helm.Block(fmt.Sprintf("if and .Values.config.memory.requests .Values.sizing.%s.memory.request", roleVarName))))
 			limits.Add("memory",
 				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.limit }}Mi", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.limits .Values.sizing.%s.memory.limit", roleVarName))))
+					helm.Block(fmt.Sprintf("if and .Values.config.memory.limits .Values.sizing.%s.memory.limit", roleVarName))))
 		} else {
 			if role.Run.Memory != nil {
 				if role.Run.Memory.Request != nil {
@@ -67,10 +67,10 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		if settings.CreateHelmChart {
 			requests.Add("cpu",
 				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.request }}m", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.requests .Values.sizing.%s.cpu.request", roleVarName))))
+					helm.Block(fmt.Sprintf("if and .Values.config.cpu.requests .Values.sizing.%s.cpu.request", roleVarName))))
 			limits.Add("cpu",
 				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.limit }}m", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.limits .Values.sizing.%s.cpu.limit", roleVarName))))
+					helm.Block(fmt.Sprintf("if and .Values.config.cpu.limits .Values.sizing.%s.cpu.limit", roleVarName))))
 		} else {
 			if role.Run.CPU != nil {
 				if role.Run.CPU.Request != nil {

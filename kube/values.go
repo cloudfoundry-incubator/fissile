@@ -57,19 +57,20 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	secrets.Sort()
 	secrets.Merge(generated.Sort())
 
-	memSizing := helm.NewMapping()
-	memSizing.Add("requests", false, helm.Comment("Flag to activate memory requests"))
-	memSizing.Add("limits", false, helm.Comment("Flag to activate memory limits"))
+	memConfig := helm.NewMapping()
+	memConfig.Add("requests", false, helm.Comment("Flag to activate memory requests"))
+	memConfig.Add("limits", false, helm.Comment("Flag to activate memory limits"))
 
-	cpuSizing := helm.NewMapping()
-	cpuSizing.Add("requests", false, helm.Comment("Flag to activate cpu requests"))
-	cpuSizing.Add("limits", false, helm.Comment("Flag to activate cpu limits"))
+	cpuConfig := helm.NewMapping()
+	cpuConfig.Add("requests", false, helm.Comment("Flag to activate cpu requests"))
+	cpuConfig.Add("limits", false, helm.Comment("Flag to activate cpu limits"))
+
+	config := helm.NewMapping()
+	config.Add("HA", false, helm.Comment("Flag to activate high-availability mode"))
+	config.Add("memory", memConfig, helm.Comment("Global memory configuration"))
+	config.Add("cpu", cpuConfig, helm.Comment("Global CPU configuration"))
 
 	sizing := helm.NewMapping()
-	sizing.Add("HA", false, helm.Comment("Flag to activate high-availability mode"))
-	sizing.Add("memory", memSizing, helm.Comment("Global memory configuration"))
-	sizing.Add("cpu", cpuSizing, helm.Comment("Global CPU configuration"))
-
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
@@ -167,7 +168,6 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		entry.Add("affinity", helm.NewMapping(), helm.Comment("Node affinity rules can be specified here"))
 
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
-
 	}
 
 	registry := settings.Registry
@@ -197,6 +197,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 
 	values := helm.NewMapping()
+	values.Add("config", config.Sort())
 	values.Add("env", env.Sort())
 	values.Add("sizing", sizing.Sort())
 	values.Add("secrets", secrets)
