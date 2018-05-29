@@ -1,20 +1,10 @@
-# Issue
+# The `sizing` hierarchy of `values.yaml`.
 
-Parsing the `sizing` section of `values.yaml` is difficult because it
-contains a mix of per-role descriptions and other things: HA, memory,
-cpu.
+The non-role-specific settings are under the (new) key `config`.
 
-The extra tuneables should be moved somewhere else.
+For example the old `sizing.HA` becomes `config.HA`.
 
-Example of an old variable setting: `--set sizing.HA=true`
-
-# Implemented change
-
-Moved the non-role-specific settings to the new key `config`.
-
-For example `sizing.HA` becomes `config.HA`.
-
-The keys affected by this change are:
+The affected keys are:
 
    * `sizing.HA`
    * `sizing.cpu.limits`
@@ -22,11 +12,11 @@ The keys affected by this change are:
    * `sizing.memory.limits`
    * `sizing.memory.requests`
 
-The only keys left under `sizing` are the per-role descriptions.
+The `sizing` hierarchy contains only the per-role descriptions.
 
-Further, to prevent users from accidentally using the old names in
-their overide yaml files, all templates are extended to contain
-guarding statements of the form
+To prevent users from accidentally using the old names in their
+overide yaml files, all templates contain guarding statements of the
+form
 
 ```
     {{- if .Values.FOO }}
