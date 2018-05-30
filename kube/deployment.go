@@ -104,21 +104,13 @@ func generalCheck(role *model.Role, controller *helm.Mapping, settings ExportSet
 	// (2) The `and` operator is not short cuircuited, it evals all of its arguments
 	// Thus `and FOO FOO.BAR` will not work either
 
+	fail := `{{ fail "Bad use of moved variable sizing.HA. The new name to use is config.HA" }}`
+	controller.Add("_moved_sizing_HA", fail, helm.Block("if .Values.sizing.HA"))
+
 	for _, key := range []string{
-		"HA",
 		"cpu",
 		"memory",
 	} {
-		if key == "HA" {
-			guardVariable := fmt.Sprintf("_moved_sizing_%s", key)
-			block := fmt.Sprintf("if .Values.sizing.%s", key)
-			fail := fmt.Sprintf(`{{ fail "Bad use of moved variable sizing.%s. The new name to use is config.%s" }}`,
-				key, key)
-
-			controller.Add(guardVariable, fail, helm.Block(block))
-			continue
-		}
-
 		// requests, limits - More complex to avoid limitations of the go templating system.
 		// Guard on the main variable and then use a guarded value for the child.
 		// The else branch is present in case we happen to get roles named `cpu` or `memory`.
