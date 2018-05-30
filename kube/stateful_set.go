@@ -44,7 +44,10 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
-
+	if err != nil {
+		return nil, nil, err
+	}
+	err = generalCheck(role, statefulSet, settings)
 	return statefulSet, svcList, err
 }
 
