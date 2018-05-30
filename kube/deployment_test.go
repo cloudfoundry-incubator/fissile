@@ -98,7 +98,10 @@ func TestNewDeploymentHelm(t *testing.T) {
 		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
-		_, err := testhelpers.RenderNode(deployment, nil)
+		config := map[string]interface{}{
+			"Values.sizing.role.count": nil,
+		}
+		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
@@ -152,7 +155,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :25:32: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
+			`template: :25:70: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.memory.requests", func(t *testing.T) {
@@ -163,7 +166,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :29:34: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
+			`template: :29:74: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.limits", func(t *testing.T) {
@@ -174,7 +177,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :17:29: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
+			`template: :17:64: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.requests", func(t *testing.T) {
@@ -185,7 +188,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :21:31: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
+			`template: :21:68: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {

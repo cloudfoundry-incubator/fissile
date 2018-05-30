@@ -3,7 +3,6 @@ package kube
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -99,20 +98,33 @@ func generalCheck(role *model.Role, controller *helm.Mapping, settings ExportSet
 	// also means that we now have to guard ourselves against use
 	// of the old keys. Here we add the necessary guard
 	// conditions.
+	//
+	// Note. The construction shown for requests and limits is used because of
+	// (1) When FOO is nil you cannot check for FOO.BAR, for any BAR.
+	// (2) The `and` operator is not short cuircuited, it evals all of its arguments
+	// Thus `and FOO FOO.BAR` will not work either
+
+	fail := `{{ fail "Bad use of moved variable sizing.HA. The new name to use is config.HA" }}`
+	controller.Add("_moved_sizing_HA", fail, helm.Block("if .Values.sizing.HA"))
 
 	for _, key := range []string{
-		"HA",
-		"cpu.limits",
-		"cpu.requests",
-		"memory.limits",
-		"memory.requests",
+		"cpu",
+		"memory",
 	} {
-		guardVariable := fmt.Sprintf("_moved_sizing_%s", strings.Replace(key, ".", "_", -1))
-		block := fmt.Sprintf("if .Values.sizing.%s", key)
-		fail := fmt.Sprintf(`{{ fail "Bad use of moved variable sizing.%s. The new name to use is config.%s" }}`,
-			key, key)
+		// requests, limits - More complex to avoid limitations of the go templating system.
+		// Guard on the main variable and then use a guarded value for the child.
+		// The else branch is present in case we happen to get roles named `cpu` or `memory`.
 
-		controller.Add(guardVariable, fail, helm.Block(block))
+		for _, subkey := range []string{
+			"limits",
+			"requests",
+		} {
+			guardVariable := fmt.Sprintf("_moved_sizing_%s_%s", key, subkey)
+			block := fmt.Sprintf("if .Values.sizing.%s", key)
+			fail := fmt.Sprintf(`{{ if .Values.sizing.%s.%s }} {{ fail "Bad use of moved variable sizing.%s.%s. The new name to use is config.%s.%s" }} {{else}} ok {{end}}`,
+				key, subkey, key, subkey, key, subkey)
+			controller.Add(guardVariable, fail, helm.Block(block))
+		}
 	}
 
 	controller.Sort()
