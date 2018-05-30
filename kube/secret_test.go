@@ -186,7 +186,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 		// not having a proper (non-nil) value.
 
 		config := map[string]interface{}{
-			"Values.secrets.const":  nil,
+			"Values.secrets.const": nil,
 		}
 
 		_, err := testhelpers.RenderNode(secret, config)
