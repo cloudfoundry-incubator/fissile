@@ -33,6 +33,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 				"Minor": "8",
 			},
 		},
+		"Template": map[string]interface{}{
+			"BasePath": "",
+		},
 	}
 	if overrides, ok := config.(map[string]interface{}); ok {
 		for k, v := range overrides {
@@ -57,7 +60,8 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	functions["include"] = renderInclude
 	functions["required"] = renderRequired
 
-	tmpl, err := template.New("").Funcs(functions).Parse(string(helmConfig.Bytes()))
+	// Note: Replicate helm's behaviour on missing keys.
+	tmpl, err := template.New("").Option("missingkey=zero").Funcs(functions).Parse(string(helmConfig.Bytes()))
 
 	if err != nil {
 		//fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))

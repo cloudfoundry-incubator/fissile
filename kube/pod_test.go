@@ -12,6 +12,8 @@ import (
 	"github.com/SUSE/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -792,6 +794,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Chart.Version":                          "CV",
 			"Values.kube.secrets_generation_counter": "SGC",
+			"Values.secrets.A_SECRET":                "",
 		}
 
 		ev, err := getEnvVarsFromConfigs(cv, settings)
@@ -953,7 +956,10 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		actual, err := testhelpers.RoundtripNode(ev, nil)
+		config := map[string]interface{}{
+			"Values.env.SOMETHING": nil,
+		}
+		actual, err := testhelpers.RoundtripNode(ev, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1010,10 +1016,21 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 			},
 		},
 	})
+	require.NoError(t, err)
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		_, err = testhelpers.RenderNode(ev, nil)
+		_, err := testhelpers.RenderNode(ev, nil)
+		assert.EqualError(err,
+			`template: :7:62: executing "" at <.Values.env.SOMETHIN...>: can't evaluate field SOMETHING in type interface {}`)
+	})
+
+	t.Run("Undefined", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.env.SOMETHING": nil,
+		}
+		_, err := testhelpers.RenderNode(ev, config)
 		assert.EqualError(err,
 			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
@@ -1787,10 +1804,12 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
+		"Values.config.memory.requests":         nil,
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
+		"Values.sizing.pre_role.memory.request": nil,
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1974,10 +1993,12 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":         "R",
-		"Values.kube.organization":              "O",
+		"Values.config.cpu.requests":            nil,
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
+		"Values.kube.organization":              "O",
+		"Values.kube.registry.hostname":         "R",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
+		"Values.sizing.pre_role.cpu.request":    nil,
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)

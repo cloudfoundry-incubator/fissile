@@ -336,12 +336,14 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 	}
 
 	config := map[string]interface{}{
+		"Values.env.ALL_VAR":                                "",
+		"Values.kube.registry.hostname":                     "",
+		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.kube.storage_class.shared":                  "shared",
+		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
 		"Values.sizing.myrole.disk_sizes.shared_volume":     "40",
-		"Values.sizing.myrole.capabilities":                 []interface{}{},
-		"Values.kube.storage_class.shared":                  "shared",
-		"Values.kube.storage_class.persistent":              "persistent",
 	}
 
 	actual, err := testhelpers.RoundtripNode(statefulset, config)
@@ -406,9 +408,13 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 
 	// Check that not having hostpath disables the hostpath volume
 	overrides := map[string]interface{}{
-		"Values.kube.hostpath_available":    false,
-		"Values.sizing.myrole.count":        "1",
-		"Values.sizing.myrole.capabilities": []interface{}{},
+		"Values.env.ALL_VAR":                                "",
+		"Values.kube.hostpath_available":                    false,
+		"Values.kube.registry.hostname":                     "",
+		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.sizing.myrole.capabilities":                 []interface{}{},
+		"Values.sizing.myrole.count":                        "1",
+		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
 	}
 	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
 	if !assert.NoError(err) {

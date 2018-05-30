@@ -98,7 +98,10 @@ func TestNewDeploymentHelm(t *testing.T) {
 		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
-		_, err := testhelpers.RenderNode(deployment, nil)
+		config := map[string]interface{}{
+			"Values.sizing.role.count": nil,
+		}
+		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
