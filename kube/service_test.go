@@ -145,7 +145,7 @@ func TestServiceHelm(t *testing.T) {
 					targetPort: "https"
 				selector:
 					skiff-role-name: "myrole"
-				type:	LoadBalancer
+				type:	ClusterIP
 		`, actual)
 	})
 }
@@ -251,6 +251,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-set"
 			spec:
+				clusterIP: "None"
 				ports:
 				-	name: "http"
 					port: 80
@@ -262,7 +263,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					targetPort: 0
 				selector:
 					skiff-role-name: "myrole"
-				type:	LoadBalancer
+				type:	ClusterIP
 		`, actual)
 	})
 }
@@ -350,7 +351,7 @@ func TestPublicServiceHelm(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": "true",
-			"Values.kube.external_ips":     "",
+			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)
@@ -361,7 +362,6 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-public"
 			spec:
-				externalIPs: ""
 				ports:
 				-	name: "https"
 					port: 443
@@ -470,11 +470,6 @@ func TestActivePassiveService(t *testing.T) {
 													skiff-role-active: "true"
 												type: ClusterIP
 										`
-										switch variant {
-										case withHelmLoadBalancer:
-											expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
-											expected = strings.Replace(expected, "clusterIP: None", "", 1)
-										}
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 									}
 								}
@@ -508,10 +503,6 @@ func TestActivePassiveService(t *testing.T) {
 												skiff-role-active: "true"
 											type: ClusterIP
 									`
-									switch variant {
-									case withHelmLoadBalancer:
-										expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
-									}
 									testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 								}
 							}
@@ -540,6 +531,7 @@ func TestActivePassiveService(t *testing.T) {
 									switch variant {
 									case withHelmLoadBalancer:
 										expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
+										expected = strings.Replace(expected, "externalIPs: [ 192.0.2.42 ]", "", 1)
 									case withKube:
 										expected = strings.Replace(expected, "192.0.2.42", "192.168.77.77", 1)
 									}
