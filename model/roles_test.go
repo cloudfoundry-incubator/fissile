@@ -540,6 +540,11 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
+			"bosh-run-headless-public-port.yml", []string{
+				`roles[myrole].run.exposed-ports[http].public: Invalid value: true: Public ports on headless roles cannot be used`,
+			},
+		},
+		{
 			"bosh-run-bad-parse.yml", []string{
 				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
 				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
