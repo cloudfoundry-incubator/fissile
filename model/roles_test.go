@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -168,37 +169,58 @@ func TestRoleManifestTagList(t *testing.T) {
 	manifestContents, err := ioutil.ReadFile(roleManifestPath)
 	require.NoError(t, err, "Error reading role manifest")
 
-	for tag, acceptable := range map[string]bool{
-		"stop-on-failure":    true,
-		"sequential-startup": true,
-		"headless":           true,
-		"active-passive":     true,
-		"indexed":            false,
-		"clustered":          false,
-		"invalid":            false,
-		"no-monit":           false,
+	for tag, acceptableRoleTypes := range map[string][]RoleType{
+		"stop-on-failure":    []RoleType{RoleTypeBoshTask},
+		"sequential-startup": []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"headless":           []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"active-passive":     []RoleType{RoleTypeBosh},
+		"indexed":            []RoleType{},
+		"clustered":          []RoleType{},
+		"invalid":            []RoleType{},
+		"no-monit":           []RoleType{},
 	} {
-		func(tag string, acceptable bool) {
-			t.Run(tag, func(t *testing.T) {
-				t.Parallel()
-				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
-				err := yaml.Unmarshal(manifestContents, roleManifest)
-				require.NoError(t, err, "Error unmarshalling role manifest")
-				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
-				roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
-				if RoleTag(tag) == RoleTagActivePassive {
-					// An active/passive probe is required when tagged as active/passive
-					roleManifest.Roles[0].Run.ActivePassiveProbe = "hello"
-				}
-				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
-				if acceptable {
-					assert.NoError(t, err)
-				} else {
-					assert.EqualError(t, err, `roles[myrole].tags[0]: Invalid value: "`+tag+`": Unknown tag`)
-				}
-			})
-		}(tag, acceptable)
+		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeDocker, RoleTypeColocatedContainer} {
+			func(tag string, roleType RoleType, acceptableRoleTypes []RoleType) {
+				t.Run(tag, func(t *testing.T) {
+					t.Parallel()
+					roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+					err := yaml.Unmarshal(manifestContents, roleManifest)
+					require.NoError(t, err, "Error unmarshalling role manifest")
+					roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+					require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+					roleManifest.Roles[0].Type = roleType
+					roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
+					if RoleTag(tag) == RoleTagActivePassive {
+						// An active/passive probe is required when tagged as active/passive
+						roleManifest.Roles[0].Run.ActivePassiveProbe = "hello"
+					}
+					err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+					acceptable := false
+					for _, acceptableRoleType := range acceptableRoleTypes {
+						if acceptableRoleType == roleType {
+							acceptable = true
+						}
+					}
+					if acceptable {
+						assert.NoError(t, err)
+					} else {
+						message := "Unknown tag"
+						if len(acceptableRoleTypes) > 0 {
+							var roleNames []string
+							for _, acceptableRoleType := range acceptableRoleTypes {
+								roleNames = append(roleNames, string(acceptableRoleType))
+							}
+							message = fmt.Sprintf("%s tag is only supported in [%s] roles, not %s",
+								tag,
+								strings.Join(roleNames, ", "),
+								roleType)
+						}
+						fullMessage := fmt.Sprintf(`roles[myrole].tags[0]: Invalid value: "%s": %s`, tag, message)
+						assert.EqualError(t, err, fullMessage)
+					}
+				})
+			}(tag, roleType, acceptableRoleTypes)
+		}
 	}
 }
 
@@ -754,7 +776,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
-			`roles[myrole].tags[0]: Invalid value: "active-passive": active-passive roles must be BOSH roles`)
+			`roles[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] roles, not bosh-task`)
 	})
 
 	t.Run("headless active/passive role", func(t *testing.T) {

@@ -397,27 +397,27 @@ func TestActivePassiveService(t *testing.T) {
 
 	for _, variant := range []string{withKube, withHelm, withHelmLoadBalancer} {
 		func(variant string) {
-			roundTrip := func(node helm.Node) (interface{}, error) {
-				switch variant {
-				case withKube:
-					return testhelpers.RoundtripKube(node)
-				case withHelm:
-					config := map[string]interface{}{
-						"Values.kube.external_ips": []string{"192.0.2.42"},
-					}
-					return testhelpers.RoundtripNode(node, config)
-				case withHelmLoadBalancer:
-					config := map[string]interface{}{
-						"Values.kube.external_ips":     []string{"192.0.2.42"},
-						"Values.services.loadbalanced": "true",
-					}
-					return testhelpers.RoundtripNode(node, config)
-				}
-				panic("Unexpected variant " + variant)
-			}
-
 			t.Run(variant, func(t *testing.T) {
 				t.Parallel()
+				roundTrip := func(node helm.Node) (interface{}, error) {
+					switch variant {
+					case withKube:
+						return testhelpers.RoundtripKube(node)
+					case withHelm:
+						config := map[string]interface{}{
+							"Values.kube.external_ips": []string{"192.0.2.42"},
+						}
+						return testhelpers.RoundtripNode(node, config)
+					case withHelmLoadBalancer:
+						config := map[string]interface{}{
+							"Values.kube.external_ips":     []string{"192.0.2.42"},
+							"Values.services.loadbalanced": "true",
+						}
+						return testhelpers.RoundtripNode(node, config)
+					}
+					panic("Unexpected variant " + variant)
+				}
+
 				for _, clustering := range []string{withClustering, withOutClustering} {
 					func(clustering string) {
 						t.Run(clustering, func(t *testing.T) {

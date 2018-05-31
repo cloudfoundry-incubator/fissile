@@ -170,7 +170,12 @@ func getBasicConfig() (map[string]interface{}, error) {
 	convertNode = func(node helm.Node, path []string) (interface{}, error) {
 		switch n := node.(type) {
 		case *helm.Scalar:
-			return n.String(), nil
+			var v interface{}
+			err := yaml.Unmarshal([]byte(n.String()), &v)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing node at %s: %s", strings.Join(path, "."), err)
+			}
+			return v, nil
 		case *helm.List:
 			var values []interface{}
 			for i, v := range n.Values() {

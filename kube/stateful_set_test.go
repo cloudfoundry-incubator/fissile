@@ -536,6 +536,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 
 	config := map[string]interface{}{
 		"Values.env.ALL_VAR":                                "",
+		"Values.kube.hostpath_available":                    true,
 		"Values.kube.registry.hostname":                     "",
 		"Values.kube.storage_class.persistent":              "persistent",
 		"Values.kube.storage_class.shared":                  "shared",

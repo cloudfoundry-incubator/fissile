@@ -1700,6 +1700,13 @@ func validateRoleTags(role *Role) validation.ErrorList {
 					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
 					"active-passive roles must specify the correct probe"))
 			}
+			if role.HasTag(RoleTagHeadless) {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+					tag,
+					"headless roles may not be active-passive"))
+			}
+
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),

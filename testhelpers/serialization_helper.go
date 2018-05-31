@@ -126,7 +126,7 @@ func isYAMLSubsetInner(assert *assert.Assertions, expected, actual interface{}, 
 		if !assert.Contains(allowedTypes, actualValue.Kind(), "expected YAML path %s to be a %s, but is actually %s", yamlPath, expectedValue.Type(), actualType) {
 			return false
 		}
-		if !assert.Equal(expectedValue.Len(), actualValue.Len(), "expected slice at YAML path %s to have correct length", yamlPath) {
+		if !assert.Len(actualValue.Interface(), expectedValue.Len(), "expected slice at YAML path %s to have correct length", yamlPath) {
 			return false
 		}
 		success := true

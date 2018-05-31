@@ -106,7 +106,8 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 	mounts := getNonClaimVolumes(role, true)
 	assert.NotNil(mounts)
 
-	actual, err := testhelpers.RoundtripNode(mounts, nil)
+	actual, err := testhelpers.RoundtripNode(mounts, map[string]interface{}{
+		"Values.kube.hostpath_available": true})
 	if !assert.NoError(err) {
 		return
 	}
@@ -268,19 +269,19 @@ func TestPodGetVolumeMounts(t *testing.T) {
 		return
 	}
 
-	cases := map[string]interface{}{
-		"with hostpath":    nil,
-		"without hostpath": map[string]interface{}{"Values.kube.hostpath_available": false},
+	cases := map[string]bool{
+		"with hostpath":    true,
+		"without hostpath": false,
 	}
-	for caseName, caseOverrides := range cases {
+	for caseName, hasHostpath := range cases {
 		t.Run(caseName, func(t *testing.T) {
 
 			volumeMountNodes := getVolumeMounts(role, true)
-			volumeMounts, err := testhelpers.RoundtripNode(volumeMountNodes, caseOverrides)
+			volumeMounts, err := testhelpers.RoundtripNode(volumeMountNodes, map[string]interface{}{"Values.kube.hostpath_available": hasHostpath})
 			if !assert.NoError(t, err) {
 				return
 			}
-			if caseOverrides == nil {
+			if hasHostpath {
 				assert.Len(t, volumeMounts, 3)
 			} else {
 				assert.Len(t, volumeMounts, 2)
@@ -304,7 +305,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 			assert.Equal(t, false, persistentMount["readOnly"])
 			assert.Equal(t, "/mnt/shared", sharedMount["mountPath"])
 			assert.Equal(t, false, sharedMount["readOnly"])
-			if caseOverrides == nil {
+			if hasHostpath {
 				assert.Equal(t, "/sys/fs/cgroup", hostMount["mountPath"])
 				assert.Equal(t, false, hostMount["readOnly"])
 			} else {
