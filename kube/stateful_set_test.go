@@ -426,3 +426,77 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 	}
 	assert.Empty(volumes, "Hostpath volumes should not be available")
 }
+
+func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "colocated-containers-with-stateful-set-and-empty-dir.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	statefulset, _, err := NewStatefulSet(role, ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	actual, err := testhelpers.RoundtripKube(statefulset)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expected := `---
+		metadata:
+			name: myrole
+		spec:
+			replicas: 1
+			serviceName: myrole-set
+			template:
+				metadata:
+					labels:
+						skiff-role-name: myrole
+					name: myrole
+				spec:
+					containers:
+					-
+						name: myrole
+						volumeMounts:
+						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+						-
+							name: persistent-volume
+							mountPath: /mnt/persistent
+						-
+							name: shared-data
+							mountPath: /mnt/shared-data
+					-
+						name: colocated
+						volumeMounts:
+						-
+							name: shared-data
+							mountPath: /mnt/shared-data
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+					-
+						name: shared-data
+						emptyDir: {}
+			volumeClaimTemplates:
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: persistent
+						name: persistent-volume
+					spec:
+						accessModes: [ReadWriteOnce]
+						resources:
+							requests:
+								storage: 5G
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+}

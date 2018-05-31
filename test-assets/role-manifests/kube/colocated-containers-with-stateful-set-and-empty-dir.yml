@@ -1,0 +1,49 @@
+---
+roles:
+- name: myrole
+  jobs:
+  - name: tor
+    release_name: tor
+  run:
+    capabilities:
+    - something
+    scaling:
+      min: 1
+      max: 2
+    volumes:
+    - path: /sys/fs/cgroup
+      type: host
+      tag: host-volume
+    - path: /mnt/persistent
+      type: persistent
+      tag: persistent-volume
+      size: 5
+    - path: /mnt/shared-data
+      type: emptyDir
+      tag: shared-data
+  colocated_containers:
+  - colocated
+
+- name: colocated
+  type: colocated-container
+  jobs:
+  - name: tor
+    release_name: tor
+  run:
+    capabilities:
+    - something
+    scaling:
+      min: 1
+      max: 2
+    volumes:
+    - path: /mnt/shared-data
+      type: emptyDir
+      tag: shared-data
+
+configuration:
+  templates:
+    fox: ((SOME_VAR))
+  variables:
+  - name: ALL_VAR
+    internal: true
+  - name: SOME_VAR

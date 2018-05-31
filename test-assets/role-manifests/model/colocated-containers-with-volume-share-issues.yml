@@ -1,0 +1,41 @@
+---
+roles:
+- name: main-role
+  scripts: ["myrole.sh"]
+  run:
+    memory: 1
+    volumes:
+    - path: /var/vcap/store
+      type: emptyDir
+      tag: vcap-store
+    - path: /var/vcap/sys/logs
+      type: emptyDir
+      tag: vcap-logs
+    - path: /shared/data
+      type: emptyDir
+      tag: shared-data
+    - path: /mnt/foobar
+      type: emptyDir
+      tag: mount-share
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
+  colocated_containers:
+  - to-be-colocated
+
+- name: to-be-colocated
+  type: colocated-container
+  jobs:
+  - name: ntpd
+    release_name: ntp
+  run:
+    memory: 1
+    volumes:
+    - path: /shared/data
+      type: emptyDir
+      tag: shared-data
+    - path: /mnt/foobAr
+      type: emptyDir
+      tag: mount-share

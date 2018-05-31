@@ -26,6 +26,73 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
 
+	containers := helm.NewList()
+	for _, candidate := range append([]*model.Role{role}, role.GetColocatedRoles()...) {
+		containerMapping, err := getContainerMapping(candidate, settings, grapher)
+		if err != nil {
+			return nil, err
+		}
+
+		containers.Add(containerMapping)
+	}
+
+	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
+
+	spec := helm.NewMapping()
+	spec.Add("containers", containers)
+	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
+	spec.Add("dnsPolicy", "ClusterFirst")
+	spec.Add("volumes", getNonClaimVolumes(role, settings.CreateHelmChart))
+	spec.Add("restartPolicy", "Always")
+	if role.Run.ServiceAccount != "" {
+		// This role requires a custom service account
+		block := helm.Block("")
+		if settings.CreateHelmChart {
+			block = helm.Block(authModeRBAC)
+		}
+		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
+	}
+	// BOSH can potentially have an infinite termination grace period; we don't
+	// really trust that, so we'll just go with ten minutes and hope it's enough
+	spec.Add("terminationGracePeriodSeconds", 600)
+	spec.Sort()
+
+	podTemplate := helm.NewMapping()
+	meta := newObjectMeta(role.Name)
+	if settings.CreateHelmChart {
+		meta.Add("annotations", helm.NewMapping("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`))
+	}
+	podTemplate.Add("metadata", meta)
+	podTemplate.Add("spec", spec)
+
+	return podTemplate, nil
+}
+
+// NewPod creates a new Pod for the given role, as well as any objects it depends on
+func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
+	podTemplate, err := NewPodTemplate(role, settings, grapher)
+	if err != nil {
+		return nil, err
+	}
+
+	// Pod must have a restart policy that isn't "always"
+	switch role.Run.FlightStage {
+	case model.FlightStageManual:
+		podTemplate.Get("spec", "restartPolicy").SetValue("Never")
+	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
+		podTemplate.Get("spec", "restartPolicy").SetValue("OnFailure")
+	default:
+		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
+	}
+
+	pod := newKubeConfig("v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
+	pod.Add("spec", podTemplate.Get("spec"))
+
+	return pod.Sort(), nil
+}
+
+// getContainerMapping returns the container list entry mapping for the provided role
+func getContainerMapping(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
 	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
 	roleVarName := makeVarName(roleName)
 
@@ -118,59 +185,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 					[]string{"/opt/fissile/pre-stop.sh"}))))
 	container.Sort()
 
-	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
-
-	spec := helm.NewMapping()
-	spec.Add("containers", helm.NewList(container))
-	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
-	spec.Add("dnsPolicy", "ClusterFirst")
-	spec.Add("volumes", getNonClaimVolumes(role, settings.CreateHelmChart))
-	spec.Add("restartPolicy", "Always")
-	if role.Run.ServiceAccount != "" {
-		// This role requires a custom service account
-		block := helm.Block("")
-		if settings.CreateHelmChart {
-			block = helm.Block(authModeRBAC)
-		}
-		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
-	}
-	// BOSH can potentially have an infinite termination grace period; we don't
-	// really trust that, so we'll just go with ten minutes and hope it's enough
-	spec.Add("terminationGracePeriodSeconds", 600)
-	spec.Sort()
-
-	podTemplate := helm.NewMapping()
-	meta := newObjectMeta(role.Name)
-	if settings.CreateHelmChart {
-		meta.Add("annotations", helm.NewMapping("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`))
-	}
-	podTemplate.Add("metadata", meta)
-	podTemplate.Add("spec", spec)
-
-	return podTemplate, nil
-}
-
-// NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
-	podTemplate, err := NewPodTemplate(role, settings, grapher)
-	if err != nil {
-		return nil, err
-	}
-
-	// Pod must have a restart policy that isn't "always"
-	switch role.Run.FlightStage {
-	case model.FlightStageManual:
-		podTemplate.Get("spec", "restartPolicy").SetValue("Never")
-	case model.FlightStageFlight, model.FlightStagePreFlight, model.FlightStagePostFlight:
-		podTemplate.Get("spec", "restartPolicy").SetValue("OnFailure")
-	default:
-		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
-	}
-
-	pod := newKubeConfig("v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
-	pod.Add("spec", podTemplate.Get("spec"))
-
-	return pod.Sort(), nil
+	return container, nil
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
@@ -242,7 +257,15 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 func getVolumeMounts(role *model.Role, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
-		mount := helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		var mount helm.Node
+		switch volume.Type {
+		case model.VolumeTypeEmptyDir:
+			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag)
+
+		default:
+			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
+		}
+
 		if volume.Type == model.VolumeTypeHost && createHelmChart {
 			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
 		}
@@ -284,6 +307,11 @@ func getNonClaimVolumes(role *model.Role, createHelmChart bool) helm.Node {
 			if createHelmChart {
 				volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
 			}
+			mounts = append(mounts, volumeEntry)
+
+		case model.VolumeTypeEmptyDir:
+			var emptyMap = map[interface{}]interface{}{}
+			volumeEntry := helm.NewMapping("name", volume.Tag, "emptyDir", emptyMap)
 			mounts = append(mounts, volumeEntry)
 		}
 	}

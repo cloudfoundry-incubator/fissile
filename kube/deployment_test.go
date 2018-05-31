@@ -386,3 +386,77 @@ func TestAddAffinityRules(t *testing.T) {
 	assert.Nil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
 	assert.NoError(err)
 }
+
+func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	role := deploymentTestLoadRole(assert, "role", "colocated-containers-with-deployment-and-empty-dir.yml")
+	if role == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "the_repos",
+	}
+
+	deployment, svc, err := NewDeployment(role, settings, nil)
+
+	assert.NoError(err)
+	assert.Nil(svc)
+	assert.NotNil(deployment)
+	assert.Equal(deployment.Get("kind").String(), "Deployment")
+	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+
+	t.Run("Defaults", func(t *testing.T) {
+		t.Parallel()
+		// Rendering fails with defaults, template needs information
+		// about sizing and the like.
+		config := map[string]interface{}{
+			"Values.sizing.role.count": nil,
+		}
+		_, err := testhelpers.RenderNode(deployment, config)
+		assert.EqualError(err,
+			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+	})
+
+	t.Run("Configured", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.sizing.role.count":              "1",
+			"Values.sizing.role.capabilities":       []interface{}{},
+			"Values.sizing.colocated.capabilities":  []interface{}{},
+			"Values.kube.registry.hostname":         "docker.suse.fake",
+			"Values.kube.organization":              "splat",
+			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
+		}
+
+		actual, err := testhelpers.RoundtripNode(deployment, config)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLSubsetString(assert, `---
+			apiVersion: "extensions/v1beta1"
+			kind: "Deployment"
+			spec:
+				template:
+					spec:
+						containers:
+						-	name: "role"
+							volumeMounts:
+							-
+								name: shared-data
+								mountPath: /mnt/shared-data
+						-	name: "colocated"
+							volumeMounts:
+							-
+								name: shared-data
+								mountPath: /mnt/shared-data
+						volumes:
+						-
+							name: shared-data
+							emptyDir: {}
+		`, actual)
+	})
+}

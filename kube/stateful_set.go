@@ -57,7 +57,7 @@ func getVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
 	for _, volume := range role.Run.Volumes {
 		var accessMode string
 		switch volume.Type {
-		case model.VolumeTypeHost, model.VolumeTypeNone:
+		case model.VolumeTypeHost, model.VolumeTypeNone, model.VolumeTypeEmptyDir:
 			// These volume types don't have claims
 			continue
 		case model.VolumeTypePersistent:
