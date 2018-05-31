@@ -92,7 +92,10 @@ func TestServiceHelm(t *testing.T) {
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		t.Parallel()
-		actual, err := testhelpers.RoundtripNode(service, nil)
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": nil,
+		}
+		actual, err := testhelpers.RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -205,7 +208,10 @@ func TestHeadlessServiceHelm(t *testing.T) {
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		t.Parallel()
-		actual, err := testhelpers.RoundtripNode(service, nil)
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": nil,
+		}
+		actual, err := testhelpers.RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -314,7 +320,8 @@ func TestPublicServiceHelm(t *testing.T) {
 	t.Run("ClusterIP", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
+			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
+			"Values.services.loadbalanced": nil,
 		}
 
 		actual, err := testhelpers.RoundtripNode(service, config)

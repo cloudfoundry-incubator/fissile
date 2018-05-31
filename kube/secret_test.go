@@ -169,11 +169,27 @@ func TestMakeSecretsHelm(t *testing.T) {
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
 		// config - helm only
-		// Render with defaults (is expected to) fail(s) due to a
-		// number of guards (secrets.FOO, FOO a variable) not having a
-		// proper (non-nil) value.
+		// Render with defaults (is expected to) fail(s) due
+		// to a number of guards (secrets.FOO, FOO a variable)
+		// not being present at all.
 
-		_, err = testhelpers.RenderNode(secret, nil)
+		_, err := testhelpers.RenderNode(secret, nil)
+		assert.EqualError(err,
+			`template: :6:61: executing "" at <.Values.secrets.cons...>: can't evaluate field const in type interface {}`)
+	})
+
+	t.Run("Undefined", func(t *testing.T) {
+		t.Parallel()
+		// config - helm only
+		// Render with defaults (is expected to) fail(s) due
+		// to a number of guards (secrets.FOO, FOO a variable)
+		// not having a proper (non-nil) value.
+
+		config := map[string]interface{}{
+			"Values.secrets.const": nil,
+		}
+
+		_, err := testhelpers.RenderNode(secret, config)
 		assert.EqualError(err,
 			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 	})

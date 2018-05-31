@@ -137,10 +137,11 @@ type RoleRunScaling struct {
 
 // RoleRunVolume describes a volume to be attached at runtime
 type RoleRunVolume struct {
-	Type VolumeType `yaml:"type"`
-	Path string     `yaml:"path"`
-	Tag  string     `yaml:"tag"`
-	Size int        `yaml:"size"`
+	Type        VolumeType        `yaml:"type"`
+	Path        string            `yaml:"path"`
+	Tag         string            `yaml:"tag"`
+	Size        int               `yaml:"size"`
+	Annotations map[string]string `yaml:"annotations"`
 }
 
 // RoleRunExposedPort describes a port to be available to other roles, or the outside world

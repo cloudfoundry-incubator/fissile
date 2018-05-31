@@ -240,6 +240,84 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
 
+func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	manifest, role := statefulSetTestLoadManifest(assert, "volumes-with-annotation.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	statefulset, _, err := NewStatefulSet(role, ExportSettings{
+		Opinions: model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	actual, err := testhelpers.RoundtripKube(statefulset)
+	if !assert.NoError(err) {
+		return
+	}
+
+	expected := `---
+		metadata:
+			name: myrole
+		spec:
+			replicas: 1
+			serviceName: myrole-set
+			template:
+				metadata:
+					labels:
+						skiff-role-name: myrole
+					name: myrole
+				spec:
+					containers:
+					-
+						name: myrole
+						volumeMounts:
+						-
+							name: persistent-volume
+							mountPath: /mnt/persistent
+						-
+							name: shared-volume
+							mountPath: /mnt/shared
+						-
+							name: host-volume
+							mountPath: /sys/fs/cgroup
+					volumes:
+					-
+						name: host-volume
+						hostPath:
+							path: /sys/fs/cgroup
+			volumeClaimTemplates:
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: a-company-file-gold
+							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+						name: persistent-volume
+					spec:
+						accessModes: [ReadWriteOnce]
+						resources:
+							requests:
+								storage: 5G
+				-
+					metadata:
+						annotations:
+							volume.beta.kubernetes.io/storage-class: shared
+							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
+						name: shared-volume
+					spec:
+						accessModes: [ReadWriteMany]
+						resources:
+							requests:
+								storage: 40G
+	`
+	testhelpers.IsYAMLSubsetString(assert, expected, actual)
+}
+
 func TestStatefulSetVolumesHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -258,12 +336,14 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 	}
 
 	config := map[string]interface{}{
+		"Values.env.ALL_VAR":                                "",
+		"Values.kube.registry.hostname":                     "",
+		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.kube.storage_class.shared":                  "shared",
+		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
 		"Values.sizing.myrole.disk_sizes.shared_volume":     "40",
-		"Values.sizing.myrole.capabilities":                 []interface{}{},
-		"Values.kube.storage_class.shared":                  "shared",
-		"Values.kube.storage_class.persistent":              "persistent",
 	}
 
 	actual, err := testhelpers.RoundtripNode(statefulset, config)
@@ -328,9 +408,13 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 
 	// Check that not having hostpath disables the hostpath volume
 	overrides := map[string]interface{}{
-		"Values.kube.hostpath_available":    false,
-		"Values.sizing.myrole.count":        "1",
-		"Values.sizing.myrole.capabilities": []interface{}{},
+		"Values.env.ALL_VAR":                                "",
+		"Values.kube.hostpath_available":                    false,
+		"Values.kube.registry.hostname":                     "",
+		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.sizing.myrole.capabilities":                 []interface{}{},
+		"Values.sizing.myrole.count":                        "1",
+		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
 	}
 	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
 	if !assert.NoError(err) {
@@ -346,7 +430,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 	assert := assert.New(t)
 
-	manifest, role := statefulSetTestLoadManifest(assert, "colocated-container-with-stateful-set-and-empty-dir.yml")
+	manifest, role := statefulSetTestLoadManifest(assert, "colocated-containers-with-stateful-set-and-empty-dir.yml")
 	if manifest == nil || role == nil {
 		return
 	}

@@ -33,6 +33,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 				"Minor": "8",
 			},
 		},
+		"Template": map[string]interface{}{
+			"BasePath": "",
+		},
 	}
 	if overrides, ok := config.(map[string]interface{}); ok {
 		for k, v := range overrides {
@@ -57,7 +60,8 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	functions["include"] = renderInclude
 	functions["required"] = renderRequired
 
-	tmpl, err := template.New("").Funcs(functions).Parse(string(helmConfig.Bytes()))
+	// Note: Replicate helm's behaviour on missing keys.
+	tmpl, err := template.New("").Option("missingkey=zero").Funcs(functions).Parse(string(helmConfig.Bytes()))
 
 	if err != nil {
 		//fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))
@@ -147,6 +151,5 @@ func renderInclude(name string, data interface{}) (string, error) {
 	// require adding the handling of `associated` templates.  A
 	// first run at this generated a stack overflow.  The fake
 	// simply shows what path/name would have been included.
-	name = filepath.Base(name)
-	return name, nil
+	return filepath.Base(name), nil
 }

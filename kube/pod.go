@@ -91,6 +91,103 @@ func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher
 	return pod.Sort(), nil
 }
 
+// getContainerMapping returns the container list entry mapping for the provided role
+func getContainerMapping(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
+	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
+	roleVarName := makeVarName(roleName)
+
+	vars, err := getEnvVars(role, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	var resources helm.Node
+	var requests *helm.Mapping
+	var limits *helm.Mapping
+
+	if settings.UseMemoryLimits || settings.UseCPULimits {
+		requests = helm.NewMapping()
+		limits = helm.NewMapping()
+		resources = helm.NewMapping("requests", requests, "limits", limits)
+	}
+
+	if settings.UseMemoryLimits {
+		if settings.CreateHelmChart {
+			requests.Add("memory",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.request }}Mi", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.config.memory.requests .Values.sizing.%s.memory.request", roleVarName))))
+			limits.Add("memory",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.limit }}Mi", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.config.memory.limits .Values.sizing.%s.memory.limit", roleVarName))))
+		} else {
+			if role.Run.Memory != nil {
+				if role.Run.Memory.Request != nil {
+					requests.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Request))
+				}
+				if role.Run.Memory.Limit != nil {
+					limits.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Limit))
+				}
+			}
+		}
+	}
+	if settings.UseCPULimits {
+		if settings.CreateHelmChart {
+			requests.Add("cpu",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.request }}m", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.config.cpu.requests .Values.sizing.%s.cpu.request", roleVarName))))
+			limits.Add("cpu",
+				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.limit }}m", roleVarName),
+					helm.Block(fmt.Sprintf("if and .Values.config.cpu.limits .Values.sizing.%s.cpu.limit", roleVarName))))
+		} else {
+			if role.Run.CPU != nil {
+				if role.Run.CPU.Request != nil {
+					requests.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Request*1000+0.5)))
+				}
+				if role.Run.CPU.Limit != nil {
+					limits.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Limit*1000+0.5)))
+				}
+			}
+		}
+	}
+
+	securityContext := getSecurityContext(role, settings.CreateHelmChart)
+	ports, err := getContainerPorts(role, settings)
+	if err != nil {
+		return nil, err
+	}
+	image, err := getContainerImageName(role, settings, grapher)
+	if err != nil {
+		return nil, err
+	}
+	livenessProbe, err := getContainerLivenessProbe(role)
+	if err != nil {
+		return nil, err
+	}
+	readinessProbe, err := getContainerReadinessProbe(role)
+	if err != nil {
+		return nil, err
+	}
+
+	container := helm.NewMapping()
+	container.Add("name", role.Name)
+	container.Add("image", image)
+	container.Add("ports", ports)
+	container.Add("volumeMounts", getVolumeMounts(role, settings.CreateHelmChart))
+	container.Add("env", vars)
+	container.Add("resources", resources)
+	container.Add("securityContext", securityContext)
+	container.Add("livenessProbe", livenessProbe)
+	container.Add("readinessProbe", readinessProbe)
+	container.Add("lifecycle",
+		helm.NewMapping("preStop",
+			helm.NewMapping("exec",
+				helm.NewMapping("command",
+					[]string{"/opt/fissile/pre-stop.sh"}))))
+	container.Sort()
+
+	return container, nil
+}
+
 // getContainerImageName returns the name of the docker image to use for a role
 func getContainerImageName(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (string, error) {
 	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagExtra, settings.FissileVersion, grapher)
@@ -164,6 +261,7 @@ func getVolumeMounts(role *model.Role, createHelmChart bool) helm.Node {
 		switch volume.Type {
 		case model.VolumeTypeEmptyDir:
 			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag)
+
 		default:
 			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
 		}
@@ -563,101 +661,4 @@ func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.H
 	httpGet.Sort()
 
 	return helm.NewMapping("httpGet", httpGet), nil
-}
-
-// getContainerMapping returns the container list entry mapping for the provided role
-func getContainerMapping(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
-	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
-	roleVarName := makeVarName(roleName)
-
-	vars, err := getEnvVars(role, settings)
-	if err != nil {
-		return nil, err
-	}
-
-	var resources helm.Node
-	var requests *helm.Mapping
-	var limits *helm.Mapping
-
-	if settings.UseMemoryLimits || settings.UseCPULimits {
-		requests = helm.NewMapping()
-		limits = helm.NewMapping()
-		resources = helm.NewMapping("requests", requests, "limits", limits)
-	}
-
-	if settings.UseMemoryLimits {
-		if settings.CreateHelmChart {
-			requests.Add("memory",
-				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.request }}Mi", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.requests .Values.sizing.%s.memory.request", roleVarName))))
-			limits.Add("memory",
-				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.memory.limit }}Mi", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.memory.limits .Values.sizing.%s.memory.limit", roleVarName))))
-		} else {
-			if role.Run.Memory != nil {
-				if role.Run.Memory.Request != nil {
-					requests.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Request))
-				}
-				if role.Run.Memory.Limit != nil {
-					limits.Add("memory", fmt.Sprintf("%dMi", *role.Run.Memory.Limit))
-				}
-			}
-		}
-	}
-	if settings.UseCPULimits {
-		if settings.CreateHelmChart {
-			requests.Add("cpu",
-				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.request }}m", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.requests .Values.sizing.%s.cpu.request", roleVarName))))
-			limits.Add("cpu",
-				helm.NewNode(fmt.Sprintf("{{ int .Values.sizing.%s.cpu.limit }}m", roleVarName),
-					helm.Block(fmt.Sprintf("if and .Values.sizing.cpu.limits .Values.sizing.%s.cpu.limit", roleVarName))))
-		} else {
-			if role.Run.CPU != nil {
-				if role.Run.CPU.Request != nil {
-					requests.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Request*1000+0.5)))
-				}
-				if role.Run.CPU.Limit != nil {
-					limits.Add("cpu", fmt.Sprintf("%dm", int(*role.Run.CPU.Limit*1000+0.5)))
-				}
-			}
-		}
-	}
-
-	securityContext := getSecurityContext(role, settings.CreateHelmChart)
-	ports, err := getContainerPorts(role, settings)
-	if err != nil {
-		return nil, err
-	}
-	image, err := getContainerImageName(role, settings, grapher)
-	if err != nil {
-		return nil, err
-	}
-	livenessProbe, err := getContainerLivenessProbe(role)
-	if err != nil {
-		return nil, err
-	}
-	readinessProbe, err := getContainerReadinessProbe(role)
-	if err != nil {
-		return nil, err
-	}
-
-	container := helm.NewMapping()
-	container.Add("name", role.Name)
-	container.Add("image", image)
-	container.Add("ports", ports)
-	container.Add("volumeMounts", getVolumeMounts(role, settings.CreateHelmChart))
-	container.Add("env", vars)
-	container.Add("resources", resources)
-	container.Add("securityContext", securityContext)
-	container.Add("livenessProbe", livenessProbe)
-	container.Add("readinessProbe", readinessProbe)
-	container.Add("lifecycle",
-		helm.NewMapping("preStop",
-			helm.NewMapping("exec",
-				helm.NewMapping("command",
-					[]string{"/opt/fissile/pre-stop.sh"}))))
-	container.Sort()
-
-	return container, nil
 }

@@ -894,7 +894,7 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
@@ -923,7 +923,7 @@ func TestLoadRoleManifestColocatedContainersValidationMissingRole(t *testing.T) 
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-missing-role.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-missing-role.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, `roles[main-role].colocated_containers[0]: Invalid value: "to-be-colocated-typo": There is no such role defined`)
@@ -943,7 +943,7 @@ func TestLoadRoleManifestColocatedContainersValidationUsusedRole(t *testing.T) {
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-unused-role.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-unused-role.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "role[to-be-colocated].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
@@ -965,7 +965,7 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-port-collision.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-port-collision.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "role[main-role]: Invalid value: 80: port collision, the same port is used by: main-role, to-be-colocated\n"+
@@ -986,7 +986,7 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-clustered-tag.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"clustered\": tags clustered, or indexed are not supported for colocated-containers")
@@ -1006,7 +1006,7 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/colocated-containers-with-volume-share-issues.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-volume-share-issues.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"/mnt/foobAr\": colocated role specifies a shared volume with tag mount-share, which path does not match the path of the main role shared volume with the same tag\n"+

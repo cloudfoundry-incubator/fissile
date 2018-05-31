@@ -44,7 +44,10 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
-
+	if err != nil {
+		return nil, nil, err
+	}
+	err = generalCheck(role, statefulSet, settings)
 	return statefulSet, svcList, err
 }
 
@@ -68,7 +71,12 @@ func getVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
 		}
 
 		meta := helm.NewMapping("name", volume.Tag)
-		meta.Add("annotations", helm.NewMapping(VolumeStorageClassAnnotation, storageClass))
+		annotationList := helm.NewMapping()
+		annotationList.Add(VolumeStorageClassAnnotation, storageClass)
+		for key, value := range volume.Annotations {
+			annotationList.Add(key, value)
+		}
+		meta.Add("annotations", annotationList)
 
 		var size string
 		if createHelmChart {
