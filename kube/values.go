@@ -71,6 +71,11 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	config.Add("cpu", cpuConfig, helm.Comment("Global CPU configuration"))
 
 	sizing := helm.NewMapping()
+	sizing.Set(helm.Comment(strings.Join(strings.Fields(`
+		The sizing section contains configuration to change each individual role.
+		Due to limitations on the allowable names, any dashes ("-") in the role
+		names are replaced with underscores ("_").
+	`), " ")))
 	for _, role := range settings.RoleManifest.Roles {
 		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
 			continue
