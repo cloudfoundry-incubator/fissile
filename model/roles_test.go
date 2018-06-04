@@ -519,10 +519,12 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	require.NoError(t, err)
 
-	tests := []struct {
+	type testCase struct {
 		manifest string
 		message  []string
-	}{
+	}
+
+	tests := []testCase{
 		{
 			"bosh-run-missing.yml", []string{
 				`roles[myrole].run: Required value`,
@@ -562,9 +564,8 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
-			"bosh-run-headless-public-port.yml", []string{
-				`roles[myrole].run.exposed-ports[http].public: Invalid value: true: Public ports on headless roles cannot be used`,
-			},
+			// No error is expected for a headless public port
+			"bosh-run-headless-public-port.yml", []string{},
 		},
 		{
 			"bosh-run-bad-parse.yml", []string{
@@ -587,26 +588,26 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 				`roles[xrole].run.env: Forbidden: Non-docker role declares bogus parameters`,
 			},
 		},
+		{
+			"bosh-run-ok.yml", []string{},
+		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.manifest, func(t *testing.T) {
-			t.Parallel()
-			roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", tc.manifest)
-			roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-			if assert.Errorf(t, err, "Expected errors: %s", tc.message) {
-				assert.EqualError(t, err, strings.Join(tc.message, "\n"))
-				assert.Nil(t, roleManifest)
-			}
-		})
+		func(tc testCase) {
+			t.Run(tc.manifest, func(t *testing.T) {
+				t.Parallel()
+				roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", tc.manifest)
+				roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+				if len(tc.message) > 0 {
+					assert.EqualError(t, err, strings.Join(tc.message, "\n"))
+					assert.Nil(t, roleManifest)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}(tc)
 	}
-
-	t.Run("bosh-run-ok.yml", func(t *testing.T) {
-		t.Parallel()
-		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", "bosh-run-ok.yml")
-		_, err = LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-		assert.NoError(t, err)
-	})
 }
 
 func TestLoadRoleManifestHealthChecks(t *testing.T) {

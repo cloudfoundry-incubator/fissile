@@ -1232,12 +1232,6 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 
 	for _, exposedPort := range role.Run.ExposedPorts {
 		allErrs = append(allErrs, ValidateExposedPorts(role.Name, exposedPort)...)
-		if role.HasTag(RoleTagHeadless) && exposedPort.Public {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.exposed-ports[%s].public", role.Name, exposedPort.Name),
-				true,
-				"Public ports on headless roles cannot be used"))
-		}
 	}
 
 	if role.Run.ServiceAccount != "" {

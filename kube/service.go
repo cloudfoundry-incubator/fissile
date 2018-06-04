@@ -33,15 +33,15 @@ func NewServiceList(role *model.Role, clustering bool, settings ExportSettings) 
 		if svc != nil {
 			items = append(items, svc)
 		}
+	}
 
-		// Create public service
-		svc, err = newService(role, newServiceTypePublic, settings)
-		if err != nil {
-			return nil, err
-		}
-		if svc != nil {
-			items = append(items, svc)
-		}
+	// Create public service
+	svc, err := newService(role, newServiceTypePublic, settings)
+	if err != nil {
+		return nil, err
+	}
+	if svc != nil {
+		items = append(items, svc)
 	}
 
 	if len(items) == 0 {
