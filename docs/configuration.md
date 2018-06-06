@@ -81,6 +81,11 @@ Name | Description
 `IP_ADDRESS` | Primary IP address of the container
 `KUBE_COMPONENT_INDEX` | Numeric index for roles with multiple replicas
 `KUBE_SERVICE_DOMAIN_SUFFIX` | Kubernetes service domain for the deployment
+`KUBERNETES_CLUSTER_DOMAIN` | Kubernetes cluster domain, `cluster.local` by default
+
+The use of `KUBE_SERVICE_DOMAIN_SUFFIX` is deprecated; it should be replaced by
+`$KUBERNETES_NAMESPACE.svc.$KUBERNETES_CLUSTER_DOMAIN`. `KUBERNETES_NAMESPACE` is
+provided by fissile via the helm chart (from the pod's `metadata.namespace` field).
 
 [run.sh]: https://github.com/SUSE/fissile/blob/master/scripts/dockerfiles/run.sh
 

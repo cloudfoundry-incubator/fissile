@@ -114,6 +114,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.role.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
@@ -129,6 +130,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.role.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
@@ -199,6 +201,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.role.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 
@@ -241,6 +244,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 							nodeAffinity: "snafu"
 						containers:
 						-	env:
+							-	name: "KUBERNETES_CLUSTER_DOMAIN"
+								value: "cluster.local"
 							-	name: "KUBERNETES_NAMESPACE"
 								valueFrom:
 									fieldRef:
@@ -429,6 +434,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 			"Values.sizing.colocated.capabilities":  []interface{}{},
 			"Values.kube.registry.hostname":         "docker.suse.fake",
 			"Values.kube.organization":              "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
 		}
 
