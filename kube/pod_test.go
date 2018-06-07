@@ -1748,11 +1748,10 @@ func TestPodPreFlightHelm(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":         "R",
-		"Values.kube.organization":              "O",
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
+		"Values.kube.registry.hostname":        "R",
+		"Values.kube.organization":             "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1775,8 +1774,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -1853,11 +1850,10 @@ func TestPodPostFlightHelm(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":         "R",
-		"Values.kube.organization":              "O",
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
-		"Values.sizing.post_role.capabilities":  []interface{}{},
+		"Values.kube.registry.hostname":        "R",
+		"Values.kube.organization":             "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.sizing.post_role.capabilities": []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -1880,8 +1876,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-post-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
 				lifecycle:
 					preStop:
@@ -1970,7 +1964,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
 		"Values.sizing.pre_role.memory.request": nil,
 	}
@@ -1995,8 +1988,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2045,7 +2036,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.config.memory.limits":           "true",
 		"Values.config.memory.requests":         "true",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
@@ -2073,8 +2063,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2161,13 +2149,12 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.config.cpu.requests":            nil,
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
-		"Values.kube.organization":              "O",
-		"Values.kube.registry.hostname":         "R",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
-		"Values.sizing.pre_role.cpu.request":    nil,
+		"Values.config.cpu.requests":           nil,
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.kube.organization":             "O",
+		"Values.kube.registry.hostname":        "R",
+		"Values.sizing.pre_role.capabilities":  []interface{}{},
+		"Values.sizing.pre_role.cpu.request":   nil,
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -2190,8 +2177,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2237,15 +2222,14 @@ func TestPodCPUHelmActive(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.config.cpu.limits":              "true",
-		"Values.config.cpu.requests":            "true",
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
-		"Values.kube.organization":              "O",
-		"Values.kube.registry.hostname":         "R",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
-		"Values.sizing.pre_role.cpu.limit":      "10",
-		"Values.sizing.pre_role.cpu.request":    "1",
+		"Values.config.cpu.limits":             "true",
+		"Values.config.cpu.requests":           "true",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.kube.organization":             "O",
+		"Values.kube.registry.hostname":        "R",
+		"Values.sizing.pre_role.capabilities":  []interface{}{},
+		"Values.sizing.pre_role.cpu.limit":     "10",
+		"Values.sizing.pre_role.cpu.request":   "1",
 	}
 
 	actual, err := testhelpers.RoundtripNode(pod, config)
@@ -2268,8 +2252,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
-				-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-					value: "KSDS"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:

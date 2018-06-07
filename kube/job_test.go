@@ -167,7 +167,7 @@ func TestJobHelm(t *testing.T) {
 	// - Release.Revision
 	// - Values.kube.registry.hostname
 	// - Values.kube.organization
-	// - Values.env.KUBE_SERVICE_DOMAIN_SUFFIX
+	// - Values.env.KUBERNETES_CLUSTER_DOMAIN
 	// can all be removed without causing an error during render.
 	// The output simply gains <no value>, and empty string.
 	//
@@ -178,13 +178,12 @@ func TestJobHelm(t *testing.T) {
 		"Capabilities.KubeVersion.Major": "1",
 		"Capabilities.KubeVersion.Minor": "6",
 		// Fake location for a fake `secrets.yaml`.
-		"Template.BasePath":                     fakeTemplateDir,
-		"Release.Revision":                      "42",
-		"Values.kube.registry.hostname":         "docker.suse.fake",
-		"Values.kube.organization":              "splat",
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
+		"Template.BasePath":                    fakeTemplateDir,
+		"Release.Revision":                     "42",
+		"Values.kube.registry.hostname":        "docker.suse.fake",
+		"Values.kube.organization":             "splat",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := testhelpers.RoundtripNode(job, config)
@@ -213,8 +212,6 @@ func TestJobHelm(t *testing.T) {
 							valueFrom:
 								fieldRef:
 									fieldPath: "metadata.namespace"
-						-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-							value: "domestic"
 						image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 						lifecycle:
 							preStop:
