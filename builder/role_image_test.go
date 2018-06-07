@@ -233,14 +233,17 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		desc     string
 		typeflag byte // default to TypeRegA
 		keep     bool // Hold for extra examination after
+		mode     int64
 	}{
 		"Dockerfile":                                              {desc: "Dockerfile"},
 		"root/opt/fissile/share/doc/tor/LICENSE":                  {desc: "release license file"},
-		"root/opt/fissile/run.sh":                                 {desc: "run script"},
+		"root/opt/fissile/run.sh":                                 {desc: "run script", mode: 0755},
+		"root/opt/fissile/pre-stop.sh":                            {desc: "pre-stop script", mode: 0755},
+		"root/opt/fissile/readiness-probe.sh":                     {desc: "readiness probe script", mode: 0755},
 		"root/opt/fissile/startup/myrole.sh":                      {desc: "role specific startup script"},
 		"root/var/vcap/jobs-src/tor/monit":                        {desc: "job monit file"},
 		"root/var/vcap/jobs-src/tor/templates/bin/monit_debugger": {desc: "job template file"},
-		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true},
+		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true, mode: 0644},
 		"root/var/vcap/jobs-src/new_hostname/config_spec.json":    {desc: "new_hostname config spec", keep: true},
 		"root/var/vcap/packages/tor":                              {desc: "package symlink", typeflag: tar.TypeSymlink, keep: true},
 		"root/var/vcap/jobs-src/tor/job.MF":                       {desc: "job manifest file", typeflag: TypeMissing},
@@ -283,6 +286,9 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 				continue
 			}
 			assert.Equal(info.typeflag, header.Typeflag, "Unexpected type for item %s", header.Name)
+			if info.mode != 0 {
+				assert.Equal(info.mode, header.Mode, "Unexpected file permissions for item %s", header.Name)
+			}
 			if info.keep {
 				if header.Typeflag == tar.TypeSymlink || header.Typeflag == tar.TypeLink {
 					actual[header.Name] = []byte(header.Linkname)

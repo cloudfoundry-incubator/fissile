@@ -10,6 +10,7 @@ import (
 
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(settings ExportSettings) (helm.Node, error) {
+	values := helm.MakeBasicValues()
 	env := helm.NewMapping()
 	secrets := helm.NewMapping()
 	generated := helm.NewMapping()
@@ -56,19 +57,8 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 	secrets.Sort()
 	secrets.Merge(generated.Sort())
-
-	memConfig := helm.NewMapping()
-	memConfig.Add("requests", false, helm.Comment("Flag to activate memory requests"))
-	memConfig.Add("limits", false, helm.Comment("Flag to activate memory limits"))
-
-	cpuConfig := helm.NewMapping()
-	cpuConfig.Add("requests", false, helm.Comment("Flag to activate cpu requests"))
-	cpuConfig.Add("limits", false, helm.Comment("Flag to activate cpu limits"))
-
-	config := helm.NewMapping()
-	config.Add("HA", false, helm.Comment("Flag to activate high-availability mode"))
-	config.Add("memory", memConfig, helm.Comment("Global memory configuration"))
-	config.Add("cpu", cpuConfig, helm.Comment("Global CPU configuration"))
+	values.Add("secrets", secrets.Sort())
+	values.Add("env", env.Sort())
 
 	sizing := helm.NewMapping()
 	sizing.Set(helm.Comment(strings.Join(strings.Fields(`
@@ -77,7 +67,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		names are replaced with underscores ("_").
 	`), " ")))
 	for _, role := range settings.RoleManifest.Roles {
-		if role.IsDevRole() || role.Run.FlightStage == model.FlightStageManual {
+		if role.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
@@ -174,6 +164,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
 	}
+	values.Add("sizing", sizing.Sort())
 
 	registry := settings.Registry
 	if registry == "" {
@@ -182,32 +173,15 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		// if registry is blank.
 		registry = "docker.io"
 	}
-	registryInfo := helm.NewMapping()
-	registryInfo.Add("hostname", registry)
-	registryInfo.Add("username", settings.Username)
-	registryInfo.Add("password", settings.Password)
-
-	kube := helm.NewMapping()
-	kube.Add("external_ips", helm.NewList())
-	kube.Add("secrets_generation_counter", 1, helm.Comment("Increment this counter to rotate all generated secrets"))
-	kube.Add("storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"))
-	kube.Add("hostpath_available", false, helm.Comment("Whether HostPath volume mounts are available"))
-	kube.Add("registry", registryInfo)
-	kube.Add("organization", settings.Organization)
-
-	if settings.AuthType == "" {
-		kube.Add("auth", nil)
-	} else {
-		kube.Add("auth", settings.AuthType)
+	// Override registry settings
+	values.Get("kube").(*helm.Mapping).Add("registry", helm.NewMapping(
+		"hostname", registry,
+		"username", settings.Username,
+		"password", settings.Password))
+	values.Get("kube").(*helm.Mapping).Add("organization", settings.Organization)
+	if settings.AuthType != "" {
+		values.Get("kube").(*helm.Mapping).Add("auth", settings.AuthType)
 	}
-
-	values := helm.NewMapping()
-	values.Add("config", config.Sort())
-	values.Add("env", env.Sort())
-	values.Add("sizing", sizing.Sort())
-	values.Add("secrets", secrets)
-	values.Add("services", helm.NewMapping("loadbalanced", false))
-	values.Add("kube", kube)
 
 	return values, nil
 }

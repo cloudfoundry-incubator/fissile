@@ -8,5 +8,4 @@ LABEL "role"="{{ .role.Name }}"
 
 ADD root /
 
-RUN chmod +x /opt/fissile/run.sh /opt/fissile/pre-stop.sh
 ENTRYPOINT ["/usr/bin/dumb-init", "/opt/fissile/run.sh"]

@@ -3,8 +3,10 @@ package kube
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 	"github.com/SUSE/fissile/testhelpers"
 
@@ -48,7 +50,7 @@ func TestServiceKube(t *testing.T) {
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := NewClusterIPService(role, false, false, ExportSettings{})
+	service, err := newService(role, newServiceTypePrivate, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -84,7 +86,7 @@ func TestServiceHelm(t *testing.T) {
 
 	portDef := role.Run.ExposedPorts[0]
 	require.NotNil(t, portDef)
-	service, err := NewClusterIPService(role, false, false, ExportSettings{
+	service, err := newService(role, newServiceTypePrivate, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -160,7 +162,7 @@ func TestHeadlessServiceKube(t *testing.T) {
 	portDef := role.Run.ExposedPorts[0]
 	require.NotNil(t, portDef)
 
-	service, err := NewClusterIPService(role, true, false, ExportSettings{})
+	service, err := newService(role, newServiceTypeHeadless, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -200,7 +202,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	portDef := role.Run.ExposedPorts[0]
 	require.NotNil(t, portDef)
 
-	service, err := NewClusterIPService(role, true, false, ExportSettings{
+	service, err := newService(role, newServiceTypeHeadless, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -277,7 +279,7 @@ func TestPublicServiceKube(t *testing.T) {
 	portDef := role.Run.ExposedPorts[0]
 	require.NotNil(t, portDef)
 
-	service, err := NewClusterIPService(role, false, true, ExportSettings{})
+	service, err := newService(role, newServiceTypePublic, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -287,7 +289,7 @@ func TestPublicServiceKube(t *testing.T) {
 		metadata:
 			name: myrole-public
 		spec:
-			externalIPs: '[ 192.168.77.77 ]'
+			externalIPs: [ 192.168.77.77 ]
 			ports:
 			-
 				name: https
@@ -311,7 +313,7 @@ func TestPublicServiceHelm(t *testing.T) {
 	portDef := role.Run.ExposedPorts[0]
 	require.NotNil(t, portDef)
 
-	service, err := NewClusterIPService(role, false, true, ExportSettings{
+	service, err := newService(role, newServiceTypePublic, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -370,4 +372,185 @@ func TestPublicServiceHelm(t *testing.T) {
 				type:	LoadBalancer
 		`, actual)
 	})
+}
+
+func TestActivePassiveService(t *testing.T) {
+	t.Parallel()
+	manifest, role := serviceTestLoadRole(assert.New(t), "exposed-ports.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	require.NotNil(t, role.Run, "Role has no run information")
+	require.NotEmpty(t, role.Run.ExposedPorts, "Role has no exposed ports")
+	role.Tags = []model.RoleTag{model.RoleTagActivePassive}
+
+	const (
+		withKube             = "kube"
+		withHelm             = "helm"
+		withHelmLoadBalancer = "helm with load balancer"
+	)
+	const (
+		withClustering    = "clustering"
+		withOutClustering = "not clustering"
+	)
+
+	for _, variant := range []string{withKube, withHelm, withHelmLoadBalancer} {
+		func(variant string) {
+			t.Run(variant, func(t *testing.T) {
+				t.Parallel()
+				roundTrip := func(node helm.Node) (interface{}, error) {
+					switch variant {
+					case withKube:
+						return testhelpers.RoundtripKube(node)
+					case withHelm:
+						config := map[string]interface{}{
+							"Values.kube.external_ips": []string{"192.0.2.42"},
+						}
+						return testhelpers.RoundtripNode(node, config)
+					case withHelmLoadBalancer:
+						config := map[string]interface{}{
+							"Values.kube.external_ips":     []string{"192.0.2.42"},
+							"Values.services.loadbalanced": "true",
+						}
+						return testhelpers.RoundtripNode(node, config)
+					}
+					panic("Unexpected variant " + variant)
+				}
+
+				for _, clustering := range []string{withClustering, withOutClustering} {
+					func(clustering string) {
+						t.Run(clustering, func(t *testing.T) {
+							t.Parallel()
+
+							exportSettings := ExportSettings{CreateHelmChart: variant != withKube}
+							services, err := NewServiceList(role, clustering == withClustering, exportSettings)
+							require.NoError(t, err)
+							require.NotNil(t, services, "No services created")
+
+							var headlessService, privateService, publicService helm.Node
+							for _, service := range services.Get("items").Values() {
+								serviceName := service.Get("metadata", "name").String()
+								switch serviceName {
+								case "myrole-set":
+									headlessService = service
+								case "myrole":
+									privateService = service
+								case "myrole-public":
+									publicService = service
+								default:
+									assert.Fail(t, "Unexpected service "+serviceName)
+								}
+							}
+
+							if clustering == withClustering {
+								if assert.NotNil(t, headlessService, "headless service not found") {
+									actual, err := roundTrip(headlessService)
+									if assert.NoError(t, err) {
+										expected := `---
+											apiVersion: v1
+											kind: Service
+											metadata:
+												name: myrole-set
+											spec:
+												clusterIP: None
+												ports:
+												-
+													name: http
+													port: 80
+													protocol: TCP
+													targetPort: 0
+												-
+													name: https
+													port: 443
+													protocol: TCP
+													targetPort: 0
+												selector:
+													skiff-role-name: myrole
+													skiff-role-active: "true"
+												type: ClusterIP
+										`
+										switch variant {
+										case withHelmLoadBalancer:
+											expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
+											expected = strings.Replace(expected, "clusterIP: None", "", 1)
+										}
+										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
+									}
+								}
+							} else {
+								assert.Nil(t, headlessService, "Headless service should not be created when not clustering")
+							}
+
+							if assert.NotNil(t, privateService, "private service not found") {
+								actual, err := roundTrip(privateService)
+								if assert.NoError(t, err) {
+
+									expected := `---
+										apiVersion: v1
+										kind: Service
+										metadata:
+											name: myrole
+										spec:
+											ports:
+											-
+												name: http
+												port: 80
+												protocol: TCP
+												targetPort: http
+											-
+												name: https
+												port: 443
+												protocol: TCP
+												targetPort: https
+											selector:
+												skiff-role-name: myrole
+												skiff-role-active: "true"
+											type: ClusterIP
+									`
+									switch variant {
+									case withHelmLoadBalancer:
+										expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
+									}
+									testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
+								}
+							}
+
+							if assert.NotNil(t, publicService, "public service not found") {
+								actual, err := roundTrip(publicService)
+								if assert.NoError(t, err) {
+									expected := `---
+										apiVersion: v1
+										kind: Service
+										metadata:
+											name: myrole-public
+										spec:
+											externalIPs: [ 192.0.2.42 ]
+											ports:
+											-
+												name: https
+												port: 443
+												protocol: TCP
+												targetPort: https
+											selector:
+												skiff-role-name: myrole
+												skiff-role-active: "true"
+											type: ClusterIP
+									`
+									switch variant {
+									case withHelmLoadBalancer:
+										expected = strings.Replace(expected, "type: ClusterIP", "type: LoadBalancer", 1)
+									case withKube:
+										expected = strings.Replace(expected, "192.0.2.42", "192.168.77.77", 1)
+									}
+									testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
+								}
+							}
+
+						})
+					}(clustering)
+				}
+			})
+		}(variant)
+	}
 }

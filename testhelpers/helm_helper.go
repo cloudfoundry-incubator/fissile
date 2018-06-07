@@ -21,12 +21,14 @@ import (
 // to the elements to override.  If they do not contain dots, the map itself
 // is considered the override.
 func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
+
+	basicConfig, err := getBasicConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	actualConfig := map[string]interface{}{
-		"Values": map[string]interface{}{
-			"kube": map[string]interface{}{
-				"hostpath_available": true,
-			},
-		},
+		"Values": basicConfig,
 		"Capabilities": map[string]interface{}{
 			"KubeVersion": map[string]interface{}{
 				"Major": "1",
@@ -39,7 +41,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	}
 	if overrides, ok := config.(map[string]interface{}); ok {
 		for k, v := range overrides {
-			actualConfig = mergeMap(actualConfig, v, strings.Split(k, ".")...)
+			actualConfig = mergeMap(actualConfig, v, 0, strings.Split(k, ".")...)
 		}
 	} else if config != nil {
 		return nil, fmt.Errorf("Invalid config %+v", config)
@@ -68,7 +70,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 		return nil, err
 	}
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {
-		fmt.Printf("TEMPLATE EXEC FAIL: %s\n%s\nEXEC END\n", err, string(helmConfig.Bytes()))
+		//fmt.Printf("TEMPLATE EXEC FAIL\n%s\n%s\nEXEC END\n", string(helmConfig.Bytes()), err)
 		return nil, err
 	}
 	return yamlConfig.Bytes(), nil
@@ -111,18 +113,26 @@ func RoundtripKube(node helm.Node) (interface{}, error) {
 
 // mergeMap returns the input map, but with an override applied.  An override
 // is a key path and a value to replace with.
-func mergeMap(obj map[string]interface{}, value interface{}, key ...string) map[string]interface{} {
+func mergeMap(obj map[string]interface{}, value interface{}, index int, key ...string) map[string]interface{} {
 	if len(key) < 1 {
 		panic("No keys")
 	}
-	if len(key) == 1 {
-		obj[key[0]] = value
+	if index > len(key) || index < 0 {
+		panic(fmt.Sprintf("Invalid index %d in keys %v", index, key))
+	}
+	if index == len(key)-1 {
+		obj[key[index]] = value
 		return obj
 	}
-	if _, ok := obj[key[0]]; !ok {
-		obj[key[0]] = make(map[string]interface{})
+	if _, ok := obj[key[index]]; !ok {
+		obj[key[index]] = make(map[string]interface{})
 	}
-	obj[key[0]] = mergeMap(obj[key[0]].(map[string]interface{}), value, key[1:]...)
+	if _, ok := obj[key[index]].(map[string]interface{}); !ok {
+		panic(fmt.Sprintf("Invalid object at %s: is not a map: %+v",
+			strings.Join(key[:index], "."),
+			obj[key[index]]))
+	}
+	obj[key[index]] = mergeMap(obj[key[index]].(map[string]interface{}), value, index+1, key...)
 	return obj
 }
 
@@ -152,4 +162,48 @@ func renderInclude(name string, data interface{}) (string, error) {
 	// first run at this generated a stack overflow.  The fake
 	// simply shows what path/name would have been included.
 	return filepath.Base(name), nil
+}
+
+// getBasicConfig returns the built-in configuration
+func getBasicConfig() (map[string]interface{}, error) {
+	var convertNode func(node helm.Node, path []string) (interface{}, error)
+	convertNode = func(node helm.Node, path []string) (interface{}, error) {
+		switch n := node.(type) {
+		case *helm.Scalar:
+			var v interface{}
+			err := yaml.Unmarshal([]byte(n.String()), &v)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing node at %s: %s", strings.Join(path, "."), err)
+			}
+			return v, nil
+		case *helm.List:
+			var values []interface{}
+			for i, v := range n.Values() {
+				converted, err := convertNode(v, append(path, fmt.Sprintf("%d", i)))
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, converted)
+			}
+			return values, nil
+		case *helm.Mapping:
+			values := make(map[string]interface{}, len(n.Names()))
+			for _, k := range n.Names() {
+				converted, err := convertNode(n.Get(k), append(path, k))
+				if err != nil {
+					return nil, err
+				}
+				values[k] = converted
+			}
+			return values, nil
+		default:
+			return nil, fmt.Errorf("Invalid node type at %s", strings.Join(path, "."))
+		}
+	}
+
+	converted, err := convertNode(helm.MakeBasicValues(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return converted.(map[string]interface{}), nil
 }

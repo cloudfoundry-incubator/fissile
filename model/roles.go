@@ -71,6 +71,17 @@ type RoleJob struct {
 	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
 }
 
+// RoleTag are the acceptable tags
+type RoleTag string
+
+// The list of acceptable tags
+const (
+	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
+	RoleTagSequentialStartup = RoleTag("sequential-startup")
+	RoleTagHeadless          = RoleTag("headless")
+	RoleTagActivePassive     = RoleTag("active-passive")
+)
+
 // Role represents a collection of jobs that are colocated on a container
 type Role struct {
 	Name                string         `yaml:"name"`
@@ -82,7 +93,7 @@ type Role struct {
 	RoleJobs            []*RoleJob     `yaml:"jobs"`
 	Configuration       *Configuration `yaml:"configuration"`
 	Run                 *RoleRun       `yaml:"run"`
-	Tags                []string       `yaml:"tags"`
+	Tags                []RoleTag      `yaml:"tags"`
 	ColocatedContainers []string       `yaml:"colocated_containers,omitempty"`
 
 	roleManifest *RoleManifest
@@ -90,22 +101,23 @@ type Role struct {
 
 // RoleRun describes how a role should behave at runtime
 type RoleRun struct {
-	Scaling           *RoleRunScaling       `yaml:"scaling"`
-	Capabilities      []string              `yaml:"capabilities"`
-	PersistentVolumes []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
-	SharedVolumes     []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
-	Volumes           []*RoleRunVolume      `yaml:"volumes"`
-	MemRequest        *int64                `yaml:"memory"`
-	Memory            *RoleRunMemory        `yaml:"mem"`
-	VirtualCPUs       *float64              `yaml:"virtual-cpus"`
-	CPU               *RoleRunCPU           `yaml:"cpu"`
-	ExposedPorts      []*RoleRunExposedPort `yaml:"exposed-ports"`
-	FlightStage       FlightStage           `yaml:"flight-stage"`
-	HealthCheck       *HealthCheck          `yaml:"healthcheck,omitempty"`
-	ServiceAccount    string                `yaml:"service-account,omitempty"`
-	Affinity          *RoleRunAffinity      `yaml:"affinity,omitempty"`
-	Environment       []string              `yaml:"env"`
-	ObjectAnnotations *map[string]string    `yaml:"object-annotations,omitempty"`
+	Scaling            *RoleRunScaling       `yaml:"scaling"`
+	Capabilities       []string              `yaml:"capabilities"`
+	PersistentVolumes  []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
+	SharedVolumes      []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
+	Volumes            []*RoleRunVolume      `yaml:"volumes"`
+	MemRequest         *int64                `yaml:"memory"`
+	Memory             *RoleRunMemory        `yaml:"mem"`
+	VirtualCPUs        *float64              `yaml:"virtual-cpus"`
+	CPU                *RoleRunCPU           `yaml:"cpu"`
+	ExposedPorts       []*RoleRunExposedPort `yaml:"exposed-ports"`
+	FlightStage        FlightStage           `yaml:"flight-stage"`
+	HealthCheck        *HealthCheck          `yaml:"healthcheck,omitempty"`
+	ActivePassiveProbe string                `yaml:"active-passive-probe,omitempty"`
+	ServiceAccount     string                `yaml:"service-account,omitempty"`
+	Affinity           *RoleRunAffinity      `yaml:"affinity,omitempty"`
+	Environment        []string              `yaml:"env"`
+	ObjectAnnotations  *map[string]string    `yaml:"object-annotations,omitempty"`
 }
 
 // RoleRunAffinity describes how a role should behave with regard to node / pod selection
@@ -170,7 +182,7 @@ type HealthCheck struct {
 type HealthProbe struct {
 	URL              string            `yaml:"url"`                         // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
 	Headers          map[string]string `yaml:"headers"`                     // Custom headers; only used for URL.
-	Command          []string          `yaml:"command"`                     // Custom command. Cannot be used with other checks.
+	Command          []string          `yaml:"command,omitempty"`           // Individual commands to run inside the container; each is interpreted as a shell command. Cannot be used with other checks.
 	Port             int               `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
 	InitialDelay     int               `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
 	Period           int               `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
@@ -338,20 +350,6 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	if err != nil {
 		return nil, err
 	}
-	mappedReleases := map[string]*Release{}
-
-	for _, release := range releases {
-		_, ok := mappedReleases[release.Name]
-
-		if ok {
-			return nil, fmt.Errorf("Error - release %s has been loaded more than once", release.Name)
-		}
-
-		mappedReleases[release.Name] = release
-		if grapher != nil {
-			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
-		}
-	}
 
 	roleManifest := RoleManifest{}
 	roleManifest.manifestFilePath = manifestFilePath
@@ -365,13 +363,39 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		roleManifest.Configuration.Templates = map[string]string{}
 	}
 
+	err = roleManifest.resolveRoleManifest(releases, grapher)
+	if err != nil {
+		return nil, err
+	}
+	return &roleManifest, nil
+}
+
+// resolveRoleManifest takes a role manifest as loaded from disk, and validates
+// it to ensure it has no errors, and that the various ancillary structures are
+// correctly populated.
+func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.ModelGrapher) error {
+	mappedReleases := map[string]*Release{}
+
+	for _, release := range releases {
+		_, ok := mappedReleases[release.Name]
+
+		if ok {
+			return fmt.Errorf("Error - release %s has been loaded more than once", release.Name)
+		}
+
+		mappedReleases[release.Name] = release
+		if grapher != nil {
+			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
+		}
+	}
+
 	// See also 'GetVariablesForRole' (mustache.go).
-	declaredConfigs := MakeMapOfVariables(&roleManifest)
+	declaredConfigs := MakeMapOfVariables(m)
 
 	allErrs := validation.ErrorList{}
 
-	for i := len(roleManifest.Roles) - 1; i >= 0; i-- {
-		role := roleManifest.Roles[i]
+	for i := len(m.Roles) - 1; i >= 0; i-- {
+		role := m.Roles[i]
 
 		// Remove all roles that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
@@ -382,18 +406,28 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		case RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer:
 			// Nothing to do.
 		case RoleTypeDocker:
-			roleManifest.Roles = append(roleManifest.Roles[:i], roleManifest.Roles[i+1:]...)
+			m.Roles = append(m.Roles[:i], m.Roles[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("roles[%s].type", role.Name),
 				role.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
 		}
 
-		allErrs = append(allErrs, validateRoleRun(role, &roleManifest, declaredConfigs)...)
+		allErrs = append(allErrs, validateRoleTags(role)...)
+		allErrs = append(allErrs, validateRoleRun(role, m, declaredConfigs)...)
 	}
 
-	for _, role := range roleManifest.Roles {
-		role.roleManifest = &roleManifest
+	for _, role := range m.Roles {
+		role.roleManifest = m
+
+		if role.Run != nil && role.Run.ActivePassiveProbe != "" {
+			if !role.HasTag(RoleTagActivePassive) {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
+					role.Run.ActivePassiveProbe,
+					"Active/passive probes are only valid on roles with active-passive tag"))
+			}
+		}
 
 		for _, roleJob := range role.RoleJobs {
 			release, ok := mappedReleases[roleJob.ReleaseName]
@@ -435,7 +469,7 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		// Validate that specified colocated containers are configured and of the
 		// correct type
 		for idx, roleName := range role.ColocatedContainers {
-			if lookupRole := roleManifest.LookupRole(roleName); lookupRole == nil {
+			if lookupRole := m.LookupRole(roleName); lookupRole == nil {
 				allErrs = append(allErrs, validation.Invalid(
 					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
 					roleName,
@@ -453,25 +487,24 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	// Skip further validation if we fail to resolve any jobs
 	// This lets us assume valid jobs in the validation routines
 	if len(allErrs) == 0 {
-		allErrs = append(allErrs, roleManifest.resolveLinks()...)
-		allErrs = append(allErrs, validateVariableType(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariableSorting(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariablePreviousNames(roleManifest.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariableUsage(&roleManifest)...)
-		allErrs = append(allErrs, validateTemplateUsage(&roleManifest)...)
-		allErrs = append(allErrs, validateNonTemplates(&roleManifest)...)
-		allErrs = append(allErrs, validateServiceAccounts(&roleManifest)...)
-		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerPortCollisions(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerInvalidTags(&roleManifest)...)
-		allErrs = append(allErrs, validateColocatedContainerVolumeShares(&roleManifest)...)
+		allErrs = append(allErrs, m.resolveLinks()...)
+		allErrs = append(allErrs, validateVariableType(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableSorting(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariablePreviousNames(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableUsage(m)...)
+		allErrs = append(allErrs, validateTemplateUsage(m)...)
+		allErrs = append(allErrs, validateNonTemplates(m)...)
+		allErrs = append(allErrs, validateServiceAccounts(m)...)
+		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(m)...)
+		allErrs = append(allErrs, validateColocatedContainerPortCollisions(m)...)
+		allErrs = append(allErrs, validateColocatedContainerVolumeShares(m)...)
 	}
 
 	if len(allErrs) != 0 {
-		return nil, fmt.Errorf(allErrs.Errors())
+		return fmt.Errorf(allErrs.Errors())
 	}
 
-	return &roleManifest, nil
+	return nil
 }
 
 // LookupRole will find the given role in the role manifest
@@ -871,7 +904,7 @@ func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string
 }
 
 // HasTag returns true if the role has a specific tag
-func (r *Role) HasTag(tag string) bool {
+func (r *Role) HasTag(tag RoleTag) bool {
 	for _, t := range r.Tags {
 		if t == tag {
 			return true
@@ -1197,8 +1230,8 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 	allErrs = append(allErrs, validateRoleMemory(role)...)
 	allErrs = append(allErrs, validateRoleCPU(role)...)
 
-	for i := range role.Run.ExposedPorts {
-		allErrs = append(allErrs, ValidateExposedPorts(role.Name, role.Run.ExposedPorts[i])...)
+	for _, exposedPort := range role.Run.ExposedPorts {
+		allErrs = append(allErrs, ValidateExposedPorts(role.Name, exposedPort)...)
 	}
 
 	if role.Run.ServiceAccount != "" {
@@ -1417,18 +1450,21 @@ func validateRoleCPU(role *Role) validation.ErrorList {
 func validateHealthCheck(role *Role) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
+	if role.Run.HealthCheck == nil {
+		// No health checks, nothing to validate
+		return allErrs
+	}
+
 	// Ensure that we don't have conflicting health checks
-	if role.Run.HealthCheck != nil {
-		if role.Run.HealthCheck.Readiness != nil {
-			allErrs = append(allErrs,
-				validateHealthProbe(role, "readiness",
-					role.Run.HealthCheck.Readiness)...)
-		}
-		if role.Run.HealthCheck.Liveness != nil {
-			allErrs = append(allErrs,
-				validateHealthProbe(role, "liveness",
-					role.Run.HealthCheck.Liveness)...)
-		}
+	if role.Run.HealthCheck.Readiness != nil {
+		allErrs = append(allErrs,
+			validateHealthProbe(role, "readiness",
+				role.Run.HealthCheck.Readiness)...)
+	}
+	if role.Run.HealthCheck.Liveness != nil {
+		allErrs = append(allErrs,
+			validateHealthProbe(role, "liveness",
+				role.Run.HealthCheck.Liveness)...)
 	}
 
 	return allErrs
@@ -1453,6 +1489,41 @@ func validateHealthProbe(role *Role, probeName string, probe *HealthProbe) valid
 		allErrs = append(allErrs, validation.Invalid(
 			fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
 			checks, "Expected at most one of url, command, or port"))
+	}
+	switch role.Type {
+
+	case RoleTypeBosh:
+		if len(checks) == 0 {
+			allErrs = append(allErrs, validation.Required(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				"Health check requires a command"))
+		} else if checks[0] != "command" {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				checks, "Only command health checks are supported for BOSH roles"))
+		} else if probeName != "readiness" && len(probe.Command) > 1 {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				probe.Command, fmt.Sprintf("%s check can only have one command", probeName)))
+		}
+
+	case RoleTypeBoshTask:
+		if len(checks) > 0 {
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				"bosh-task roles cannot have health checks"))
+		}
+
+	case RoleTypeDocker:
+		if len(probe.Command) > 1 {
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+				"docker roles do not support multiple commands"))
+		}
+
+	default:
+		// We should have caught the invalid role type when loading the role manifest
+		panic("Unexpected role type " + string(role.Type) + " in role " + role.Name)
 	}
 
 	return allErrs
@@ -1602,20 +1673,64 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 	return allErrs
 }
 
-func validateColocatedContainerInvalidTags(RoleManifest *RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
+func validateRoleTags(role *Role) validation.ErrorList {
+	var allErrs validation.ErrorList
 
-	for _, role := range RoleManifest.Roles {
-		if role.Type == RoleTypeColocatedContainer {
-			for _, tag := range role.Tags {
-				switch tag {
-				case "clustered", "indexed":
-					allErrs = append(allErrs, validation.Invalid(
-						fmt.Sprintf("role[%s]", role.Name),
-						tag,
-						"tags clustered, or indexed are not supported for colocated-containers"))
-				}
+	acceptableRoleTypes := map[RoleTag][]RoleType{
+		RoleTagActivePassive:     []RoleType{RoleTypeBosh},
+		RoleTagHeadless:          []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagSequentialStartup: []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
+	}
+
+	for tagNum, tag := range role.Tags {
+		switch tag {
+		case RoleTagStopOnFailure:
+		case RoleTagSequentialStartup:
+		case RoleTagHeadless:
+		case RoleTagActivePassive:
+			if role.Run == nil || role.Run.ActivePassiveProbe == "" {
+				allErrs = append(allErrs, validation.Required(
+					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
+					"active-passive roles must specify the correct probe"))
 			}
+			if role.HasTag(RoleTagHeadless) {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+					tag,
+					"headless roles may not be active-passive"))
+			}
+
+		default:
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				string(tag), "Unknown tag"))
+			continue
+		}
+
+		if _, ok := acceptableRoleTypes[tag]; !ok {
+			allErrs = append(allErrs, validation.InternalError(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				fmt.Errorf("Tag %s has no acceptable role list", tag)))
+			continue
+		}
+
+		validTypeForTag := false
+		for _, roleType := range acceptableRoleTypes[tag] {
+			if roleType == role.Type {
+				validTypeForTag = true
+				break
+			}
+		}
+		if !validTypeForTag {
+			var roleNames []string
+			for _, roleType := range acceptableRoleTypes[tag] {
+				roleNames = append(roleNames, string(roleType))
+			}
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				tag,
+				fmt.Sprintf("%s tag is only supported in [%s] roles, not %s", tag, strings.Join(roleNames, ", "), role.Type)))
 		}
 	}
 
@@ -1695,30 +1810,6 @@ func (r *Role) LookupJob(name string) *RoleJob {
 func (r *Role) IsPrivileged() bool {
 	for _, cap := range r.Run.Capabilities {
 		if cap == "ALL" {
-			return true
-		}
-	}
-	return false
-}
-
-// IsDevRole tests if the role is tagged for development, or not. It
-// returns true for development-roles, and false otherwise.
-func (r *Role) IsDevRole() bool {
-	for _, tag := range r.Tags {
-		switch tag {
-		case "dev-only":
-			return true
-		}
-	}
-	return false
-}
-
-// IsStopOnFailureRole tests if the role is tagged to stop on a failure, or
-// not.
-func (r *Role) IsStopOnFailureRole() bool {
-	for _, tag := range r.Tags {
-		switch tag {
-		case "stop-on-failure":
 			return true
 		}
 	}

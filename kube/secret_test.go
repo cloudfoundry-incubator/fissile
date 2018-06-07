@@ -175,7 +175,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		_, err := testhelpers.RenderNode(secret, nil)
 		assert.EqualError(err,
-			`template: :6:61: executing "" at <.Values.secrets.cons...>: can't evaluate field const in type interface {}`)
+			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {

@@ -188,6 +188,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 		err = util.WriteToTarStream(tarWriter, runScriptContents, tar.Header{
 			Name: "root/opt/fissile/run.sh",
+			Mode: 0755,
 		})
 		if err != nil {
 			return err
@@ -199,6 +200,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 		err = util.WriteToTarStream(tarWriter, preStopScriptContents, tar.Header{
 			Name: "root/opt/fissile/pre-stop.sh",
+			Mode: 0755,
 		})
 		if err != nil {
 			return err
@@ -210,6 +212,19 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 		err = util.WriteToTarStream(tarWriter, jobsConfigContents, tar.Header{
 			Name: "root/opt/fissile/job_config.json",
+		})
+		if err != nil {
+			return err
+		}
+
+		// Copy readiness probe script
+		readinessProbeScriptContents, err := r.generateRunScript(role, "readiness-probe.sh")
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, readinessProbeScriptContents, tar.Header{
+			Name: "root/opt/fissile/readiness-probe.sh",
+			Mode: 0755,
 		})
 		if err != nil {
 			return err

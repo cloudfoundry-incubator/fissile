@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 func TestLoadRoleManifestOK(t *testing.T) {
@@ -150,6 +152,75 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
 			`roles[foorole].jobs[ntpd]: Invalid value: "foo": Referenced release is not loaded`)
+	}
+}
+
+func TestRoleManifestTagList(t *testing.T) {
+	t.Parallel()
+	workDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	require.NoError(t, err, "Error reading BOSH release")
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
+	manifestContents, err := ioutil.ReadFile(roleManifestPath)
+	require.NoError(t, err, "Error reading role manifest")
+
+	for tag, acceptableRoleTypes := range map[string][]RoleType{
+		"stop-on-failure":    []RoleType{RoleTypeBoshTask},
+		"sequential-startup": []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"headless":           []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"active-passive":     []RoleType{RoleTypeBosh},
+		"indexed":            []RoleType{},
+		"clustered":          []RoleType{},
+		"invalid":            []RoleType{},
+		"no-monit":           []RoleType{},
+	} {
+		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeDocker, RoleTypeColocatedContainer} {
+			func(tag string, roleType RoleType, acceptableRoleTypes []RoleType) {
+				t.Run(tag, func(t *testing.T) {
+					t.Parallel()
+					roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+					err := yaml.Unmarshal(manifestContents, roleManifest)
+					require.NoError(t, err, "Error unmarshalling role manifest")
+					roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+					require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+					roleManifest.Roles[0].Type = roleType
+					roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
+					if RoleTag(tag) == RoleTagActivePassive {
+						// An active/passive probe is required when tagged as active/passive
+						roleManifest.Roles[0].Run.ActivePassiveProbe = "hello"
+					}
+					err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+					acceptable := false
+					for _, acceptableRoleType := range acceptableRoleTypes {
+						if acceptableRoleType == roleType {
+							acceptable = true
+						}
+					}
+					if acceptable {
+						assert.NoError(t, err)
+					} else {
+						message := "Unknown tag"
+						if len(acceptableRoleTypes) > 0 {
+							var roleNames []string
+							for _, acceptableRoleType := range acceptableRoleTypes {
+								roleNames = append(roleNames, string(acceptableRoleType))
+							}
+							message = fmt.Sprintf("%s tag is only supported in [%s] roles, not %s",
+								tag,
+								strings.Join(roleNames, ", "),
+								roleType)
+						}
+						fullMessage := fmt.Sprintf(`roles[myrole].tags[0]: Invalid value: "%s": %s`, tag, message)
+						assert.EqualError(t, err, fullMessage)
+					}
+				})
+			}(tag, roleType, acceptableRoleTypes)
+		}
 	}
 }
 
@@ -448,10 +519,12 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	require.NoError(t, err)
 
-	tests := []struct {
+	type testCase struct {
 		manifest string
 		message  []string
-	}{
+	}
+
+	tests := []testCase{
 		{
 			"bosh-run-missing.yml", []string{
 				`roles[myrole].run: Required value`,
@@ -491,6 +564,10 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
+			// No error is expected for a headless public port
+			"bosh-run-headless-public-port.yml", []string{},
+		},
+		{
 			"bosh-run-bad-parse.yml", []string{
 				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
 				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
@@ -511,25 +588,212 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 				`roles[xrole].run.env: Forbidden: Non-docker role declares bogus parameters`,
 			},
 		},
+		{
+			"bosh-run-ok.yml", []string{},
+		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.manifest, func(t *testing.T) {
-			t.Parallel()
-			roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", tc.manifest)
-			roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-			if assert.Errorf(t, err, "Expected errors: %s", tc.message) {
-				assert.EqualError(t, err, strings.Join(tc.message, "\n"))
-				assert.Nil(t, roleManifest)
-			}
-		})
+		func(tc testCase) {
+			t.Run(tc.manifest, func(t *testing.T) {
+				t.Parallel()
+				roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", tc.manifest)
+				roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+				if len(tc.message) > 0 {
+					assert.EqualError(t, err, strings.Join(tc.message, "\n"))
+					assert.Nil(t, roleManifest)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}(tc)
+	}
+}
+
+func TestLoadRoleManifestHealthChecks(t *testing.T) {
+	t.Parallel()
+	workDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	require.NoError(t, err, "Error reading BOSH release")
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
+	manifestContents, err := ioutil.ReadFile(roleManifestPath)
+	require.NoError(t, err, "Error reading role manifest")
+
+	type sampleStruct struct {
+		name        string
+		roleType    RoleType
+		healthCheck HealthCheck
+		err         []string
+	}
+	for _, sample := range []sampleStruct{
+		{
+			name: "empty",
+		},
+		{
+			name:     "too many kinds",
+			roleType: RoleTypeDocker,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello"},
+					URL:     "about:blank",
+					Port:    6667,
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
+			},
+		},
+		{
+			name:     "docker multi-arg commands",
+			roleType: RoleTypeDocker,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello", "world"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Forbidden: docker roles do not support multiple commands`,
+			},
+		},
+		{
+			name:     "bosh task with health check",
+			roleType: RoleTypeBoshTask,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"hello"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Forbidden: bosh-task roles cannot have health checks`,
+			},
+		},
+		{
+			name:     "bosh role with command",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					Command: []string{"/bin/echo", "hello"},
+				},
+			},
+		},
+		{
+			name:     "bosh role with url",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Readiness: &HealthProbe{
+					URL: "about:crashes",
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url"]: Only command health checks are supported for BOSH roles`,
+			},
+		},
+		{
+			name:     "bosh role with liveness check with multiple commands",
+			roleType: RoleTypeBosh,
+			healthCheck: HealthCheck{
+				Liveness: &HealthProbe{
+					Command: []string{"hello", "world"},
+				},
+			},
+			err: []string{
+				`roles[myrole].run.healthcheck.liveness.command: Invalid value: ["hello","world"]: liveness check can only have one command`,
+			},
+		},
+	} {
+		func(sample sampleStruct) {
+			t.Run(sample.name, func(t *testing.T) {
+				t.Parallel()
+				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+				err := yaml.Unmarshal(manifestContents, roleManifest)
+				require.NoError(t, err, "Error unmarshalling role manifest")
+				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+				if sample.roleType != RoleType("") {
+					roleManifest.Roles[0].Type = sample.roleType
+				}
+				roleManifest.Roles[0].Run = &RoleRun{
+					HealthCheck: &sample.healthCheck,
+				}
+				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+				if len(sample.err) > 0 {
+					assert.EqualError(t, err, strings.Join(sample.err, "\n"))
+					return
+				}
+				assert.NoError(t, err)
+			})
+		}(sample)
 	}
 
-	t.Run("bosh-run-ok.yml", func(t *testing.T) {
+	t.Run("bosh role with untagged active/passive probe", func(t *testing.T) {
 		t.Parallel()
-		roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", "bosh-run-ok.yml")
-		_, err = LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-		assert.NoError(t, err)
+		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		err := yaml.Unmarshal(manifestContents, roleManifest)
+		require.NoError(t, err, "Error unmarshalling role manifest")
+		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+
+		roleManifest.Roles[0].Type = RoleTypeBosh
+		roleManifest.Roles[0].Tags = []RoleTag{}
+		roleManifest.Roles[0].Run = &RoleRun{
+			ActivePassiveProbe: "/bin/true",
+		}
+		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		assert.EqualError(t, err,
+			`roles[myrole].run.active-passive-probe: Invalid value: "/bin/true": Active/passive probes are only valid on roles with active-passive tag`)
+	})
+
+	t.Run("active/passive bosh role without a probe", func(t *testing.T) {
+		t.Parallel()
+		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		err := yaml.Unmarshal(manifestContents, roleManifest)
+		require.NoError(t, err, "Error unmarshalling role manifest")
+		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+
+		roleManifest.Roles[0].Type = RoleTypeBosh
+		roleManifest.Roles[0].Tags = []RoleTag{RoleTagActivePassive}
+		roleManifest.Roles[0].Run = &RoleRun{}
+		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		assert.EqualError(t, err,
+			`roles[myrole].run.active-passive-probe: Required value: active-passive roles must specify the correct probe`)
+	})
+
+	t.Run("bosh task tagged as active/passive", func(t *testing.T) {
+		t.Parallel()
+		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		err := yaml.Unmarshal(manifestContents, roleManifest)
+		require.NoError(t, err, "Error unmarshalling role manifest")
+		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+
+		roleManifest.Roles[0].Type = RoleTypeBoshTask
+		roleManifest.Roles[0].Tags = []RoleTag{RoleTagActivePassive}
+		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		assert.EqualError(t, err,
+			`roles[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] roles, not bosh-task`)
+	})
+
+	t.Run("headless active/passive role", func(t *testing.T) {
+		t.Parallel()
+		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		err := yaml.Unmarshal(manifestContents, roleManifest)
+		require.NoError(t, err, "Error unmarshalling role manifest")
+		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+
+		roleManifest.Roles[0].Type = RoleTypeBosh
+		roleManifest.Roles[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
+		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		assert.EqualError(t, err,
+			`roles[myrole].tags[1]: Invalid value: "active-passive": headless roles may not be active-passive`)
 	})
 }
 
@@ -989,7 +1253,7 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"clustered\": tags clustered, or indexed are not supported for colocated-containers")
+	assert.EqualError(err, `roles[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] roles, not colocated-container`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {

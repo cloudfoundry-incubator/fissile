@@ -545,35 +545,75 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 		return nil, nil
 	}
 
-	var probe *helm.Mapping
-	if role.Run.HealthCheck != nil && role.Run.HealthCheck.Readiness != nil {
-		var complete bool
-		var err error
-		probe, complete, err = configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness)
-		if complete || err != nil {
-			return probe, err
+	switch role.Type {
+	case model.RoleTypeBosh:
+		// For BOSH roles, we use the built-in readiness script
+		probe := helm.NewMapping()
+		probeCommand := helm.NewList()
+		if role.Run.ActivePassiveProbe != "" {
+			probeCommand.Add("/usr/bin/env",
+				"FISSILE_ACTIVE_PASSIVE_PROBE="+role.Run.ActivePassiveProbe)
 		}
-	}
-	if role.Type != model.RoleTypeBosh {
-		return nil, nil
-	}
-
-	var readinessPort *model.RoleRunExposedPort
-	for _, port := range role.Run.ExposedPorts {
-		if port.Protocol == "TCP" {
-			readinessPort = port
-			break
+		probeCommand.Add("/opt/fissile/readiness-probe.sh")
+		if role.Run.HealthCheck != nil && role.Run.HealthCheck.Readiness != nil {
+			roleProbe := role.Run.HealthCheck.Readiness
+			for _, command := range roleProbe.Command {
+				probeCommand.Add(command)
+			}
+			// addParam is a helper to avoid adding a parameter for a zero value
+			addParam := func(name string, value int) {
+				if value != 0 {
+					probe.Add(name, value)
+				}
+			}
+			addParam("initialDelaySeconds", roleProbe.InitialDelay)
+			addParam("timeoutSeconds", roleProbe.Timeout)
+			addParam("periodSeconds", roleProbe.Period)
+			addParam("successThreshold", roleProbe.SuccessThreshold)
+			addParam("failureThreshold", roleProbe.FailureThreshold)
 		}
-	}
-	if readinessPort == nil {
-		return nil, nil
-	}
+		probe.Add("exec", helm.NewMapping("command", probeCommand))
+		return probe.Sort(), nil
 
-	if probe == nil {
-		probe = helm.NewMapping()
+	case model.RoleTypeBoshTask:
+		// Tasks have no readiness probes
+		return nil, nil
+
+	case model.RoleTypeDocker:
+		var probe *helm.Mapping
+		if role.Run.HealthCheck != nil && role.Run.HealthCheck.Readiness != nil {
+			var complete bool
+			var err error
+			probe, complete, err = configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness)
+			if complete || err != nil {
+				return probe.Sort(), err
+			}
+		}
+		var readinessPort *model.RoleRunExposedPort
+		for _, port := range role.Run.ExposedPorts {
+			if port.Protocol == "TCP" {
+				readinessPort = port
+				break
+			}
+		}
+		if readinessPort == nil {
+			return nil, nil
+		}
+
+		if probe == nil {
+			probe = helm.NewMapping()
+		}
+		probe.Add("tcpSocket", helm.NewMapping("port", readinessPort.InternalPort))
+		return probe.Sort(), nil
+
+	case model.RoleTypeColocatedContainer:
+		// Colocated containers have no readiness probes
+		return nil, nil
+
+	default:
+		// This should have been caught earlier, when we loaded the role manifest
+		panic(fmt.Sprintf("Unexpected role type %s in %s readiness probe", role.Type, role.Name))
 	}
-	probe.Add("tcpSocket", helm.NewMapping("port", readinessPort.InternalPort))
-	return probe.Sort(), nil
 }
 
 func configureContainerProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe) (*helm.Mapping, bool, error) {

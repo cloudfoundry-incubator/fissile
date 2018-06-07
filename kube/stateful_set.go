@@ -21,7 +21,7 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 		return nil, nil, err
 	}
 
-	svcList, err := NewClusterIPServiceList(role, true, !role.HasTag("clustered"), settings)
+	svcList, err := NewServiceList(role, true, settings)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -40,6 +40,11 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 	if len(claims) > 0 {
 		spec.Add("volumeClaimTemplates", helm.NewNode(claims))
 	}
+	podManagementPolicy := "Parallel"
+	if role.HasTag(model.RoleTagSequentialStartup) {
+		podManagementPolicy = "OrderedReady"
+	}
+	spec.Add("podManagementPolicy", podManagementPolicy)
 
 	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
