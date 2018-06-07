@@ -1750,6 +1750,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
@@ -1768,6 +1769,8 @@ func TestPodPreFlightHelm(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -1852,6 +1855,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.sizing.post_role.capabilities":  []interface{}{},
 	}
@@ -1870,6 +1874,8 @@ func TestPodPostFlightHelm(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -1963,6 +1969,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.config.memory.requests":         nil,
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.organization":              "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
 		"Values.sizing.pre_role.memory.request": nil,
@@ -1982,6 +1989,8 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2035,6 +2044,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.config.memory.limits":           "true",
 		"Values.config.memory.requests":         "true",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
@@ -2057,6 +2067,8 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2150,6 +2162,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 
 	config := map[string]interface{}{
 		"Values.config.cpu.requests":            nil,
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
@@ -2171,6 +2184,8 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2224,6 +2239,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.config.cpu.limits":              "true",
 		"Values.config.cpu.requests":            "true",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "KSDS",
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
@@ -2246,6 +2262,8 @@ func TestPodCPUHelmActive(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:

@@ -182,6 +182,7 @@ func TestJobHelm(t *testing.T) {
 		"Release.Revision":                      "42",
 		"Values.kube.registry.hostname":         "docker.suse.fake",
 		"Values.kube.organization":              "splat",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
 	}
@@ -206,6 +207,8 @@ func TestJobHelm(t *testing.T) {
 				spec:
 					containers:
 					-	env:
+						-	name: "KUBERNETES_CLUSTER_DOMAIN"
+							value: "cluster.local"
 						-	name: "KUBERNETES_NAMESPACE"
 							valueFrom:
 								fieldRef:

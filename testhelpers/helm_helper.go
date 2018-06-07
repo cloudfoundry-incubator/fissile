@@ -66,7 +66,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	tmpl, err := template.New("").Option("missingkey=zero").Funcs(functions).Parse(string(helmConfig.Bytes()))
 
 	if err != nil {
-		//fmt.Printf("TEMPLATE PARSE FAIL\n%s\nPARSE END\n", string(helmConfig.Bytes()))
+		//fmt.Printf("TEMPLATE PARSE FAIL: %s\n%s\nPARSE END\n", err, string(helmConfig.Bytes()))
 		return nil, err
 	}
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {

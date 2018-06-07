@@ -96,6 +96,9 @@ fi
 if test -z "${KUBE_SERVICE_DOMAIN_SUFFIX:-}" && grep -E --quiet '^search' /etc/resolv.conf ; then
   export KUBE_SERVICE_DOMAIN_SUFFIX="$(awk '/^search/ { print $2 }' /etc/resolv.conf)"
 fi
+if test -z "${KUBERNETES_CLUSTER_DOMAIN:-}" && grep -E --quiet '^search' /etc/resolv.conf ; then
+  export KUBERNETES_CLUSTER_DOMAIN="$(perl -ne 'print $1 if /^search.* svc\.(\S+)/' /etc/resolv.conf)"
+fi
 
 # Write a couple of identification files for the stemcell
 mkdir -p /var/vcap/instance
