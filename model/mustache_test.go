@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 func TestParsing(t *testing.T) {
 	// Arrange
 	assert := assert.New(t)
-	template := "((FISSILE_IDENTITY_SCHEME))://((#FISSILE_IDENTITY_EXTERNAL_HOST))((FISSILE_INSTANCE_ID)).((FISSILE_IDENTITY_EXTERNAL_HOST)):((FISSILE_IDENTITY_EXTERNAL_PORT))((/FISSILE_IDENTITY_EXTERNAL_HOST))((^FISSILE_IDENTITY_EXTERNAL_HOST))scf.uaa-int.((FISSILE_SERVICE_DOMAIN_SUFFIX)):8443((/FISSILE_IDENTITY_EXTERNAL_HOST))"
+	template := "((FISSILE_IDENTITY_SCHEME))://((#FISSILE_IDENTITY_EXTERNAL_HOST))((FISSILE_INSTANCE_ID)).((FISSILE_IDENTITY_EXTERNAL_HOST)):((FISSILE_IDENTITY_EXTERNAL_PORT))((/FISSILE_IDENTITY_EXTERNAL_HOST))((^FISSILE_IDENTITY_EXTERNAL_HOST))scf.uaa-int.uaa.svc.((FISSILE_CLUSTER_DOMAIN)):8443((/FISSILE_IDENTITY_EXTERNAL_HOST))"
 
 	// Act
 	pieces, err := parseTemplate(template)
@@ -29,7 +29,7 @@ func TestParsing(t *testing.T) {
 	assert.Contains(pieces, "FISSILE_INSTANCE_ID")
 	assert.Contains(pieces, "FISSILE_IDENTITY_EXTERNAL_HOST")
 	assert.Contains(pieces, "FISSILE_IDENTITY_EXTERNAL_PORT")
-	assert.Contains(pieces, "FISSILE_SERVICE_DOMAIN_SUFFIX")
+	assert.Contains(pieces, "FISSILE_CLUSTER_DOMAIN")
 	assert.NotContains(pieces, "FOO")
 }
 
@@ -52,7 +52,7 @@ func TestRoleVariables(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, vars)
 
-	expected := []string{"HOME", "FOO", "BAR", "KUBERNETES_CLUSTER_DOMAIN", "KUBE_SERVICE_DOMAIN_SUFFIX", "PELERINUL"}
+	expected := []string{"HOME", "FOO", "BAR", "KUBERNETES_CLUSTER_DOMAIN", "PELERINUL"}
 	sort.Strings(expected)
 	var actual []string
 	for _, variable := range vars {

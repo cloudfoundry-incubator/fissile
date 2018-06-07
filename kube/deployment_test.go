@@ -115,7 +115,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
-			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -131,7 +130,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
-			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 		_, err := testhelpers.RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -202,7 +200,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.kube.registry.hostname":            "docker.suse.fake",
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
-			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX":    "domestic",
 		}
 
 		actual, err := testhelpers.RoundtripNode(deployment, config)
@@ -250,8 +247,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 								valueFrom:
 									fieldRef:
 										fieldPath: "metadata.namespace"
-							-	name: "KUBE_SERVICE_DOMAIN_SUFFIX"
-								value: "domestic"
 							image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
 							lifecycle:
 								preStop:
@@ -431,13 +426,12 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.role.count":              "1",
-			"Values.sizing.role.capabilities":       []interface{}{},
-			"Values.sizing.colocated.capabilities":  []interface{}{},
-			"Values.kube.registry.hostname":         "docker.suse.fake",
-			"Values.kube.organization":              "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-			"Values.env.KUBE_SERVICE_DOMAIN_SUFFIX": "domestic",
+			"Values.sizing.role.count":             "1",
+			"Values.sizing.role.capabilities":      []interface{}{},
+			"Values.sizing.colocated.capabilities": []interface{}{},
+			"Values.kube.registry.hostname":        "docker.suse.fake",
+			"Values.kube.organization":             "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		}
 
 		actual, err := testhelpers.RoundtripNode(deployment, config)

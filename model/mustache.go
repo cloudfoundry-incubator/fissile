@@ -131,11 +131,6 @@ func builtins() ConfigurationVariableSlice {
 			Internal: true,
 		},
 		&ConfigurationVariable{
-			Name:     "KUBE_SERVICE_DOMAIN_SUFFIX",
-			Type:     CVTypeUser, // The user can override this
-			Internal: true,
-		},
-		&ConfigurationVariable{
 			Name:     "KUBERNETES_CLUSTER_DOMAIN",
 			Type:     CVTypeUser, // The user can override this
 			Internal: true,
