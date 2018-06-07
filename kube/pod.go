@@ -398,6 +398,15 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 			continue
 		}
 
+		if config.Name == "HELM_IS_INSTALL" {
+			value := "true"
+			if settings.CreateHelmChart {
+				value = "{{ .Release.IsInstall | quote }}"
+			}
+			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
+		}
+
 		if config.Name == "KUBE_SECRETS_GENERATION_COUNTER" {
 			value := "1"
 			if settings.CreateHelmChart {

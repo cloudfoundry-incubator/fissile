@@ -135,5 +135,10 @@ func builtins() ConfigurationVariableSlice {
 			Type:     CVTypeUser, // The user can override this
 			Internal: true,
 		},
+		&ConfigurationVariable{
+			Name:     "KUBERNETES_CLUSTER_DOMAIN",
+			Type:     CVTypeUser, // The user can override this
+			Internal: true,
+		},
 	}
 }
