@@ -146,21 +146,13 @@ func newService(role *model.Role, serviceType newServiceType, settings ExportSet
 	}
 	spec.Add("selector", selector)
 
-	if settings.CreateHelmChart {
-		spec.Add("type", "{{ if .Values.services.loadbalanced }} LoadBalancer {{ else }} ClusterIP {{ end }}")
-	} else {
-		spec.Add("type", "ClusterIP")
-	}
 	if serviceType == newServiceTypeHeadless {
-		if settings.CreateHelmChart {
-			spec.Add("clusterIP", "None", helm.Block("if not .Values.services.loadbalanced"))
-		} else {
-			spec.Add("clusterIP", "None")
-		}
+		spec.Add("clusterIP", "None")
 	}
 	if serviceType == newServiceTypePublic {
 		if settings.CreateHelmChart {
-			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}")
+			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}", helm.Block("if not .Values.services.loadbalanced"))
+			spec.Add("type", "LoadBalancer", helm.Block("if .Values.services.loadbalanced"))
 		} else {
 			spec.Add("externalIPs", []string{"192.168.77.77"})
 		}

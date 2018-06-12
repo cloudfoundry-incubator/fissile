@@ -99,7 +99,6 @@ func TestStatefulSetPorts(t *testing.T) {
 					targetPort: 0
 				selector:
 					skiff-role-name: myrole
-				type: ClusterIP
 				clusterIP: None
 		-
 			# This is the private service port
@@ -117,7 +116,6 @@ func TestStatefulSetPorts(t *testing.T) {
 						targetPort: https
 				selector:
 					skiff-role-name: myrole
-				type: ClusterIP
 		-
 			# This is the public service port
 			metadata:
@@ -130,7 +128,6 @@ func TestStatefulSetPorts(t *testing.T) {
 						targetPort: https
 				selector:
 					skiff-role-name: myrole
-				type: ClusterIP
 		-
 			# This is the actual StatefulSet
 			metadata:
@@ -228,7 +225,6 @@ func TestStatefulSetServices(t *testing.T) {
 									targetPort: 0
 								selector:
 									skiff-role-name: myrole
-								type: ClusterIP
 							`, actual)
 						}
 						if assert.NotNil(t, publicService, "Public service not found") {
@@ -258,7 +254,6 @@ func TestStatefulSetServices(t *testing.T) {
 									targetPort: https
 								selector:
 									skiff-role-name: myrole
-								type: ClusterIP
 							`, actual)
 						}
 						if variant == "headless" {
@@ -294,7 +289,6 @@ func TestStatefulSetServices(t *testing.T) {
 									targetPort: https
 								selector:
 									skiff-role-name: myrole
-								type: ClusterIP
 							`, actual)
 						}
 					})
