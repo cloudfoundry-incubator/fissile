@@ -30,7 +30,7 @@ func TestMakeSecretsEmpty(t *testing.T) {
 		if !assert.NoError(err) {
 			return
 		}
-		actual, err := testhelpers.RoundtripKube(secret)
+		actual, err := RoundtripKube(secret)
 		if !assert.NoError(err) {
 			return
 		}
@@ -45,7 +45,7 @@ func TestMakeSecretsEmpty(t *testing.T) {
 		if !assert.NoError(err) {
 			return
 		}
-		actual, err := testhelpers.RoundtripNode(secret, nil)
+		actual, err := RoundtripNode(secret, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -114,13 +114,13 @@ func TestMakeSecretsKube(t *testing.T) {
 		return
 	}
 
-	renderedYAML, err := testhelpers.RenderNode(secret, nil)
+	renderedYAML, err := RenderNode(secret, nil)
 	if !assert.NoError(err) {
 		return
 	}
 
-	varConstB64 := testhelpers.RenderEncodeBase64(testCV["const"].Default.(string))
-	varValuedB64 := testhelpers.RenderEncodeBase64(testCV["valued"].Default.(string))
+	varConstB64 := RenderEncodeBase64(testCV["const"].Default.(string))
+	varValuedB64 := RenderEncodeBase64(testCV["valued"].Default.(string))
 
 	// Check the comments, and also that they are associated with
 	// the correct variables.
@@ -134,7 +134,7 @@ func TestMakeSecretsKube(t *testing.T) {
 	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
 	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
-	actual, err := testhelpers.RoundtripKube(secret)
+	actual, err := RoundtripKube(secret)
 	if !assert.NoError(err) {
 		return
 	}
@@ -173,7 +173,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 		// to a number of guards (secrets.FOO, FOO a variable)
 		// not being present at all.
 
-		_, err := testhelpers.RenderNode(secret, nil)
+		_, err := RenderNode(secret, nil)
 		assert.EqualError(err,
 			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 	})
@@ -189,7 +189,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 			"Values.secrets.const": nil,
 		}
 
-		_, err := testhelpers.RenderNode(secret, config)
+		_, err := RenderNode(secret, config)
 		assert.EqualError(err,
 			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
 	})
@@ -202,11 +202,11 @@ func TestMakeSecretsHelm(t *testing.T) {
 		varValued := "sky high"
 		varGenie := "djinn"
 
-		varConstB64 := testhelpers.RenderEncodeBase64(varConst)
-		varDescB64 := testhelpers.RenderEncodeBase64(varDesc)
-		varMinB64 := testhelpers.RenderEncodeBase64(varMin)
-		varValuedB64 := testhelpers.RenderEncodeBase64(varValued)
-		varGenieB64 := testhelpers.RenderEncodeBase64(varGenie)
+		varConstB64 := RenderEncodeBase64(varConst)
+		varDescB64 := RenderEncodeBase64(varDesc)
+		varMinB64 := RenderEncodeBase64(varMin)
+		varValuedB64 := RenderEncodeBase64(varValued)
+		varGenieB64 := RenderEncodeBase64(varGenie)
 
 		config := map[string]interface{}{
 			"Values.secrets.const":  varConst,
@@ -216,7 +216,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 			"Values.secrets.genie":  varGenie,
 		}
 
-		renderedYAML, err := testhelpers.RenderNode(secret, config)
+		renderedYAML, err := RenderNode(secret, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -236,7 +236,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		// And check overall structure
 
-		actual, err := testhelpers.RoundtripNode(secret, config)
+		actual, err := RoundtripNode(secret, config)
 		if !assert.NoError(err) {
 			return
 		}

@@ -10,7 +10,7 @@ import (
 
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(settings ExportSettings) (helm.Node, error) {
-	values := helm.MakeBasicValues()
+	values := MakeBasicValues()
 	env := helm.NewMapping()
 	secrets := helm.NewMapping()
 	generated := helm.NewMapping()

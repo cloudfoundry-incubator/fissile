@@ -54,7 +54,7 @@ func TestServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
-	actual, err := testhelpers.RoundtripKube(service)
+	actual, err := RoundtripKube(service)
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
@@ -96,7 +96,7 @@ func TestServiceHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": nil,
 		}
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -124,7 +124,7 @@ func TestServiceHelm(t *testing.T) {
 			"Values.services.loadbalanced": "true",
 		}
 
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -163,7 +163,7 @@ func TestHeadlessServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
-	actual, err := testhelpers.RoundtripKube(service)
+	actual, err := RoundtripKube(service)
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
@@ -209,7 +209,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": nil,
 		}
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -238,7 +238,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			"Values.services.loadbalanced": "true",
 		}
 
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -278,7 +278,7 @@ func TestPublicServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
-	actual, err := testhelpers.RoundtripKube(service)
+	actual, err := RoundtripKube(service)
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
@@ -320,7 +320,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			"Values.services.loadbalanced": nil,
 		}
 
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -346,7 +346,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
 		}
 
-		actual, err := testhelpers.RoundtripNode(service, config)
+		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
 			apiVersion: "v1"
@@ -394,18 +394,18 @@ func TestActivePassiveService(t *testing.T) {
 				roundTrip := func(node helm.Node) (interface{}, error) {
 					switch variant {
 					case withKube:
-						return testhelpers.RoundtripKube(node)
+						return RoundtripKube(node)
 					case withHelm:
 						config := map[string]interface{}{
 							"Values.kube.external_ips": []string{"192.0.2.42"},
 						}
-						return testhelpers.RoundtripNode(node, config)
+						return RoundtripNode(node, config)
 					case withHelmLoadBalancer:
 						config := map[string]interface{}{
 							"Values.kube.external_ips":     []string{"192.0.2.42"},
 							"Values.services.loadbalanced": "true",
 						}
-						return testhelpers.RoundtripNode(node, config)
+						return RoundtripNode(node, config)
 					}
 					panic("Unexpected variant " + variant)
 				}

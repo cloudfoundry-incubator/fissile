@@ -19,7 +19,7 @@ func TestMakeRegistryCredentialsKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(registryCredentials)
+	actual, err := RoundtripKube(registryCredentials)
 	if !assert.NoError(err) {
 		return
 	}
@@ -51,8 +51,8 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 	pass := "the-password"
 	host := "the-host"
 
-	auth64 := testhelpers.RenderEncodeBase64(fmt.Sprintf("%s:%s", user, pass))
-	dcfg := testhelpers.RenderEncodeBase64(fmt.Sprintf(
+	auth64 := RenderEncodeBase64(fmt.Sprintf("%s:%s", user, pass))
+	dcfg := RenderEncodeBase64(fmt.Sprintf(
 		`{%q:{"username":%q,"password":%q,"auth":%q}}`,
 		host, user, pass, auth64))
 
@@ -62,7 +62,7 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 		"Values.kube.registry.password": pass,
 	}
 
-	actual, err := testhelpers.RoundtripNode(registryCredentials, config)
+	actual, err := RoundtripNode(registryCredentials, config)
 	if !assert.NoError(err) {
 		return
 	}

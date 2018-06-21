@@ -41,7 +41,7 @@ func TestMakeValues(t *testing.T) {
 		assert.NotNil(t, node)
 		assert.NoError(t, err)
 
-		actual, err := testhelpers.RoundtripKube(node)
+		actual, err := RoundtripKube(node)
 		if !assert.NoError(t, err) {
 			return
 		}

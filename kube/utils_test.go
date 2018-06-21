@@ -17,7 +17,7 @@ func TestNewTypeMeta(t *testing.T) {
 
 	typeMeta := newTypeMeta("the-api-version", "thekind")
 
-	actual, err := testhelpers.RoundtripKube(typeMeta)
+	actual, err := RoundtripKube(typeMeta)
 	if !assert.NoError(err) {
 		return
 	}
@@ -33,7 +33,7 @@ func TestNewObjectMeta(t *testing.T) {
 
 	objectMeta := newObjectMeta("thename")
 
-	actual, err := testhelpers.RoundtripKube(objectMeta)
+	actual, err := RoundtripKube(objectMeta)
 	if !assert.NoError(err) {
 		return
 	}
@@ -50,7 +50,7 @@ func TestNewSelector(t *testing.T) {
 
 	selector := newSelector("thename")
 
-	actual, err := testhelpers.RoundtripKube(selector)
+	actual, err := RoundtripKube(selector)
 	if !assert.NoError(err) {
 		return
 	}
@@ -66,7 +66,7 @@ func TestNewKubeConfig(t *testing.T) {
 
 	kubeConfig := newKubeConfig("theApiVersion", "thekind", "thename")
 
-	actual, err := testhelpers.RoundtripKube(kubeConfig)
+	actual, err := RoundtripKube(kubeConfig)
 	if !assert.NoError(err) {
 		return
 	}
@@ -132,7 +132,7 @@ func TestMinKubeVersion(t *testing.T) {
 			"Capabilities.KubeVersion.Major": testcase.Major,
 			"Capabilities.KubeVersion.Minor": testcase.Minor,
 		}
-		actual, err := testhelpers.RoundtripNode(v, config)
+		actual, err := RoundtripNode(v, config)
 		if !assert.NoError(err) {
 			return
 		}

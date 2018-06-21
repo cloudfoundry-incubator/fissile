@@ -26,7 +26,7 @@ func TestNewRBACAccountKube(t *testing.T) {
 	}
 
 	rbacAccount := resources[0]
-	actualAccount, err := testhelpers.RoundtripKube(rbacAccount)
+	actualAccount, err := RoundtripKube(rbacAccount)
 	if !assert.NoError(err) {
 		return
 	}
@@ -38,7 +38,7 @@ func TestNewRBACAccountKube(t *testing.T) {
 	`, actualAccount)
 
 	rbacRole := resources[1]
-	actualRole, err := testhelpers.RoundtripKube(rbacRole)
+	actualRole, err := RoundtripKube(rbacRole)
 	if !assert.NoError(err) {
 		return
 	}
@@ -81,7 +81,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 	t.Run("NoAuth", func(t *testing.T) {
 		t.Parallel()
 		// config: .Values.kube.auth -- helm only ("", "rbac")
-		actualAccount, err := testhelpers.RoundtripNode(rbacAccount, nil)
+		actualAccount, err := RoundtripNode(rbacAccount, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -89,7 +89,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 		`, actualAccount)
 
 		// config: .Values.kube.auth helm only ("", "rbac")
-		actualRole, err := testhelpers.RoundtripNode(rbacRole, nil)
+		actualRole, err := RoundtripNode(rbacRole, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -104,7 +104,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 			"Values.kube.auth": "rbac",
 		}
 
-		actualAccount, err := testhelpers.RoundtripNode(rbacAccount, config)
+		actualAccount, err := RoundtripNode(rbacAccount, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -116,7 +116,7 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 				name: "the-name"
 		`, actualAccount)
 
-		actualRole, err := testhelpers.RoundtripNode(rbacRole, config)
+		actualRole, err := RoundtripNode(rbacRole, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -155,7 +155,7 @@ func TestNewRBACRoleKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(rbacRole)
+	actual, err := RoundtripKube(rbacRole)
 	if !assert.NoError(err) {
 		return
 	}
@@ -200,7 +200,7 @@ func TestNewRBACRoleHelm(t *testing.T) {
 			"Values.kube.auth": "",
 		}
 
-		actual, err := testhelpers.RoundtripNode(rbacRole, config)
+		actual, err := RoundtripNode(rbacRole, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -215,7 +215,7 @@ func TestNewRBACRoleHelm(t *testing.T) {
 			"Values.kube.auth": "rbac",
 		}
 
-		actual, err := testhelpers.RoundtripNode(rbacRole, config)
+		actual, err := RoundtripNode(rbacRole, config)
 		if !assert.NoError(err) {
 			return
 		}

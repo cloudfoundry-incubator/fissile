@@ -76,7 +76,7 @@ func TestStatefulSetPorts(t *testing.T) {
 	items = append(items, statefulset)
 	objects := helm.NewMapping("items", helm.NewNode(items))
 
-	actual, err := testhelpers.RoundtripKube(objects)
+	actual, err := RoundtripKube(objects)
 	require.NoError(t, err)
 
 	expected := `---
@@ -198,9 +198,9 @@ func TestStatefulSetServices(t *testing.T) {
 							var err error
 							switch style {
 							case "helm":
-								actual, err = testhelpers.RoundtripNode(headlessService, nil)
+								actual, err = RoundtripNode(headlessService, nil)
 							case "kube":
-								actual, err = testhelpers.RoundtripKube(headlessService)
+								actual, err = RoundtripKube(headlessService)
 							default:
 								panic("Unexpected style " + style)
 							}
@@ -232,9 +232,9 @@ func TestStatefulSetServices(t *testing.T) {
 							var err error
 							switch style {
 							case "helm":
-								actual, err = testhelpers.RoundtripNode(publicService, nil)
+								actual, err = RoundtripNode(publicService, nil)
 							case "kube":
-								actual, err = testhelpers.RoundtripKube(publicService)
+								actual, err = RoundtripKube(publicService)
 							default:
 								panic("Unexpected style " + style)
 							}
@@ -263,9 +263,9 @@ func TestStatefulSetServices(t *testing.T) {
 							var err error
 							switch style {
 							case "helm":
-								actual, err = testhelpers.RoundtripNode(internalService, nil)
+								actual, err = RoundtripNode(internalService, nil)
 							case "kube":
-								actual, err = testhelpers.RoundtripKube(internalService)
+								actual, err = RoundtripKube(internalService)
 							default:
 								panic("Unexpected style " + style)
 							}
@@ -321,7 +321,7 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 						Opinions: model.NewEmptyOpinions(),
 					}, nil)
 					require.NoError(t, err)
-					actual, err := testhelpers.RoundtripKube(statefulset)
+					actual, err := RoundtripKube(statefulset)
 					require.NoError(t, err)
 					expected := `---
 					spec:
@@ -337,7 +337,7 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 						CreateHelmChart: true,
 					}, nil)
 					require.NoError(t, err)
-					actual, err := testhelpers.RoundtripNode(statefulset, map[string]interface{}{
+					actual, err := RoundtripNode(statefulset, map[string]interface{}{
 						"Values.sizing.myrole.count":                        "1",
 						"Values.sizing.myrole.capabilities":                 []string{},
 						"Values.sizing.myrole.disk_sizes.persistent_volume": 1,
@@ -370,7 +370,7 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(statefulset)
+	actual, err := RoundtripKube(statefulset)
 	if !assert.NoError(err) {
 		return
 	}
@@ -446,7 +446,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(statefulset)
+	actual, err := RoundtripKube(statefulset)
 	if !assert.NoError(err) {
 		return
 	}
@@ -537,7 +537,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.sizing.myrole.disk_sizes.shared_volume":     "40",
 	}
 
-	actual, err := testhelpers.RoundtripNode(statefulset, config)
+	actual, err := RoundtripNode(statefulset, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -607,7 +607,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
 	}
-	actual, err = testhelpers.RoundtripNode(statefulset, overrides)
+	actual, err = RoundtripNode(statefulset, overrides)
 	if !assert.NoError(err) {
 		return
 	}
@@ -633,7 +633,7 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 		return
 	}
 
-	actual, err := testhelpers.RoundtripKube(statefulset)
+	actual, err := RoundtripKube(statefulset)
 	if !assert.NoError(err) {
 		return
 	}

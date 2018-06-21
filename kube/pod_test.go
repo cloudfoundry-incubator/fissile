@@ -106,7 +106,7 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 	mounts := getNonClaimVolumes(role, true)
 	assert.NotNil(mounts)
 
-	actual, err := testhelpers.RoundtripNode(mounts, map[string]interface{}{
+	actual, err := RoundtripNode(mounts, map[string]interface{}{
 		"Values.kube.hostpath_available": true})
 	if !assert.NoError(err) {
 		return
@@ -229,7 +229,7 @@ func TestPodGetVolumesHelm(t *testing.T) {
 		"Values.sizing.myrole.disk_sizes.shared_volume":     "84",
 	}
 
-	actual, err := testhelpers.RoundtripNode(persistentClaim, config)
+	actual, err := RoundtripNode(persistentClaim, config)
 	if assert.NoError(err) {
 		testhelpers.IsYAMLEqualString(assert, `---
 		metadata:
@@ -245,7 +245,7 @@ func TestPodGetVolumesHelm(t *testing.T) {
 		`, actual)
 	}
 
-	actual, err = testhelpers.RoundtripNode(sharedClaim, config)
+	actual, err = RoundtripNode(sharedClaim, config)
 	if assert.NoError(err) {
 		testhelpers.IsYAMLEqualString(assert, `---
 		metadata:
@@ -277,7 +277,7 @@ func TestPodGetVolumeMounts(t *testing.T) {
 		t.Run(caseName, func(t *testing.T) {
 
 			volumeMountNodes := getVolumeMounts(role, true)
-			volumeMounts, err := testhelpers.RoundtripNode(volumeMountNodes, map[string]interface{}{"Values.kube.hostpath_available": hasHostpath})
+			volumeMounts, err := RoundtripNode(volumeMountNodes, map[string]interface{}{"Values.kube.hostpath_available": hasHostpath})
 			if !assert.NoError(t, err) {
 				return
 			}
@@ -409,7 +409,7 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 		},
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -446,7 +446,7 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 		"Values.sizing.foo.count": "22",
 	}
 
-	actual, err := testhelpers.RoundtripNode(ev, config)
+	actual, err := RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -491,7 +491,7 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 		},
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -542,7 +542,7 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 		"Values.sizing.foo.ports.store.count": "22",
 	}
 
-	actual, err := testhelpers.RoundtripNode(ev, config)
+	actual, err := RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -576,7 +576,7 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 		},
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -613,7 +613,7 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "3",
 	}
 
-	actual, err := testhelpers.RoundtripNode(ev, config)
+	actual, err := RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -645,7 +645,7 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 		},
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -683,7 +683,7 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	actual, err := testhelpers.RoundtripNode(ev, config)
+	actual, err := RoundtripNode(ev, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -715,7 +715,7 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 		},
 	})
 
-	actual, err := testhelpers.RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(ev, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -759,7 +759,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 			return
 		}
 
-		actual, err := testhelpers.RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(ev, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -805,7 +805,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		// Mutation of cv below between tests prevents parallel execution
 
 		t.Run("AsIs", func(t *testing.T) {
-			actual, err := testhelpers.RoundtripNode(ev, config)
+			actual, err := RoundtripNode(ev, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -828,7 +828,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 				"Values.secrets.A_SECRET": "user's choice",
 			}
 
-			actual, err := testhelpers.RoundtripNode(ev, config)
+			actual, err := RoundtripNode(ev, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -853,7 +853,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		}
 
 		t.Run("Immutable", func(t *testing.T) {
-			actual, err := testhelpers.RoundtripNode(ev, config)
+			actual, err := RoundtripNode(ev, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -895,7 +895,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 			},
 		}, settings)
 
-		actual, err := testhelpers.RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(ev, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -918,7 +918,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 			},
 		}, settings)
 
-		actual, err := testhelpers.RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(ev, nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -959,7 +959,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": nil,
 		}
-		actual, err := testhelpers.RoundtripNode(ev, config)
+		actual, err := RoundtripNode(ev, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -980,7 +980,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 			"Values.env.SOMETHING": "else",
 		}
 
-		actual, err := testhelpers.RoundtripNode(ev, config)
+		actual, err := RoundtripNode(ev, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1020,7 +1020,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		_, err := testhelpers.RenderNode(ev, nil)
+		_, err := RenderNode(ev, nil)
 		assert.EqualError(err,
 			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
@@ -1030,7 +1030,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": nil,
 		}
-		_, err := testhelpers.RenderNode(ev, config)
+		_, err := RenderNode(ev, config)
 		assert.EqualError(err,
 			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
 	})
@@ -1041,7 +1041,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 			"Values.env.SOMETHING": "needed",
 		}
 
-		actual, err := testhelpers.RoundtripNode(ev, config)
+		actual, err := RoundtripNode(ev, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1611,7 +1611,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
 					t.Run("kube", func(t *testing.T) {
 						t.Parallel()
-						actual, err := testhelpers.RoundtripKube(probe)
+						actual, err := RoundtripKube(probe)
 						if assert.NoError(t, err) {
 							// We use subset testing here because we don't want to bother with the
 							// default timeout lengths
@@ -1620,7 +1620,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					})
 					t.Run("helm", func(t *testing.T) {
 						t.Parallel()
-						actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+						actual, err := RoundtripNode(probe, map[string]interface{}{})
 						if assert.NoError(t, err) {
 							// We use subset testing here because we don't want to bother with the
 							// default timeout lengths
@@ -1647,7 +1647,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
 					t.Run("kube", func(t *testing.T) {
 						t.Parallel()
-						actual, err := testhelpers.RoundtripKube(probe)
+						actual, err := RoundtripKube(probe)
 						if assert.NoError(t, err) {
 							// We use subset testing here because we don't want to bother with the
 							// default timeout lengths
@@ -1656,7 +1656,7 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 					})
 					t.Run("helm", func(t *testing.T) {
 						t.Parallel()
-						actual, err := testhelpers.RoundtripNode(probe, map[string]interface{}{})
+						actual, err := RoundtripNode(probe, map[string]interface{}{})
 						if assert.NoError(t, err) {
 							// We use subset testing here because we don't want to bother with the
 							// default timeout lengths
@@ -1712,7 +1712,7 @@ func TestPodPreFlightKube(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	actual, err := testhelpers.RoundtripNode(pod, nil)
+	actual, err := RoundtripNode(pod, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -1754,7 +1754,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -1814,7 +1814,7 @@ func TestPodPostFlightKube(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	actual, err := testhelpers.RoundtripNode(pod, nil)
+	actual, err := RoundtripNode(pod, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -1856,7 +1856,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 		"Values.sizing.post_role.capabilities": []interface{}{},
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -1918,7 +1918,7 @@ func TestPodMemoryKube(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	actual, err := testhelpers.RoundtripNode(pod, nil)
+	actual, err := RoundtripNode(pod, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -1968,7 +1968,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.sizing.pre_role.memory.request": nil,
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2043,7 +2043,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.sizing.pre_role.memory.request": "1",
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2107,7 +2107,7 @@ func TestPodCPUKube(t *testing.T) {
 	}
 	assert.NotNil(pod)
 
-	actual, err := testhelpers.RoundtripKube(pod)
+	actual, err := RoundtripKube(pod)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2157,7 +2157,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		"Values.sizing.pre_role.cpu.request":   nil,
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2232,7 +2232,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 		"Values.sizing.pre_role.cpu.request":   "1",
 	}
 
-	actual, err := testhelpers.RoundtripNode(pod, config)
+	actual, err := RoundtripNode(pod, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2296,7 +2296,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			return
 		}
 
-		actual, err := testhelpers.RoundtripKube(sc)
+		actual, err := RoundtripKube(sc)
 		if !assert.NoError(err) {
 			return
 		}
@@ -2319,7 +2319,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2335,7 +2335,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2349,7 +2349,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{"something"},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2394,7 +2394,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2409,7 +2409,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2423,7 +2423,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 			config := map[string]interface{}{
 				"Values.sizing.myrole.capabilities": []interface{}{"something"},
 			}
-			actual, err := testhelpers.RoundtripNode(sc, config)
+			actual, err := RoundtripNode(sc, config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -2459,7 +2459,7 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 			return
 		}
 
-		actual, err := testhelpers.RoundtripKube(sc)
+		actual, err := RoundtripKube(sc)
 		if !assert.NoError(err) {
 			return
 		}
@@ -2475,7 +2475,7 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 			return
 		}
 
-		actual, err := testhelpers.RoundtripKube(sc)
+		actual, err := RoundtripKube(sc)
 		if !assert.NoError(err) {
 			return
 		}
@@ -2538,7 +2538,7 @@ func TestPodGetContainerImageNameHelm(t *testing.T) {
 		"Values.kube.organization":      "O",
 	}
 
-	actual, err := testhelpers.RoundtripNode(nameNode, config)
+	actual, err := RoundtripNode(nameNode, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2562,7 +2562,7 @@ func TestPodGetContainerPortsKube(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(ports)
 
-	actual, err := testhelpers.RoundtripKube(ports)
+	actual, err := RoundtripKube(ports)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2592,7 +2592,7 @@ func TestPodGetContainerPortsHelm(t *testing.T) {
 	assert.Nil(err)
 	assert.NotNil(ports)
 
-	actual, err := testhelpers.RoundtripNode(ports, nil)
+	actual, err := RoundtripNode(ports, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2626,7 +2626,7 @@ func TestPodGetContainerPortsHelmCountConfigurable(t *testing.T) {
 		"Values.sizing.myrole.ports.tcp_route.count": "5",
 	}
 
-	actual, err := testhelpers.RoundtripNode(ports, config)
+	actual, err := RoundtripNode(ports, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2655,7 +2655,7 @@ func TestPodMakeSecretVarPlain(t *testing.T) {
 
 	sv := makeSecretVar("foo", false)
 
-	actual, err := testhelpers.RoundtripNode(sv, nil)
+	actual, err := RoundtripNode(sv, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2679,7 +2679,7 @@ func TestPodMakeSecretVarGenerated(t *testing.T) {
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	actual, err := testhelpers.RoundtripNode(sv, config)
+	actual, err := RoundtripNode(sv, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2714,7 +2714,7 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	// Check non-claim volumes
 	mounts := getNonClaimVolumes(roleManifest.LookupRole("main-role"), true)
 	assert.NotNil(mounts)
-	actual, err := testhelpers.RoundtripNode(mounts, nil)
+	actual, err := RoundtripNode(mounts, nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -2729,7 +2729,7 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 
 		mounts := getVolumeMounts(role, true)
 		assert.NotNil(mounts)
-		actual, err := testhelpers.RoundtripNode(mounts, nil)
+		actual, err := RoundtripNode(mounts, nil)
 		if !assert.NoError(err) {
 			return
 		}
