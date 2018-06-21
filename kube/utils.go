@@ -51,3 +51,36 @@ func minKubeVersion(major, minor int) string {
 	// We would use `regexFind "[0-9]+"` but that isn't available in helm 2.6.2
 	return fmt.Sprintf(`or (gt (int %s.Major) %d) (and (eq (int %s.Major) %d) (ge (%s.Minor | trimSuffix "+" | int) %d))`, ver, major, ver, major, ver, minor)
 }
+
+// MakeBasicValues returns a Mapping with the default values that do not depend
+// on any configuration.  This is exported so the tests from other packages can
+// access them.
+func MakeBasicValues() *helm.Mapping {
+	return helm.NewMapping(
+		"kube", helm.NewMapping(
+			"external_ips", helm.NewList(),
+			"secrets_generation_counter", helm.NewNode(1, helm.Comment("Increment this counter to rotate all generated secrets")),
+			"storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"),
+			"hostpath_available", helm.NewNode(false, helm.Comment("Whether HostPath volume mounts are available")),
+			"registry", helm.NewMapping(
+				"hostname", "docker.io",
+				"username", "",
+				"password", ""),
+			"organization", "",
+			"auth", nil),
+		"config", helm.NewMapping(
+			"HA", helm.NewNode(false, helm.Comment("Flag to activate high-availability mode")),
+			"memory", helm.NewNode(helm.NewMapping(
+				"requests", helm.NewNode(false, helm.Comment("Flag to activate memory requests")),
+				"limits", helm.NewNode(false, helm.Comment("Flag to activate memory limits")),
+			), helm.Comment("Global memory configuration")),
+			"cpu", helm.NewNode(helm.NewMapping(
+				"requests", helm.NewNode(false, helm.Comment("Flag to activate cpu requests")),
+				"limits", helm.NewNode(false, helm.Comment("Flag to activate cpu limits")),
+			), helm.Comment("Global CPU configuration"))),
+		"env", helm.NewMapping(),
+		"sizing", helm.NewMapping(),
+		"secrets", helm.NewMapping(),
+		"services", helm.NewMapping(
+			"loadbalanced", false))
+}

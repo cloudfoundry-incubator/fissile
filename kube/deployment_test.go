@@ -101,7 +101,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.sizing.role.count": nil,
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
@@ -116,7 +116,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
@@ -131,7 +131,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.kube.organization":                 "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :5:17: executing "" at <fail "role cannot ha...>: error calling fail: role cannot have more than 1 instances`)
 	})
@@ -142,7 +142,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.HA":         "true",
 			"Values.sizing.role.count": "1",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :13:21: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.HA. The new name to use is config.HA`)
 	})
@@ -153,7 +153,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.memory.limits": "true",
 			"Values.sizing.role.count":    "1",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :25:70: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
 	})
@@ -164,7 +164,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.memory.requests": "true",
 			"Values.sizing.role.count":      "1",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :29:74: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
 	})
@@ -175,7 +175,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.cpu.limits": "true",
 			"Values.sizing.role.count": "1",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :17:64: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
 	})
@@ -186,7 +186,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.cpu.requests": "true",
 			"Values.sizing.role.count":   "1",
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :21:68: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
 	})
@@ -202,7 +202,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
 		}
 
-		actual, err := testhelpers.RoundtripNode(deployment, config)
+		actual, err := RoundtripNode(deployment, config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -418,7 +418,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.sizing.role.count": nil,
 		}
-		_, err := testhelpers.RenderNode(deployment, config)
+		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
 			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
 	})
@@ -434,7 +434,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		}
 
-		actual, err := testhelpers.RoundtripNode(deployment, config)
+		actual, err := RoundtripNode(deployment, config)
 		if !assert.NoError(err) {
 			return
 		}

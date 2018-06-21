@@ -1,4 +1,4 @@
-package testhelpers
+package kube
 
 import (
 	"bytes"
@@ -201,7 +201,7 @@ func getBasicConfig() (map[string]interface{}, error) {
 		}
 	}
 
-	converted, err := convertNode(helm.MakeBasicValues(), nil)
+	converted, err := convertNode(MakeBasicValues(), nil)
 	if err != nil {
 		return nil, err
 	}

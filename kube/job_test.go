@@ -52,7 +52,7 @@ func TestJobPreFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripKube(job)
+	actual, err := RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
@@ -89,7 +89,7 @@ func TestJobPostFlight(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripKube(job)
+	actual, err := RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
@@ -127,7 +127,7 @@ func TestJobWithAnnotations(t *testing.T) {
 	}
 	assert.NotNil(job)
 
-	actual, err := testhelpers.RoundtripKube(job)
+	actual, err := RoundtripKube(job)
 	if !assert.NoError(err) {
 		return
 	}
@@ -186,7 +186,7 @@ func TestJobHelm(t *testing.T) {
 		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
-	actual, err := testhelpers.RoundtripNode(job, config)
+	actual, err := RoundtripNode(job, config)
 	if !assert.NoError(err) {
 		return
 	}
