@@ -390,6 +390,10 @@ type Encoder struct {
 	// surrounded by empty lines for easier grouping.
 	emptyLines bool
 
+	// separator specifies that the output should start with a document
+	// separator ("---\n")
+	separator bool
+
 	// pendingNewline is an internal flag to only emit a single empty line
 	// between elements that both require surrounding empty lines.
 	pendingNewline bool
@@ -414,6 +418,13 @@ func Indent(indent int) func(*Encoder) {
 			indent = 2
 		}
 		enc.indent = indent
+	}
+}
+
+// Separator selects if a document separator should be emitted
+func Separator(separator bool) func(*Encoder) {
+	return func(enc *Encoder) {
+		enc.separator = separator
 	}
 }
 
@@ -442,16 +453,23 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 		emptyLines: true,
 		indent:     2,
 		wrap:       80,
+		separator:  true,
 	}
 	enc.Set(modifiers...)
 	return enc
 }
 
-// Encode writes the config mapping held by the node to the stream.
-func (enc *Encoder) Encode(node Node) error {
+// Encode writes the config mapping held by the node to the stream. The optional
+// argument can be used to specify a prefix to indent the whole generated document.
+func (enc *Encoder) Encode(node Node, optional ...string) error {
 	enc.pendingNewline = false
-	fmt.Fprintln(enc, "---")
 	prefix := ""
+	if len(optional) > 0 {
+		prefix = optional[0]
+	}
+	if enc.separator {
+		fmt.Fprintln(enc, prefix+"---")
+	}
 	enc.writeNode(node, &prefix, "", enc.emptyLines)
 	return enc.err
 }
