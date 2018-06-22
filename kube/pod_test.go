@@ -891,7 +891,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
 			&model.ConfigurationVariable{
 				Name:    "SOMETHING",
-				Default: "or other",
+				Default: []string{"or", "other"},
 			},
 		}, settings)
 
@@ -906,7 +906,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 					fieldRef:
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
-				value: "or other"
+				value: "[\"or\",\"other\"]"
 		`, actual)
 	})
 
@@ -970,7 +970,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 					fieldRef:
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
-				value: 
+				value: ""
 		`, actual)
 	})
 
@@ -1022,7 +1022,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		t.Parallel()
 		_, err := RenderNode(ev, nil)
 		assert.EqualError(err,
-			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
+			`template: :7:219: executing "" at <fail "env.SOMETHING ...>: error calling fail: env.SOMETHING has not been set`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {
@@ -1032,7 +1032,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		}
 		_, err := RenderNode(ev, config)
 		assert.EqualError(err,
-			`template: :7:12: executing "" at <required "SOMETHING ...>: error calling required: SOMETHING configuration missing`)
+			`template: :7:219: executing "" at <fail "env.SOMETHING ...>: error calling fail: env.SOMETHING has not been set`)
 	})
 
 	t.Run("Present", func(t *testing.T) {
@@ -1053,6 +1053,27 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: "needed"
+		`, actual)
+	})
+
+	t.Run("Structured", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.env.SOMETHING": map[string]string{"foo": "bar"},
+		}
+
+		actual, err := RoundtripNode(ev, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: "{\"foo\":\"bar\"}"
 		`, actual)
 	})
 }

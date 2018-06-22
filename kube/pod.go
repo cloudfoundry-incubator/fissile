@@ -448,11 +448,14 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 
 		var stringifiedValue string
 		if settings.CreateHelmChart && config.Type == model.CVTypeUser {
-			required := ""
+			required := `""`
 			if config.Required {
-				required = fmt.Sprintf(`required "%s configuration missing" `, config.Name)
+				required = fmt.Sprintf(`{{fail "env.%s has not been set"}}`, config.Name)
 			}
-			stringifiedValue = fmt.Sprintf("{{ %s.Values.env.%s | quote }}", required, config.Name)
+			name := ".Values.env." + config.Name
+			tmpl := `{{if ne (typeOf %s) "<nil>"}}{{if has (kindOf %s) (list "map" "slice")}}` +
+				`{{%s | toJson | quote}}{{else}}{{%s | quote}}{{end}}{{else}}%s{{end}}`
+			stringifiedValue = fmt.Sprintf(tmpl, name, name, name, name, required)
 		} else {
 			var ok bool
 			ok, stringifiedValue = config.Value(settings.Defaults)
