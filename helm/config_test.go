@@ -557,9 +557,9 @@ func TestHelmWrapLongComments(t *testing.T) {
 		}
 	}
 
-	mapping.Add("Very", NewNode("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	mapping.Add("Very", NewNode("Long", Comment(" "+strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
 	root.Add("Very", NewNode("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
-	root.Add("Nested", mapping)
+	root.Add("Nested", mapping, Comment("None\n One\n  Two\n   Three"))
 
 	expect := `---
 # * abc 12345 abc 12345
@@ -594,6 +594,10 @@ Key6: ~
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Very: "Long"
+# None
+#  One
+#   Two
+#    Three
 Nested:
           # 12 12 12 12
           # 12
@@ -605,8 +609,8 @@ Nested:
           # 1234 1234
           # 1234
           Key4: ~
-          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          #  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          #  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           Very: "Long"
 `
 	equal(t, root, expect, Indent(10), Wrap(24))
