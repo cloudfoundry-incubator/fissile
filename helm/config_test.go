@@ -1001,21 +1001,21 @@ Nil: ~
 	// Encode a reflected struct and use it as documentation
 	buffer := &bytes.Buffer{}
 	enc := NewEncoder(buffer, Separator(false))
-	enc.Encode(actual, "  ")
+	enc.Encode(actual)
 
 	root := NewMapping("Scalar", NewNode(42, Comment("Example:\n"+buffer.String())))
 	equal(t, root, `---
 # Example:
-#   Bar: "xyzzy plugh"
-#   Baz: ~
-#   Bool: true
-#   Float: 1.23
-#   Foo: 123
-#   List:
-#   - 1
-#   - 2
-#   - 3
-#   Nil: ~
+# Bar: "xyzzy plugh"
+# Baz: ~
+# Bool: true
+# Float: 1.23
+# Foo: 123
+# List:
+# - 1
+# - 2
+# - 3
+# Nil: ~
 Scalar: 42
 `)
 }

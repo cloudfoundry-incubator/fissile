@@ -459,14 +459,10 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 	return enc
 }
 
-// Encode writes the config mapping held by the node to the stream. The optional
-// argument can be used to specify a prefix to indent the whole generated document.
-func (enc *Encoder) Encode(node Node, optional ...string) error {
+// Encode writes the config mapping held by the node to the stream.
+func (enc *Encoder) Encode(node Node) error {
 	enc.pendingNewline = false
 	prefix := ""
-	if len(optional) > 0 {
-		prefix = optional[0]
-	}
 	if enc.separator {
 		fmt.Fprintln(enc, prefix+"---")
 	}
@@ -532,7 +528,7 @@ func useOnce(prefix *string) string {
 // Paragraphs starting with "*" or "-", followed by one or more spaces, are treated as
 // bullet points, so wrapped lines will be indented to the same level.
 //
-// Similary any paragraphs intented by a string of spaces will keep this indent for
+// Similary any paragraphs indented by a string of spaces will keep this indent for
 // all wrapped lines as well.
 
 var indentPattern = regexp.MustCompile("^[*-]? +")
