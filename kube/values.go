@@ -8,6 +8,19 @@ import (
 	"github.com/SUSE/fissile/model"
 )
 
+func formattedExample(example string, value interface{}) string {
+	if len(example) > 0 {
+		if strings.ContainsRune(example, '\n') {
+			example = strings.TrimRight(example, "\n")
+			example = strings.Join(strings.Split(example, "\n"), "\n  ")
+			example = fmt.Sprintf("\nExample:\n  %s", example)
+		} else {
+			example = fmt.Sprintf("\nExample: %q", example)
+		}
+	}
+	return example
+}
+
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(settings ExportSettings) (helm.Node, error) {
 	values := MakeBasicValues()
@@ -33,10 +46,6 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			}
 		}
 		comment := cv.Description
-		if cv.Example != "" && cv.Example != value {
-			comment += fmt.Sprintf("\nExample: %s", cv.Example)
-		}
-
 		if cv.Secret {
 			thisValue := "This value"
 			if cv.Generator != nil {
@@ -46,12 +55,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			if cv.Immutable {
 				comment += "\n" + thisValue + " is immutable and must not be changed once set."
 			}
+			comment += formattedExample(cv.Example, value)
 			if cv.Generator == nil {
 				secrets.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			} else {
 				generated.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			}
 		} else {
+			comment += formattedExample(cv.Example, value)
 			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}

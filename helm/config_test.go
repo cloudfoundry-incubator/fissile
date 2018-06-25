@@ -557,9 +557,9 @@ func TestHelmWrapLongComments(t *testing.T) {
 		}
 	}
 
-	mapping.Add("Very", NewNode("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
+	mapping.Add("Very", NewNode("Long", Comment(" "+strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
 	root.Add("Very", NewNode("Long", Comment(strings.Repeat(strings.Repeat("x", 50)+" ", 2))))
-	root.Add("Nested", mapping)
+	root.Add("Nested", mapping, Comment("None\n One\n  Two\n   Three"))
 
 	expect := `---
 # * abc 12345 abc 12345
@@ -594,6 +594,10 @@ Key6: ~
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Very: "Long"
+# None
+#  One
+#   Two
+#    Three
 Nested:
           # 12 12 12 12
           # 12
@@ -605,8 +609,8 @@ Nested:
           # 1234 1234
           # 1234
           Key4: ~
-          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          #  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          #  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
           Very: "Long"
 `
 	equal(t, root, expect, Indent(10), Wrap(24))
@@ -993,4 +997,25 @@ Nil: ~
 	assert.NoError(t, yaml.Unmarshal([]byte(expect), &tree))
 	actual := NewNode(tree)
 	equal(t, actual, expect)
+
+	// Encode a reflected struct and use it as documentation
+	buffer := &bytes.Buffer{}
+	enc := NewEncoder(buffer, Separator(false))
+	enc.Encode(actual)
+
+	root := NewMapping("Scalar", NewNode(42, Comment("Example:\n"+buffer.String())))
+	equal(t, root, `---
+# Example:
+# Bar: "xyzzy plugh"
+# Baz: ~
+# Bool: true
+# Float: 1.23
+# Foo: 123
+# List:
+# - 1
+# - 2
+# - 3
+# Nil: ~
+Scalar: 42
+`)
 }

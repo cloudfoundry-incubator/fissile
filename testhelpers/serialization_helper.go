@@ -25,8 +25,9 @@ func Dedent(x string) string {
 // the string (tabs) is replaced with proper YAML indentation.
 func IsYAMLEqualString(assert *assert.Assertions, expected string, actual interface{}) bool {
 	var expectedYAML interface{}
-	if !assert.NoError(yaml.Unmarshal([]byte(Dedent(expected)),
-		&expectedYAML)) {
+	if !assert.NoError(yaml.Unmarshal([]byte(Dedent(expected)), &expectedYAML)) {
+		_, err := os.Stderr.WriteString(expected)
+		assert.NoError(err)
 		return false
 	}
 	return IsYAMLEqual(assert, expectedYAML, actual)

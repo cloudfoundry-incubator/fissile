@@ -22,13 +22,21 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 
 		if settings.CreateHelmChart {
 			if cv.Generator == nil {
-				errString := fmt.Sprintf("secrets.%s has not been set", cv.Name)
-				value = fmt.Sprintf(`{{ required "%s" .Values.secrets.%s | b64enc | quote }}`, errString, cv.Name)
 				if cv.Immutable {
 					comment += "\nThis value is immutable and must not be changed once set."
 				}
+				comment += formattedExample(cv.Example, value)
+				required := `{{"" | b64enc | quote}}`
+				if cv.Required {
+					required = fmt.Sprintf(`{{fail "secrets.%s has not been set"}}`, cv.Name)
+				}
+				name := ".Values.secrets." + cv.Name
+				tmpl := `{{if ne (typeOf %s) "<nil>"}}{{if has (kindOf %s) (list "map" "slice")}}` +
+					`{{%s | toJson | b64enc | quote}}{{else}}{{%s | b64enc | quote}}{{end}}{{else}}%s{{end}}`
+				value = fmt.Sprintf(tmpl, name, name, name, name, required)
 				data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 			} else if !cv.Immutable {
+				comment += formattedExample(cv.Example, value)
 				comment += "\nThis value uses a generated default."
 				value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
 				generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
@@ -40,6 +48,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				value = ""
 			}
 			value = base64.StdEncoding.EncodeToString([]byte(value))
+			comment += formattedExample(cv.Example, value)
 			data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}

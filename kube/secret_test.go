@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -62,22 +63,36 @@ func TestMakeSecretsEmpty(t *testing.T) {
 
 func testCVMap() model.CVMap {
 	return model.CVMap{
+		"optional": &model.ConfigurationVariable{
+			// This variable is only defined to verify that missing non-required secrets won't throw any errors
+			Name:     "optional",
+			Required: false,
+			Default:  nil,
+		},
 		"min": &model.ConfigurationVariable{
 			Name: "min",
 		},
 		"desc": &model.ConfigurationVariable{
 			Name:        "desc",
 			Description: "<<<a description>>>",
+			Example:     "Use this",
 		},
 		"valued": &model.ConfigurationVariable{
 			Name:        "valued",
 			Description: "<<<invaluable>>>",
 			Default:     "you are very valued indeed",
 		},
+		"structured": &model.ConfigurationVariable{
+			Name:        "structured",
+			Description: "<<<non-scalar>>>",
+			Example:     "use: \"this\"\n",
+			Default:     map[string]string{"non": "scalar"},
+		},
 		"const": &model.ConfigurationVariable{
 			Name:        "const",
 			Description: "<<<don't change>>>",
 			Default:     "rock solid",
+			Required:    true,
 			Immutable:   true,
 		},
 		"genie": &model.ConfigurationVariable{
@@ -119,20 +134,24 @@ func TestMakeSecretsKube(t *testing.T) {
 		return
 	}
 
+	varStructuredJSON, _ := json.Marshal(testCV["structured"].Default)
+
 	varConstB64 := RenderEncodeBase64(testCV["const"].Default.(string))
 	varValuedB64 := RenderEncodeBase64(testCV["valued"].Default.(string))
+	varStructuredB64 := RenderEncodeBase64(string(varStructuredJSON))
 
 	// Check the comments, and also that they are associated with
 	// the correct variables.
 
-	astring := string(renderedYAML)
+	asString := string(renderedYAML)
 
-	assert.Contains(astring, fmt.Sprintf("# <<<don't change>>>\n  const: \"%s\"", varConstB64))
-	assert.Contains(astring, "# <<<a description>>>\n  desc: \"\"")
-	assert.Contains(astring, "\n  min: \"\"")
-	assert.Contains(astring, fmt.Sprintf("# <<<invaluable>>>\n  valued: \"%s\"", varValuedB64))
-	assert.Contains(astring, "# <<<here is jeannie>>>\n  genie: \"\"")
-	assert.Contains(astring, "# <<<helm hidden>>>\n  guinevere: \"\"")
+	assert.Contains(asString, fmt.Sprintf("# <<<don't change>>>\n  const: %q", varConstB64))
+	assert.Contains(asString, "# <<<a description>>>\n  # Example: \"Use this\"\n  desc: \"\"")
+	assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  #   use: \"this\"\n  structured: %q", varStructuredB64))
+	assert.Contains(asString, "\n  min: \"\"")
+	assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
+	assert.Contains(asString, "# <<<here is jeannie>>>\n  genie: \"\"")
+	assert.Contains(asString, "# <<<helm hidden>>>\n  guinevere: \"\"")
 
 	actual, err := RoundtripKube(secret)
 	if !assert.NoError(err) {
@@ -141,18 +160,20 @@ func TestMakeSecretsKube(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, fmt.Sprintf(`---
 		apiVersion: "v1"
 		data:
-			const: "%s"
+			const: %q
 			desc: ""
 			genie: ""
 			guinevere: ""
 			min: ""
-			valued: "%s"
+			valued: %q
+			structured: %q
+			optional: ""
 		kind: "Secret"
 		metadata:
 			name: "secrets"
 			labels:
 				skiff-role-name: "secrets"
-	`, varConstB64, varValuedB64), actual)
+	`, varConstB64, varValuedB64, varStructuredB64), actual)
 }
 
 func TestMakeSecretsHelm(t *testing.T) {
@@ -175,7 +196,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		_, err := RenderNode(secret, nil)
 		assert.EqualError(err,
-			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
+			`template: :6:237: executing "" at <fail "secrets.const ...>: error calling fail: secrets.const has not been set`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {
@@ -191,7 +212,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		_, err := RenderNode(secret, config)
 		assert.EqualError(err,
-			`template: :6:12: executing "" at <required "secrets.co...>: error calling required: secrets.const has not been set`)
+			`template: :6:237: executing "" at <fail "secrets.const ...>: error calling fail: secrets.const has not been set`)
 	})
 
 	t.Run("Present", func(t *testing.T) {
@@ -200,20 +221,26 @@ func TestMakeSecretsHelm(t *testing.T) {
 		varDesc := "self-explanatory"
 		varMin := "rock-bottom"
 		varValued := "sky high"
+		varStructured := map[string]string{"key": "value"}
 		varGenie := "djinn"
+
+		varStructuredJSON, _ := json.Marshal(varStructured)
 
 		varConstB64 := RenderEncodeBase64(varConst)
 		varDescB64 := RenderEncodeBase64(varDesc)
 		varMinB64 := RenderEncodeBase64(varMin)
 		varValuedB64 := RenderEncodeBase64(varValued)
+		varStructuredB64 := RenderEncodeBase64(string(varStructuredJSON))
 		varGenieB64 := RenderEncodeBase64(varGenie)
 
 		config := map[string]interface{}{
-			"Values.secrets.const":  varConst,
-			"Values.secrets.desc":   varDesc,
-			"Values.secrets.min":    varMin,
-			"Values.secrets.valued": varValued,
-			"Values.secrets.genie":  varGenie,
+			// "Values.secrets.optional" is intentionally not defined
+			"Values.secrets.const":      varConst,
+			"Values.secrets.desc":       varDesc,
+			"Values.secrets.min":        varMin,
+			"Values.secrets.valued":     varValued,
+			"Values.secrets.structured": varStructured,
+			"Values.secrets.genie":      varGenie,
 		}
 
 		renderedYAML, err := RenderNode(secret, config)
@@ -224,15 +251,16 @@ func TestMakeSecretsHelm(t *testing.T) {
 		// Check the comments, and also that they are associated with
 		// the correct variables.
 
-		astring := string(renderedYAML)
+		asString := string(renderedYAML)
 
-		assert.Contains(astring, "# <<<don't change>>>\n  # This value is")
-		assert.Contains(astring, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: \"%s\"", varConstB64))
-		assert.Contains(astring, fmt.Sprintf("# <<<a description>>>\n  desc: \"%s\"", varDescB64))
-		assert.Contains(astring, fmt.Sprintf("\n  min: \"%s\"", varMinB64))
-		assert.Contains(astring, fmt.Sprintf("# <<<invaluable>>>\n  valued: \"%s\"", varValuedB64))
-		assert.Contains(astring, "# <<<here is jeannie>>>\n  # This value uses ")
-		assert.Contains(astring, fmt.Sprintf("# This value uses a generated default.\n  genie: \"%s\"", varGenieB64))
+		assert.Contains(asString, "# <<<don't change>>>\n  # This value is")
+		assert.Contains(asString, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: %q", varConstB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<a description>>>\n  # Example: \"Use this\"\n  desc: %q", varDescB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  #   use: \"this\"\n  structured: %q", varStructuredB64))
+		assert.Contains(asString, fmt.Sprintf("\n  min: %q", varMinB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
+		assert.Contains(asString, "# <<<here is jeannie>>>\n  # This value uses ")
+		assert.Contains(asString, fmt.Sprintf("# This value uses a generated default.\n  genie: %q", varGenieB64))
 
 		// And check overall structure
 
@@ -244,16 +272,18 @@ func TestMakeSecretsHelm(t *testing.T) {
 		testhelpers.IsYAMLEqualString(assert, fmt.Sprintf(`---
 			apiVersion: "v1"
 			data:
-				const: "%s"
-				desc: "%s"
-				min: "%s"
-				valued: "%s"
-				genie: "%s"
+				const: %q
+				desc: %q
+				min: %q
+				valued: %q
+				structured: %q
+				genie: %q
+				optional: ""
 			kind: "Secret"
 			metadata:
 				name: "secrets"
 				labels:
 					skiff-role-name: "secrets"
-		`, varConstB64, varDescB64, varMinB64, varValuedB64, varGenieB64), actual)
+		`, varConstB64, varDescB64, varMinB64, varValuedB64, varStructuredB64, varGenieB64), actual)
 	})
 }

@@ -283,7 +283,8 @@ func (config *ConfigurationVariable) Value(defaults map[string]string) (bool, st
 			stringifiedValue = valueAsString
 		}
 	} else {
-		stringifiedValue = fmt.Sprintf("%v", value)
+		asJSON, _ := json.Marshal(value)
+		stringifiedValue = string(asJSON)
 	}
 
 	return true, stringifiedValue

@@ -69,6 +69,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -389,6 +390,10 @@ type Encoder struct {
 	// surrounded by empty lines for easier grouping.
 	emptyLines bool
 
+	// separator specifies that the output should start with a document
+	// separator ("---\n")
+	separator bool
+
 	// pendingNewline is an internal flag to only emit a single empty line
 	// between elements that both require surrounding empty lines.
 	pendingNewline bool
@@ -413,6 +418,13 @@ func Indent(indent int) func(*Encoder) {
 			indent = 2
 		}
 		enc.indent = indent
+	}
+}
+
+// Separator selects if a document separator should be emitted
+func Separator(separator bool) func(*Encoder) {
+	return func(enc *Encoder) {
+		enc.separator = separator
 	}
 }
 
@@ -441,6 +453,7 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 		emptyLines: true,
 		indent:     2,
 		wrap:       80,
+		separator:  true,
 	}
 	enc.Set(modifiers...)
 	return enc
@@ -449,8 +462,10 @@ func NewEncoder(writer io.Writer, modifiers ...func(*Encoder)) *Encoder {
 // Encode writes the config mapping held by the node to the stream.
 func (enc *Encoder) Encode(node Node) error {
 	enc.pendingNewline = false
-	fmt.Fprintln(enc, "---")
 	prefix := ""
+	if enc.separator {
+		fmt.Fprintln(enc, prefix+"---")
+	}
 	enc.writeNode(node, &prefix, "", enc.emptyLines)
 	return enc.err
 }
@@ -510,22 +525,28 @@ func useOnce(prefix *string) string {
 // each line will include at least a single word, even if it exceeds the
 // wrapping column).
 //
-// Paragraphs starting with "* " or "- " are treated as bullet points, so
-// wrapped lines will be indented by 2 spaces.
+// Paragraphs starting with "*" or "-", followed by one or more spaces, are treated as
+// bullet points, so wrapped lines will be indented to the same level.
+//
+// Similary any paragraphs indented by a string of spaces will keep this indent for
+// all wrapped lines as well.
+
+var indentPattern = regexp.MustCompile("^[*-]? +")
+
 func (enc *Encoder) writeComment(prefix *string, comment string) {
-	for _, line := range strings.Split(strings.TrimRight(comment, "\n"), "\n") {
+	for _, paragraph := range strings.Split(strings.TrimRight(comment, "\n"), "\n") {
 		fmt.Fprintf(enc, "%s#", useOnce(prefix))
-		if len(line) > 0 {
-			written := 0
-			bullet := strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "- ")
-			for _, word := range strings.Fields(line) {
-				if written > 0 && len(*prefix)+1+written+1+len(word) > enc.wrap {
-					fmt.Fprintf(enc, "\n%s#", useOnce(prefix))
-					written = 0
-					if bullet {
-						fmt.Fprint(enc, "  ")
-						written = 2
-					}
+		if len(paragraph) > 0 {
+			indent := len(indentPattern.FindString(paragraph))
+			if indent > 0 {
+				fmt.Fprint(enc, " "+paragraph[:indent-1])
+				paragraph = paragraph[indent:]
+			}
+			written := indent
+			for _, word := range strings.Fields(paragraph) {
+				if written > indent && len(*prefix)+1+written+1+len(word) > enc.wrap {
+					fmt.Fprintf(enc, "\n%s#%s", useOnce(prefix), strings.Repeat(" ", indent))
+					written = indent
 				}
 				fmt.Fprint(enc, " "+word)
 				written += 1 + len(word)
