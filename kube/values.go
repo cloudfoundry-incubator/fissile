@@ -1,12 +1,31 @@
 package kube
 
 import (
+	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 )
+
+func formattedExample(example, value interface{}) string {
+	if example != nil {
+		if reflect.TypeOf(example).Kind() == reflect.String {
+			str := example.(string)
+			// only show example if distinct from default value
+			if len(str) > 0 && str != value {
+				return fmt.Sprintf("\nExample: %q", str)
+			}
+		} else {
+			buffer := &bytes.Buffer{}
+			helm.NewEncoder(buffer, helm.Separator(false)).Encode(helm.NewNode(example))
+			return "\nExample:\n" + buffer.String()
+		}
+	}
+	return ""
+}
 
 // MakeValues returns a Mapping with all default values for the Helm chart
 func MakeValues(settings ExportSettings) (helm.Node, error) {
@@ -33,10 +52,6 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			}
 		}
 		comment := cv.Description
-		if cv.Example != "" && cv.Example != value {
-			comment += fmt.Sprintf("\nExample: %s", cv.Example)
-		}
-
 		if cv.Secret {
 			thisValue := "This value"
 			if cv.Generator != nil {
@@ -46,12 +61,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			if cv.Immutable {
 				comment += "\n" + thisValue + " is immutable and must not be changed once set."
 			}
+			comment += formattedExample(cv.Example, value)
 			if cv.Generator == nil {
 				secrets.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			} else {
 				generated.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			}
 		} else {
+			comment += formattedExample(cv.Example, value)
 			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}

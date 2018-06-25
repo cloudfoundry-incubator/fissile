@@ -75,6 +75,7 @@ func testCVMap() model.CVMap {
 		"desc": &model.ConfigurationVariable{
 			Name:        "desc",
 			Description: "<<<a description>>>",
+			Example:     "Use this",
 		},
 		"valued": &model.ConfigurationVariable{
 			Name:        "valued",
@@ -84,6 +85,7 @@ func testCVMap() model.CVMap {
 		"structured": &model.ConfigurationVariable{
 			Name:        "structured",
 			Description: "<<<non-scalar>>>",
+			Example:     map[string]string{"use": "this"},
 			Default:     map[string]string{"non": "scalar"},
 		},
 		"const": &model.ConfigurationVariable{
@@ -144,7 +146,8 @@ func TestMakeSecretsKube(t *testing.T) {
 	asString := string(renderedYAML)
 
 	assert.Contains(asString, fmt.Sprintf("# <<<don't change>>>\n  const: %q", varConstB64))
-	assert.Contains(asString, "# <<<a description>>>\n  desc: \"\"")
+	assert.Contains(asString, "# <<<a description>>>\n  # Example: \"Use this\"\n  desc: \"\"")
+	assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  # use: \"this\"\n  structured: %q", varStructuredB64))
 	assert.Contains(asString, "\n  min: \"\"")
 	assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
 	assert.Contains(asString, "# <<<here is jeannie>>>\n  genie: \"\"")
@@ -248,15 +251,16 @@ func TestMakeSecretsHelm(t *testing.T) {
 		// Check the comments, and also that they are associated with
 		// the correct variables.
 
-		astring := string(renderedYAML)
+		asString := string(renderedYAML)
 
-		assert.Contains(astring, "# <<<don't change>>>\n  # This value is")
-		assert.Contains(astring, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: %q", varConstB64))
-		assert.Contains(astring, fmt.Sprintf("# <<<a description>>>\n  desc: %q", varDescB64))
-		assert.Contains(astring, fmt.Sprintf("\n  min: %q", varMinB64))
-		assert.Contains(astring, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
-		assert.Contains(astring, "# <<<here is jeannie>>>\n  # This value uses ")
-		assert.Contains(astring, fmt.Sprintf("# This value uses a generated default.\n  genie: %q", varGenieB64))
+		assert.Contains(asString, "# <<<don't change>>>\n  # This value is")
+		assert.Contains(asString, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: %q", varConstB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<a description>>>\n  # Example: \"Use this\"\n  desc: %q", varDescB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  # use: \"this\"\n  structured: %q", varStructuredB64))
+		assert.Contains(asString, fmt.Sprintf("\n  min: %q", varMinB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
+		assert.Contains(asString, "# <<<here is jeannie>>>\n  # This value uses ")
+		assert.Contains(asString, fmt.Sprintf("# This value uses a generated default.\n  genie: %q", varGenieB64))
 
 		// And check overall structure
 

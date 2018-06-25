@@ -252,7 +252,7 @@ type ConfigurationVariable struct {
 	PreviousNames []string                        `yaml:"previous_names"`
 	Default       interface{}                     `yaml:"default"`
 	Description   string                          `yaml:"description"`
-	Example       string                          `yaml:"example"`
+	Example       interface{}                     `yaml:"example"`
 	Generator     *ConfigurationVariableGenerator `yaml:"generator"`
 	Type          CVType                          `yaml:"type"`
 	Internal      bool                            `yaml:"internal,omitempty"`
