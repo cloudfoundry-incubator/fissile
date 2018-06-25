@@ -85,7 +85,7 @@ func testCVMap() model.CVMap {
 		"structured": &model.ConfigurationVariable{
 			Name:        "structured",
 			Description: "<<<non-scalar>>>",
-			Example:     map[string]string{"use": "this"},
+			Example:     "use: \"this\"\n",
 			Default:     map[string]string{"non": "scalar"},
 		},
 		"const": &model.ConfigurationVariable{
@@ -147,7 +147,7 @@ func TestMakeSecretsKube(t *testing.T) {
 
 	assert.Contains(asString, fmt.Sprintf("# <<<don't change>>>\n  const: %q", varConstB64))
 	assert.Contains(asString, "# <<<a description>>>\n  # Example: \"Use this\"\n  desc: \"\"")
-	assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  # use: \"this\"\n  structured: %q", varStructuredB64))
+	assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  #   use: \"this\"\n  structured: %q", varStructuredB64))
 	assert.Contains(asString, "\n  min: \"\"")
 	assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
 	assert.Contains(asString, "# <<<here is jeannie>>>\n  genie: \"\"")
@@ -256,7 +256,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 		assert.Contains(asString, "# <<<don't change>>>\n  # This value is")
 		assert.Contains(asString, fmt.Sprintf("# This value is immutable and must not be changed once set.\n  const: %q", varConstB64))
 		assert.Contains(asString, fmt.Sprintf("# <<<a description>>>\n  # Example: \"Use this\"\n  desc: %q", varDescB64))
-		assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  # use: \"this\"\n  structured: %q", varStructuredB64))
+		assert.Contains(asString, fmt.Sprintf("# <<<non-scalar>>>\n  # Example:\n  #   use: \"this\"\n  structured: %q", varStructuredB64))
 		assert.Contains(asString, fmt.Sprintf("\n  min: %q", varMinB64))
 		assert.Contains(asString, fmt.Sprintf("# <<<invaluable>>>\n  valued: %q", varValuedB64))
 		assert.Contains(asString, "# <<<here is jeannie>>>\n  # This value uses ")

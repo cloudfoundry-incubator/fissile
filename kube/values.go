@@ -1,30 +1,24 @@
 package kube
 
 import (
-	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
 )
 
-func formattedExample(example, value interface{}) string {
-	if example != nil {
-		if reflect.TypeOf(example).Kind() == reflect.String {
-			str := example.(string)
-			// only show example if distinct from default value
-			if len(str) > 0 && str != value {
-				return fmt.Sprintf("\nExample: %q", str)
-			}
+func formattedExample(example string, value interface{}) string {
+	if len(example) > 0 {
+		if strings.ContainsRune(example, '\n') {
+			example = strings.TrimRight(example, "\n")
+			example = strings.Join(strings.Split(example, "\n"), "\n  ")
+			example = fmt.Sprintf("\nExample:\n  %s", example)
 		} else {
-			buffer := &bytes.Buffer{}
-			helm.NewEncoder(buffer, helm.Separator(false)).Encode(helm.NewNode(example))
-			return "\nExample:\n" + buffer.String()
+			example = fmt.Sprintf("\nExample: %q", example)
 		}
 	}
-	return ""
+	return example
 }
 
 // MakeValues returns a Mapping with all default values for the Helm chart
