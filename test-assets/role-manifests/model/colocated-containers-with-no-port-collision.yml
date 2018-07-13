@@ -1,0 +1,39 @@
+---
+roles:
+- name: main-role
+  scripts: ["myrole.sh"]
+  run:
+    memory: 1
+    exposed-ports:
+    - name: http
+      protocol: TCP
+      internal: 8080
+      external: 80
+    - name: https
+      protocol: TCP
+      internal: 9443
+      external: 443
+  tags:
+  - headless
+  jobs:
+  - name: new_hostname
+    release_name: tor
+  - name: tor
+    release_name: tor
+  colocated_containers:
+  - to-be-colocated
+
+- name: to-be-colocated
+  type: colocated-container
+  jobs:
+  - name: ntpd
+    release_name: ntp
+  run:
+    memory: 1
+    exposed-ports:
+    - name: tcp-dbg-port
+      protocol: TCP
+      internal: 10443
+    - name: udp-dbg-port
+      protocol: UDP
+      internal: 10443
