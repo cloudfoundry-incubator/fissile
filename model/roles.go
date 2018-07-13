@@ -1632,40 +1632,40 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 
 	for _, role := range RoleManifest.Roles {
 		if len(role.ColocatedContainers) > 0 {
-			portsMap := map[int][]string{}
+			lookupMap := map[string][]string{}
 
 			// Iterate over this role and all colocated container roles and store the
-			// names of the roles for each port (there should be no list with more
-			// than one entry)
+			// names of the roles for each protocol/port (there should be no list with
+			// more than one entry)
 			for _, toBeChecked := range append([]*Role{role}, role.GetColocatedRoles()...) {
 				for _, exposedPort := range toBeChecked.Run.ExposedPorts {
 					for i := 0; i < exposedPort.Count; i++ {
-						port := exposedPort.ExternalPort + i
-						if _, ok := portsMap[port]; !ok {
-							portsMap[port] = []string{}
+						protocolPortTuple := fmt.Sprintf("%s/%d", exposedPort.Protocol, exposedPort.ExternalPort+i)
+						if _, ok := lookupMap[protocolPortTuple]; !ok {
+							lookupMap[protocolPortTuple] = []string{}
 						}
 
-						portsMap[port] = append(portsMap[port], toBeChecked.Name)
+						lookupMap[protocolPortTuple] = append(lookupMap[protocolPortTuple], toBeChecked.Name)
 					}
 				}
 			}
 
-			// Get a sorted list of the keys (port)
-			ports := []int{}
-			for port := range portsMap {
-				ports = append(ports, port)
+			// Get a sorted list of the keys (protocol/port)
+			protocolPortTuples := []string{}
+			for protocolPortTuple := range lookupMap {
+				protocolPortTuples = append(protocolPortTuples, protocolPortTuple)
 			}
-			sort.Ints(ports)
+			sort.Strings(protocolPortTuples)
 
 			// Now check if we have port collisions
-			for _, port := range ports {
-				names := portsMap[port]
+			for _, protocolPortTuple := range protocolPortTuples {
+				names := lookupMap[protocolPortTuple]
 
 				if len(names) > 1 {
 					allErrs = append(allErrs, validation.Invalid(
 						fmt.Sprintf("role[%s]", role.Name),
-						port,
-						fmt.Sprintf("port collision, the same port is used by: %s", strings.Join(names, ", "))))
+						protocolPortTuple,
+						fmt.Sprintf("port collision, the same protocol/port is used by: %s", strings.Join(names, ", "))))
 				}
 			}
 		}
