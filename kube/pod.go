@@ -407,6 +407,15 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 			continue
 		}
 
+		if config.Name == "KUBERNETES_STORAGE_CLASS_PERSISTENT" {
+			value := "persistent"
+			if settings.CreateHelmChart {
+				value = "{{ .Values.kube.storage_class.persistent }}"
+			}
+			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
+		}
+
 		if config.Name == "KUBE_SECRETS_GENERATION_COUNTER" {
 			value := "1"
 			if settings.CreateHelmChart {
