@@ -16,12 +16,14 @@
 
 set -o errexit -o nounset
 
+# Grab monit port
+monit_port=$(awk '/httpd port/ { print $4 }' /etc/monitrc)
+
 # Check that monit thinks everything is ready
-/var/vcap/bosh/bin/monit summary | gawk '
-    BEGIN                                 { status = 0 }
-    $1 == "Process" && $3 != "running"    { print ; status = 1 }
-    $1 == "File"    && $3 != "accessible" { print ; status = 1 }
-    END                                   { exit status }
+curl -s -u admin:${MONIT_PASSWORD} http://127.0.0.1:${monit_port}/_status | gawk '
+    BEGIN                                                     { status = 0 }
+    $1 == "status" && $2 != "running" && $2 != "accessible"   { print ; status = 1 }
+    END                                                       { exit status }
     '
 
 # Check that any additional readiness checks are ready
