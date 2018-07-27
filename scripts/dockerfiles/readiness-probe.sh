@@ -17,7 +17,7 @@
 set -o errexit -o nounset
 
 # Grab monit port
-monit_port=$(cat /etc/monitrc | grep "httpd port" | awk '{print $4}')
+monit_port=$(awk '/httpd port/ { print $4 }' /etc/monitrc)
 
 # Check that monit thinks everything is ready
 curl -s -u admin:${MONIT_PASSWORD} http://127.0.0.1:${monit_port}/_status | gawk '
