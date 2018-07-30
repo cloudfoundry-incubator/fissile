@@ -1,6 +1,6 @@
 # This role manifest is used to check that various validation issues are found
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x

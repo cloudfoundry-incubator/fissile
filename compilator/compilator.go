@@ -169,8 +169,8 @@ type compileResult struct {
 // - synchronizer will greedily drain the <-todoCh to starve the
 //   workers out and won't wait for the <-doneCh for the N packages it
 //   drained.
-func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles model.Roles, verbose bool) error {
-	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, roles), verbose)
+func (c *Compilator) Compile(workerCount int, releases []*model.Release, instanceGroups model.InstanceGroups, verbose bool) error {
+	packages, err := c.removeCompiledPackages(c.gatherPackages(releases, instanceGroups), verbose)
 
 	if err != nil {
 		return fmt.Errorf("failed to remove compiled packages: %v", err)
@@ -245,15 +245,15 @@ func (c *Compilator) Compile(workerCount int, releases []*model.Release, roles m
 	return err
 }
 
-func (c *Compilator) gatherPackages(releases []*model.Release, roles model.Roles) model.Packages {
+func (c *Compilator) gatherPackages(releases []*model.Release, instanceGroups model.InstanceGroups) model.Packages {
 	var packages []*model.Package
 
 	for _, release := range releases {
 		var releasePackages []*model.Package
 
 		// Get the packages of the release ...
-		if roles != nil { // Conditional for easier testing
-			releasePackages = c.gatherPackagesFromRoles(release, roles)
+		if instanceGroups != nil { // Conditional for easier testing
+			releasePackages = c.gatherPackagesFromInstanceGroups(release, instanceGroups)
 		} else {
 			releasePackages = release.Packages
 		}
@@ -733,21 +733,21 @@ func (c *Compilator) removeCompiledPackages(packages model.Packages, verbose boo
 	return culledPackages, nil
 }
 
-// gatherPackagesFromRoles gathers the list of packages of the release, from a list of roles, as well as all needed dependencies
+// gatherPackagesFromInstanceGroups gathers the list of packages of the release, from a list of instance groups, as well as all needed dependencies
 // This happens to be a subset of release.Packages, which helps avoid compiling unneeded packages
-func (c *Compilator) gatherPackagesFromRoles(release *model.Release, roles model.Roles) []*model.Package {
+func (c *Compilator) gatherPackagesFromInstanceGroups(release *model.Release, instanceGroups model.InstanceGroups) []*model.Package {
 	var resultPackages []*model.Package
 	listedPackages := make(map[string]bool)
 	pendingPackages := list.New()
 
 	// Find the initial list of packages to examine (all packages of the release in the manifest)
-	for _, role := range roles {
-		for _, roleJob := range role.RoleJobs {
-			for _, pkg := range roleJob.Packages {
+	for _, instanceGroup := range instanceGroups {
+		for _, jobReference := range instanceGroup.JobReferences {
+			for _, pkg := range jobReference.Packages {
 				if pkg.Release.Name == release.Name {
 					pendingPackages.PushBack(pkg)
 					if c.grapher != nil {
-						_ = c.grapher.GraphEdge(pkg.Fingerprint, roleJob.Fingerprint, nil)
+						_ = c.grapher.GraphEdge(pkg.Fingerprint, jobReference.Fingerprint, nil)
 					}
 				}
 			}

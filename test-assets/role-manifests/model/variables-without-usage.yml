@@ -1,6 +1,6 @@
 # This role manifest tests that unused variables are an error
 ---
-roles:
+instance_groups:
 - name: myrole
   jobs:
   - name: tor

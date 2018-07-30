@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func deploymentTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *model.Role {
+func deploymentTestLoad(assert *assert.Assertions, roleName, manifestName string) *model.InstanceGroup {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
@@ -30,11 +30,11 @@ func deploymentTestLoadRole(assert *assert.Assertions, roleName, manifestName st
 		return nil
 	}
 
-	role := manifest.LookupRole(roleName)
-	if !assert.NotNil(role, "Failed to find role %s", roleName) {
+	instanceGroup := manifest.LookupInstanceGroup(roleName)
+	if !assert.NotNil(instanceGroup, "Failed to find instance group %s", roleName) {
 		return nil
 	}
-	return role
+	return instanceGroup
 }
 
 type FakeGrapher struct {
@@ -52,8 +52,8 @@ func TestNewDeploymentKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup := deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
@@ -61,21 +61,21 @@ func TestNewDeploymentKube(t *testing.T) {
 
 	grapher := FakeGrapher{}
 
-	deployment, svc, err := NewDeployment(role, settings, grapher)
+	deployment, svc, err := NewDeployment(instanceGroup, settings, grapher)
 
 	assert.NoError(err)
 	assert.Nil(svc)
 	assert.NotNil(deployment)
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
-	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+	assert.Equal(deployment.Get("metadata", "name").String(), "some-group")
 }
 
 func TestNewDeploymentHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup := deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
@@ -86,61 +86,61 @@ func TestNewDeploymentHelm(t *testing.T) {
 
 	grapher := FakeGrapher{}
 
-	deployment, svc, err := NewDeployment(role, settings, grapher)
+	deployment, svc, err := NewDeployment(instanceGroup, settings, grapher)
 
 	assert.NoError(err)
 	assert.Nil(svc)
 	assert.NotNil(deployment)
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
-	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+	assert.Equal(deployment.Get("metadata", "name").String(), "some-group")
 
 	t.Run("Defaults", func(t *testing.T) {
 		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
 		config := map[string]interface{}{
-			"Values.sizing.role.count": nil,
+			"Values.sizing.some_group.count": nil,
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, not enough replicas", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.role.count":                 "0",
-			"Values.sizing.role.affinity.nodeAffinity": "snafu",
-			"Values.sizing.role.capabilities":          []interface{}{},
-			"Values.kube.registry.hostname":            "docker.suse.fake",
-			"Values.kube.organization":                 "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
+			"Values.sizing.some_group.count":                 "0",
+			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
+			"Values.sizing.some_group.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":                  "docker.suse.fake",
+			"Values.kube.organization":                       "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, too many replicas", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.role.count":                 "10",
-			"Values.sizing.role.affinity.nodeAffinity": "snafu",
-			"Values.sizing.role.capabilities":          []interface{}{},
-			"Values.kube.registry.hostname":            "docker.suse.fake",
-			"Values.kube.organization":                 "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
+			"Values.sizing.some_group.count":                 "10",
+			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
+			"Values.sizing.some_group.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":                  "docker.suse.fake",
+			"Values.kube.organization":                       "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :5:17: executing "" at <fail "role cannot ha...>: error calling fail: role cannot have more than 1 instances`)
+			`template: :5:17: executing "" at <fail "some_group can...>: error calling fail: some_group cannot have more than 1 instances`)
 	})
 
 	t.Run("Configured, bad key sizing.HA", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.HA":         "true",
-			"Values.sizing.role.count": "1",
+			"Values.sizing.HA":               "true",
+			"Values.sizing.some_group.count": "1",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -150,8 +150,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured, bad key sizing.memory.limits", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.memory.limits": "true",
-			"Values.sizing.role.count":    "1",
+			"Values.sizing.memory.limits":    "true",
+			"Values.sizing.some_group.count": "1",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -161,8 +161,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured, bad key sizing.memory.requests", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.memory.requests": "true",
-			"Values.sizing.role.count":      "1",
+			"Values.sizing.memory.requests":  "true",
+			"Values.sizing.some_group.count": "1",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -172,8 +172,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured, bad key sizing.cpu.limits", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.cpu.limits": "true",
-			"Values.sizing.role.count": "1",
+			"Values.sizing.cpu.limits":       "true",
+			"Values.sizing.some_group.count": "1",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -183,8 +183,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured, bad key sizing.cpu.requests", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.cpu.requests": "true",
-			"Values.sizing.role.count":   "1",
+			"Values.sizing.cpu.requests":     "true",
+			"Values.sizing.some_group.count": "1",
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
@@ -194,12 +194,12 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.role.count":                 "1",
-			"Values.sizing.role.affinity.nodeAffinity": "snafu",
-			"Values.sizing.role.capabilities":          []interface{}{},
-			"Values.kube.registry.hostname":            "docker.suse.fake",
-			"Values.kube.organization":                 "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN":     "cluster.local",
+			"Values.sizing.some_group.count":                 "1",
+			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
+			"Values.sizing.some_group.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":                  "docker.suse.fake",
+			"Values.kube.organization":                       "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
 		}
 
 		actual, err := RoundtripNode(deployment, config)
@@ -210,19 +210,19 @@ func TestNewDeploymentHelm(t *testing.T) {
 			apiVersion: "extensions/v1beta1"
 			kind: "Deployment"
 			metadata:
-				name: "role"
+				name: "some-group"
 				labels:
-					skiff-role-name: "role"
+					skiff-role-name: "some-group"
 			spec:
 				replicas: 1
 				selector:
 					matchLabels:
-						skiff-role-name: "role"
+						skiff-role-name: "some-group"
 				template:
 					metadata:
-						name: "role"
+						name: "some-group"
 						labels:
-							skiff-role-name: "role"
+							skiff-role-name: "some-group"
 						annotations:
 							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
 					spec:
@@ -235,7 +235,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 											-	key: "skiff-role-name"
 												operator: "In"
 												values:
-												-	"role"
+												-	"some-group"
 										topologyKey: "beta.kubernetes.io/os"
 									weight: 100
 							nodeAffinity: "snafu"
@@ -247,14 +247,14 @@ func TestNewDeploymentHelm(t *testing.T) {
 								valueFrom:
 									fieldRef:
 										fieldPath: "metadata.namespace"
-							image: "docker.suse.fake/splat/the_repos-role:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
+							image: "docker.suse.fake/splat/the_repos-some-group:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
 							lifecycle:
 								preStop:
 									exec:
 										command:
 										-	"/opt/fissile/pre-stop.sh"
 							livenessProbe: ~
-							name: "role"
+							name: "some-group"
 							ports: ~
 							readinessProbe:
 								exec:
@@ -278,29 +278,29 @@ func TestGetAffinityBlock(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup := deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
-	affinity := getAffinityBlock(role)
+	affinity := getAffinityBlock(instanceGroup)
 
 	assert.NotNil(affinity.Get("podAntiAffinity"))
 	assert.NotNil(affinity.Get("nodeAffinity"))
 	assert.Equal(affinity.Names(), []string{"podAntiAffinity", "nodeAffinity"})
-	assert.Equal(affinity.Get("nodeAffinity").Block(), "if .Values.sizing.role.affinity.nodeAffinity")
+	assert.Equal(affinity.Get("nodeAffinity").Block(), "if .Values.sizing.some_group.affinity.nodeAffinity")
 
-	role = deploymentTestLoadRole(assert, "role", "pod-with-no-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-no-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
-	affinity = getAffinityBlock(role)
+	affinity = getAffinityBlock(instanceGroup)
 
 	assert.Nil(affinity.Get("podAntiAffinity"))
 	assert.NotNil(affinity.Get("nodeAffinity"))
 	assert.Equal(affinity.Names(), []string{"nodeAffinity"})
-	assert.Equal(affinity.Get("nodeAffinity").Block(), "if .Values.sizing.role.affinity.nodeAffinity")
+	assert.Equal(affinity.Get("nodeAffinity").Block(), "if .Values.sizing.some_group.affinity.nodeAffinity")
 }
 
 func createEmptySpec() *helm.Mapping {
@@ -325,10 +325,10 @@ func TestAddAffinityRules(t *testing.T) {
 	emptySpec := createEmptySpec()
 
 	//
-	// Test role with valid anti affinity
+	// Test instance group with valid anti affinity
 	//
-	role := deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup := deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
@@ -336,38 +336,38 @@ func TestAddAffinityRules(t *testing.T) {
 
 	settings := ExportSettings{CreateHelmChart: true}
 
-	err := addAffinityRules(role, spec, settings)
+	err := addAffinityRules(instanceGroup, spec, settings)
 
 	assert.NotNil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
 	assert.NotNil(spec.Get("template", "spec", "affinity", "nodeAffinity"))
 	assert.NoError(err)
 
 	//
-	// Test role with pod affinity defined
+	// Test instance group with pod affinity defined
 	//
-	role = deploymentTestLoadRole(assert, "role", "pod-with-invalid-pod-affinity.yml")
-	if role == nil {
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-invalid-pod-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
 	spec = createEmptySpec()
 
-	err = addAffinityRules(role, spec, settings)
+	err = addAffinityRules(instanceGroup, spec, settings)
 
 	assert.Error(err)
 	assert.Equal(spec, emptySpec)
 
 	//
-	// Test role with node affinity defined
+	// Test instance group with node affinity defined
 	//
-	role = deploymentTestLoadRole(assert, "role", "pod-with-invalid-node-affinity.yml")
-	if role == nil {
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-invalid-node-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
 	spec = createEmptySpec()
 
-	err = addAffinityRules(role, spec, settings)
+	err = addAffinityRules(instanceGroup, spec, settings)
 
 	assert.Error(err)
 	assert.Equal(spec, emptySpec)
@@ -375,8 +375,8 @@ func TestAddAffinityRules(t *testing.T) {
 	//
 	// Not creating the helm chart should only add the annotation
 	//
-	role = deploymentTestLoadRole(assert, "role", "pod-with-valid-pod-anti-affinity.yml")
-	if role == nil {
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
 		return
 	}
 
@@ -384,7 +384,7 @@ func TestAddAffinityRules(t *testing.T) {
 
 	settings = ExportSettings{CreateHelmChart: false}
 
-	err = addAffinityRules(role, spec, settings)
+	err = addAffinityRules(instanceGroup, spec, settings)
 	assert.Nil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
 	assert.NoError(err)
 }
@@ -393,8 +393,8 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	role := deploymentTestLoadRole(assert, "role", "colocated-containers-with-deployment-and-empty-dir.yml")
-	if role == nil {
+	instanceGroup := deploymentTestLoad(assert, "some-group", "colocated-containers-with-deployment-and-empty-dir.yml")
+	if instanceGroup == nil {
 		return
 	}
 
@@ -403,35 +403,35 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 		Repository:      "the_repos",
 	}
 
-	deployment, svc, err := NewDeployment(role, settings, nil)
+	deployment, svc, err := NewDeployment(instanceGroup, settings, nil)
 
 	assert.NoError(err)
 	assert.Nil(svc)
 	assert.NotNil(deployment)
 	assert.Equal(deployment.Get("kind").String(), "Deployment")
-	assert.Equal(deployment.Get("metadata", "name").String(), "role")
+	assert.Equal(deployment.Get("metadata", "name").String(), "some-group")
 
 	t.Run("Defaults", func(t *testing.T) {
 		t.Parallel()
 		// Rendering fails with defaults, template needs information
 		// about sizing and the like.
 		config := map[string]interface{}{
-			"Values.sizing.role.count": nil,
+			"Values.sizing.some_group.count": nil,
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "role must have...>: error calling fail: role must have at least 1 instances`)
+			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.role.count":             "1",
-			"Values.sizing.role.capabilities":      []interface{}{},
-			"Values.sizing.colocated.capabilities": []interface{}{},
-			"Values.kube.registry.hostname":        "docker.suse.fake",
-			"Values.kube.organization":             "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+			"Values.sizing.some_group.count":        "1",
+			"Values.sizing.some_group.capabilities": []interface{}{},
+			"Values.sizing.colocated.capabilities":  []interface{}{},
+			"Values.kube.registry.hostname":         "docker.suse.fake",
+			"Values.kube.organization":              "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		}
 
 		actual, err := RoundtripNode(deployment, config)
@@ -445,7 +445,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 				template:
 					spec:
 						containers:
-						-	name: "role"
+						-	name: "some-group"
 							volumeMounts:
 							-
 								name: shared-data

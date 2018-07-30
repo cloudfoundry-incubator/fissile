@@ -1,6 +1,6 @@
 # This is a role with exposed ports, and without the headless tag
 ---
-roles:
+instance_groups:
 - name: myrole
   jobs: []
   run:

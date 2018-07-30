@@ -29,7 +29,7 @@ BOSH properties and related BOSHisms.  We will be working with the example role
 manifest for NATS:
 
 ```yaml
-roles:
+instance_groups:
 - name: nats                       # The name of the role
   jobs:                            # BOSH jobs this role will have
   - name: nats
@@ -155,7 +155,7 @@ example below. While mysql actually needs a load balancer for access
 this role is made explicit in CF through role `mysql-proxy`.
 
 ```yaml
-roles:
+instance_groups:
 - name: mysql
   jobs:
   - name: mysql

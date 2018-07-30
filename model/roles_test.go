@@ -29,16 +29,16 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	require.NotNil(t, roleManifest)
 
 	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
-	assert.Len(t, roleManifest.Roles, 2)
+	assert.Len(t, roleManifest.InstanceGroups, 2)
 
-	myrole := roleManifest.Roles[0]
+	myrole := roleManifest.InstanceGroups[0]
 	assert.Equal(t, []string{
 		"myrole.sh",
 		"/script/with/absolute/path.sh",
 	}, myrole.Scripts)
 
-	foorole := roleManifest.Roles[1]
-	torjob := foorole.RoleJobs[0]
+	foorole := roleManifest.InstanceGroups[1]
+	torjob := foorole.JobReferences[0]
 	assert.Equal(t, "tor", torjob.Name)
 	assert.NotNil(t, torjob.Release)
 	assert.Equal(t, "tor", torjob.Release.Name)
@@ -58,7 +58,7 @@ func TestGetScriptPaths(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
-	fullScripts := roleManifest.Roles[0].GetScriptPaths()
+	fullScripts := roleManifest.InstanceGroups[0].GetScriptPaths()
 	assert.Len(t, fullScripts, 3)
 	for _, leafName := range []string{"environ.sh", "myrole.sh", "post_config_script.sh"} {
 		assert.Equal(t, filepath.Join(workDir, "../test-assets/role-manifests/model", leafName), fullScripts[leafName])
@@ -118,14 +118,14 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	require.NotNil(t, roleManifest)
 
 	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
-	assert.Len(t, roleManifest.Roles, 2)
+	assert.Len(t, roleManifest.InstanceGroups, 2)
 
-	myrole := roleManifest.Roles[0]
+	myrole := roleManifest.InstanceGroups[0]
 	assert.Len(t, myrole.Scripts, 1)
 	assert.Equal(t, "myrole.sh", myrole.Scripts[0])
 
-	foorole := roleManifest.Roles[1]
-	torjob := foorole.RoleJobs[0]
+	foorole := roleManifest.InstanceGroups[1]
+	torjob := foorole.JobReferences[0]
 	assert.Equal(t, "tor", torjob.Name)
 	if assert.NotNil(t, torjob.Release) {
 		assert.Equal(t, "tor", torjob.Release.Name)
@@ -151,7 +151,7 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
-			`roles[foorole].jobs[ntpd]: Invalid value: "foo": Referenced release is not loaded`)
+			`instance_groups[foorole].jobs[ntpd]: Invalid value: "foo": Referenced release is not loaded`)
 	}
 }
 
@@ -187,12 +187,12 @@ func TestRoleManifestTagList(t *testing.T) {
 					err := yaml.Unmarshal(manifestContents, roleManifest)
 					require.NoError(t, err, "Error unmarshalling role manifest")
 					roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-					require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
-					roleManifest.Roles[0].Type = roleType
-					roleManifest.Roles[0].Tags = []RoleTag{RoleTag(tag)}
+					require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
+					roleManifest.InstanceGroups[0].Type = roleType
+					roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTag(tag)}
 					if RoleTag(tag) == RoleTagActivePassive {
 						// An active/passive probe is required when tagged as active/passive
-						roleManifest.Roles[0].Run.ActivePassiveProbe = "hello"
+						roleManifest.InstanceGroups[0].Run.ActivePassiveProbe = "hello"
 					}
 					err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 					acceptable := false
@@ -210,12 +210,12 @@ func TestRoleManifestTagList(t *testing.T) {
 							for _, acceptableRoleType := range acceptableRoleTypes {
 								roleNames = append(roleNames, string(acceptableRoleType))
 							}
-							message = fmt.Sprintf("%s tag is only supported in [%s] roles, not %s",
+							message = fmt.Sprintf("%s tag is only supported in [%s] instance groups, not %s",
 								tag,
 								strings.Join(roleNames, ", "),
 								roleType)
 						}
-						fullMessage := fmt.Sprintf(`roles[myrole].tags[0]: Invalid value: "%s": %s`, tag, message)
+						fullMessage := fmt.Sprintf(`instance_groups[myrole].tags[0]: Invalid value: "%s": %s`, tag, message)
 						assert.EqualError(t, err, fullMessage)
 					}
 				})
@@ -239,35 +239,35 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 	require.NotNil(t, roleManifest)
 
 	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
-	assert.Len(t, roleManifest.Roles, 2)
+	assert.Len(t, roleManifest.InstanceGroups, 2)
 }
 
 func TestRolesSort(t *testing.T) {
 	assert := assert.New(t)
 
-	roles := Roles{
+	instanceGroups := InstanceGroups{
 		{Name: "aaa"},
 		{Name: "bbb"},
 	}
-	sort.Sort(roles)
-	assert.Equal(roles[0].Name, "aaa")
-	assert.Equal(roles[1].Name, "bbb")
+	sort.Sort(instanceGroups)
+	assert.Equal(instanceGroups[0].Name, "aaa")
+	assert.Equal(instanceGroups[1].Name, "bbb")
 
-	roles = Roles{
+	instanceGroups = InstanceGroups{
 		{Name: "ddd"},
 		{Name: "ccc"},
 	}
-	sort.Sort(roles)
-	assert.Equal(roles[0].Name, "ccc")
-	assert.Equal(roles[1].Name, "ddd")
+	sort.Sort(instanceGroups)
+	assert.Equal(instanceGroups[0].Name, "ccc")
+	assert.Equal(instanceGroups[1].Name, "ddd")
 }
 
 func TestGetScriptSignatures(t *testing.T) {
 	assert := assert.New(t)
 
-	refRole := &Role{
+	refRole := &InstanceGroup{
 		Name: "bbb",
-		RoleJobs: []*RoleJob{
+		JobReferences: []*JobReference{
 			{
 				Job: &Job{
 					SHA1: "Role 2 Job 1",
@@ -300,10 +300,10 @@ func TestGetScriptSignatures(t *testing.T) {
 	err = ioutil.WriteFile(scriptPath, []byte("true\n"), 0644)
 	assert.NoError(err)
 
-	differentPatch := &Role{
-		Name:     refRole.Name,
-		RoleJobs: []*RoleJob{refRole.RoleJobs[0], refRole.RoleJobs[1]},
-		Scripts:  []string{scriptName},
+	differentPatch := &InstanceGroup{
+		Name:          refRole.Name,
+		JobReferences: []*JobReference{refRole.JobReferences[0], refRole.JobReferences[1]},
+		Scripts:       []string{scriptName},
 		roleManifest: &RoleManifest{
 			manifestFilePath: releasePath,
 		},
@@ -322,17 +322,17 @@ func TestGetScriptSignatures(t *testing.T) {
 func TestGetTemplateSignatures(t *testing.T) {
 	assert := assert.New(t)
 
-	differentTemplate1 := &Role{
-		Name:     "aaa",
-		RoleJobs: []*RoleJob{},
+	differentTemplate1 := &InstanceGroup{
+		Name:          "aaa",
+		JobReferences: []*JobReference{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"foo": "bar"},
 		},
 	}
 
-	differentTemplate2 := &Role{
-		Name:     "aaa",
-		RoleJobs: []*RoleJob{},
+	differentTemplate2 := &InstanceGroup{
+		Name:          "aaa",
+		JobReferences: []*JobReference{},
 		Configuration: &Configuration{
 			Templates: map[string]string{"bat": "baz"},
 		},
@@ -474,7 +474,7 @@ func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/docker-run-env.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err, `roles[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
+	assert.EqualError(t, err, `instance_groups[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -489,7 +489,7 @@ func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/rbac-missing-account.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err, `roles[myrole].run.service-account: Not found: "missing-account"`)
+	assert.EqualError(t, err, `instance_groups[myrole].run.service-account: Not found: "missing-account"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -527,40 +527,40 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	tests := []testCase{
 		{
 			"bosh-run-missing.yml", []string{
-				`roles[myrole].run: Required value`,
+				`instance_groups[myrole].run: Required value`,
 			},
 		},
 		{
 			"bosh-run-bad-proto.yml", []string{
-				`roles[myrole].run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
+				`instance_groups[myrole].run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
 			},
 		},
 		{
 			"bosh-run-bad-port-names.yml", []string{
-				`roles[myrole].run.exposed-ports[a--b].name: Invalid value: "a--b": port names must be lowercase words separated by hyphens`,
-				`roles[myrole].run.exposed-ports[abcd-efgh-ijkl-x].name: Invalid value: "abcd-efgh-ijkl-x": port name must be no more than 15 characters`,
-				`roles[myrole].run.exposed-ports[abcdefghij].name: Invalid value: "abcdefghij": user configurable port name must be no more than 9 characters`,
+				`instance_groups[myrole].run.exposed-ports[a--b].name: Invalid value: "a--b": port names must be lowercase words separated by hyphens`,
+				`instance_groups[myrole].run.exposed-ports[abcd-efgh-ijkl-x].name: Invalid value: "abcd-efgh-ijkl-x": port name must be no more than 15 characters`,
+				`instance_groups[myrole].run.exposed-ports[abcdefghij].name: Invalid value: "abcdefghij": user configurable port name must be no more than 9 characters`,
 			},
 		},
 		{
 			"bosh-run-bad-port-count.yml", []string{
-				`roles[myrole].run.exposed-ports[http].count: Invalid value: 2: count doesn't match port range 80-82`,
+				`instance_groups[myrole].run.exposed-ports[http].count: Invalid value: 2: count doesn't match port range 80-82`,
 			},
 		},
 		{
 			"bosh-run-bad-ports.yml", []string{
-				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
-				`roles[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
+				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
+				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
 			},
 		},
 		{
 			"bosh-run-missing-portrange.yml", []string{
-				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "": invalid syntax`,
+				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "": invalid syntax`,
 			},
 		},
 		{
 			"bosh-run-reverse-portrange.yml", []string{
-				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "5678-123": last port can't be lower than first port`,
+				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "5678-123": last port can't be lower than first port`,
 			},
 		},
 		{
@@ -569,23 +569,23 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		},
 		{
 			"bosh-run-bad-parse.yml", []string{
-				`roles[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
-				`roles[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
+				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
+				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
 			},
 		},
 		{
 			"bosh-run-bad-memory.yml", []string{
-				`roles[myrole].run.memory: Invalid value: -10: must be greater than or equal to 0`,
+				`instance_groups[myrole].run.memory: Invalid value: -10: must be greater than or equal to 0`,
 			},
 		},
 		{
 			"bosh-run-bad-cpu.yml", []string{
-				`roles[myrole].run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
+				`instance_groups[myrole].run.virtual-cpus: Invalid value: -2: must be greater than or equal to 0`,
 			},
 		},
 		{
 			"bosh-run-env.yml", []string{
-				`roles[xrole].run.env: Forbidden: Non-docker role declares bogus parameters`,
+				`instance_groups[xrole].run.env: Forbidden: Non-docker instance group declares bogus parameters`,
 			},
 		},
 		{
@@ -645,7 +645,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				},
 			},
 			err: []string{
-				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
+				`instance_groups[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
 			},
 		},
 		{
@@ -657,7 +657,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				},
 			},
 			err: []string{
-				`roles[myrole].run.healthcheck.readiness: Forbidden: docker roles do not support multiple commands`,
+				`instance_groups[myrole].run.healthcheck.readiness: Forbidden: docker instance groups do not support multiple commands`,
 			},
 		},
 		{
@@ -669,7 +669,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				},
 			},
 			err: []string{
-				`roles[myrole].run.healthcheck.readiness: Forbidden: bosh-task roles cannot have health checks`,
+				`instance_groups[myrole].run.healthcheck.readiness: Forbidden: bosh-task instance groups cannot have health checks`,
 			},
 		},
 		{
@@ -690,7 +690,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				},
 			},
 			err: []string{
-				`roles[myrole].run.healthcheck.readiness: Invalid value: ["url"]: Only command health checks are supported for BOSH roles`,
+				`instance_groups[myrole].run.healthcheck.readiness: Invalid value: ["url"]: Only command health checks are supported for BOSH instance groups`,
 			},
 		},
 		{
@@ -702,7 +702,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				},
 			},
 			err: []string{
-				`roles[myrole].run.healthcheck.liveness.command: Invalid value: ["hello","world"]: liveness check can only have one command`,
+				`instance_groups[myrole].run.healthcheck.liveness.command: Invalid value: ["hello","world"]: liveness check can only have one command`,
 			},
 		},
 	} {
@@ -713,11 +713,11 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				err := yaml.Unmarshal(manifestContents, roleManifest)
 				require.NoError(t, err, "Error unmarshalling role manifest")
 				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-				require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+				require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 				if sample.roleType != RoleType("") {
-					roleManifest.Roles[0].Type = sample.roleType
+					roleManifest.InstanceGroups[0].Type = sample.roleType
 				}
-				roleManifest.Roles[0].Run = &RoleRun{
+				roleManifest.InstanceGroups[0].Run = &RoleRun{
 					HealthCheck: &sample.healthCheck,
 				}
 				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
@@ -736,16 +736,16 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
 		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
-		roleManifest.Roles[0].Type = RoleTypeBosh
-		roleManifest.Roles[0].Tags = []RoleTag{}
-		roleManifest.Roles[0].Run = &RoleRun{
+		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
+		roleManifest.InstanceGroups[0].Tags = []RoleTag{}
+		roleManifest.InstanceGroups[0].Run = &RoleRun{
 			ActivePassiveProbe: "/bin/true",
 		}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
-			`roles[myrole].run.active-passive-probe: Invalid value: "/bin/true": Active/passive probes are only valid on roles with active-passive tag`)
+			`instance_groups[myrole].run.active-passive-probe: Invalid value: "/bin/true": Active/passive probes are only valid on instance groups with active-passive tag`)
 	})
 
 	t.Run("active/passive bosh role without a probe", func(t *testing.T) {
@@ -754,14 +754,14 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
 		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
-		roleManifest.Roles[0].Type = RoleTypeBosh
-		roleManifest.Roles[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.Roles[0].Run = &RoleRun{}
+		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
+		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
+		roleManifest.InstanceGroups[0].Run = &RoleRun{}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
-			`roles[myrole].run.active-passive-probe: Required value: active-passive roles must specify the correct probe`)
+			`instance_groups[myrole].run.active-passive-probe: Required value: active-passive instance groups must specify the correct probe`)
 	})
 
 	t.Run("bosh task tagged as active/passive", func(t *testing.T) {
@@ -770,14 +770,14 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
 		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
-		roleManifest.Roles[0].Type = RoleTypeBoshTask
-		roleManifest.Roles[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		roleManifest.InstanceGroups[0].Type = RoleTypeBoshTask
+		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
+		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
-			`roles[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] roles, not bosh-task`)
+			`instance_groups[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] instance groups, not bosh-task`)
 	})
 
 	t.Run("headless active/passive role", func(t *testing.T) {
@@ -786,14 +786,14 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
 		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-		require.NotEmpty(t, roleManifest.Roles, "No roles loaded")
+		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
-		roleManifest.Roles[0].Type = RoleTypeBosh
-		roleManifest.Roles[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
-		roleManifest.Roles[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
+		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
+		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
-			`roles[myrole].tags[1]: Invalid value: "active-passive": headless roles may not be active-passive`)
+			`instance_groups[myrole].tags[1]: Invalid value: "active-passive": headless instance groups may not be active-passive`)
 	})
 }
 
@@ -820,7 +820,7 @@ func TestResolveLinks(t *testing.T) {
 
 	// LoadRoleManifest implicitly runs resolveLinks()
 
-	role := roleManifest.LookupRole("myrole")
+	role := roleManifest.LookupInstanceGroup("myrole")
 	job := role.LookupJob("ntpd")
 	if !assert.NotNil(t, job) {
 		return
@@ -959,10 +959,10 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	}
 
 	roleManifest := &RoleManifest{
-		Roles: Roles{
-			&Role{
+		InstanceGroups: InstanceGroups{
+			&InstanceGroup{
 				Name: "role-1",
-				RoleJobs: []*RoleJob{
+				JobReferences: []*JobReference{
 					{
 						Job: job1,
 						ExportedProviders: map[string]jobProvidesInfo{
@@ -974,9 +974,9 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 					{Job: job2},
 				},
 			},
-			&Role{
+			&InstanceGroup{
 				Name: "role-2",
-				RoleJobs: []*RoleJob{
+				JobReferences: []*JobReference{
 					{Job: job2},
 					{
 						Job: job3,
@@ -992,24 +992,24 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 					},
 				},
 			},
-			&Role{
+			&InstanceGroup{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				RoleJobs: []*RoleJob{{Job: job2}, {Job: job3}},
+				JobReferences: []*JobReference{{Job: job2}, {Job: job3}},
 			},
 		},
 	}
-	for _, r := range roleManifest.Roles {
-		for _, roleJob := range r.RoleJobs {
-			roleJob.Name = roleJob.Job.Name
-			if roleJob.ResolvedConsumers == nil {
-				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
+	for _, r := range roleManifest.InstanceGroups {
+		for _, jobReference := range r.JobReferences {
+			jobReference.Name = jobReference.Job.Name
+			if jobReference.ResolvedConsumers == nil {
+				jobReference.ResolvedConsumers = make(map[string]jobConsumesInfo)
 			}
 		}
 	}
 	errors := roleManifest.resolveLinks()
 	assert.Empty(errors)
-	role := roleManifest.LookupRole("role-2")
+	role := roleManifest.LookupInstanceGroup("role-2")
 	require.NotNil(role, "Failed to find role")
 	job := role.LookupJob("job-3")
 	require.NotNil(job, "Failed to find job")
@@ -1083,9 +1083,9 @@ func TestWriteConfigs(t *testing.T) {
 		},
 	}
 
-	role := &Role{
+	role := &InstanceGroup{
 		Name: "dummy role",
-		RoleJobs: []*RoleJob{
+		JobReferences: []*JobReference{
 			{
 				Job:  job,
 				Name: "silly job",
@@ -1114,7 +1114,7 @@ func TestWriteConfigs(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(tempFile.Close())
 
-	json, err := role.RoleJobs[0].WriteConfigs(role, tempFile.Name(), tempFile.Name())
+	json, err := role.JobReferences[0].WriteConfigs(role, tempFile.Name(), tempFile.Name())
 	assert.NoError(err)
 
 	assert.JSONEq(`
@@ -1163,13 +1163,13 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
-	assert.Len(roleManifest.Roles, 2)
-	assert.EqualValues(RoleTypeBosh, roleManifest.LookupRole("main-role").Type)
-	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupRole("to-be-colocated").Type)
-	assert.Len(roleManifest.LookupRole("main-role").ColocatedContainers, 1)
+	assert.Len(roleManifest.InstanceGroups, 2)
+	assert.EqualValues(RoleTypeBosh, roleManifest.LookupInstanceGroup("main-role").Type)
+	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupInstanceGroup("to-be-colocated").Type)
+	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers, 1)
 
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
-		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupRole(roleName).Run.Volumes)
+		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupInstanceGroup(roleName).Run.Volumes)
 	}
 }
 
@@ -1190,7 +1190,7 @@ func TestLoadRoleManifestColocatedContainersValidationMissingRole(t *testing.T) 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-missing-role.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, `roles[main-role].colocated_containers[0]: Invalid value: "to-be-colocated-typo": There is no such role defined`)
+	assert.EqualError(err, `instance_groups[main-role].colocated_containers[0]: Invalid value: "to-be-colocated-typo": There is no such instance group defined`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationUsusedRole(t *testing.T) {
@@ -1210,9 +1210,9 @@ func TestLoadRoleManifestColocatedContainersValidationUsusedRole(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-unused-role.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, "role[to-be-colocated].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
-		"role[orphaned].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
-		"role[orphaned]: Not found: \"role is of type colocated container, but is not used by any other role as such\"")
+	assert.EqualError(err, "instance_group[to-be-colocated].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
+		"instance_group[orphaned].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
+		"instance_group[orphaned]: Not found: \"instance group is of type colocated container, but is not used by any other instance group as such\"")
 }
 
 func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.T) {
@@ -1232,8 +1232,8 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-port-collision.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, "role[main-role]: Invalid value: \"TCP/10443\": port collision, the same protocol/port is used by: main-role, to-be-colocated"+"\n"+
-		"role[main-role]: Invalid value: \"TCP/80\": port collision, the same protocol/port is used by: main-role, to-be-colocated")
+	assert.EqualError(err, "instance_group[main-role]: Invalid value: \"TCP/10443\": port collision, the same protocol/port is used by: main-role, to-be-colocated"+"\n"+
+		"instance_group[main-role]: Invalid value: \"TCP/80\": port collision, the same protocol/port is used by: main-role, to-be-colocated")
 }
 
 func TestLoadRoleManifestColocatedContainersValidationPortCollisionsWithProtocols(t *testing.T) {
@@ -1273,7 +1273,7 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, `roles[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] roles, not colocated-container`)
+	assert.EqualError(err, `instance_groups[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] instance groups, not colocated-container`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {
@@ -1293,7 +1293,7 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-volume-share-issues.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
 	assert.Nil(roleManifest)
-	assert.EqualError(err, "role[to-be-colocated]: Invalid value: \"/mnt/foobAr\": colocated role specifies a shared volume with tag mount-share, which path does not match the path of the main role shared volume with the same tag\n"+
-		"role[main-role]: Required value: container must use shared volumes of the main role: vcap-logs\n"+
-		"role[main-role]: Required value: container must use shared volumes of the main role: vcap-store")
+	assert.EqualError(err, "instance_group[to-be-colocated]: Invalid value: \"/mnt/foobAr\": colocated instance group specifies a shared volume with tag mount-share, which path does not match the path of the main instance group shared volume with the same tag\n"+
+		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-logs\n"+
+		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-store")
 }

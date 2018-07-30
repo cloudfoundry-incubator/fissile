@@ -1,5 +1,5 @@
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x

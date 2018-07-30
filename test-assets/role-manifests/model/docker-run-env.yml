@@ -1,5 +1,5 @@
 ---
-roles:
+instance_groups:
 - name: dockerrole
   type: docker
   run:

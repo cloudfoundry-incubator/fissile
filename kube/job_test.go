@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *model.Role {
+func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *model.InstanceGroup {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
@@ -29,25 +29,25 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 		return nil
 	}
 
-	role := manifest.LookupRole(roleName)
-	if !assert.NotNil(role, "Failed to find role %s", roleName) {
+	instanceGroup := manifest.LookupInstanceGroup(roleName)
+	if !assert.NotNil(instanceGroup, "Failed to find instance group %s", roleName) {
 		return nil
 	}
-	return role
+	return instanceGroup
 }
 
 func TestJobPreFlight(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	role := jobTestLoadRole(assert, "pre-role", "jobs.yml")
-	if role == nil {
+	instanceGroup := jobTestLoadRole(assert, "pre-role", "jobs.yml")
+	if instanceGroup == nil {
 		return
 	}
 
-	job, err := NewJob(role, ExportSettings{
+	job, err := NewJob(instanceGroup, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
 	}, nil)
-	if !assert.NoError(err, "Failed to create job from role pre-role") {
+	if !assert.NoError(err, "Failed to create job from instance group pre-role") {
 		return
 	}
 	assert.NotNil(job)
@@ -76,12 +76,12 @@ func TestJobPreFlight(t *testing.T) {
 func TestJobPostFlight(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	role := jobTestLoadRole(assert, "post-role", "jobs.yml")
-	if role == nil {
+	instanceGroup := jobTestLoadRole(assert, "post-role", "jobs.yml")
+	if instanceGroup == nil {
 		return
 	}
 
-	job, err := NewJob(role, ExportSettings{
+	job, err := NewJob(instanceGroup, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
 	}, nil)
 	if !assert.NoError(err, "Failed to create job from role post-role") {
@@ -114,15 +114,15 @@ func TestJobWithAnnotations(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	role := jobTestLoadRole(assert, "role", "job-with-annotation.yml")
-	if role == nil {
+	instanceGroup := jobTestLoadRole(assert, "some-group", "job-with-annotation.yml")
+	if instanceGroup == nil {
 		return
 	}
 
-	job, err := NewJob(role, ExportSettings{
+	job, err := NewJob(instanceGroup, ExportSettings{
 		Opinions: model.NewEmptyOpinions(),
 	}, nil)
-	if !assert.NoError(err, "Failed to create job from role pre-role") {
+	if !assert.NoError(err, "Failed to create job from instance group pre-role") {
 		return
 	}
 	assert.NotNil(job)
@@ -135,7 +135,7 @@ func TestJobWithAnnotations(t *testing.T) {
 		apiVersion: batch/v1
 		kind: Job
 		metadata:
-			name: role
+			name: some-group
 			annotations:
 				helm.sh/hook: post-install
 	`, actual)

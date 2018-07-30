@@ -1,6 +1,6 @@
 # This role manifest tests that an undeclared variable is an error
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x

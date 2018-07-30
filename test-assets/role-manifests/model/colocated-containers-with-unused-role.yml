@@ -1,5 +1,5 @@
 ---
-roles:
+instance_groups:
 - name: main-role
   scripts: ["myrole.sh"]
   run:

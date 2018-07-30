@@ -1,6 +1,6 @@
 ---
-roles:
-- name: role
+instance_groups:
+- name: some-group
   type: bosh-task
   jobs:
   - name: new_hostname

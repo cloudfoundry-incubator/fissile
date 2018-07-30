@@ -24,8 +24,8 @@ func TestMakeValues(t *testing.T) {
 		settings := ExportSettings{
 			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
-				Roles: model.Roles{
-					&model.Role{
+				InstanceGroups: model.InstanceGroups{
+					&model.InstanceGroup{
 						Name: "arole",
 						Run: &model.RoleRun{
 							Scaling: &model.RoleRunScaling{},
@@ -57,8 +57,8 @@ func TestMakeValues(t *testing.T) {
 		settings := ExportSettings{
 			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
-				Roles: model.Roles{
-					&model.Role{
+				InstanceGroups: model.InstanceGroups{
+					&model.InstanceGroup{
 						Name: "arole",
 						Run: &model.RoleRun{
 							Scaling: &model.RoleRunScaling{},
@@ -82,7 +82,7 @@ func TestMakeValues(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
 			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{Roles: model.Roles{},
+			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
 		}
@@ -101,7 +101,7 @@ func TestMakeValues(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
 			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{Roles: model.Roles{},
+			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
 		}
@@ -122,7 +122,7 @@ func TestMakeValues(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
 			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{Roles: model.Roles{},
+			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
 		}
@@ -141,7 +141,7 @@ func TestMakeValues(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
 			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{Roles: model.Roles{},
+			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
 		}

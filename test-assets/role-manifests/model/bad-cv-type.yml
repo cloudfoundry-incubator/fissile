@@ -1,6 +1,6 @@
 # This role manifest checks for an invalid variable type
 ---
-roles:
+instance_groups:
 - name: myrole
   environment_scripts:
   - environ.sh

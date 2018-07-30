@@ -34,7 +34,7 @@ func (c *Compilator) compilePackageInMountNS(pkg *model.Package) (err error) {
 	// Extract package
 	extractDir := c.getSourcePackageDir(pkg)
 	if _, err := pkg.Extract(extractDir); err != nil {
-		return fmt.Errorf("faile to extract package: %s", err)
+		return fmt.Errorf("failed to extract package: %s", err)
 	}
 
 	// in-memory buffer of the log

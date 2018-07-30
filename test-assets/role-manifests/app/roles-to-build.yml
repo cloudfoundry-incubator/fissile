@@ -1,6 +1,6 @@
 # This role manifest is used to test selecting which roles to build
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x

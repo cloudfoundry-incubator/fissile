@@ -1,6 +1,6 @@
 # This role manifest should pass validation with no issues
 ---
-roles:
+instance_groups:
 - name: myrole
   environment_scripts:
   - environ.sh

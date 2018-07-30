@@ -1,6 +1,6 @@
 # This role manifest is used to test mustache template expansion
 ---
-roles:
+instance_groups:
 - name: foorole
   type: bosh-task
   run:
