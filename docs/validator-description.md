@@ -45,8 +45,8 @@ First an overview. The details of each check follow in subsections.
  1. The role manifest must not contain any constants in the global section
  1. All of the scripts must be used
  1. Check clustering
- 1. The run.env references of docker roles must use only declared parameters
- 1. No non-docker role may declare 'run.env'
+ 1. The run.env references of docker instance groups must use only declared parameters
+ 1. No non-docker instance group may declare 'run.env'
 
 ### All dark opinions must be configured as templates
 

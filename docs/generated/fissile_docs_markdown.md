@@ -34,7 +34,7 @@ fissile docs markdown
   -n, --release-name string          Name of a dev BOSH release; if empty, default configured dev release name will be used; Final release always use the name in release.MF
   -v, --release-version string       Version of a dev BOSH release; if empty, the latest dev release will be used; Final release always use the version in release.MF
   -p, --repository string            Repository name prefix used to create image names. (default "fissile")
-  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each role.
+  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each instance group.
   -V, --verbose                      Enable verbose output.
   -w, --work-dir string              Path to the location of the work directory. (default "/var/fissile")
   -W, --workers int                  Number of workers to use; zero means determine based on CPU count.

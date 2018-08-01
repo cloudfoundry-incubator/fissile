@@ -2,7 +2,7 @@
 
 Fissile has experimental support for generating [Kubernetes] resource
 definitions.  It will create one workload (deployment, stateful set, or job) per
-defined role, and any associated services (and volume claims) required.
+defined instance group, and any associated services (and volume claims) required.
 
 [Kubernetes]: https://kubernetes.io/
 
@@ -38,38 +38,38 @@ cluster that is needed for other purposes.
 
 Fissile emits a [StatefulSet] under two circumstances.
 
-Any self-clustering roles (i.e. any role with the `clustered` tag)
+Any self-clustering instance groups (i.e. any group with the `clustered` tag)
 will be a StatefulSet, in order for each pod to be addressable (so
-that they can talk to each other). For example, a `doppler` role would
+that they can talk to each other). For example, a `doppler` group would
 fall under this category.
 
-Secondly, any roles tagged as `indexed`. An example of such would be
-the CF role `nats`. These are roles which require load balancing and
+Secondly, any instance groups tagged as `indexed`. An example of such would be
+the CF instance group `nats`. These are groups which require load balancing and
 need a 0-based, incremented index. To support this fissile creates a
-public service (of type `LoadBalancer`) for indexed roles, providing a
-single point of access to the pods for the role.
+public service (of type `LoadBalancer`) for indexed groups, providing a
+single point of access to the pods for the group.
 
-Note that both `clustered` and `indexed` roles can take advantage of
+Note that both `clustered` and `indexed` instance groups can take advantage of
 volume claim templates for local storage.
 
-__Attention__: The automatic emission of StatefulSet for roles which
-have volume specifications has been removed. All roles now have to be
+__Attention__: The automatic emission of StatefulSet for instance groups which
+have volume specifications has been removed. All instance groups now have to be
 explicitly tagged as described above.
 
 [StatefulSet]: https://kubernetes.io/docs/resources-reference/v1.6/#statefulset-v1beta1-apps
 
 ### Deployment
-All roles without the above constraints will be generated as deployments.
+All instance groups without the above constraints will be generated as deployments.
 
 ## Services
 
-Each role may have attached services generated as necessary.  There are three
+Each instance group may have attached services generated as necessary.  There are three
 general conditions:
 
 - Each StatefulSet will have a headless service (e.g. `nats-set`); this is used
   to manage the StatefulSet (a Kubernetes requirement), and to allow discovery
-  of pods within a role via DNS.
-- A role may have a service for its public ports, if any port is public.
-- A role may have a service for its private ports, if any ports are defined.
-  Public ports will also be listed to ease communication across roles (not
+  of pods within a instance group via DNS.
+- A instance group may have a service for its public ports, if any port is public.
+- A instance group may have a service for its private ports, if any ports are defined.
+  Public ports will also be listed to ease communication across instance groups (not
   having to use different names depending on whether a port is public).

@@ -1,7 +1,7 @@
 # Fissile Configuration
 Fissile requires some configuration to work with BOSH releases.  It is necessary
 to describe what docker images should be created; in general, each docker image
-(termed "role") will have one or more BOSH jobs.
+(termed "instance group") will have one or more BOSH jobs.
 
 There are three main files for configuration: the [role manifest], [opinions],
 and [dark opinions].  A set of [environment files] will also be required.
@@ -22,7 +22,7 @@ fissile configuration to place `nats` in a docker image.
 
 ## Role Manifest
 The role manifest is the main configuration file for fissile.  It must contain a
-list of roles (analogous to BOSH VMs); each role will result in one docker
+list of instance groups (analogous to BOSH VMs); each group will result in one docker
 image.  It can also have a configurable variables section to describe the
 tunable inputs, and a configuration templates section to map those variables to
 BOSH properties and related BOSHisms.  We will be working with the example role
@@ -30,12 +30,12 @@ manifest for NATS:
 
 ```yaml
 instance_groups:
-- name: nats                       # The name of the role
-  jobs:                            # BOSH jobs this role will have
+- name: nats                       # The name of the instance group
+  jobs:                            # BOSH jobs this group will have
   - name: nats
     release_name: nats             # The name of the BOSH release this is from
   tags:
-  - indexed                        # Mark this role as indexed (load-balanced) => StatefulSet
+  - indexed                        # Mark this group as indexed (load-balanced) => StatefulSet
   run:                             # Runtime configuration
     scaling:                       # Auto-scaling limits
       min: 1
@@ -79,14 +79,14 @@ Name | Description
 -- | --
 `DNS_RECORD_NAME` | Hostname of the container
 `IP_ADDRESS` | Primary IP address of the container
-`KUBE_COMPONENT_INDEX` | Numeric index for roles with multiple replicas
+`KUBE_COMPONENT_INDEX` | Numeric index for instance groups with multiple replicas
 `KUBERNETES_CLUSTER_DOMAIN` | Kubernetes cluster domain, `cluster.local` by default
 
 [run.sh]: https://github.com/SUSE/fissile/blob/master/scripts/dockerfiles/run.sh
 
 There are also some fields not shown above (as the are not needed for NATS):
 
-For the role:
+For the instance group:
 
 Name | Description
 -- | --
@@ -100,8 +100,8 @@ For the `run` section:
 Name | Description
 -- | --
 `capabilities` | additional capabilities to grant the container (see `man 7 capabilities`); drop the `CAP_` prefix (e.g. use `NET_ADMIN`)
-`persistent-volumes` | volumes to attach to the role
-`shared-volumes` | volumes shared across all containers of the role
+`persistent-volumes` | volumes to attach to the instance group
+`shared-volumes` | volumes shared across all containers of the instance group
 `healthcheck` | optional healthchecking parameters, see below
 `env` | list of environment variables, as `FOO=bar`
 `flight-stage` | one of `pre-flight`, `post-flight`, `manual`, or `flight` (default).  The first three are for jobs.
@@ -134,25 +134,25 @@ headers (for example, to set the `Accept:` header to request JSON responses).
 
 ## Tagging
 
-The NATS role above was tagged as `indexed`, causing fissile to emit
+The NATS instance group above was tagged as `indexed`, causing fissile to emit
 it as a [StatefulSet].
 
-The second way of causing fissile to do that is to tag a role as
+The second way of causing fissile to do that is to tag a instance group as
 `clustered`. The main difference between `clustered` and `indexed`
-roles is that fissile creates a public service (of type
+groups is that fissile creates a public service (of type
 `LoadBalancer`) for the latter, providing a single point of access to
-the pods for the role.
+the pods for the group.
 
-Note that both `clustered` and `indexed` roles can take advantage of
+Note that both `clustered` and `indexed` index groups can take advantage of
 volume claim templates for local storage.
 
-Therefore the user should index roles which require load balancing and
+Therefore the user should index index groups which require load balancing and
 need a 0-based, incremented index, and mark them as clustered
 otherwise.
 
-An example of a clustered role is the MYSQL database of CF. See the
+An example of a clustered index group is the MYSQL database of CF. See the
 example below. While mysql actually needs a load balancer for access
-this role is made explicit in CF through role `mysql-proxy`.
+this index group is made explicit in CF through index group `mysql-proxy`.
 
 ```yaml
 instance_groups:
@@ -204,7 +204,7 @@ the upstream defaults, they can be stored in an opinions file which will be
 embedded within the docker image.  An additional dark opinions file is used to
 ensure that we block out anything that must be different per-cluster (for
 example, passwords).  A third file is used for the variables found in last
-section of the role manifest.  For the NATS role, we can use the following files:
+section of the role manifest.  For the NATS instance group, we can use the following files:
 
 - opinions.yml
   ```yaml

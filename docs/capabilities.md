@@ -14,26 +14,25 @@ https://github.com/SUSE/fissile/wiki/Operator-overrides-of-role-capabilities
 # Interface
 
 The generated `values.yaml` provides operators with keys of the form
-`sizing.<rolename>.capabilities`, one key per role.
+`sizing.<instance-group-name>.capabilities`, one key per instance group.
 
-The exception are roles which are naturally at maximum privilege,
-i.e. as specified by the role manifest. These have no keys, as
+The exception are instance groups which are naturally at maximum privilege,
+i.e. as specified by the instance group manifest. These have no keys, as
 overriding them to add more capabilities makes no sense.
 
-The keys are of type list, taking the operator-defined set of
-additional capabilities for a role, or `ALL`. The supplied default is
-the empty list (`[]`), i.e. no privileges to be added to the role.
+The keys are of type list, taking the operator-defined set of additional
+capabilities for a instance group, or `ALL`. The supplied default is the empty
+list (`[]`), i.e. no privileges to be added to the instance group.
 
-Presence of the special value `ALL` in the list of a role triggers
-elevation of that role to maximum privilege. Presence of all the other
-capabilites just causes them to be added to the role. When `ALL` is
-present none of any other specified capabilities matter to the
-modified role.
+Presence of the special value `ALL` in the list of a instance group triggers
+elevation of that instance group to maximum privilege. Presence of all the
+other capabilites just causes them to be added to the instance group. When
+`ALL` is present none of any other specified capabilities matter to the
+modified instance group.
 
-Operators may write the names of capabilities in any mixed-case, and
-the chart converts as necessary. In other words to chart `AUDIT_READ`,
-`audit_read`, `AuDiT_ReAd`, etc. are all the same.
+Operators may write the names of capabilities in any mixed-case, and the chart
+converts as necessary. In other words to chart `AUDIT_READ`, `audit_read`,
+`AuDiT_ReAd`, etc. are all the same.
 
-The exception to this is the special value `ALL`, which must be
-written in all-uppercase to be recognized. None of `all`, `All`,
-etc. will be recognized.
+The exception to this is the special value `ALL`, which must be written in
+all-uppercase to be recognized. None of `all`, `All`, etc. will be recognized.
