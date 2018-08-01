@@ -22,6 +22,9 @@ import (
 	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
+	"github.com/graymeta/stow"
+	"github.com/graymeta/stow/local"
+	"github.com/graymeta/stow/s3"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
@@ -301,7 +304,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool, packageCacheConfigFilename string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -331,14 +334,46 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
+	// Read a config file that contains stow configuration
+	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to read the config file: %s", err.Error())
+	}
+
+	var packageCacheConfig map[string]interface{}
+
+	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
+		return fmt.Errorf("Failed to unmarshal the config file: %s", err.Error())
+	}
+	var config stow.Config
+	if packageCacheConfig["kind"].(string) == "local" {
+		config = stow.ConfigMap{local.ConfigKeyPath: packageCacheConfig["configKeyPath"].(string)}
+	} else {
+		if packageCacheConfig["kind"].(string) == "s3" {
+			config = stow.ConfigMap{
+				s3.ConfigAccessKeyID: packageCacheConfig["access_key_id"].(string),
+				s3.ConfigSecretKey:   packageCacheConfig["secret_key"].(string),
+				s3.ConfigRegion:      packageCacheConfig["region"].(string),
+			}
+		}
+	}
+	// Generate container location
+	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
+
+	// Generate a new instance of PackageStorage with the data from the config file
+	packageStorage, err := compilator.NewPackageStorage(packageCacheConfig["kind"].(string), config, targetPath, containerLocation, stemcellImageName)
+	if err != nil {
+		return fmt.Errorf("Error creating a new PackageStorage: %s", err.Error())
+	}
+s
 	var comp *compilator.Compilator
 	if withoutDocker {
-		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f)
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f, packageStorage)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	} else {
-		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI, f)
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI, f, packageStorage)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}

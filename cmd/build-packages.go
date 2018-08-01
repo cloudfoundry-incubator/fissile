@@ -37,6 +37,7 @@ compiled once.
 		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
+		flagBuildCompilationCacheConfig := buildViper.GetString("compilation-cache-config")
 
 		err := fissile.LoadReleases(
 			flagRelease,
@@ -75,6 +76,7 @@ compiled once.
 			flagBuildPackagesDockerNetworkMode,
 			flagBuildPackagesWithoutDocker,
 			flagVerbose,
+			flagBuildCompilationCacheConfig,
 		)
 	},
 }
@@ -120,6 +122,13 @@ func init() {
 		"s",
 		"",
 		"The source stemcell",
+	)
+
+	buildPackagesCmd.PersistentFlags().StringP(
+		"compilation-cache-config",
+		"",
+		filepath.Join(os.Getenv("HOME"), ".fissile", "package-cache.yaml"),
+		"Points to a file containing configuration for a compiled package cache",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())

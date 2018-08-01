@@ -49,6 +49,7 @@ type Compilator struct {
 	fissileVersion    string
 	dockerNetworkMode string
 	compilePackage    func(*Compilator, *model.Package) error
+	packageStorage    *PackageStorage
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -88,21 +89,22 @@ func NewDockerCompilator(
 	keepContainer bool,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
+	packStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		dockerManager:     dockerManager,
-		hostWorkDir:       hostWorkDir,
-		metricsPath:       metricsPath,
-		stemcellImageName: stemcellImageName,
-		baseType:          baseType,
-		fissileVersion:    fissileVersion,
-		compilePackage:    (*Compilator).compilePackageInDocker,
-		dockerNetworkMode: dockerNetworkMode,
-		keepContainer:     keepContainer,
-		ui:                ui,
-		grapher:           grapher,
-
+		dockerManager:      dockerManager,
+		hostWorkDir:        hostWorkDir,
+		metricsPath:        metricsPath,
+		stemcellImageName:  stemcellImageName,
+		baseType:           baseType,
+		fissileVersion:     fissileVersion,
+		compilePackage:     (*Compilator).compilePackageInDocker,
+		dockerNetworkMode:  dockerNetworkMode,
+		keepContainer:      keepContainer,
+		ui:                 ui,
+		grapher:            grapher,
+		packageStorage:     packStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -119,18 +121,19 @@ func NewMountNSCompilator(
 	fissileVersion string,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
+	packStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		hostWorkDir:       hostWorkDir,
-		metricsPath:       metricsPath,
-		stemcellImageName: stemcellImageName,
-		baseType:          baseType,
-		fissileVersion:    fissileVersion,
-		compilePackage:    (*Compilator).compilePackageInMountNS,
-		ui:                ui,
-		grapher:           grapher,
-
+		hostWorkDir:        hostWorkDir,
+		metricsPath:        metricsPath,
+		stemcellImageName:  stemcellImageName,
+		baseType:           baseType,
+		fissileVersion:     fissileVersion,
+		compilePackage:     (*Compilator).compilePackageInMountNS,
+		ui:                 ui,
+		grapher:            grapher,
+		packageStorage:     packStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -336,17 +339,40 @@ func (j compileJob) Run() {
 		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "start")
 	}
 
-	workerErr := c.compilePackage(c, j.pkg)
-
-	if c.metricsPath != "" {
-		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
+	exists := false
+	if c.packageStorage != nil {
+		var err error
+		exists, err = c.packageStorage.Exists(j.pkg)
+		if err != nil {
+			j.doneCh <- compileResult{pkg: j.pkg, err: err}
+			return
+		}
 	}
 
-	c.ui.Printf("done:    %s/%s\n",
-		color.MagentaString(j.pkg.Release.Name),
-		color.MagentaString(j.pkg.Name))
+	// Check to see whether a package already exists in the configured cache
+	if exists == true {
+		downloadErr := c.packageStorage.Download(j.pkg)
+		if downloadErr != nil {
+			j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
+			return
+		}
+	} else {
+		workerErr := c.compilePackage(c, j.pkg)
 
-	j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
+		if workerErr == nil && c.packageStorage != nil {
+			workerErr = c.packageStorage.Upload(j.pkg)
+		}
+		if c.metricsPath != "" {
+			stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
+		}
+
+		c.ui.Printf("done:    %s/%s\n",
+			color.MagentaString(j.pkg.Release.Name),
+			color.MagentaString(j.pkg.Name))
+
+		j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
+	}
+
 }
 
 func createDepBuckets(packages []*model.Package) []*model.Package {
