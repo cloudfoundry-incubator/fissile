@@ -528,8 +528,8 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	}
 
 	if metricsPath != "" {
-		stampy.Stamp(metricsPath, "fissile", "create-role-images", "start")
-		defer stampy.Stamp(metricsPath, "fissile", "create-role-images", "done")
+		stampy.Stamp(metricsPath, "fissile", "create-images", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-images", "done")
 	}
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
