@@ -4,7 +4,7 @@ instance_groups:
   type: bosh-task
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   run:
     flight-stage: post-flight
     memory: 128

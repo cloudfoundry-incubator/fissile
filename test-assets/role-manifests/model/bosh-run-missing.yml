@@ -3,16 +3,16 @@ instance_groups:
 - name: myrole
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
 - name: foorole
   type: bosh-task
   run:
     foo: x
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: BAR

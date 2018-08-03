@@ -6,8 +6,8 @@ instance_groups:
     memory: 1
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
   colocated_containers:
   - to-be-colocated-typo

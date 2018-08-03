@@ -19,9 +19,9 @@ instance_groups:
       tag: mount-share
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
   colocated_containers:
   - to-be-colocated
 
@@ -29,7 +29,7 @@ instance_groups:
   type: colocated-container
   jobs:
   - name: ntpd
-    release_name: ntp
+    release: ntp
   run:
     memory: 1
     volumes:

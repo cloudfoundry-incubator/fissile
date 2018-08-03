@@ -33,7 +33,7 @@ instance_groups:
 - name: nats                       # The name of the instance group
   jobs:                            # BOSH jobs this group will have
   - name: nats
-    release_name: nats             # The name of the BOSH release this is from
+    release: nats             # The name of the BOSH release this is from
   tags:
   - indexed                        # Mark this group as indexed (load-balanced) => StatefulSet
   run:                             # Runtime configuration
@@ -159,7 +159,7 @@ instance_groups:
 - name: mysql
   jobs:
   - name: mysql
-    release_name: cf-mysql
+    release: cf-mysql
     provides:
       mysql: {}
   processes:

@@ -5,7 +5,7 @@ instance_groups:
   tags: [stop-on-failure]
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   run:
     flight-stage: pre-flight
     memory: 128
@@ -19,7 +19,7 @@ instance_groups:
   tags: [stop-on-failure]
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
   run:
     flight-stage: post-flight
     memory: 256

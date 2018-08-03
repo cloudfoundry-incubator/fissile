@@ -65,8 +65,8 @@ type RoleManifest struct {
 // JobReference represents a job in the context of a role
 type JobReference struct {
 	*Job              `yaml:"-"`                 // The resolved job
-	Name              string                     `yaml:"name"`         // The name of the job
-	ReleaseName       string                     `yaml:"release_name"` // The release the job comes from
+	Name              string                     `yaml:"name"`    // The name of the job
+	ReleaseName       string                     `yaml:"release"` // The release the job comes from
 	ExportedProviders map[string]jobProvidesInfo `yaml:"provides"`
 	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
 }

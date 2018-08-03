@@ -7,7 +7,7 @@ instance_groups:
      foo: x
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: BAR

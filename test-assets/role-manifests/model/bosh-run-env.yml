@@ -9,6 +9,6 @@ instance_groups:
     - FOO
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
