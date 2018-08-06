@@ -49,6 +49,11 @@ corresponding Kubernetes resource definition
 [stemcells]: ./docs/stemcells.md
 [usage reference]: ./docs/generated/fissile.md
 
+## Example Releases
+
+* https://github.com/HeavyWombat/fissile-dev
+* https://github.com/SUSE/nats-containerized-release
+
 ## Developing Fissile
 In general, use of the default `make` target is preferred before
 making a [pull request].  This will run the unit tests, as well as
