@@ -8,11 +8,11 @@ instance_groups:
   - name: tor
     release: tor
 configuration:
-  variables:
-  - name: BAR
-  - name: FOO
-  - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))' # HOME is not declared
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+variables:
+- name: BAR
+- name: FOO
+- name: PELERINUL

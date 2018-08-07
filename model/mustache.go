@@ -13,8 +13,8 @@ import (
 func MakeMapOfVariables(roleManifest *RoleManifest) CVMap {
 	configsDictionary := CVMap{}
 
-	for _, config := range roleManifest.Configuration.Variables {
-		configsDictionary[config.Name] = config
+	for _, v := range roleManifest.Variables {
+		configsDictionary[v.Name] = v
 	}
 
 	for _, config := range builtins() {
@@ -26,7 +26,7 @@ func MakeMapOfVariables(roleManifest *RoleManifest) CVMap {
 
 // GetVariablesForRole returns all the environment variables required for
 // calculating all the templates for the role
-func (r *InstanceGroup) GetVariablesForRole() (ConfigurationVariableSlice, error) {
+func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 
 	configsDictionary := MakeMapOfVariables(r.roleManifest)
 
@@ -53,9 +53,9 @@ func (r *InstanceGroup) GetVariablesForRole() (ConfigurationVariableSlice, error
 
 				for _, envVar := range varsInTemplate {
 					if confVar, ok := configsDictionary[envVar]; ok {
-						if confVar.Type == CVTypeUser {
+						if confVar.CVOptions.Type == CVTypeUser {
 							configs[confVar.Name] = confVar
-						} else if confVar.Type == CVTypeEnv && confVar.Default != "" {
+						} else if confVar.CVOptions.Type == CVTypeEnv && confVar.CVOptions.Default != "" {
 							configs[confVar.Name] = confVar
 						}
 					}
@@ -71,12 +71,12 @@ func (r *InstanceGroup) GetVariablesForRole() (ConfigurationVariableSlice, error
 	// assume usage, therefore render.
 
 	for _, confVar := range configsDictionary {
-		if confVar.Type == CVTypeUser && confVar.Internal {
+		if confVar.CVOptions.Type == CVTypeUser && confVar.CVOptions.Internal {
 			configs[confVar.Name] = confVar
 		}
 	}
 
-	result := make(ConfigurationVariableSlice, 0, len(configs))
+	result := make(Variables, 0, len(configs))
 
 	for _, value := range configs {
 		result = append(result, value)
@@ -98,7 +98,7 @@ func parseTemplate(template string) ([]string, error) {
 	return parsed.GetTemplateVariables(), nil
 }
 
-func builtins() ConfigurationVariableSlice {
+func builtins() Variables {
 	// Fissile provides some configuration variables by itself,
 	// see --> scripts/dockerfiles/run.sh, add them to prevent
 	// them from being reported as errors.  The code here has to
@@ -114,26 +114,34 @@ func builtins() ConfigurationVariableSlice {
 	//   specify variables as environment/internal. That is still
 	//   forbidden/impossible.
 
-	return ConfigurationVariableSlice{
-		&ConfigurationVariable{
-			Name:     "IP_ADDRESS",
-			Type:     CVTypeEnv,
-			Internal: true,
+	return Variables{
+		&VariableDefinition{
+			Name: "IP_ADDRESS",
+			CVOptions: CVOptions{
+				Type:     CVTypeEnv,
+				Internal: true,
+			},
 		},
-		&ConfigurationVariable{
-			Name:     "DNS_RECORD_NAME",
-			Type:     CVTypeEnv,
-			Internal: true,
+		&VariableDefinition{
+			Name: "DNS_RECORD_NAME",
+			CVOptions: CVOptions{
+				Type:     CVTypeEnv,
+				Internal: true,
+			},
 		},
-		&ConfigurationVariable{
-			Name:     "KUBE_COMPONENT_INDEX",
-			Type:     CVTypeEnv,
-			Internal: true,
+		&VariableDefinition{
+			Name: "KUBE_COMPONENT_INDEX",
+			CVOptions: CVOptions{
+				Type:     CVTypeEnv,
+				Internal: true,
+			},
 		},
-		&ConfigurationVariable{
-			Name:     "KUBERNETES_CLUSTER_DOMAIN",
-			Type:     CVTypeUser, // The user can override this
-			Internal: true,
+		&VariableDefinition{
+			Name: "KUBERNETES_CLUSTER_DOMAIN",
+			CVOptions: CVOptions{
+				Type:     CVTypeUser, // The user can override this
+				Internal: true,
+			},
 		},
 	}
 }

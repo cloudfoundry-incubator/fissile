@@ -1,0 +1,21 @@
+---
+instance_groups:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+
+variables:
+- name: admin_password
+  type: password
+  options:
+    internal: true
+- name: default_ca
+  type: certificate
+  options:
+    secret: true
+    is_ca: true
+    common_name: ca
+    internal: true

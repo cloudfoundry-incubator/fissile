@@ -330,7 +330,7 @@ func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, 
 	return getEnvVarsFromConfigs(configs, settings)
 }
 
-func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings ExportSettings) (helm.Node, error) {
+func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (helm.Node, error) {
 	sizingCountRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
 	sizingPortsRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_PORTS_([A-Z][A-Z_]*)_(MIN|MAX)$")
 
@@ -344,7 +344,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
 			}
-			if config.Secret {
+			if config.CVOptions.Secret {
 				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
 			}
 			if settings.CreateHelmChart {
@@ -366,7 +366,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
 			}
-			if config.Secret {
+			if config.CVOptions.Secret {
 				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
 			}
 
@@ -434,14 +434,14 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 			continue
 		}
 
-		if config.Secret {
+		if config.CVOptions.Secret {
 			if !settings.CreateHelmChart {
 				env = append(env, makeSecretVar(config.Name, false))
 			} else {
-				if config.Immutable && config.Generator != nil {
+				if config.CVOptions.Immutable && config.Type != "" {
 					// Users cannot override immutable secrets that are generated
 					env = append(env, makeSecretVar(config.Name, true))
-				} else if config.Generator == nil {
+				} else if config.Type == "" {
 					env = append(env, makeSecretVar(config.Name, false))
 				} else {
 					// Generated secrets can be overridden by the user (unless immutable)
@@ -456,9 +456,9 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 		}
 
 		var stringifiedValue string
-		if settings.CreateHelmChart && config.Type == model.CVTypeUser {
+		if settings.CreateHelmChart && config.CVOptions.Type == model.CVTypeUser {
 			required := `""`
-			if config.Required {
+			if config.CVOptions.Required {
 				required = fmt.Sprintf(`{{fail "env.%s has not been set"}}`, config.Name)
 			}
 			name := ".Values.env." + config.Name

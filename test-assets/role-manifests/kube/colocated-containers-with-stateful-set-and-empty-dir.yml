@@ -43,7 +43,8 @@ instance_groups:
 configuration:
   templates:
     fox: ((SOME_VAR))
-  variables:
-  - name: ALL_VAR
+variables:
+- name: ALL_VAR
+  options:
     internal: true
-  - name: SOME_VAR
+- name: SOME_VAR

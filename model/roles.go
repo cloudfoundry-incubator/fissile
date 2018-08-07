@@ -1,12 +1,10 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/SUSE/fissile/util"
@@ -19,144 +17,9 @@ import (
 type RoleManifest struct {
 	InstanceGroups InstanceGroups `yaml:"instance_groups"`
 	Configuration  *Configuration `yaml:"configuration"`
+	Variables      Variables
 
 	manifestFilePath string
-}
-
-// GeneratorType describes the type of generator used for the configuration value
-type GeneratorType string
-
-// These are the available generator types for configuration values
-const (
-	GeneratorTypePassword      = GeneratorType("Password")      // Password
-	GeneratorTypeSSH           = GeneratorType("SSH")           // SSH key
-	GeneratorTypeCACertificate = GeneratorType("CACertificate") // CA Certificate
-	GeneratorTypeCertificate   = GeneratorType("Certificate")   // Certificate
-)
-
-// An AuthRule is a single rule for a RBAC authorization role
-type AuthRule struct {
-	APIGroups []string `yaml:"apiGroups"`
-	Resources []string `yaml:"resources"`
-	Verbs     []string `yaml:"verbs"`
-}
-
-// An AuthRole is a role for RBAC authorization
-type AuthRole []AuthRule
-
-// An AuthAccount is a service account for RBAC authorization
-type AuthAccount struct {
-	Roles []string `yaml:"roles"`
-}
-
-// Configuration contains information about how to configure the
-// resulting images
-type Configuration struct {
-	Authorization struct {
-		Roles    map[string]AuthRole    `yaml:"roles,omitempty"`
-		Accounts map[string]AuthAccount `yaml:"accounts,omitempty"`
-	} `yaml:"auth,omitempty"`
-	Templates map[string]string          `yaml:"templates"`
-	Variables ConfigurationVariableSlice `yaml:"variables"`
-}
-
-// ConfigurationVariable is a configuration to be exposed to the IaaS
-//
-// Notes on the fields Type and Internal.
-// 1. Type's legal values are `user` and `environment`.
-//    `user` is default.
-//
-//    A `user` CV is rendered into k8s yml config files, etc. to make it available to roles who need it.
-//    - An internal CV is rendered to all roles.
-//    - A public CV is rendered only to the roles whose templates refer to the CV.
-//
-//    An `environment` CV comes from a script, not the user. Being
-//    internal this way it is not rendered to any configuration files.
-//
-// 2. Internal's legal values are all YAML boolean values.
-//    A public CV is used in templates
-//    An internal CV is not, consumed in a script instead.
-type ConfigurationVariable struct {
-	Name          string                          `yaml:"name"`
-	PreviousNames []string                        `yaml:"previous_names"`
-	Default       interface{}                     `yaml:"default"`
-	Description   string                          `yaml:"description"`
-	Example       string                          `yaml:"example"`
-	Generator     *ConfigurationVariableGenerator `yaml:"generator"`
-	Type          CVType                          `yaml:"type"`
-	Internal      bool                            `yaml:"internal,omitempty"`
-	Secret        bool                            `yaml:"secret,omitempty"`
-	Required      bool                            `yaml:"required,omitempty"`
-	Immutable     bool                            `yaml:"immutable,omitempty"`
-}
-
-// Value fetches the value of config variable
-func (config *ConfigurationVariable) Value(defaults map[string]string) (bool, string) {
-	var value interface{}
-
-	value = config.Default
-
-	if defaultValue, ok := defaults[config.Name]; ok {
-		value = defaultValue
-	}
-
-	if value == nil {
-		return false, ""
-	}
-
-	var stringifiedValue string
-	if valueAsString, ok := value.(string); ok {
-		var err error
-		stringifiedValue, err = strconv.Unquote(fmt.Sprintf(`"%s"`, valueAsString))
-		if err != nil {
-			stringifiedValue = valueAsString
-		}
-	} else {
-		asJSON, _ := json.Marshal(value)
-		stringifiedValue = string(asJSON)
-	}
-
-	return true, stringifiedValue
-}
-
-// CVType is the type of the configuration variable; see the constants below
-type CVType string
-
-const (
-	// CVTypeUser is for user-specified variables (default)
-	CVTypeUser = CVType("user")
-	// CVTypeEnv is for script-specified variables
-	CVTypeEnv = CVType("environment")
-)
-
-// CVMap is a map from variable name to ConfigurationVariable, for
-// various places which require quick access/search/existence check.
-type CVMap map[string]*ConfigurationVariable
-
-// ConfigurationVariableSlice is a sortable slice of ConfigurationVariables
-type ConfigurationVariableSlice []*ConfigurationVariable
-
-// Len is the number of ConfigurationVariables in the slice
-func (confVars ConfigurationVariableSlice) Len() int {
-	return len(confVars)
-}
-
-// Less reports whether config variable at index i sort before the one at index j
-func (confVars ConfigurationVariableSlice) Less(i, j int) bool {
-	return strings.Compare(confVars[i].Name, confVars[j].Name) < 0
-}
-
-// Swap exchanges configuration variables at index i and index j
-func (confVars ConfigurationVariableSlice) Swap(i, j int) {
-	confVars[i], confVars[j] = confVars[j], confVars[i]
-}
-
-// ConfigurationVariableGenerator describes how to automatically generate values
-// for a configuration variable
-type ConfigurationVariableGenerator struct {
-	ID        string        `yaml:"id"`
-	Type      GeneratorType `yaml:"type"`
-	ValueType string        `yaml:"value_type"`
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
@@ -176,6 +39,17 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	}
 	if roleManifest.Configuration.Templates == nil {
 		roleManifest.Configuration.Templates = map[string]string{}
+	}
+
+	// Parse CVOptions
+	var definitions internalVariableDefinitions
+	err = yaml.Unmarshal(manifestContents, &definitions)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, v := range definitions.Variables {
+		roleManifest.Variables[i].CVOptions = v.CVOptions
 	}
 
 	err = roleManifest.resolveRoleManifest(releases, grapher)
@@ -303,9 +177,9 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 	// This lets us assume valid jobs in the validation routines
 	if len(allErrs) == 0 {
 		allErrs = append(allErrs, m.resolveLinks()...)
-		allErrs = append(allErrs, validateVariableType(m.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariableSorting(m.Configuration.Variables)...)
-		allErrs = append(allErrs, validateVariablePreviousNames(m.Configuration.Variables)...)
+		allErrs = append(allErrs, validateVariableType(m.Variables)...)
+		allErrs = append(allErrs, validateVariableSorting(m.Variables)...)
+		allErrs = append(allErrs, validateVariablePreviousNames(m.Variables)...)
 		allErrs = append(allErrs, validateVariableUsage(m)...)
 		allErrs = append(allErrs, validateTemplateUsage(m)...)
 		allErrs = append(allErrs, validateNonTemplates(m)...)
@@ -483,24 +357,24 @@ func (m *RoleManifest) SelectInstanceGroups(roleNames []string) (InstanceGroups,
 // validateVariableType checks that only legal values are used for
 // the type field of variables, and resolves missing information to
 // defaults. It reports all variables which are badly typed.
-func validateVariableType(variables ConfigurationVariableSlice) validation.ErrorList {
+func validateVariableType(variables Variables) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	for _, cv := range variables {
-		switch cv.Type {
+		switch cv.CVOptions.Type {
 		case "":
-			cv.Type = CVTypeUser
+			cv.CVOptions.Type = CVTypeUser
 		case CVTypeUser:
 		case CVTypeEnv:
-			if cv.Internal {
+			if cv.CVOptions.Internal {
 				allErrs = append(allErrs, validation.Invalid(
 					fmt.Sprintf("configuration.variables[%s].type", cv.Name),
-					cv.Type, `type conflicts with flag "internal"`))
+					cv.CVOptions.Type, `type conflicts with flag "internal"`))
 			}
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("configuration.variables[%s].type", cv.Name),
-				cv.Type, "Expected one of user, or environment"))
+				cv.CVOptions.Type, "Expected one of user, or environment"))
 		}
 	}
 
@@ -509,7 +383,7 @@ func validateVariableType(variables ConfigurationVariableSlice) validation.Error
 
 // validateVariableSorting tests whether the parameters are properly sorted or not.
 // It reports all variables which are out of order.
-func validateVariableSorting(variables ConfigurationVariableSlice) validation.ErrorList {
+func validateVariableSorting(variables Variables) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	previousName := ""
@@ -530,18 +404,18 @@ func validateVariableSorting(variables ConfigurationVariableSlice) validation.Er
 
 // validateVariablePreviousNames tests whether PreviousNames of a variable are used either
 // by as a Name or a PreviousName of another variable.
-func validateVariablePreviousNames(variables ConfigurationVariableSlice) validation.ErrorList {
+func validateVariablePreviousNames(variables Variables) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	for _, cvOuter := range variables {
-		for _, previousOuter := range cvOuter.PreviousNames {
+		for _, previousOuter := range cvOuter.CVOptions.PreviousNames {
 			for _, cvInner := range variables {
 				if previousOuter == cvInner.Name {
 					allErrs = append(allErrs, validation.Invalid("configuration.variables",
 						cvOuter.Name,
 						fmt.Sprintf("Previous name '%s' also exist as a new variable", cvInner.Name)))
 				}
-				for _, previousInner := range cvInner.PreviousNames {
+				for _, previousInner := range cvInner.CVOptions.PreviousNames {
 					if cvOuter.Name != cvInner.Name && previousOuter == previousInner {
 						allErrs = append(allErrs, validation.Invalid("configuration.variables",
 							cvOuter.Name,
@@ -628,7 +502,7 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	// those which are not internal.
 
 	for cv, cvar := range unusedConfigs {
-		if cvar.Internal {
+		if cvar.CVOptions.Internal {
 			continue
 		}
 

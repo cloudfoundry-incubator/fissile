@@ -26,14 +26,15 @@ instance_groups:
   - name: tor
     release: tor
 configuration:
-  variables:
-  - name: BAR
-  - name: FOO
-  - name: HOME
-  - name: KUPRIES
-    internal: true
-  - name: PELERINUL
   templates:
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+variables:
+- name: BAR
+- name: FOO
+- name: HOME
+- name: KUPRIES
+  options:
+    internal: true
+- name: PELERINUL

@@ -8,9 +8,10 @@ instance_groups:
   - name: new_hostname
     release: tor
 configuration:
-  variables:
-  - name: BAR
-    type: environment
-    internal: true
   templates:
     properties.tor.hostname: '((BAR))'
+variables:
+- name: BAR
+  options:
+    type: environment
+    internal: true

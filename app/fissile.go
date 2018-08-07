@@ -912,7 +912,7 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 
 	cvs := model.MakeMapOfVariables(settings.RoleManifest)
 	for key, value := range cvs {
-		if !value.Secret {
+		if !value.CVOptions.Secret {
 			delete(cvs, key)
 		}
 	}

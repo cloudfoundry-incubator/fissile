@@ -40,14 +40,15 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 	}
 
 	// Force a broadcast SECRET_VAR into the manifest, to see in all roles
-	manifest.Configuration.Variables =
-		append(manifest.Configuration.Variables,
-			&model.ConfigurationVariable{
-				Name:     "SECRET_VAR",
+	manifest.Variables = append(manifest.Variables,
+		&model.VariableDefinition{
+			Name: "SECRET_VAR",
+			CVOptions: model.CVOptions{
 				Type:     model.CVTypeUser,
 				Secret:   true,
 				Internal: true,
-			})
+			},
+		})
 	return instanceGroup
 }
 
@@ -390,8 +391,8 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_COUNT",
 		},
 	}, ExportSettings{
@@ -427,8 +428,8 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_COUNT",
 		},
 	}, ExportSettings{
@@ -464,11 +465,11 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
 		},
-		&model.ConfigurationVariable{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
 		},
 	}, ExportSettings{
@@ -511,11 +512,11 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
 		},
-		&model.ConfigurationVariable{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
 		},
 	}, ExportSettings{
@@ -562,8 +563,8 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_COUNTER",
 		},
 	}, ExportSettings{
@@ -594,8 +595,8 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_COUNTER",
 		},
 	}, ExportSettings{
@@ -631,8 +632,8 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_NAME",
 		},
 	}, ExportSettings{
@@ -663,8 +664,8 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_NAME",
 		},
 	}, ExportSettings{
@@ -700,10 +701,12 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:   "A_SECRET",
-			Secret: true,
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
+			Name: "A_SECRET",
+			CVOptions: model.CVOptions{
+				Secret: true,
+			},
 		},
 	}, ExportSettings{
 		RoleManifest: &model.RoleManifest{
@@ -749,10 +752,12 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 
 	t.Run("Plain", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:   "A_SECRET",
-				Secret: true,
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
+				Name: "A_SECRET",
+				CVOptions: model.CVOptions{
+					Secret: true,
+				},
 			},
 		}, settings)
 		if !assert.NoError(err) {
@@ -779,14 +784,12 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 
 	t.Run("Generated", func(t *testing.T) {
 		t.Parallel()
-		cv := []*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:   "A_SECRET",
-				Secret: true,
-				Generator: &model.ConfigurationVariableGenerator{
-					ID:        "no",
-					Type:      model.GeneratorTypePassword,
-					ValueType: "foo-login",
+		cv := model.Variables{
+			&model.VariableDefinition{
+				Name: "A_SECRET",
+				Type: "password",
+				CVOptions: model.CVOptions{
+					Secret: true,
 				},
 			},
 		}
@@ -846,7 +849,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 			`, actual)
 		})
 
-		cv[0].Immutable = true
+		cv[0].CVOptions.Immutable = true
 		ev, err = getEnvVarsFromConfigs(cv, settings)
 		if !assert.NoError(err) {
 			return
@@ -888,10 +891,12 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 
 	t.Run("Present", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:    "SOMETHING",
-				Default: []string{"or", "other"},
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
+				Name: "SOMETHING",
+				CVOptions: model.CVOptions{
+					Default: []string{"or", "other"},
+				},
 			},
 		}, settings)
 
@@ -912,8 +917,8 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
 				Name: "SOMETHING",
 			},
 		}, settings)
@@ -935,10 +940,12 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "SOMETHING",
-			Type: model.CVTypeUser,
+			CVOptions: model.CVOptions{
+				Type: model.CVTypeUser,
+			},
 		},
 	}, ExportSettings{
 		CreateHelmChart: true,
@@ -1000,11 +1007,13 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:     "SOMETHING",
-			Type:     model.CVTypeUser,
-			Required: true,
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
+			Name: "SOMETHING",
+			CVOptions: model.CVOptions{
+				Type:     model.CVTypeUser,
+				Required: true,
+			},
 		},
 	}, ExportSettings{
 		CreateHelmChart: true,
