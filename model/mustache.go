@@ -26,7 +26,7 @@ func MakeMapOfVariables(roleManifest *RoleManifest) CVMap {
 
 // GetVariablesForRole returns all the environment variables required for
 // calculating all the templates for the role
-func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
+func (r *InstanceGroup) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
 	configsDictionary := MakeMapOfVariables(r.roleManifest)
 
@@ -34,8 +34,8 @@ func (r *Role) GetVariablesForRole() (ConfigurationVariableSlice, error) {
 
 	// First, render all referenced variables of type user.
 
-	for _, roleJob := range r.RoleJobs {
-		for _, property := range roleJob.Properties {
+	for _, jobReference := range r.JobReferences {
+		for _, property := range jobReference.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 			for templatePropName, template := range r.Configuration.Templates {

@@ -6,24 +6,24 @@ Builds Docker images from your BOSH releases.
 
 
 
-This command goes through all the role definitions in the role manifest creating a
+This command goes through all the instance group definitions in the role manifest creating a
 Dockerfile for each of them and building it.
 
-Each role gets a directory `<work-dir>/dockerfiles`. In each directory one can find
+Each instance group gets a directory `<work-dir>/dockerfiles`. In each directory one can find
 a Dockerfile and a directory structure that gets ADDed to the docker image. The
 directory structure contains jobs, packages and all other necessary scripts and
 templates.
 
-The images will have a 'role' label useful for filtering.
+The images will have a '`instance_group`' label useful for filtering.
 The entrypoint for each image is `/opt/fissile/run.sh`.
 
-The images will be tagged: `<repository>-<role_name>:<SIGNATURE>`.
+The images will be tagged: `<repository>-<instance_group_name>:<SIGNATURE>`.
 The SIGNATURE is based on the hashes of all jobs and packages that are included in
 the image.
 
 The `--patch-properties-release` flag is used to distinguish the patchProperties release/job spec
 from other specs.  At most one is allowed.
-	
+
 
 ```
 fissile build images
@@ -37,7 +37,7 @@ fissile build images
   -N, --no-build                          If specified, the Dockerfile and assets will be created, but the image won't be built.
   -O, --output-directory string           Output the result as tar files in the given directory rather than building with docker
   -P, --patch-properties-release string   Used to designate a "patch-properties" psuedo-job in a particular release.  Format: RELEASE/JOB.
-      --roles string                      Build only images with the given role name; comma separated.
+      --roles string                      Build only images with the given instance group name; comma separated.
   -s, --stemcell string                   The source stemcell
       --stemcell-id string                Docker image ID for the stemcell (intended for CI)
       --tag-extra string                  Additional information to use in computing the image tags
@@ -61,7 +61,7 @@ fissile build images
   -n, --release-name string          Name of a dev BOSH release; if empty, default configured dev release name will be used; Final release always use the name in release.MF
   -v, --release-version string       Version of a dev BOSH release; if empty, the latest dev release will be used; Final release always use the version in release.MF
   -p, --repository string            Repository name prefix used to create image names. (default "fissile")
-  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each role.
+  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each instance group.
   -V, --verbose                      Enable verbose output.
   -w, --work-dir string              Path to the location of the work directory. (default "/var/fissile")
   -W, --workers int                  Number of workers to use; zero means determine based on CPU count.

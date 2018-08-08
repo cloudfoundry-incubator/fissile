@@ -1,6 +1,6 @@
 ---
-roles:
-- name: role
+instance_groups:
+- name: some-group
   run:
     memory: 128
     scaling:
@@ -16,5 +16,5 @@ roles:
               - key: "skiff-role-name"
                 operator: In
                 values:
-                - role
+                - some-group
             topologyKey: "beta.kubernetes.io/os"

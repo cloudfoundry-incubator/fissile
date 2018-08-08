@@ -1,10 +1,10 @@
 # This role manifest tests that unused variables are an error
 ---
-roles:
+instance_groups:
 - name: myrole
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
   run: {}
 configuration:
   variables:

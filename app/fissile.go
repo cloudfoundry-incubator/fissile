@@ -301,7 +301,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, roleNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -344,12 +344,12 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		}
 	}
 
-	roles, err := roleManifest.SelectRoles(roleNames)
+	instanceGroups, err := roleManifest.SelectInstanceGroups(instanceGroupNames)
 	if err != nil {
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
 
-	if err := comp.Compile(workerCount, releases, roles, verbose); err != nil {
+	if err := comp.Compile(workerCount, releases, instanceGroups, verbose); err != nil {
 		return fmt.Errorf("Error compiling packages: %s", err.Error())
 	}
 
@@ -420,7 +420,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
+func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -430,9 +430,9 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
 	if err != nil {
-		return fmt.Errorf("Error finding role's package name: %s", err.Error())
+		return fmt.Errorf("Error finding instance group's package name: %s", err.Error())
 	}
 	if !force {
 		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
@@ -460,7 +460,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, labels, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, labels, force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -473,14 +473,14 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 
 // GeneratePackagesRoleTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
-func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, roles model.Roles, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
+func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
 	if err != nil {
-		return fmt.Errorf("Error finding role's package name: %v", err)
+		return fmt.Errorf("Error finding instance group's package name: %v", err)
 	}
 	outputPath := filepath.Join(outputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
 
@@ -507,7 +507,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 
 	// We always force build all packages here to avoid needing to talk to the
 	// docker daemon to figure out what we can keep
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(roles, labels, true)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, labels, true)
 	err = tarPopulator(tarWriter)
 	if err != nil {
 		return fmt.Errorf("Error writing tar file: %s", err)
@@ -522,14 +522,14 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, roleNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, instanceGroupNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
 	if len(f.releases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	if metricsPath != "" {
-		stampy.Stamp(metricsPath, "fissile", "create-role-images", "start")
-		defer stampy.Stamp(metricsPath, "fissile", "create-role-images", "done")
+		stampy.Stamp(metricsPath, "fissile", "create-images", "start")
+		defer stampy.Stamp(metricsPath, "fissile", "create-images", "done")
 	}
 
 	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
@@ -570,21 +570,21 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	roles, err := roleManifest.SelectRoles(roleNames)
+	instanceGroups, err := roleManifest.SelectInstanceGroups(instanceGroupNames)
 	if err != nil {
 		return err
 	}
 
 	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, roles, packagesImageBuilder, labels)
+		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, instanceGroups, packagesImageBuilder, labels)
 	} else {
-		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, roles, outputDirectory, packagesImageBuilder, labels)
+		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, instanceGroups, outputDirectory, packagesImageBuilder, labels)
 	}
 	if err != nil {
 		return err
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, roles, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
 	if err != nil {
 		return err
 	}
@@ -605,7 +605,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	return roleBuilder.BuildRoleImages(roles, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount)
+	return roleBuilder.BuildRoleImages(instanceGroups, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount)
 }
 
 // ListRoleImages lists all dev role images
@@ -638,13 +638,13 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 		return fmt.Errorf("Error loading opinions: %s", err.Error())
 	}
 
-	for _, role := range roleManifest.Roles {
-		devVersion, err := role.GetRoleDevVersion(opinions, tagExtra, f.Version, f)
+	for _, instanceGroup := range roleManifest.InstanceGroups {
+		devVersion, err := instanceGroup.GetRoleDevVersion(opinions, tagExtra, f.Version, f)
 		if err != nil {
-			return fmt.Errorf("Error creating role checksum: %s", err.Error())
+			return fmt.Errorf("Error creating instance group checksum: %s", err.Error())
 		}
 
-		imageName := builder.GetRoleDevImageName(registry, organization, repository, role, devVersion)
+		imageName := builder.GetRoleDevImageName(registry, organization, repository, instanceGroup, devVersion)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)
@@ -1033,9 +1033,9 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 	return err
 }
 
-func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, settings kube.ExportSettings) error {
-	if role.HasTag(model.RoleTagStopOnFailure) {
-		pod, err := kube.NewPod(role, settings, f)
+func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model.InstanceGroup, settings kube.ExportSettings) error {
+	if instanceGroup.HasTag(model.RoleTagStopOnFailure) {
+		pod, err := kube.NewPod(instanceGroup, settings, f)
 		if err != nil {
 			return err
 		}
@@ -1044,7 +1044,7 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 			return err
 		}
 	} else {
-		job, err := kube.NewJob(role, settings, f)
+		job, err := kube.NewJob(instanceGroup, settings, f)
 		if err != nil {
 			return err
 		}
@@ -1057,10 +1057,10 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, role *model.Role, se
 	return nil
 }
 
-// roleHasStorage returns true if a given role uses shared or
+// instanceGroupHasStorage returns true if a given group uses shared or
 // persistent volumes.
-func (f *Fissile) roleHasStorage(role *model.Role) bool {
-	for _, volume := range role.Run.Volumes {
+func (f *Fissile) instanceGroupHasStorage(instanceGroup *model.InstanceGroup) bool {
+	for _, volume := range instanceGroup.Run.Volumes {
 		switch volume.Type {
 		case model.VolumeTypePersistent, model.VolumeTypeShared:
 			return true
@@ -1070,15 +1070,15 @@ func (f *Fissile) roleHasStorage(role *model.Role) bool {
 }
 
 func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
-	for _, role := range settings.RoleManifest.Roles {
-		if role.IsColocatedContainerRole() {
+	for _, instanceGroup := range settings.RoleManifest.InstanceGroups {
+		if instanceGroup.IsColocated() {
 			continue
 		}
-		if settings.CreateHelmChart && role.Run.FlightStage == model.FlightStageManual {
+		if settings.CreateHelmChart && instanceGroup.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
-		subDir := string(role.Type)
+		subDir := string(instanceGroup.Type)
 		if settings.CreateHelmChart {
 			subDir = "templates"
 		}
@@ -1087,11 +1087,11 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		if err != nil {
 			return err
 		}
-		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yaml", role.Name))
+		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yaml", instanceGroup.Name))
 
 		f.UI.Printf("Writing config %s for role %s\n",
 			color.CyanString(outputPath),
-			color.CyanString(role.Name),
+			color.CyanString(instanceGroup.Name),
 		)
 
 		outputFile, err := os.Create(outputPath)
@@ -1100,9 +1100,9 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		}
 		defer outputFile.Close()
 
-		switch role.Type {
+		switch instanceGroup.Type {
 		case model.RoleTypeBoshTask:
-			err := f.generateBoshTaskRole(outputFile, role, settings)
+			err := f.generateBoshTaskRole(outputFile, instanceGroup, settings)
 			if err != nil {
 				return err
 			}
@@ -1110,7 +1110,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		case model.RoleTypeBosh:
 			enc := helm.NewEncoder(outputFile)
 
-			statefulSet, deps, err := kube.NewStatefulSet(role, settings, f)
+			statefulSet, deps, err := kube.NewStatefulSet(instanceGroup, settings, f)
 			if err != nil {
 				return err
 			}

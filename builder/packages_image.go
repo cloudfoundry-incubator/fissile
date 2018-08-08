@@ -176,21 +176,21 @@ func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Pa
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (p *PackagesImageBuilder) NewDockerPopulator(roles model.Roles, labels map[string]string, forceBuildAll bool) func(*tar.Writer) error {
+func (p *PackagesImageBuilder) NewDockerPopulator(instanceGroups model.InstanceGroups, labels map[string]string, forceBuildAll bool) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		var err error
-		if len(roles) == 0 {
-			return fmt.Errorf("No roles to build")
+		if len(instanceGroups) == 0 {
+			return fmt.Errorf("No instance groups to build")
 		}
 
 		// Collect compiled packages
 		foundFingerprints := make(map[string]struct{})
 		var packages model.Packages
-		for _, role := range roles {
-			for _, roleJob := range role.RoleJobs {
-				for _, pkg := range roleJob.Packages {
+		for _, instanceGroup := range instanceGroups {
+			for _, jobReference := range instanceGroup.JobReferences {
+				for _, pkg := range jobReference.Packages {
 					if _, ok := foundFingerprints[pkg.Fingerprint]; ok {
-						// Package has already been found (possibly due to a different role)
+						// Package has already been found (possibly due to a different instance group)
 						continue
 					}
 					packages = append(packages, pkg)
@@ -266,12 +266,12 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 	return dockerfileTemplate.Execute(outputFile, context)
 }
 
-// GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified roles
-func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, roles model.Roles, grapher util.ModelGrapher) (string, error) {
+// GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified instance group
+func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, instanceGroups model.InstanceGroups, grapher util.ModelGrapher) (string, error) {
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
-	for _, r := range roles {
-		for _, j := range r.RoleJobs {
+	for _, r := range instanceGroups {
+		for _, j := range r.JobReferences {
 			for _, pkg := range j.Packages {
 				pkgMap[pkg.Fingerprint] = pkg
 			}

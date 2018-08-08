@@ -1,12 +1,12 @@
 # This role manifest tests that an undeclared variable is an error
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: BAR

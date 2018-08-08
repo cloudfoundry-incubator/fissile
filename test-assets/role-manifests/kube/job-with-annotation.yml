@@ -1,10 +1,10 @@
 ---
-roles:
-- name: role
+instance_groups:
+- name: some-group
   type: bosh-task
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   run:
     flight-stage: post-flight
     memory: 128

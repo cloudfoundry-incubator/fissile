@@ -9,7 +9,7 @@ import (
 )
 
 // NewStatefulSet returns a stateful set and a list of services for the given role
-func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, helm.Node, error) {
+func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, helm.Node, error) {
 	// For each StatefulSet, we need two services -- one for the public (inside
 	// the namespace) endpoint, and one headless service to control the pods.
 	if role == nil {
@@ -57,7 +57,7 @@ func NewStatefulSet(role *model.Role, settings ExportSettings, grapher util.Mode
 }
 
 // getVolumeClaims returns the list of persistent and shared volume claims from a role
-func getVolumeClaims(role *model.Role, createHelmChart bool) []helm.Node {
+func getVolumeClaims(role *model.InstanceGroup, createHelmChart bool) []helm.Node {
 	var claims []helm.Node
 	for _, volume := range role.Run.Volumes {
 		var accessMode string

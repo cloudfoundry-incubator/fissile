@@ -1,21 +1,21 @@
 ---
-roles:
+instance_groups:
 - name: myrole
   scripts: ["myrole.sh"]
   run:
     memory: 1
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
 - name: foorole
   type: bosh-task
   run:
     foo: x
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
 - name: dockerrole
   type: docker
   fookey: somevalue

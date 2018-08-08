@@ -4,7 +4,7 @@ FROM {{ index . "base_image" }}
 MAINTAINER cloudfoundry@suse.example
 {{ end }}
 
-LABEL "role"="{{ .role.Name }}"
+LABEL "instance_group"="{{ .instance_group.Name }}"
 
 ADD root /
 

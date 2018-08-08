@@ -10,7 +10,7 @@ import (
 // NewServiceList creates a list of services
 // clustering should be true if a kubernetes headless service should be created
 // (for self-clustering roles, to reach each pod individually)
-func NewServiceList(role *model.Role, clustering bool, settings ExportSettings) (helm.Node, error) {
+func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
 	if clustering {
@@ -65,7 +65,7 @@ const (
 )
 
 // newService creates a new k8s service (ClusterIP or LoadBalanced)
-func newService(role *model.Role, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
+func newService(role *model.InstanceGroup, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
 		if serviceType == newServiceTypePublic && !port.Public {

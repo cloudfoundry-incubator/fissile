@@ -56,17 +56,17 @@ const (
 
 // RoleManifest represents a collection of roles
 type RoleManifest struct {
-	Roles         Roles          `yaml:"roles"`
-	Configuration *Configuration `yaml:"configuration"`
+	InstanceGroups InstanceGroups `yaml:"instance_groups"`
+	Configuration  *Configuration `yaml:"configuration"`
 
 	manifestFilePath string
 }
 
-// RoleJob represents a job in the context of a role
-type RoleJob struct {
+// JobReference represents a job in the context of a role
+type JobReference struct {
 	*Job              `yaml:"-"`                 // The resolved job
-	Name              string                     `yaml:"name"`         // The name of the job
-	ReleaseName       string                     `yaml:"release_name"` // The release the job comes from
+	Name              string                     `yaml:"name"`    // The name of the job
+	ReleaseName       string                     `yaml:"release"` // The release the job comes from
 	ExportedProviders map[string]jobProvidesInfo `yaml:"provides"`
 	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
 }
@@ -82,19 +82,19 @@ const (
 	RoleTagActivePassive     = RoleTag("active-passive")
 )
 
-// Role represents a collection of jobs that are colocated on a container
-type Role struct {
-	Name                string         `yaml:"name"`
-	Description         string         `yaml:"description"`
-	EnvironScripts      []string       `yaml:"environment_scripts"`
-	Scripts             []string       `yaml:"scripts"`
-	PostConfigScripts   []string       `yaml:"post_config_scripts"`
-	Type                RoleType       `yaml:"type,omitempty"`
-	RoleJobs            []*RoleJob     `yaml:"jobs"`
-	Configuration       *Configuration `yaml:"configuration"`
-	Run                 *RoleRun       `yaml:"run"`
-	Tags                []RoleTag      `yaml:"tags"`
-	ColocatedContainers []string       `yaml:"colocated_containers,omitempty"`
+// InstanceGroup represents a collection of jobs that are colocated on a container
+type InstanceGroup struct {
+	Name                string          `yaml:"name"`
+	Description         string          `yaml:"description"`
+	EnvironScripts      []string        `yaml:"environment_scripts"`
+	Scripts             []string        `yaml:"scripts"`
+	PostConfigScripts   []string        `yaml:"post_config_scripts"`
+	Type                RoleType        `yaml:"type,omitempty"`
+	JobReferences       []*JobReference `yaml:"jobs"`
+	Configuration       *Configuration  `yaml:"configuration"`
+	Run                 *RoleRun        `yaml:"run"`
+	Tags                []RoleTag       `yaml:"tags"`
+	ColocatedContainers []string        `yaml:"colocated_containers,omitempty"`
 
 	roleManifest *RoleManifest
 }
@@ -191,8 +191,8 @@ type HealthProbe struct {
 	FailureThreshold int               `yaml:"failure_threshold,omitempty"` // Failure threshold in seconds, default 3, minimum 1
 }
 
-// Roles is an array of Role*
-type Roles []*Role
+// InstanceGroups is an array of Role*
+type InstanceGroups []*InstanceGroup
 
 // GeneratorType describes the type of generator used for the configuration value
 type GeneratorType string
@@ -330,19 +330,19 @@ type ConfigurationVariableGenerator struct {
 	ValueType string        `yaml:"value_type"`
 }
 
-// Len is the number of roles in the slice
-func (roles Roles) Len() int {
-	return len(roles)
+// Len is the number of instance groups in the slice
+func (igs InstanceGroups) Len() int {
+	return len(igs)
 }
 
 // Less reports whether role at index i sort before role at index j
-func (roles Roles) Less(i, j int) bool {
-	return strings.Compare(roles[i].Name, roles[j].Name) < 0
+func (igs InstanceGroups) Less(i, j int) bool {
+	return strings.Compare(igs[i].Name, igs[j].Name) < 0
 }
 
 // Swap exchanges roles at index i and index j
-func (roles Roles) Swap(i, j int) {
-	roles[i], roles[j] = roles[j], roles[i]
+func (igs InstanceGroups) Swap(i, j int) {
+	igs[i], igs[j] = igs[j], igs[i]
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
@@ -395,92 +395,92 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 
 	allErrs := validation.ErrorList{}
 
-	for i := len(m.Roles) - 1; i >= 0; i-- {
-		role := m.Roles[i]
+	for i := len(m.InstanceGroups) - 1; i >= 0; i-- {
+		instanceGroup := m.InstanceGroups[i]
 
-		// Remove all roles that are not of the "bosh" or "bosh-task" type
+		// Remove all instance groups that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
-		// The kept roles are validated.
-		switch role.Type {
+		// The kept instance groups are validated.
+		switch instanceGroup.Type {
 		case "":
-			role.Type = RoleTypeBosh
+			instanceGroup.Type = RoleTypeBosh
 		case RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer:
 			// Nothing to do.
 		case RoleTypeDocker:
-			m.Roles = append(m.Roles[:i], m.Roles[i+1:]...)
+			m.InstanceGroups = append(m.InstanceGroups[:i], m.InstanceGroups[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].type", role.Name),
-				role.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
+				fmt.Sprintf("instance_groups[%s].type", instanceGroup.Name),
+				instanceGroup.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
 		}
 
-		allErrs = append(allErrs, validateRoleTags(role)...)
-		allErrs = append(allErrs, validateRoleRun(role, m, declaredConfigs)...)
+		allErrs = append(allErrs, validateRoleTags(instanceGroup)...)
+		allErrs = append(allErrs, validateRoleRun(instanceGroup, m, declaredConfigs)...)
 	}
 
-	for _, role := range m.Roles {
-		role.roleManifest = m
+	for _, instanceGroup := range m.InstanceGroups {
+		instanceGroup.roleManifest = m
 
-		if role.Run != nil && role.Run.ActivePassiveProbe != "" {
-			if !role.HasTag(RoleTagActivePassive) {
+		if instanceGroup.Run != nil && instanceGroup.Run.ActivePassiveProbe != "" {
+			if !instanceGroup.HasTag(RoleTagActivePassive) {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
-					role.Run.ActivePassiveProbe,
-					"Active/passive probes are only valid on roles with active-passive tag"))
+					fmt.Sprintf("instance_groups[%s].run.active-passive-probe", instanceGroup.Name),
+					instanceGroup.Run.ActivePassiveProbe,
+					"Active/passive probes are only valid on instance groups with active-passive tag"))
 			}
 		}
 
-		for _, roleJob := range role.RoleJobs {
-			release, ok := mappedReleases[roleJob.ReleaseName]
+		for _, jobReference := range instanceGroup.JobReferences {
+			release, ok := mappedReleases[jobReference.ReleaseName]
 
 			if !ok {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].jobs[%s]", role.Name, roleJob.Name),
-					roleJob.ReleaseName,
+					fmt.Sprintf("instance_groups[%s].jobs[%s]", instanceGroup.Name, jobReference.Name),
+					jobReference.ReleaseName,
 					"Referenced release is not loaded"))
 				continue
 			}
 
-			job, err := release.LookupJob(roleJob.Name)
+			job, err := release.LookupJob(jobReference.Name)
 			if err != nil {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].jobs[%s]", role.Name, roleJob.Name),
-					roleJob.ReleaseName, err.Error()))
+					fmt.Sprintf("instance_groups[%s].jobs[%s]", instanceGroup.Name, jobReference.Name),
+					jobReference.ReleaseName, err.Error()))
 				continue
 			}
 
-			roleJob.Job = job
+			jobReference.Job = job
 			if grapher != nil {
 				_ = grapher.GraphNode(job.Fingerprint, map[string]string{"label": "job/" + job.Name})
 			}
 
-			if roleJob.ResolvedConsumers == nil {
+			if jobReference.ResolvedConsumers == nil {
 				// No explicitly specified consumers
-				roleJob.ResolvedConsumers = make(map[string]jobConsumesInfo)
+				jobReference.ResolvedConsumers = make(map[string]jobConsumesInfo)
 			}
 
-			for name, info := range roleJob.ResolvedConsumers {
+			for name, info := range jobReference.ResolvedConsumers {
 				info.Name = name
-				roleJob.ResolvedConsumers[name] = info
+				jobReference.ResolvedConsumers[name] = info
 			}
 		}
 
-		role.calculateRoleConfigurationTemplates()
+		instanceGroup.calculateRoleConfigurationTemplates()
 
 		// Validate that specified colocated containers are configured and of the
 		// correct type
-		for idx, roleName := range role.ColocatedContainers {
-			if lookupRole := m.LookupRole(roleName); lookupRole == nil {
+		for idx, roleName := range instanceGroup.ColocatedContainers {
+			if lookupRole := m.LookupInstanceGroup(roleName); lookupRole == nil {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
+					fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", instanceGroup.Name, idx),
 					roleName,
-					"There is no such role defined"))
+					"There is no such instance group defined"))
 
 			} else if lookupRole.Type != RoleTypeColocatedContainer {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].colocated_containers[%d]", role.Name, idx),
+					fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", instanceGroup.Name, idx),
 					roleName,
-					"The role is not of required type colocated-container"))
+					"The instance group is not of required type colocated-container"))
 			}
 		}
 	}
@@ -508,11 +508,11 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 	return nil
 }
 
-// LookupRole will find the given role in the role manifest
-func (m *RoleManifest) LookupRole(roleName string) *Role {
-	for _, role := range m.Roles {
-		if role.Name == roleName {
-			return role
+// LookupInstanceGroup will find the given instance group in the role manifest
+func (m *RoleManifest) LookupInstanceGroup(name string) *InstanceGroup {
+	for _, instanceGroup := range m.InstanceGroups {
+		if instanceGroup.Name == name {
+			return instanceGroup
 		}
 	}
 	return nil
@@ -527,28 +527,28 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	// involved here are the aliases, where appropriate.
 	providersByName := make(map[string]jobProvidesInfo)
 	providersByType := make(map[string][]jobProvidesInfo)
-	for _, role := range m.Roles {
-		for _, roleJob := range role.RoleJobs {
+	for _, instanceGroup := range m.InstanceGroups {
+		for _, jobReference := range instanceGroup.JobReferences {
 			var availableProviders []string
-			for availableName, availableProvider := range roleJob.Job.AvailableProviders {
+			for availableName, availableProvider := range jobReference.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
 				if availableProvider.Type != "" {
 					providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
 						jobLinkInfo: jobLinkInfo{
 							Name:     availableProvider.Name,
 							Type:     availableProvider.Type,
-							RoleName: role.Name,
-							JobName:  roleJob.Name,
+							RoleName: instanceGroup.Name,
+							JobName:  jobReference.Name,
 						},
 						Properties: availableProvider.Properties,
 					})
 				}
 			}
-			for name, provider := range roleJob.ExportedProviders {
-				info, ok := roleJob.Job.AvailableProviders[name]
+			for name, provider := range jobReference.ExportedProviders {
+				info, ok := jobReference.Job.AvailableProviders[name]
 				if !ok {
 					errors = append(errors, validation.NotFound(
-						fmt.Sprintf("roles[%s].jobs[%s].provides[%s]", role.Name, roleJob.Name, name),
+						fmt.Sprintf("instance_groups[%s].jobs[%s].provides[%s]", instanceGroup.Name, jobReference.Name, name),
 						fmt.Sprintf("Provider not found; available providers: %v", availableProviders)))
 					continue
 				}
@@ -559,8 +559,8 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					jobLinkInfo: jobLinkInfo{
 						Name:     info.Name,
 						Type:     info.Type,
-						RoleName: role.Name,
-						JobName:  roleJob.Name,
+						RoleName: instanceGroup.Name,
+						JobName:  jobReference.Name,
 					},
 					Properties: info.Properties,
 				}
@@ -569,12 +569,12 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	}
 
 	// Resolve the consumers
-	for _, role := range m.Roles {
-		for _, roleJob := range role.RoleJobs {
-			expectedConsumers := make([]jobConsumesInfo, len(roleJob.Job.DesiredConsumers))
-			copy(expectedConsumers, roleJob.Job.DesiredConsumers)
+	for _, instanceGroup := range m.InstanceGroups {
+		for _, jobReference := range instanceGroup.JobReferences {
+			expectedConsumers := make([]jobConsumesInfo, len(jobReference.Job.DesiredConsumers))
+			copy(expectedConsumers, jobReference.Job.DesiredConsumers)
 			// Deal with any explicitly marked consumers in the role manifest
-			for consumerName, consumerInfo := range roleJob.ResolvedConsumers {
+			for consumerName, consumerInfo := range jobReference.ResolvedConsumers {
 				consumerAlias := consumerName
 				if consumerInfo.Alias != "" {
 					consumerAlias = consumerInfo.Alias
@@ -582,7 +582,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 				if consumerAlias == "" {
 					// There was a consumer with an explicitly empty name
 					errors = append(errors, validation.Invalid(
-						fmt.Sprintf(`role[%s].job[%s]`, role.Name, roleJob.Name),
+						fmt.Sprintf(`instance_group[%s].job[%s]`, instanceGroup.Name, jobReference.Name),
 						"name",
 						fmt.Sprintf("consumer has no name")))
 					continue
@@ -590,11 +590,11 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 				provider, ok := providersByName[consumerAlias]
 				if !ok {
 					errors = append(errors, validation.NotFound(
-						fmt.Sprintf(`role[%s].job[%s].consumes[%s]`, role.Name, roleJob.Name, consumerName),
+						fmt.Sprintf(`instance_group[%s].job[%s].consumes[%s]`, instanceGroup.Name, jobReference.Name, consumerName),
 						fmt.Sprintf(`consumer %s not found`, consumerAlias)))
 					continue
 				}
-				roleJob.ResolvedConsumers[consumerName] = jobConsumesInfo{
+				jobReference.ResolvedConsumers[consumerName] = jobConsumesInfo{
 					jobLinkInfo: provider.jobLinkInfo,
 				}
 
@@ -624,15 +624,15 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					if name == "" {
 						name = provider.Name
 					}
-					info := roleJob.ResolvedConsumers[name]
+					info := jobReference.ResolvedConsumers[name]
 					info.Name = provider.Name
 					info.Type = provider.Type
 					info.RoleName = provider.RoleName
 					info.JobName = provider.JobName
-					roleJob.ResolvedConsumers[name] = info
+					jobReference.ResolvedConsumers[name] = info
 				} else if !consumerInfo.Optional {
 					errors = append(errors, validation.Required(
-						fmt.Sprintf(`role[%s].job[%s].consumes[%s]`, role.Name, roleJob.Name, consumerInfo.Name),
+						fmt.Sprintf(`instance_group[%s].job[%s].consumes[%s]`, instanceGroup.Name, jobReference.Name, consumerInfo.Name),
 						fmt.Sprintf(`failed to resolve provider %s (type %s)`, consumerInfo.Name, consumerInfo.Type)))
 				}
 			}
@@ -642,44 +642,44 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	return errors
 }
 
-// SelectRoles will find only the given roles in the role manifest
-func (m *RoleManifest) SelectRoles(roleNames []string) (Roles, error) {
+// SelectInstanceGroups will find only the given instance groups in the role manifest
+func (m *RoleManifest) SelectInstanceGroups(roleNames []string) (InstanceGroups, error) {
 	if len(roleNames) == 0 {
-		// No role names specified, assume all roles
-		return m.Roles, nil
+		// No names specified, assume all instance groups
+		return m.InstanceGroups, nil
 	}
 
-	var results Roles
+	var results InstanceGroups
 	var missingRoles []string
 
 	for _, roleName := range roleNames {
-		if role := m.LookupRole(roleName); role != nil {
-			results = append(results, role)
+		if instanceGroup := m.LookupInstanceGroup(roleName); instanceGroup != nil {
+			results = append(results, instanceGroup)
 		} else {
 			missingRoles = append(missingRoles, roleName)
 		}
 	}
 	if len(missingRoles) > 0 {
-		return nil, fmt.Errorf("Some roles are unknown: %v", missingRoles)
+		return nil, fmt.Errorf("Some instance groups are unknown: %v", missingRoles)
 	}
 
 	return results, nil
 }
 
-// GetLongDescription returns the description of the role plus a list of all included jobs
-func (r *Role) GetLongDescription() string {
-	desc := r.Description
+// GetLongDescription returns the description of the instance group plus a list of all included jobs
+func (g *InstanceGroup) GetLongDescription() string {
+	desc := g.Description
 	if len(desc) > 0 {
 		desc += "\n\n"
 	}
-	desc += fmt.Sprintf("The %s role contains the following jobs:", r.Name)
+	desc += fmt.Sprintf("The %s instance group contains the following jobs:", g.Name)
 	var noDesc []string
 	also := ""
-	for _, roleJob := range r.RoleJobs {
-		if roleJob.Description == "" {
-			noDesc = append(noDesc, roleJob.Name)
+	for _, jobReference := range g.JobReferences {
+		if jobReference.Description == "" {
+			noDesc = append(noDesc, jobReference.Name)
 		} else {
-			desc += fmt.Sprintf("\n\n- %s: %s", roleJob.Name, roleJob.Description)
+			desc += fmt.Sprintf("\n\n- %s: %s", jobReference.Name, jobReference.Description)
 			also = "Also: "
 		}
 	}
@@ -689,17 +689,17 @@ func (r *Role) GetLongDescription() string {
 	return desc
 }
 
-// GetScriptPaths returns the paths to the startup / post configgin scripts for a role
-func (r *Role) GetScriptPaths() map[string]string {
+// GetScriptPaths returns the paths to the startup / post configgin scripts for a instance group
+func (g *InstanceGroup) GetScriptPaths() map[string]string {
 	result := map[string]string{}
 
-	for _, scriptList := range [][]string{r.EnvironScripts, r.Scripts, r.PostConfigScripts} {
+	for _, scriptList := range [][]string{g.EnvironScripts, g.Scripts, g.PostConfigScripts} {
 		for _, script := range scriptList {
 			if filepath.IsAbs(script) {
 				// Absolute paths _inside_ the container; there is nothing to copy
 				continue
 			}
-			result[script] = filepath.Join(filepath.Dir(r.roleManifest.manifestFilePath), script)
+			result[script] = filepath.Join(filepath.Dir(g.roleManifest.manifestFilePath), script)
 		}
 	}
 
@@ -708,10 +708,10 @@ func (r *Role) GetScriptPaths() map[string]string {
 }
 
 // GetScriptSignatures returns the SHA1 of all of the script file names and contents
-func (r *Role) GetScriptSignatures() (string, error) {
+func (g *InstanceGroup) GetScriptSignatures() (string, error) {
 	hasher := sha1.New()
 
-	paths := r.GetScriptPaths()
+	paths := g.GetScriptPaths()
 	scripts := make([]string, 0, len(paths))
 
 	for filename := range paths {
@@ -739,13 +739,13 @@ func (r *Role) GetScriptSignatures() (string, error) {
 }
 
 // GetTemplateSignatures returns the SHA1 of all of the templates and contents
-func (r *Role) GetTemplateSignatures() (string, error) {
+func (g *InstanceGroup) GetTemplateSignatures() (string, error) {
 	hasher := sha1.New()
 
 	i := 0
-	templates := make([]string, len(r.Configuration.Templates))
+	templates := make([]string, len(g.Configuration.Templates))
 
-	for k, v := range r.Configuration.Templates {
+	for k, v := range g.Configuration.Templates {
 		templates[i] = fmt.Sprintf("%s: %s", k, v)
 		i++
 	}
@@ -763,20 +763,19 @@ func (r *Role) GetTemplateSignatures() (string, error) {
 // role dev version, and the aggregated spec and opinion
 // information. In this manner opinion changes cause a rebuild of the
 // associated role images.
-func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string, grapher util.ModelGrapher) (string, error) {
+func (g *InstanceGroup) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion string, grapher util.ModelGrapher) (string, error) {
 
 	// Basic role version
-	jobPkgVersion, inputSigs, err := r.getRoleJobAndPackagesSignature(grapher)
+	jobPkgVersion, inputSigs, err := g.getRoleJobAndPackagesSignature(grapher)
 	if err != nil {
-		return "", fmt.Errorf("Error calculating checksum for role %s: %s", r.Name, err.Error())
+		return "", fmt.Errorf("Error calculating checksum for instance group %s: %s", g.Name, err.Error())
 	}
 
-	// Aggregate with the properties from the opinions, per each
-	// job in the role.  This is similar to what NewDockerPopulator
-	// (and its subordinate WriteConfigs) do, with an important
-	// difference:
-	// - NDP/WC does not care about order. We do, as we need a
-	//   stable hash for the configuration.
+	// Aggregate with the properties from the opinions, per each job in the
+	// instance group.  This is similar to what NewDockerPopulator (and its
+	// subordinate WriteConfigs) do, with an important difference:
+	// - NDP/WC does not care about order. We do, as we need a stable hash for the
+	//   configuration.
 	signatures := []string{
 		jobPkgVersion,
 		fissileVersion,
@@ -791,9 +790,9 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 	// fix. Avoid sorting for now.  Also note, if a property is
 	// used multiple times, in different jobs, it will be added
 	// that often. No deduplication across the jobs.
-	for _, roleJob := range r.RoleJobs {
+	for _, jobReference := range g.JobReferences {
 		// Get properties ...
-		properties, err := roleJob.GetPropertiesForJob(opinions)
+		properties, err := jobReference.GetPropertiesForJob(opinions)
 		if err != nil {
 			return "", err
 		}
@@ -826,17 +825,17 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 		}
 		if grapher != nil {
 			extraGraphEdges = append(extraGraphEdges, []string{
-				fmt.Sprintf("properties/%s:", roleJob.Name),
+				fmt.Sprintf("properties/%s:", jobReference.Name),
 				hex.EncodeToString(propertyHasher.Sum(nil))})
 		}
 	}
 	devVersion := AggregateSignatures(signatures)
 	if grapher != nil {
-		_ = grapher.GraphNode(devVersion, map[string]string{"label": "role/" + r.Name})
+		_ = grapher.GraphNode(devVersion, map[string]string{"label": "role/" + g.Name})
 		for _, inputSig := range inputSigs {
 			_ = grapher.GraphEdge(inputSig, jobPkgVersion, nil)
 		}
-		_ = grapher.GraphNode(jobPkgVersion, map[string]string{"label": "role/jobpkg/" + r.Name})
+		_ = grapher.GraphNode(jobPkgVersion, map[string]string{"label": "role/jobpkg/" + g.Name})
 		_ = grapher.GraphEdge(jobPkgVersion, devVersion, nil)
 		for _, extraGraphEdgeParts := range extraGraphEdges {
 			prefix := extraGraphEdgeParts[0]
@@ -853,23 +852,23 @@ func (r *Role) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileVersion st
 
 // getRoleJobAndPackagesSignature gets the aggregate signature of all jobs and packages
 // It also returns a list of all hashes involved in calculating the final result
-func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string, []string, error) {
+func (g *InstanceGroup) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string, []string, error) {
 	roleSignature := ""
 	var inputs []string
 	var packages Packages
 
 	// Jobs are *not* sorted because they are an array and the order may be
 	// significant, in particular for bosh-task roles.
-	for _, roleJob := range r.RoleJobs {
-		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, roleJob.SHA1)
-		packages = append(packages, roleJob.Packages...)
-		inputs = append(inputs, roleJob.Fingerprint)
+	for _, jobReference := range g.JobReferences {
+		roleSignature = fmt.Sprintf("%s\n%s", roleSignature, jobReference.SHA1)
+		packages = append(packages, jobReference.Packages...)
+		inputs = append(inputs, jobReference.Fingerprint)
 		if grapher != nil {
-			_ = grapher.GraphNode(roleJob.Fingerprint,
-				map[string]string{"label": fmt.Sprintf("job/%s/%s", roleJob.ReleaseName, roleJob.Name)})
-			_ = grapher.GraphEdge("release/"+roleJob.ReleaseName, roleJob.Fingerprint, nil)
-			for _, pkg := range roleJob.Packages {
-				_ = grapher.GraphEdge("release/"+roleJob.ReleaseName, pkg.Fingerprint, nil)
+			_ = grapher.GraphNode(jobReference.Fingerprint,
+				map[string]string{"label": fmt.Sprintf("job/%s/%s", jobReference.ReleaseName, jobReference.Name)})
+			_ = grapher.GraphEdge("release/"+jobReference.ReleaseName, jobReference.Fingerprint, nil)
+			for _, pkg := range jobReference.Packages {
+				_ = grapher.GraphEdge("release/"+jobReference.ReleaseName, pkg.Fingerprint, nil)
 			}
 		}
 	}
@@ -884,15 +883,15 @@ func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string
 	}
 
 	// Collect signatures for various script sections
-	sig, err := r.GetScriptSignatures()
+	sig, err := g.GetScriptSignatures()
 	if err != nil {
 		return "", nil, err
 	}
 	roleSignature = fmt.Sprintf("%s\n%s", roleSignature, sig)
 
 	// If there are templates, generate signature for them
-	if r.Configuration != nil && r.Configuration.Templates != nil {
-		sig, err = r.GetTemplateSignatures()
+	if g.Configuration != nil && g.Configuration.Templates != nil {
+		sig, err = g.GetTemplateSignatures()
 		if err != nil {
 			return "", nil, err
 		}
@@ -905,8 +904,8 @@ func (r *Role) getRoleJobAndPackagesSignature(grapher util.ModelGrapher) (string
 }
 
 // HasTag returns true if the role has a specific tag
-func (r *Role) HasTag(tag RoleTag) bool {
-	for _, t := range r.Tags {
+func (g *InstanceGroup) HasTag(tag RoleTag) bool {
+	for _, t := range g.Tags {
 		if t == tag {
 			return true
 		}
@@ -915,28 +914,28 @@ func (r *Role) HasTag(tag RoleTag) bool {
 	return false
 }
 
-func (r *Role) calculateRoleConfigurationTemplates() {
-	if r.Configuration == nil {
-		r.Configuration = &Configuration{}
+func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
+	if g.Configuration == nil {
+		g.Configuration = &Configuration{}
 	}
-	if r.Configuration.Templates == nil {
-		r.Configuration.Templates = map[string]string{}
+	if g.Configuration.Templates == nil {
+		g.Configuration.Templates = map[string]string{}
 	}
 
 	roleConfigs := map[string]string{}
-	for k, v := range r.roleManifest.Configuration.Templates {
+	for k, v := range g.roleManifest.Configuration.Templates {
 		roleConfigs[k] = v
 	}
 
-	for k, v := range r.Configuration.Templates {
+	for k, v := range g.Configuration.Templates {
 		roleConfigs[k] = v
 	}
 
-	r.Configuration.Templates = roleConfigs
+	g.Configuration.Templates = roleConfigs
 }
 
 // WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
-func (roleJob *RoleJob) WriteConfigs(role *Role, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
+func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
 	var config struct {
 		Job struct {
 			Name string `json:"name"`
@@ -956,9 +955,9 @@ func (roleJob *RoleJob) WriteConfigs(role *Role, lightOpinionsPath, darkOpinions
 	config.ExportedProperties = make([]string, 0)
 	config.Consumes = make(map[string]jobLinkInfo)
 
-	config.Job.Name = role.Name
+	config.Job.Name = instanceGroup.Name
 
-	for _, consumer := range roleJob.ResolvedConsumers {
+	for _, consumer := range j.ResolvedConsumers {
 		config.Consumes[consumer.Name] = consumer.jobLinkInfo
 	}
 
@@ -966,13 +965,13 @@ func (roleJob *RoleJob) WriteConfigs(role *Role, lightOpinionsPath, darkOpinions
 	if err != nil {
 		return nil, err
 	}
-	properties, err := roleJob.Job.GetPropertiesForJob(opinions)
+	properties, err := j.Job.GetPropertiesForJob(opinions)
 	if err != nil {
 		return nil, err
 	}
 	config.Properties = properties
 
-	for _, provider := range roleJob.Job.AvailableProviders {
+	for _, provider := range j.Job.AvailableProviders {
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
 	}
 
@@ -1075,9 +1074,9 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 	// variables. Remove each found from the set of unused
 	// configs.
 
-	for _, role := range roleManifest.Roles {
-		for _, roleJob := range role.RoleJobs {
-			for _, property := range roleJob.Properties {
+	for _, role := range roleManifest.InstanceGroups {
+		for _, jobReference := range role.JobReferences {
+			for _, property := range jobReference.Properties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 				if template, ok := role.Configuration.Templates[propertyName]; ok {
@@ -1147,21 +1146,21 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 	// See also 'GetVariablesForRole' (mustache.go), and LoadRoleManifest (caller, this file)
 	declaredConfigs := MakeMapOfVariables(roleManifest)
 
-	// Iterate over all roles, jobs, templates, extract the used
+	// Iterate over all instance groups, jobs, templates, extract the used
 	// variables. Report all without a declaration.
 
-	for _, role := range roleManifest.Roles {
+	for _, instanceGroup := range roleManifest.InstanceGroups {
 
 		// Note, we cannot use GetVariablesForRole here
 		// because it will abort on bad templates. Here we
 		// have to ignore them (no sensible variable
 		// references) and continue to check everything else.
 
-		for _, roleJob := range role.RoleJobs {
-			for _, property := range roleJob.Properties {
+		for _, jobReference := range instanceGroup.JobReferences {
+			for _, property := range jobReference.Properties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
-				if template, ok := role.Configuration.Templates[propertyName]; ok {
+				if template, ok := instanceGroup.Configuration.Templates[propertyName]; ok {
 					varsInTemplate, err := parseTemplate(template)
 					if err != nil {
 						continue
@@ -1214,47 +1213,47 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 // validateRoleRun tests whether required fields in the RoleRun are
 // set. Note, some of the fields have type-dependent checks. Some
 // issues are fixed silently.
-func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) validation.ErrorList {
+func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, declared CVMap) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	if role.Run == nil {
+	if instanceGroup.Run == nil {
 		return append(allErrs, validation.Required(
-			fmt.Sprintf("roles[%s].run", role.Name), ""))
+			fmt.Sprintf("instance_groups[%s].run", instanceGroup.Name), ""))
 	}
 
-	if role.Run.Scaling != nil && role.Run.Scaling.HA == 0 {
-		role.Run.Scaling.HA = role.Run.Scaling.Min
+	if instanceGroup.Run.Scaling != nil && instanceGroup.Run.Scaling.HA == 0 {
+		instanceGroup.Run.Scaling.HA = instanceGroup.Run.Scaling.Min
 	}
 
-	allErrs = append(allErrs, normalizeFlightStage(role)...)
-	allErrs = append(allErrs, validateHealthCheck(role)...)
-	allErrs = append(allErrs, validateRoleMemory(role)...)
-	allErrs = append(allErrs, validateRoleCPU(role)...)
+	allErrs = append(allErrs, normalizeFlightStage(instanceGroup)...)
+	allErrs = append(allErrs, validateHealthCheck(instanceGroup)...)
+	allErrs = append(allErrs, validateRoleMemory(instanceGroup)...)
+	allErrs = append(allErrs, validateRoleCPU(instanceGroup)...)
 
-	for _, exposedPort := range role.Run.ExposedPorts {
-		allErrs = append(allErrs, ValidateExposedPorts(role.Name, exposedPort)...)
+	for _, exposedPort := range instanceGroup.Run.ExposedPorts {
+		allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, exposedPort)...)
 	}
 
-	if role.Run.ServiceAccount != "" {
-		accountName := role.Run.ServiceAccount
+	if instanceGroup.Run.ServiceAccount != "" {
+		accountName := instanceGroup.Run.ServiceAccount
 		if _, ok := roleManifest.Configuration.Authorization.Accounts[accountName]; !ok {
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("roles[%s].run.service-account", role.Name), accountName))
+				fmt.Sprintf("instance_groups[%s].run.service-account", instanceGroup.Name), accountName))
 		}
 	}
 
 	// Backwards compat: convert separate volume lists to the centralized one
-	for _, persistentVolume := range role.Run.PersistentVolumes {
+	for _, persistentVolume := range instanceGroup.Run.PersistentVolumes {
 		persistentVolume.Type = VolumeTypePersistent
-		role.Run.Volumes = append(role.Run.Volumes, persistentVolume)
+		instanceGroup.Run.Volumes = append(instanceGroup.Run.Volumes, persistentVolume)
 	}
-	for _, sharedVolume := range role.Run.SharedVolumes {
+	for _, sharedVolume := range instanceGroup.Run.SharedVolumes {
 		sharedVolume.Type = VolumeTypeShared
-		role.Run.Volumes = append(role.Run.Volumes, sharedVolume)
+		instanceGroup.Run.Volumes = append(instanceGroup.Run.Volumes, sharedVolume)
 	}
-	role.Run.PersistentVolumes = nil
-	role.Run.SharedVolumes = nil
-	for _, volume := range role.Run.Volumes {
+	instanceGroup.Run.PersistentVolumes = nil
+	instanceGroup.Run.SharedVolumes = nil
+	for _, volume := range instanceGroup.Run.Volumes {
 		switch volume.Type {
 		case VolumeTypePersistent:
 		case VolumeTypeShared:
@@ -1263,7 +1262,7 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 		case VolumeTypeEmptyDir:
 		default:
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.volumes[%s]", role.Name, volume.Tag),
+				fmt.Sprintf("instance_groups[%s].run.volumes[%s]", instanceGroup.Name, volume.Tag),
 				volume.Type,
 				fmt.Sprintf("Invalid volume type '%s'", volume.Type)))
 		}
@@ -1271,34 +1270,34 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 
 	// Normalize capabilities to upper case, if any.
 	var capabilities []string
-	for _, cap := range role.Run.Capabilities {
+	for _, cap := range instanceGroup.Run.Capabilities {
 		capabilities = append(capabilities, strings.ToUpper(cap))
 	}
-	role.Run.Capabilities = capabilities
+	instanceGroup.Run.Capabilities = capabilities
 
-	if len(role.Run.Environment) == 0 {
+	if len(instanceGroup.Run.Environment) == 0 {
 		return allErrs
 	}
 
-	if role.Type == RoleTypeDocker {
+	if instanceGroup.Type == RoleTypeDocker {
 		// The environment variables used by docker roles must
 		// all be declared, report those which are not.
 
-		for _, envVar := range role.Run.Environment {
+		for _, envVar := range instanceGroup.Run.Environment {
 			if _, ok := declared[envVar]; ok {
 				continue
 			}
 
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("roles[%s].run.env", role.Name),
+				fmt.Sprintf("instance_groups[%s].run.env", instanceGroup.Name),
 				fmt.Sprintf("No variable declaration of '%s'", envVar)))
 		}
 	} else {
-		// Bosh roles must not provide environment variables.
+		// Bosh instance groups must not provide environment variables.
 
 		allErrs = append(allErrs, validation.Forbidden(
-			fmt.Sprintf("roles[%s].run.env", role.Name),
-			"Non-docker role declares bogus parameters"))
+			fmt.Sprintf("instance_groups[%s].run.env", instanceGroup.Name),
+			"Non-docker instance group declares bogus parameters"))
 	}
 
 	return allErrs
@@ -1309,7 +1308,7 @@ func validateRoleRun(role *Role, roleManifest *RoleManifest, declared CVMap) val
 func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	fieldName := fmt.Sprintf("roles[%s].run.exposed-ports[%s]", name, exposedPorts.Name)
+	fieldName := fmt.Sprintf("instance_groups[%s].run.exposed-ports[%s]", name, exposedPorts.Name)
 
 	// Validate Name
 	if exposedPorts.Name == "" {
@@ -1377,34 +1376,34 @@ func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validat
 // validateRoleMemory validates memory requests and limits, and
 // converts the old key (`memory`, run.MemRequest), to the new
 // form. Afterward only run.Memory is valid.
-func validateRoleMemory(role *Role) validation.ErrorList {
+func validateRoleMemory(instanceGroup *InstanceGroup) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	if role.Run.Memory == nil {
-		if role.Run.MemRequest != nil {
-			allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.MemRequest,
-				fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+	if instanceGroup.Run.Memory == nil {
+		if instanceGroup.Run.MemRequest != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeField(*instanceGroup.Run.MemRequest,
+				fmt.Sprintf("instance_groups[%s].run.memory", instanceGroup.Name))...)
 		}
-		role.Run.Memory = &RoleRunMemory{Request: role.Run.MemRequest}
+		instanceGroup.Run.Memory = &RoleRunMemory{Request: instanceGroup.Run.MemRequest}
 		return allErrs
 	}
 
 	// assert: role.Run.Memory != nil
 
-	if role.Run.Memory.Request == nil {
-		if role.Run.MemRequest != nil {
-			allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.MemRequest,
-				fmt.Sprintf("roles[%s].run.memory", role.Name))...)
+	if instanceGroup.Run.Memory.Request == nil {
+		if instanceGroup.Run.MemRequest != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeField(*instanceGroup.Run.MemRequest,
+				fmt.Sprintf("instance_groups[%s].run.memory", instanceGroup.Name))...)
 		}
-		role.Run.Memory.Request = role.Run.MemRequest
+		instanceGroup.Run.Memory.Request = instanceGroup.Run.MemRequest
 	} else {
-		allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.Memory.Request,
-			fmt.Sprintf("roles[%s].run.mem.request", role.Name))...)
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(*instanceGroup.Run.Memory.Request,
+			fmt.Sprintf("instance_groups[%s].run.mem.request", instanceGroup.Name))...)
 	}
 
-	if role.Run.Memory.Limit != nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeField(*role.Run.Memory.Limit,
-			fmt.Sprintf("roles[%s].run.mem.limit", role.Name))...)
+	if instanceGroup.Run.Memory.Limit != nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeField(*instanceGroup.Run.Memory.Limit,
+			fmt.Sprintf("instance_groups[%s].run.mem.limit", instanceGroup.Name))...)
 	}
 
 	return allErrs
@@ -1413,67 +1412,67 @@ func validateRoleMemory(role *Role) validation.ErrorList {
 // validateRoleCPU validates cpu requests and limits, and converts the
 // old key (`virtual-cpus`, run.VirtualCPUs), to the new
 // form. Afterward only run.CPU is valid.
-func validateRoleCPU(role *Role) validation.ErrorList {
+func validateRoleCPU(instanceGroup *InstanceGroup) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	if role.Run.CPU == nil {
-		if role.Run.VirtualCPUs != nil {
-			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.VirtualCPUs,
-				fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+	if instanceGroup.Run.CPU == nil {
+		if instanceGroup.Run.VirtualCPUs != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*instanceGroup.Run.VirtualCPUs,
+				fmt.Sprintf("instance_groups[%s].run.virtual-cpus", instanceGroup.Name))...)
 		}
-		role.Run.CPU = &RoleRunCPU{Request: role.Run.VirtualCPUs}
+		instanceGroup.Run.CPU = &RoleRunCPU{Request: instanceGroup.Run.VirtualCPUs}
 		return allErrs
 	}
 
 	// assert: role.Run.CPU != nil
 
-	if role.Run.CPU.Request == nil {
-		if role.Run.VirtualCPUs != nil {
-			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.VirtualCPUs,
-				fmt.Sprintf("roles[%s].run.virtual-cpus", role.Name))...)
+	if instanceGroup.Run.CPU.Request == nil {
+		if instanceGroup.Run.VirtualCPUs != nil {
+			allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*instanceGroup.Run.VirtualCPUs,
+				fmt.Sprintf("instance_groups[%s].run.virtual-cpus", instanceGroup.Name))...)
 		}
-		role.Run.CPU.Request = role.Run.VirtualCPUs
+		instanceGroup.Run.CPU.Request = instanceGroup.Run.VirtualCPUs
 	} else {
-		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.CPU.Request,
-			fmt.Sprintf("roles[%s].run.cpu.request", role.Name))...)
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*instanceGroup.Run.CPU.Request,
+			fmt.Sprintf("instance_groups[%s].run.cpu.request", instanceGroup.Name))...)
 	}
 
-	if role.Run.CPU.Limit != nil {
-		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*role.Run.CPU.Limit,
-			fmt.Sprintf("roles[%s].run.cpu.limit", role.Name))...)
+	if instanceGroup.Run.CPU.Limit != nil {
+		allErrs = append(allErrs, validation.ValidateNonnegativeFieldFloat(*instanceGroup.Run.CPU.Limit,
+			fmt.Sprintf("instance_groups[%s].run.cpu.limit", instanceGroup.Name))...)
 	}
 
 	return allErrs
 }
 
-// validateHealthCheck reports a role with conflicting health
-// checks in its probes
-func validateHealthCheck(role *Role) validation.ErrorList {
+// validateHealthCheck reports a instance group with conflicting health checks
+// in its probes
+func validateHealthCheck(instanceGroup *InstanceGroup) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	if role.Run.HealthCheck == nil {
+	if instanceGroup.Run.HealthCheck == nil {
 		// No health checks, nothing to validate
 		return allErrs
 	}
 
 	// Ensure that we don't have conflicting health checks
-	if role.Run.HealthCheck.Readiness != nil {
+	if instanceGroup.Run.HealthCheck.Readiness != nil {
 		allErrs = append(allErrs,
-			validateHealthProbe(role, "readiness",
-				role.Run.HealthCheck.Readiness)...)
+			validateHealthProbe(instanceGroup, "readiness",
+				instanceGroup.Run.HealthCheck.Readiness)...)
 	}
-	if role.Run.HealthCheck.Liveness != nil {
+	if instanceGroup.Run.HealthCheck.Liveness != nil {
 		allErrs = append(allErrs,
-			validateHealthProbe(role, "liveness",
-				role.Run.HealthCheck.Liveness)...)
+			validateHealthProbe(instanceGroup, "liveness",
+				instanceGroup.Run.HealthCheck.Liveness)...)
 	}
 
 	return allErrs
 }
 
-// validateHealthProbe reports a role with conflicting health checks
+// validateHealthProbe reports a instance group with conflicting health checks
 // in the specified probe.
-func validateHealthProbe(role *Role, probeName string, probe *HealthProbe) validation.ErrorList {
+func validateHealthProbe(instanceGroup *InstanceGroup, probeName string, probe *HealthProbe) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	checks := make([]string, 0, 3)
@@ -1488,66 +1487,66 @@ func validateHealthProbe(role *Role, probeName string, probe *HealthProbe) valid
 	}
 	if len(checks) > 1 {
 		allErrs = append(allErrs, validation.Invalid(
-			fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
+			fmt.Sprintf("instance_groups[%s].run.healthcheck.%s", instanceGroup.Name, probeName),
 			checks, "Expected at most one of url, command, or port"))
 	}
-	switch role.Type {
+	switch instanceGroup.Type {
 
 	case RoleTypeBosh:
 		if len(checks) == 0 {
 			allErrs = append(allErrs, validation.Required(
-				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s.command", instanceGroup.Name, probeName),
 				"Health check requires a command"))
 		} else if checks[0] != "command" {
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
-				checks, "Only command health checks are supported for BOSH roles"))
+				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s", instanceGroup.Name, probeName),
+				checks, "Only command health checks are supported for BOSH instance groups"))
 		} else if probeName != "readiness" && len(probe.Command) > 1 {
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].run.healthcheck.%s.command", role.Name, probeName),
+				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s.command", instanceGroup.Name, probeName),
 				probe.Command, fmt.Sprintf("%s check can only have one command", probeName)))
 		}
 
 	case RoleTypeBoshTask:
 		if len(checks) > 0 {
 			allErrs = append(allErrs, validation.Forbidden(
-				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
-				"bosh-task roles cannot have health checks"))
+				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s", instanceGroup.Name, probeName),
+				"bosh-task instance groups cannot have health checks"))
 		}
 
 	case RoleTypeDocker:
 		if len(probe.Command) > 1 {
 			allErrs = append(allErrs, validation.Forbidden(
-				fmt.Sprintf("roles[%s].run.healthcheck.%s", role.Name, probeName),
-				"docker roles do not support multiple commands"))
+				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s", instanceGroup.Name, probeName),
+				"docker instance groups do not support multiple commands"))
 		}
 
 	default:
 		// We should have caught the invalid role type when loading the role manifest
-		panic("Unexpected role type " + string(role.Type) + " in role " + role.Name)
+		panic("Unexpected role type " + string(instanceGroup.Type) + " in instance group " + instanceGroup.Name)
 	}
 
 	return allErrs
 }
 
-// normalizeFlightStage reports roles with a bad flightstage, and
-// fixes all roles without a flight stage to use the default
+// normalizeFlightStage reports instance groups with a bad flightstage, and
+// fixes all instance groups without a flight stage to use the default
 // ('flight').
-func normalizeFlightStage(role *Role) validation.ErrorList {
+func normalizeFlightStage(instanceGroup *InstanceGroup) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	// Normalize flight stage
-	switch role.Run.FlightStage {
+	switch instanceGroup.Run.FlightStage {
 	case "":
-		role.Run.FlightStage = FlightStageFlight
+		instanceGroup.Run.FlightStage = FlightStageFlight
 	case FlightStagePreFlight:
 	case FlightStageFlight:
 	case FlightStagePostFlight:
 	case FlightStageManual:
 	default:
 		allErrs = append(allErrs, validation.Invalid(
-			fmt.Sprintf("roles[%s].run.flight-stage", role.Name),
-			role.Run.FlightStage,
+			fmt.Sprintf("instance_groups[%s].run.flight-stage", instanceGroup.Name),
+			instanceGroup.Run.FlightStage,
 			"Expected one of flight, manual, post-flight, or pre-flight"))
 	}
 
@@ -1597,16 +1596,16 @@ func validateServiceAccounts(roleManifest *RoleManifest) validation.ErrorList {
 
 func validateUnusedColocatedContainerRoles(RoleManifest *RoleManifest) validation.ErrorList {
 	counterMap := map[string]int{}
-	for _, role := range RoleManifest.Roles {
-		// Initialise any role of type colocated container in the counter map
-		if role.Type == RoleTypeColocatedContainer {
-			if _, ok := counterMap[role.Name]; !ok {
-				counterMap[role.Name] = 0
+	for _, instanceGroup := range RoleManifest.InstanceGroups {
+		// Initialise any instance group of type colocated container in the counter map
+		if instanceGroup.Type == RoleTypeColocatedContainer {
+			if _, ok := counterMap[instanceGroup.Name]; !ok {
+				counterMap[instanceGroup.Name] = 0
 			}
 		}
 
 		// Increase counter of configured colocated container names
-		for _, roleName := range role.ColocatedContainers {
+		for _, roleName := range instanceGroup.ColocatedContainers {
 			if _, ok := counterMap[roleName]; !ok {
 				counterMap[roleName] = 0
 			}
@@ -1619,8 +1618,8 @@ func validateUnusedColocatedContainerRoles(RoleManifest *RoleManifest) validatio
 	for roleName, usageCount := range counterMap {
 		if usageCount == 0 {
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("role[%s]", roleName),
-				"role is of type colocated container, but is not used by any other role as such"))
+				fmt.Sprintf("instance_group[%s]", roleName),
+				"instance group is of type colocated container, but is not used by any other instance group as such"))
 		}
 	}
 
@@ -1630,14 +1629,14 @@ func validateUnusedColocatedContainerRoles(RoleManifest *RoleManifest) validatio
 func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	for _, role := range RoleManifest.Roles {
-		if len(role.ColocatedContainers) > 0 {
+	for _, instanceGroup := range RoleManifest.InstanceGroups {
+		if len(instanceGroup.ColocatedContainers) > 0 {
 			lookupMap := map[string][]string{}
 
-			// Iterate over this role and all colocated container roles and store the
-			// names of the roles for each protocol/port (there should be no list with
+			// Iterate over this instance group and all colocated container instance groups and store the
+			// names of the groups for each protocol/port (there should be no list with
 			// more than one entry)
-			for _, toBeChecked := range append([]*Role{role}, role.GetColocatedRoles()...) {
+			for _, toBeChecked := range append([]*InstanceGroup{instanceGroup}, instanceGroup.GetColocatedRoles()...) {
 				for _, exposedPort := range toBeChecked.Run.ExposedPorts {
 					for i := 0; i < exposedPort.Count; i++ {
 						protocolPortTuple := fmt.Sprintf("%s/%d", exposedPort.Protocol, exposedPort.ExternalPort+i)
@@ -1663,7 +1662,7 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 
 				if len(names) > 1 {
 					allErrs = append(allErrs, validation.Invalid(
-						fmt.Sprintf("role[%s]", role.Name),
+						fmt.Sprintf("instance_group[%s]", instanceGroup.Name),
 						protocolPortTuple,
 						fmt.Sprintf("port collision, the same protocol/port is used by: %s", strings.Join(names, ", "))))
 				}
@@ -1674,7 +1673,7 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 	return allErrs
 }
 
-func validateRoleTags(role *Role) validation.ErrorList {
+func validateRoleTags(instanceGroup *InstanceGroup) validation.ErrorList {
 	var allErrs validation.ErrorList
 
 	acceptableRoleTypes := map[RoleTag][]RoleType{
@@ -1684,41 +1683,41 @@ func validateRoleTags(role *Role) validation.ErrorList {
 		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
 	}
 
-	for tagNum, tag := range role.Tags {
+	for tagNum, tag := range instanceGroup.Tags {
 		switch tag {
 		case RoleTagStopOnFailure:
 		case RoleTagSequentialStartup:
 		case RoleTagHeadless:
 		case RoleTagActivePassive:
-			if role.Run == nil || role.Run.ActivePassiveProbe == "" {
+			if instanceGroup.Run == nil || instanceGroup.Run.ActivePassiveProbe == "" {
 				allErrs = append(allErrs, validation.Required(
-					fmt.Sprintf("roles[%s].run.active-passive-probe", role.Name),
-					"active-passive roles must specify the correct probe"))
+					fmt.Sprintf("instance_groups[%s].run.active-passive-probe", instanceGroup.Name),
+					"active-passive instance groups must specify the correct probe"))
 			}
-			if role.HasTag(RoleTagHeadless) {
+			if instanceGroup.HasTag(RoleTagHeadless) {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+					fmt.Sprintf("instance_groups[%s].tags[%d]", instanceGroup.Name, tagNum),
 					tag,
-					"headless roles may not be active-passive"))
+					"headless instance groups may not be active-passive"))
 			}
 
 		default:
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				fmt.Sprintf("instance_groups[%s].tags[%d]", instanceGroup.Name, tagNum),
 				string(tag), "Unknown tag"))
 			continue
 		}
 
 		if _, ok := acceptableRoleTypes[tag]; !ok {
 			allErrs = append(allErrs, validation.InternalError(
-				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				fmt.Sprintf("instance_groups[%s].tags[%d]", instanceGroup.Name, tagNum),
 				fmt.Errorf("Tag %s has no acceptable role list", tag)))
 			continue
 		}
 
 		validTypeForTag := false
 		for _, roleType := range acceptableRoleTypes[tag] {
-			if roleType == role.Type {
+			if roleType == instanceGroup.Type {
 				validTypeForTag = true
 				break
 			}
@@ -1729,9 +1728,9 @@ func validateRoleTags(role *Role) validation.ErrorList {
 				roleNames = append(roleNames, string(roleType))
 			}
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("roles[%s].tags[%d]", role.Name, tagNum),
+				fmt.Sprintf("instance_groups[%s].tags[%d]", instanceGroup.Name, tagNum),
 				tag,
-				fmt.Sprintf("%s tag is only supported in [%s] roles, not %s", tag, strings.Join(roleNames, ", "), role.Type)))
+				fmt.Sprintf("%s tag is only supported in [%s] instance groups, not %s", tag, strings.Join(roleNames, ", "), instanceGroup.Type)))
 		}
 	}
 
@@ -1741,16 +1740,16 @@ func validateRoleTags(role *Role) validation.ErrorList {
 func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	for _, role := range RoleManifest.Roles {
-		numberOfColocatedContainers := len(role.ColocatedContainers)
+	for _, instanceGroup := range RoleManifest.InstanceGroups {
+		numberOfColocatedContainers := len(instanceGroup.ColocatedContainers)
 
 		if numberOfColocatedContainers > 0 {
 			emptyDirVolumesTags := []string{}
 			emptyDirVolumesPath := map[string]string{}
 			emptyDirVolumesCount := map[string]int{}
 
-			// Compile a map of all emptyDir volumes with tag -> path of the main role
-			for _, volume := range role.Run.Volumes {
+			// Compile a map of all emptyDir volumes with tag -> path of the main instance group
+			for _, volume := range instanceGroup.Run.Volumes {
 				if volume.Type == VolumeTypeEmptyDir {
 					emptyDirVolumesTags = append(emptyDirVolumesTags, volume.Tag)
 					emptyDirVolumesPath[volume.Tag] = volume.Path
@@ -1758,7 +1757,7 @@ func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validati
 				}
 			}
 
-			for _, colocatedRole := range role.GetColocatedRoles() {
+			for _, colocatedRole := range instanceGroup.GetColocatedRoles() {
 				for _, volume := range colocatedRole.Run.Volumes {
 					if volume.Type == VolumeTypeEmptyDir {
 						if _, ok := emptyDirVolumesCount[volume.Tag]; !ok {
@@ -1771,9 +1770,9 @@ func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validati
 							if path != volume.Path {
 								// Same tag, but different paths
 								allErrs = append(allErrs, validation.Invalid(
-									fmt.Sprintf("role[%s]", colocatedRole.Name),
+									fmt.Sprintf("instance_group[%s]", colocatedRole.Name),
 									volume.Path,
-									fmt.Sprintf("colocated role specifies a shared volume with tag %s, which path does not match the path of the main role shared volume with the same tag", volume.Tag)))
+									fmt.Sprintf("colocated instance group specifies a shared volume with tag %s, which path does not match the path of the main instance group shared volume with the same tag", volume.Tag)))
 							}
 						}
 					}
@@ -1786,8 +1785,8 @@ func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validati
 				count := emptyDirVolumesCount[tag]
 				if count != numberOfColocatedContainers {
 					allErrs = append(allErrs, validation.Required(
-						fmt.Sprintf("role[%s]", role.Name),
-						fmt.Sprintf("container must use shared volumes of the main role: %s", tag)))
+						fmt.Sprintf("instance_group[%s]", instanceGroup.Name),
+						fmt.Sprintf("container must use shared volumes of the main instance group: %s", tag)))
 				}
 			}
 		}
@@ -1797,19 +1796,19 @@ func validateColocatedContainerVolumeShares(RoleManifest *RoleManifest) validati
 }
 
 // LookupJob will find the given job in this role, or nil if not found
-func (r *Role) LookupJob(name string) *RoleJob {
-	for _, roleJob := range r.RoleJobs {
-		if roleJob.Job.Name == name {
-			return roleJob
+func (g *InstanceGroup) LookupJob(name string) *JobReference {
+	for _, jobReference := range g.JobReferences {
+		if jobReference.Job.Name == name {
+			return jobReference
 		}
 	}
 	return nil
 }
 
-// IsPrivileged tests if the role capabilities enable fully privileged
+// IsPrivileged tests if the instance group capabilities enable fully privileged
 // mode.
-func (r *Role) IsPrivileged() bool {
-	for _, cap := range r.Run.Capabilities {
+func (g *InstanceGroup) IsPrivileged() bool {
+	for _, cap := range g.Run.Capabilities {
 		if cap == "ALL" {
 			return true
 		}
@@ -1817,17 +1816,17 @@ func (r *Role) IsPrivileged() bool {
 	return false
 }
 
-// IsColocatedContainerRole tests if the role is of type ColocatedContainer, or
+// IsColocated tests if the role is of type ColocatedContainer, or
 // not. It returns true if this role is of that type, or false otherwise.
-func (r *Role) IsColocatedContainerRole() bool {
-	return r.Type == RoleTypeColocatedContainer
+func (g *InstanceGroup) IsColocated() bool {
+	return g.Type == RoleTypeColocatedContainer
 }
 
-// GetColocatedRoles lists all colocation roles references by this role
-func (r *Role) GetColocatedRoles() []*Role {
-	result := make([]*Role, len(r.ColocatedContainers))
-	for i, name := range r.ColocatedContainers {
-		if role := r.roleManifest.LookupRole(name); role != nil {
+// GetColocatedRoles lists all colocation roles references by this instance group
+func (g *InstanceGroup) GetColocatedRoles() []*InstanceGroup {
+	result := make([]*InstanceGroup, len(g.ColocatedContainers))
+	for i, name := range g.ColocatedContainers {
+		if role := g.roleManifest.LookupInstanceGroup(name); role != nil {
 			result[i] = role
 		}
 	}

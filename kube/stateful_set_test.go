@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.Role) {
+func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string) (*model.RoleManifest, *model.InstanceGroup) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
@@ -30,7 +30,7 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 		return nil, nil
 	}
 
-	role := manifest.LookupRole("myrole")
+	role := manifest.LookupInstanceGroup("myrole")
 	if !assert.NotNil(role, "Failed to find role in manifest") {
 		return nil, nil
 	}

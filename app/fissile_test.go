@@ -577,20 +577,20 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 		},
 		{
 			roleNames: []string{"missing_role"},
-			err:       "Some roles are unknown: [missing_role]",
+			err:       "Some instance groups are unknown: [missing_role]",
 		},
 	}
 
 	for _, sample := range testSamples {
 		t.Run(strings.Join(sample.roleNames, ","), func(t *testing.T) {
-			results, err := roleManifest.SelectRoles(sample.roleNames)
+			results, err := roleManifest.SelectInstanceGroups(sample.roleNames)
 			if sample.err != "" {
 				assert.EqualError(t, err, sample.err, "while testing %v", sample.roleNames)
 			} else {
 				assert.NoError(t, err, "while testing %v", sample.roleNames)
 				var actualNames []string
-				for _, role := range results {
-					actualNames = append(actualNames, role.Name)
+				for _, instanceGroup := range results {
+					actualNames = append(actualNames, instanceGroup.Name)
 				}
 				sort.Strings(actualNames)
 				assert.Equal(t, sample.expectedNames, actualNames, "while testing %v", sample.roleNames)

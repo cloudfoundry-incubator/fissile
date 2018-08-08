@@ -47,7 +47,7 @@ func TestRoleVariables(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
-	vars, err := roleManifest.Roles[0].GetVariablesForRole()
+	vars, err := roleManifest.InstanceGroups[0].GetVariablesForRole()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, vars)

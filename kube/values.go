@@ -73,50 +73,50 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 	sizing := helm.NewMapping()
 	sizing.Set(helm.Comment(strings.Join(strings.Fields(`
-		The sizing section contains configuration to change each individual role.
-		Due to limitations on the allowable names, any dashes ("-") in the role
-		names are replaced with underscores ("_").
+		The sizing section contains configuration to change each individual instance
+		group.  Due to limitations on the allowable names, any dashes ("-") in the
+		instance group names are replaced with underscores ("_").
 	`), " ")))
-	for _, role := range settings.RoleManifest.Roles {
-		if role.Run.FlightStage == model.FlightStageManual {
+	for _, instanceGroup := range settings.RoleManifest.InstanceGroups {
+		if instanceGroup.Run.FlightStage == model.FlightStageManual {
 			continue
 		}
 
 		entry := helm.NewMapping()
 
-		if !role.IsPrivileged() {
+		if !instanceGroup.IsPrivileged() {
 			entry.Add("capabilities", helm.NewList(),
 				helm.Comment("Additional privileges can be specified here"))
 		}
 
 		var comment string
-		if role.Run.Scaling.Min == role.Run.Scaling.Max {
-			comment = fmt.Sprintf("The %s role cannot be scaled.", role.Name)
+		if instanceGroup.Run.Scaling.Min == instanceGroup.Run.Scaling.Max {
+			comment = fmt.Sprintf("The %s instance group cannot be scaled.", instanceGroup.Name)
 		} else {
-			comment = fmt.Sprintf("The %s role can scale between %d and %d instances.",
-				role.Name, role.Run.Scaling.Min, role.Run.Scaling.Max)
+			comment = fmt.Sprintf("The %s instance group can scale between %d and %d instances.",
+				instanceGroup.Name, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.Max)
 
-			if role.Run.Scaling.MustBeOdd {
+			if instanceGroup.Run.Scaling.MustBeOdd {
 				comment += "\nThe instance count must be an odd number (not divisible by 2)."
 			}
-			if role.Run.Scaling.HA != role.Run.Scaling.Min {
+			if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
 				comment += fmt.Sprintf("\nFor high availability it needs at least %d instances.",
-					role.Run.Scaling.HA)
+					instanceGroup.Run.Scaling.HA)
 			}
 		}
-		entry.Add("count", role.Run.Scaling.Min, helm.Comment(comment))
+		entry.Add("count", instanceGroup.Run.Scaling.Min, helm.Comment(comment))
 		if settings.UseMemoryLimits {
 			var request helm.Node
-			if role.Run.Memory.Request == nil {
+			if instanceGroup.Run.Memory.Request == nil {
 				request = helm.NewNode(nil)
 			} else {
-				request = helm.NewNode(int(*role.Run.Memory.Request))
+				request = helm.NewNode(int(*instanceGroup.Run.Memory.Request))
 			}
 			var limit helm.Node
-			if role.Run.Memory.Limit == nil {
+			if instanceGroup.Run.Memory.Limit == nil {
 				limit = helm.NewNode(nil)
 			} else {
-				limit = helm.NewNode(int(*role.Run.Memory.Limit))
+				limit = helm.NewNode(int(*instanceGroup.Run.Memory.Limit))
 			}
 
 			entry.Add("memory", helm.NewMapping(
@@ -126,16 +126,16 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 		if settings.UseCPULimits {
 			var request helm.Node
-			if role.Run.CPU.Request == nil {
+			if instanceGroup.Run.CPU.Request == nil {
 				request = helm.NewNode(nil)
 			} else {
-				request = helm.NewNode(1000. * *role.Run.CPU.Request)
+				request = helm.NewNode(1000. * *instanceGroup.Run.CPU.Request)
 			}
 			var limit helm.Node
-			if role.Run.CPU.Limit == nil {
+			if instanceGroup.Run.CPU.Limit == nil {
 				limit = helm.NewNode(nil)
 			} else {
-				limit = helm.NewNode(1000. * *role.Run.CPU.Limit)
+				limit = helm.NewNode(1000. * *instanceGroup.Run.CPU.Limit)
 			}
 
 			entry.Add("cpu", helm.NewMapping(
@@ -145,7 +145,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 
 		diskSizes := helm.NewMapping()
-		for _, volume := range role.Run.Volumes {
+		for _, volume := range instanceGroup.Run.Volumes {
 			switch volume.Type {
 			case model.VolumeTypePersistent, model.VolumeTypeShared:
 				diskSizes.Add(makeVarName(volume.Tag), volume.Size)
@@ -155,7 +155,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			entry.Add("disk_sizes", diskSizes.Sort())
 		}
 		ports := helm.NewMapping()
-		for _, port := range role.Run.ExposedPorts {
+		for _, port := range instanceGroup.Run.ExposedPorts {
 			config := helm.NewMapping()
 			if port.PortIsConfigurable {
 				config.Add("port", port.ExternalPort)
@@ -173,7 +173,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 		entry.Add("affinity", helm.NewMapping(), helm.Comment("Node affinity rules can be specified here"))
 
-		sizing.Add(makeVarName(role.Name), entry.Sort(), helm.Comment(role.GetLongDescription()))
+		sizing.Add(makeVarName(instanceGroup.Name), entry.Sort(), helm.Comment(instanceGroup.GetLongDescription()))
 	}
 	values.Add("sizing", sizing.Sort())
 

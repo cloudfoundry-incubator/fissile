@@ -1,12 +1,12 @@
 # This role manifest checks for an internal environment variable (which is invalid)
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: BAR

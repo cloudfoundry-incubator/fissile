@@ -24,7 +24,7 @@ Has subcommands that display information about build artifacts.
   -n, --release-name string          Name of a dev BOSH release; if empty, default configured dev release name will be used; Final release always use the name in release.MF
   -v, --release-version string       Version of a dev BOSH release; if empty, the latest dev release will be used; Final release always use the version in release.MF
   -p, --repository string            Repository name prefix used to create image names. (default "fissile")
-  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each role.
+  -m, --role-manifest string         Path to a yaml file that details which jobs are used for each instance group.
   -V, --verbose                      Enable verbose output.
   -w, --work-dir string              Path to the location of the work directory. (default "/var/fissile")
   -W, --workers int                  Number of workers to use; zero means determine based on CPU count.
@@ -32,7 +32,7 @@ Has subcommands that display information about build artifacts.
 
 ### SEE ALSO
 * [fissile](fissile.md)	 - The BOSH disintegrator
-* [fissile show image](fissile_show_image.md)	 - Displays information about role images.
+* [fissile show image](fissile_show_image.md)	 - Displays information about instance group images.
 * [fissile show properties](fissile_show_properties.md)	 - Displays information about BOSH properties, per jobs.
 * [fissile show release](fissile_show_release.md)	 - Displays information about BOSH releases.
 

@@ -1,6 +1,6 @@
 # This role manifest contains two roles
 ---
-roles:
+instance_groups:
 - name: myrole-deployment
   jobs: []
   run:

@@ -75,23 +75,23 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName string) func(*tar.Writer) error {
+func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup, baseImageName string) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
-		if len(role.RoleJobs) == 0 {
-			return fmt.Errorf("Error - role %s has 0 jobs", role.Name)
+		if len(instanceGroup.JobReferences) == 0 {
+			return fmt.Errorf("Error - instance group %s has 0 jobs", instanceGroup.Name)
 		}
 
 		// Write out release license files
 		releaseLicensesWritten := map[string]struct{}{}
-		for _, roleJob := range role.RoleJobs {
-			if _, ok := releaseLicensesWritten[roleJob.Release.Name]; !ok {
-				if len(roleJob.Release.License.Files) == 0 {
+		for _, jobReference := range instanceGroup.JobReferences {
+			if _, ok := releaseLicensesWritten[jobReference.Release.Name]; !ok {
+				if len(jobReference.Release.License.Files) == 0 {
 					continue
 				}
 
-				releaseDir := filepath.Join("root/opt/fissile/share/doc", roleJob.Release.Name)
+				releaseDir := filepath.Join("root/opt/fissile/share/doc", jobReference.Release.Name)
 
-				for filename, contents := range roleJob.Release.License.Files {
+				for filename, contents := range jobReference.Release.License.Files {
 					err := util.WriteToTarStream(tarWriter, contents, tar.Header{
 						Name: filepath.Join(releaseDir, filename),
 					})
@@ -99,14 +99,14 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 						return fmt.Errorf("failed to write out release license file %s: %v", filename, err)
 					}
 				}
-				releaseLicensesWritten[roleJob.Release.Name] = struct{}{}
+				releaseLicensesWritten[jobReference.Release.Name] = struct{}{}
 			}
 		}
 
 		// Symlink compiled packages
 		packageSet := map[string]string{}
-		for _, roleJob := range role.RoleJobs {
-			for _, pkg := range roleJob.Packages {
+		for _, jobReference := range instanceGroup.JobReferences {
+			for _, pkg := range jobReference.Packages {
 				if _, ok := packageSet[pkg.Name]; !ok {
 					err := util.WriteToTarStream(tarWriter, nil, tar.Header{
 						Name:     filepath.Join("root/var/vcap/packages", pkg.Name),
@@ -127,24 +127,24 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Copy jobs templates, spec configs and monit
-		for _, roleJob := range role.RoleJobs {
+		for _, jobReference := range instanceGroup.JobReferences {
 			templates := make(map[string]*model.JobTemplate)
-			for _, template := range roleJob.Templates {
+			for _, template := range jobReference.Templates {
 				sourcePath := filepath.Clean(filepath.Join("templates", template.SourcePath))
 				templates[filepath.ToSlash(sourcePath)] = template
 			}
 
-			sourceTgz, err := os.Open(roleJob.Path)
+			sourceTgz, err := os.Open(jobReference.Path)
 			if err != nil {
-				return fmt.Errorf("Error reading archive for job %s (%s): %s", roleJob.Name, roleJob.Path, err)
+				return fmt.Errorf("Error reading archive for job %s (%s): %s", jobReference.Name, jobReference.Path, err)
 			}
 			defer sourceTgz.Close()
-			err = util.TargzIterate(roleJob.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
+			err = util.TargzIterate(jobReference.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
 				filePath := filepath.ToSlash(filepath.Clean(header.Name))
 				if filePath == "job.MF" {
 					return nil
 				}
-				header.Name = filepath.Join("root/var/vcap/jobs-src", roleJob.Name, header.Name)
+				header.Name = filepath.Join("root/var/vcap/jobs-src", jobReference.Name, header.Name)
 				if template, ok := templates[filePath]; ok {
 					if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
 						header.Mode = 0755
@@ -153,26 +153,26 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 					}
 				}
 				if err = tarWriter.WriteHeader(header); err != nil {
-					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, roleJob.Name, err)
+					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, jobReference.Name, err)
 				}
 				if _, err = io.Copy(tarWriter, reader); err != nil {
-					return fmt.Errorf("Error writing %s for job %s: %s", filePath, roleJob.Name, err)
+					return fmt.Errorf("Error writing %s for job %s: %s", filePath, jobReference.Name, err)
 				}
 				return nil
 			})
 
 			// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-			configJSON, err := roleJob.WriteConfigs(role, r.lightOpinionsPath, r.darkOpinionsPath)
+			configJSON, err := jobReference.WriteConfigs(instanceGroup, r.lightOpinionsPath, r.darkOpinionsPath)
 			if err != nil {
 				return err
 			}
 			util.WriteToTarStream(tarWriter, configJSON, tar.Header{
-				Name: filepath.Join("root/var/vcap/jobs-src", roleJob.Name, jobConfigSpecFilename),
+				Name: filepath.Join("root/var/vcap/jobs-src", jobReference.Name, jobConfigSpecFilename),
 			})
 		}
 
 		// Copy role startup scripts
-		for script, sourceScriptPath := range role.GetScriptPaths() {
+		for script, sourceScriptPath := range instanceGroup.GetScriptPaths() {
 			err := util.CopyFileToTarStream(tarWriter, sourceScriptPath, &tar.Header{
 				Name: filepath.Join("root/opt/fissile/startup", script),
 			})
@@ -182,7 +182,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Generate run script
-		runScriptContents, err := r.generateRunScript(role, "run.sh")
+		runScriptContents, err := r.generateRunScript(instanceGroup, "run.sh")
 		if err != nil {
 			return err
 		}
@@ -194,7 +194,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 			return err
 		}
 
-		preStopScriptContents, err := r.generateRunScript(role, "pre-stop.sh")
+		preStopScriptContents, err := r.generateRunScript(instanceGroup, "pre-stop.sh")
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 			return err
 		}
 
-		jobsConfigContents, err := r.generateJobsConfig(role)
+		jobsConfigContents, err := r.generateJobsConfig(instanceGroup)
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Copy readiness probe script
-		readinessProbeScriptContents, err := r.generateRunScript(role, "readiness-probe.sh")
+		readinessProbeScriptContents, err := r.generateRunScript(instanceGroup, "readiness-probe.sh")
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 		}
 
 		// Create env2conf templates file in /opt/fissile/env2conf.yml
-		configTemplatesBytes, err := yaml.Marshal(role.Configuration.Templates)
+		configTemplatesBytes, err := yaml.Marshal(instanceGroup.Configuration.Templates)
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 
 		// Generate Dockerfile
 		buf := &bytes.Buffer{}
-		if err := r.generateDockerfile(role, baseImageName, buf); err != nil {
+		if err := r.generateDockerfile(instanceGroup, baseImageName, buf); err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, buf.Bytes(), tar.Header{
@@ -258,7 +258,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(role *model.Role, baseImageName st
 	}
 }
 
-func (r *RoleImageBuilder) generateRunScript(role *model.Role, assetName string) ([]byte, error) {
+func (r *RoleImageBuilder) generateRunScript(instanceGroup *model.InstanceGroup, assetName string) ([]byte, error) {
 	asset, err := dockerfiles.Asset(assetName)
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role, assetName string)
 		},
 	})
 	context := map[string]interface{}{
-		"role": role,
+		"instance_group": instanceGroup,
 	}
 	runScriptTemplate, err = runScriptTemplate.Parse(string(asset))
 	if err != nil {
@@ -290,26 +290,26 @@ func (r *RoleImageBuilder) generateRunScript(role *model.Role, assetName string)
 	return output.Bytes(), nil
 }
 
-func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) {
+func (r *RoleImageBuilder) generateJobsConfig(instanceGroup *model.InstanceGroup) ([]byte, error) {
 	jobsConfig := make(map[string]map[string]interface{})
 
-	for index, roleJob := range role.RoleJobs {
-		jobsConfig[roleJob.Name] = make(map[string]interface{})
-		jobsConfig[roleJob.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", roleJob.Name)
+	for index, jobReference := range instanceGroup.JobReferences {
+		jobsConfig[jobReference.Name] = make(map[string]interface{})
+		jobsConfig[jobReference.Name]["base"] = fmt.Sprintf("/var/vcap/jobs-src/%s/config_spec.json", jobReference.Name)
 
 		files := make(map[string]string)
 
-		for _, file := range roleJob.Templates {
+		for _, file := range jobReference.Templates {
 			src := fmt.Sprintf("/var/vcap/jobs-src/%s/templates/%s",
-				roleJob.Name, file.SourcePath)
+				jobReference.Name, file.SourcePath)
 			dest := fmt.Sprintf("/var/vcap/jobs/%s/%s",
-				roleJob.Name, file.DestinationPath)
+				jobReference.Name, file.DestinationPath)
 			files[src] = dest
 		}
 
-		if role.Type != "bosh-task" {
-			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", roleJob.Name)
-			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", roleJob.Name)
+		if instanceGroup.Type != "bosh-task" {
+			src := fmt.Sprintf("/var/vcap/jobs-src/%s/monit", jobReference.Name)
+			dest := fmt.Sprintf("/var/vcap/monit/%s.monitrc", jobReference.Name)
 			files[src] = dest
 
 			if index == 0 {
@@ -317,7 +317,7 @@ func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) 
 			}
 		}
 
-		jobsConfig[roleJob.Name]["files"] = files
+		jobsConfig[jobReference.Name]["files"] = files
 	}
 
 	jsonOut, err := json.Marshal(jobsConfig)
@@ -329,7 +329,7 @@ func (r *RoleImageBuilder) generateJobsConfig(role *model.Role) ([]byte, error) 
 }
 
 // generateDockerfile builds a docker file for a given role.
-func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName string, outputFile io.Writer) error {
+func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup, baseImageName string, outputFile io.Writer) error {
 	asset, err := dockerfiles.Asset("Dockerfile-role")
 	if err != nil {
 		return err
@@ -338,9 +338,9 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 	dockerfileTemplate := template.New("Dockerfile-role")
 
 	context := map[string]interface{}{
-		"base_image": baseImageName,
-		"role":       role,
-		"licenses":   role.RoleJobs[0].Release.License.Files,
+		"base_image":     baseImageName,
+		"instance_group": instanceGroup,
+		"licenses":       instanceGroup.JobReferences[0].Release.License.Files,
 	}
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
@@ -352,7 +352,7 @@ func (r *RoleImageBuilder) generateDockerfile(role *model.Role, baseImageName st
 }
 
 type roleBuildJob struct {
-	role            *model.Role
+	instanceGroup   *model.InstanceGroup
 	builder         *RoleImageBuilder
 	ui              *termui.UI
 	grapher         util.ModelGrapher
@@ -382,7 +382,7 @@ func (j roleBuildJob) Run() {
 			return err
 		}
 
-		devVersion, err := j.role.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion, j.grapher)
+		devVersion, err := j.instanceGroup.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion, j.grapher)
 		if err != nil {
 			return err
 		}
@@ -395,10 +395,10 @@ func (j roleBuildJob) Run() {
 		var outputPath string
 
 		if j.outputDirectory == "" {
-			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repository, j.role, devVersion)
+			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repository, j.instanceGroup, devVersion)
 			outputPath = fmt.Sprintf("%s.tar", roleImageName)
 		} else {
-			roleImageName = GetRoleDevImageName("", "", j.repository, j.role, devVersion)
+			roleImageName = GetRoleDevImageName("", "", j.repository, j.instanceGroup, devVersion)
 			outputPath = filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		}
 
@@ -407,7 +407,7 @@ func (j roleBuildJob) Run() {
 				if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
 					return err
 				} else if hasImage {
-					j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.role.Name))
+					j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.instanceGroup.Name))
 					return nil
 				}
 			} else {
@@ -426,22 +426,22 @@ func (j roleBuildJob) Run() {
 		}
 
 		if j.builder.metricsPath != "" {
-			seriesName := fmt.Sprintf("create-role-images::%s", roleImageName)
+			seriesName := fmt.Sprintf("create-images::%s", roleImageName)
 
 			stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
 			defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
 		}
 
-		j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.role.Name))
-		dockerPopulator := j.builder.NewDockerPopulator(j.role, j.baseImageName)
+		j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.instanceGroup.Name))
+		dockerPopulator := j.builder.NewDockerPopulator(j.instanceGroup, j.baseImageName)
 
 		if j.noBuild {
-			j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.role.Name))
+			j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.instanceGroup.Name))
 			return nil
 		}
 
 		if j.outputDirectory == "" {
-			j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.role.Name))
+			j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.instanceGroup.Name))
 
 			log := new(bytes.Buffer)
 			stdoutWriter := docker.NewFormattingWriter(
@@ -455,7 +455,7 @@ func (j roleBuildJob) Run() {
 				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 		} else {
-			j.ui.Printf("Building tarball of %s...\n", color.YellowString(j.role.Name))
+			j.ui.Printf("Building tarball of %s...\n", color.YellowString(j.instanceGroup.Name))
 
 			tarFile, err := os.Create(outputPath)
 			if err != nil {
@@ -478,7 +478,7 @@ func (j roleBuildJob) Run() {
 }
 
 // BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
+func (r *RoleImageBuilder) BuildRoleImages(instanceGroups model.InstanceGroups, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -499,9 +499,9 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organiza
 
 	resultsCh := make(chan error)
 	abort := make(chan struct{})
-	for _, role := range roles {
+	for _, instanceGroup := range instanceGroups {
 		worker.Add(roleBuildJob{
-			role:            role,
+			instanceGroup:   instanceGroup,
 			builder:         r,
 			ui:              r.ui,
 			grapher:         r.grapher,
@@ -521,7 +521,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organiza
 	go worker.RunUntilDone()
 
 	aborted := false
-	for i := 0; i < len(roles); i++ {
+	for i := 0; i < len(instanceGroups); i++ {
 		result := <-resultsCh
 		if result != nil {
 			if !aborted {
@@ -536,7 +536,7 @@ func (r *RoleImageBuilder) BuildRoleImages(roles model.Roles, registry, organiza
 }
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
-func GetRoleDevImageName(registry, organization, repository string, role *model.Role, version string) string {
+func GetRoleDevImageName(registry, organization, repository string, instanceGroup *model.InstanceGroup, version string) string {
 	var imageName string
 	if registry != "" {
 		imageName = registry + "/"
@@ -546,7 +546,7 @@ func GetRoleDevImageName(registry, organization, repository string, role *model.
 		imageName += util.SanitizeDockerName(organization) + "/"
 	}
 
-	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, role.Name))
+	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, instanceGroup.Name))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(version))
 }

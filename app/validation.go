@@ -124,13 +124,13 @@ func checkParentsOfUndefined(p string, bosh propertyDefaults) bool {
 }
 
 // collectManifestProperties returns a map merging the global and
-// per-role properties/templates into a single structure.
+// per-instance-group properties/templates into a single structure.
 func collectManifestProperties(roleManifest *model.RoleManifest) map[string]string {
 	properties := make(map[string]string)
 
-	// Per-role properties
-	for _, role := range roleManifest.Roles {
-		for property, template := range role.Configuration.Templates {
+	// Per-instance-group properties
+	for _, instanceGroup := range roleManifest.InstanceGroups {
+		for property, template := range instanceGroup.Configuration.Templates {
 			properties[property] = template
 		}
 	}
@@ -189,13 +189,13 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 		check[property] = struct{}{}
 	}
 
-	// ... then the per-role properties
-	for _, role := range roleManifest.Roles {
-		prefix := fmt.Sprintf("roles[%s].configuration.templates", role.Name)
+	// ... then the per-instance-group properties
+	for _, instanceGroup := range roleManifest.InstanceGroups {
+		prefix := fmt.Sprintf("instance-groups[%s].configuration.templates", instanceGroup.Name)
 
-		for property, template := range role.Configuration.Templates {
+		for property, template := range instanceGroup.Configuration.Templates {
 			// Skip over duplicates of the global
-			// properties in the per-role data, we already
+			// properties in the per-instance-group data, we already
 			// checked them, see above.
 			if _, ok := check[property]; ok {
 				continue

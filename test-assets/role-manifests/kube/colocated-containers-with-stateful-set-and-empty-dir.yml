@@ -1,9 +1,9 @@
 ---
-roles:
+instance_groups:
 - name: myrole
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
   run:
     capabilities:
     - something
@@ -28,7 +28,7 @@ roles:
   type: colocated-container
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
   run:
     capabilities:
     - something

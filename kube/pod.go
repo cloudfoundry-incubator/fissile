@@ -21,13 +21,13 @@ const defaultInitialDelaySeconds = 600
 
 // NewPodTemplate creates a new pod template spec for a given role, as well as
 // any objects it depends on
-func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
+func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, fmt.Errorf("Role %s has no run information", role.Name)
 	}
 
 	containers := helm.NewList()
-	for _, candidate := range append([]*model.Role{role}, role.GetColocatedRoles()...) {
+	for _, candidate := range append([]*model.InstanceGroup{role}, role.GetColocatedRoles()...) {
 		containerMapping, err := getContainerMapping(candidate, settings, grapher)
 		if err != nil {
 			return nil, err
@@ -69,7 +69,7 @@ func NewPodTemplate(role *model.Role, settings ExportSettings, grapher util.Mode
 }
 
 // NewPod creates a new Pod for the given role, as well as any objects it depends on
-func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
+func NewPod(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (helm.Node, error) {
 	podTemplate, err := NewPodTemplate(role, settings, grapher)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func NewPod(role *model.Role, settings ExportSettings, grapher util.ModelGrapher
 }
 
 // getContainerMapping returns the container list entry mapping for the provided role
-func getContainerMapping(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
+func getContainerMapping(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
 	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
 	roleVarName := makeVarName(roleName)
 
@@ -189,7 +189,7 @@ func getContainerMapping(role *model.Role, settings ExportSettings, grapher util
 }
 
 // getContainerImageName returns the name of the docker image to use for a role
-func getContainerImageName(role *model.Role, settings ExportSettings, grapher util.ModelGrapher) (string, error) {
+func getContainerImageName(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (string, error) {
 	devVersion, err := role.GetRoleDevVersion(settings.Opinions, settings.TagExtra, settings.FissileVersion, grapher)
 	if err != nil {
 		return "", err
@@ -208,7 +208,7 @@ func getContainerImageName(role *model.Role, settings ExportSettings, grapher ut
 }
 
 // getContainerPorts returns a list of ports for a role
-func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, error) {
+func getContainerPorts(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, port := range role.Run.ExposedPorts {
 		if settings.CreateHelmChart && port.CountIsConfigurable {
@@ -254,7 +254,7 @@ func getContainerPorts(role *model.Role, settings ExportSettings) (helm.Node, er
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
-func getVolumeMounts(role *model.Role, createHelmChart bool) helm.Node {
+func getVolumeMounts(role *model.InstanceGroup, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
 		var mount helm.Node
@@ -294,7 +294,7 @@ func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) 
 }
 
 // getNonClaimVolumes returns the list of pod volumes that are _not_ bound with volume claims
-func getNonClaimVolumes(role *model.Role, createHelmChart bool) helm.Node {
+func getNonClaimVolumes(role *model.InstanceGroup, createHelmChart bool) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
 		switch volume.Type {
@@ -321,7 +321,7 @@ func getNonClaimVolumes(role *model.Role, createHelmChart bool) helm.Node {
 	return helm.NewNode(mounts)
 }
 
-func getEnvVars(role *model.Role, settings ExportSettings) (helm.Node, error) {
+func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	configs, err := role.GetVariablesForRole()
 	if err != nil {
 		return nil, err
@@ -340,7 +340,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 		match := sizingCountRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
-			role := settings.RoleManifest.LookupRole(roleName)
+			role := settings.RoleManifest.LookupInstanceGroup(roleName)
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
 			}
@@ -362,7 +362,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 		match = sizingPortsRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
-			role := settings.RoleManifest.LookupRole(roleName)
+			role := settings.RoleManifest.LookupInstanceGroup(roleName)
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
 			}
@@ -489,7 +489,7 @@ func getEnvVarsFromConfigs(configs model.ConfigurationVariableSlice, settings Ex
 	return helm.NewNode(env), nil
 }
 
-func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
+func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.Node {
 	var hasAll string
 	var notAll string
 	var config string
@@ -532,7 +532,7 @@ func getSecurityContext(role *model.Role, createHelmChart bool) helm.Node {
 	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
 }
 
-func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
+func getContainerLivenessProbe(role *model.InstanceGroup) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
@@ -552,7 +552,7 @@ func getContainerLivenessProbe(role *model.Role) (helm.Node, error) {
 	return nil, nil
 }
 
-func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
+func getContainerReadinessProbe(role *model.InstanceGroup) (helm.Node, error) {
 	if role.Run == nil {
 		return nil, nil
 	}
@@ -628,7 +628,7 @@ func getContainerReadinessProbe(role *model.Role) (helm.Node, error) {
 	}
 }
 
-func configureContainerProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe) (*helm.Mapping, bool, error) {
+func configureContainerProbe(role *model.InstanceGroup, probeName string, roleProbe *model.HealthProbe) (*helm.Mapping, bool, error) {
 	// InitialDelaySeconds -
 	// TimeoutSeconds      - 1, min 1
 	// PeriodSeconds       - 10, min 1 (interval between probes)
@@ -662,7 +662,7 @@ func configureContainerProbe(role *model.Role, probeName string, roleProbe *mode
 	return probe.Sort(), false, nil
 }
 
-func getContainerURLProbe(role *model.Role, probeName string, roleProbe *model.HealthProbe) (helm.Node, error) {
+func getContainerURLProbe(role *model.InstanceGroup, probeName string, roleProbe *model.HealthProbe) (helm.Node, error) {
 	probeURL, err := url.Parse(roleProbe.URL)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid %s URL health check for %s: %s", probeName, role.Name, err)

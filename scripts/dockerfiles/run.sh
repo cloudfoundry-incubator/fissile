@@ -99,15 +99,15 @@ fi
 
 # Write a couple of identification files for the stemcell
 mkdir -p /var/vcap/instance
-echo {{ .role.Name }} > /var/vcap/instance/name
+echo {{ .instance_group.Name }} > /var/vcap/instance/name
 echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
 # Run custom environment scripts (that are sourced)
-{{ range $script := .role.EnvironScripts }}
+{{ range $script := .instance_group.EnvironScripts }}
     source {{ script_path $script }}
 {{ end }}
 # Run custom role scripts
-{{ range $script := .role.Scripts}}
+{{ range $script := .instance_group.Scripts}}
     bash {{ script_path $script }}
 {{ end }}
 
@@ -132,7 +132,7 @@ then
   chmod 1730 /var/spool/cron/tabs/
 fi
 
-{{ if eq .role.Type "bosh-task" }}
+{{ if eq .instance_group.Type "bosh-task" }}
     # Start rsyslog and cron
     /usr/sbin/rsyslogd
     cron
@@ -142,7 +142,7 @@ fi
 
 # Run custom post config role scripts
 # Run any custom scripts other than pre-start
-{{ range $script := .role.PostConfigScripts}}
+{{ range $script := .instance_group.PostConfigScripts}}
     echo bash {{ script_path $script }}
     bash {{ script_path $script }}
 {{ end }}
@@ -170,9 +170,9 @@ for fname in $(sorted-pre-start-paths) ; do
 done
 
 # Run
-{{ if eq .role.Type "bosh-task" }}
+{{ if eq .instance_group.Type "bosh-task" }}
         idx=0
-    {{ range $job := .role.RoleJobs}}
+    {{ range $job := .instance_group.JobReferences}}
         if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/run ] ; then
             /var/vcap/jobs/{{ $job.Name }}/bin/run
 	    idx=$((idx + 1))

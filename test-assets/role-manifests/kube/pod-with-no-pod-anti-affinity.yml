@@ -1,6 +1,6 @@
 ---
-roles:
-- name: role
+instance_groups:
+- name: some-group
   run:
     memory: 128
     affinity: ~

@@ -1,14 +1,14 @@
 # This role manifest is used to check that various validation issues are found
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x
   jobs:
   - name: new_hostname
-    release_name: tor
+    release: tor
   - name: tor
-    release_name: tor
+    release: tor
   configuration:
     templates:
       properties.tor.bogus: BOGUS
@@ -18,7 +18,7 @@ roles:
     foo: x
   jobs:
   - name: tor
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: BAR

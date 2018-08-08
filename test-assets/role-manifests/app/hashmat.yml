@@ -1,12 +1,12 @@
 # This role manifest is used to test validation
 ---
-roles:
+instance_groups:
 - name: myrole
   run:
     foo: x
   jobs:
   - name: hashmat
-    release_name: tor
+    release: tor
 configuration:
   variables:
   - name: FOO

@@ -44,7 +44,7 @@ fi
 set -o errexit
 echo "Running pre-stop script..."
 
-{{ if ne .role.Type "bosh-task" }}
+{{ if ne .instance_group.Type "bosh-task" }}
     processes=($(/var/vcap/bosh/bin/monit summary | awk '$1 == "Process" { print $2 }' | tr -d "'"))
 
     # Lifecycle: Stop: 1. `monit unmonitor` is called for each process
@@ -52,7 +52,7 @@ echo "Running pre-stop script..."
 
     # Lifecycle: Stop: 2. Drain scripts
     # We exec ourselves via xargs to run things in parallel and collect exit status
-    echo {{ range .role.RoleJobs }} {{ .Name }} {{ end }} | xargs --max-args=1 --max-procs=0 "${0}"
+    echo {{ range .instance_group.JobReferences }} {{ .Name }} {{ end }} | xargs --max-args=1 --max-procs=0 "${0}"
 
     # Lifecycle: Stop: 3. `monit stop` is called for each process
     echo "${processes[@]}" | xargs --max-args=1 /var/vcap/bosh/bin/monit stop
