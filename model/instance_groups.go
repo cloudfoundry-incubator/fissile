@@ -64,11 +64,12 @@ const (
 
 // JobReference represents a job in the context of a role
 type JobReference struct {
-	*Job              `yaml:"-"`                 // The resolved job
-	Name              string                     `yaml:"name"`    // The name of the job
-	ReleaseName       string                     `yaml:"release"` // The release the job comes from
-	ExportedProviders map[string]jobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
+	*Job                `yaml:"-"`                 // The resolved job
+	Name                string                     `yaml:"name"`    // The name of the job
+	ReleaseName         string                     `yaml:"release"` // The release the job comes from
+	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`
+	ResolvedConsumers   map[string]jobConsumesInfo `yaml:"consumes"`
+	ContainerProperties *JobContainerProperties    `yaml:"properties"`
 }
 
 // RoleRun describes how a role should behave at runtime
@@ -193,7 +194,6 @@ type RoleTag string
 const (
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
-	RoleTagHeadless          = RoleTag("headless")
 	RoleTagActivePassive     = RoleTag("active-passive")
 )
 

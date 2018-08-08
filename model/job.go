@@ -39,6 +39,31 @@ type jobConsumesInfo struct {
 	Optional bool
 }
 
+// JobExposedPort describes a port to be available to other jobs, or the outside world
+type JobExposedPort struct {
+	Name                string `yaml:"name"`
+	Protocol            string `yaml:"protocol"`
+	External            string `yaml:"external"`
+	Internal            string `yaml:"internal"`
+	Public              bool   `yaml:"public"`
+	Count               int    `yaml:"count"`
+	Max                 int    `yaml:"max"`
+	PortIsConfigurable  bool   `yaml:"port-configurable"`
+	CountIsConfigurable bool   `yaml:"count-configurable"`
+	InternalPort        int
+	ExternalPort        int
+}
+
+// JobBoshContainerization describes settings specific to containerization
+type JobBoshContainerization struct {
+	Ports []*JobExposedPort `yaml:"ports"`
+}
+
+// JobContainerProperties describes job configuration
+type JobContainerProperties struct {
+	BoshContainerization *JobBoshContainerization `yaml:"bosh_containerization"`
+}
+
 // Job represents a BOSH job
 type Job struct {
 	Name               string

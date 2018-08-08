@@ -43,7 +43,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
 	statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
@@ -167,7 +167,7 @@ func TestStatefulSetServices(t *testing.T) {
 				manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
 				require.NotNil(t, manifest)
 				require.NotNil(t, role)
-				require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
+				require.NotEmpty(t, role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0], "No exposed ports loaded")
 
 				statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
 				require.NoError(t, err)

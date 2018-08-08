@@ -210,40 +210,46 @@ func getContainerImageName(role *model.InstanceGroup, settings ExportSettings, g
 // getContainerPorts returns a list of ports for a role
 func getContainerPorts(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
-	for _, port := range role.Run.ExposedPorts {
-		if settings.CreateHelmChart && port.CountIsConfigurable {
-			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
+	for _, job := range role.JobReferences {
+		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+			continue
+		}
 
-			fail := fmt.Sprintf(`{{ fail "%s.count must not exceed %d" }}`, sizing, port.Max)
-			block := fmt.Sprintf("if gt (int %s.count) %d", sizing, port.Max)
-			ports = append(ports, helm.NewNode(fail, helm.Block(block)))
+		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+			if settings.CreateHelmChart && port.CountIsConfigurable {
+				sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
-			fail = fmt.Sprintf(`{{ fail "%s.count must be at least 1" }}`, sizing)
-			block = fmt.Sprintf("if lt (int %s.count) 1", sizing)
-			ports = append(ports, helm.NewNode(fail, helm.Block(block)))
+				fail := fmt.Sprintf(`{{ fail "%s.count must not exceed %d" }}`, sizing, port.Max)
+				block := fmt.Sprintf("if gt (int %s.count) %d", sizing, port.Max)
+				ports = append(ports, helm.NewNode(fail, helm.Block(block)))
 
-			block = fmt.Sprintf("range $port := until (int %s.count)", sizing)
-			newPort := helm.NewMapping()
-			newPort.Set(helm.Block(block))
-			newPort.Add("containerPort", fmt.Sprintf("{{ add %d $port }}", port.InternalPort))
-			if port.Max > 1 {
-				newPort.Add("name", fmt.Sprintf("%s-{{ $port }}", port.Name))
-			} else {
-				newPort.Add("name", port.Name)
-			}
-			newPort.Add("protocol", port.Protocol)
-			ports = append(ports, newPort)
-		} else {
-			for portNumber := port.InternalPort; portNumber < port.InternalPort+port.Count; portNumber++ {
+				fail = fmt.Sprintf(`{{ fail "%s.count must be at least 1" }}`, sizing)
+				block = fmt.Sprintf("if lt (int %s.count) 1", sizing)
+				ports = append(ports, helm.NewNode(fail, helm.Block(block)))
+
+				block = fmt.Sprintf("range $port := until (int %s.count)", sizing)
 				newPort := helm.NewMapping()
-				newPort.Add("containerPort", portNumber)
+				newPort.Set(helm.Block(block))
+				newPort.Add("containerPort", fmt.Sprintf("{{ add %d $port }}", port.InternalPort))
 				if port.Max > 1 {
-					newPort.Add("name", fmt.Sprintf("%s-%d", port.Name, portNumber))
+					newPort.Add("name", fmt.Sprintf("%s-{{ $port }}", port.Name))
 				} else {
 					newPort.Add("name", port.Name)
 				}
 				newPort.Add("protocol", port.Protocol)
 				ports = append(ports, newPort)
+			} else {
+				for portNumber := port.InternalPort; portNumber < port.InternalPort+port.Count; portNumber++ {
+					newPort := helm.NewMapping()
+					newPort.Add("containerPort", portNumber)
+					if port.Max > 1 {
+						newPort.Add("name", fmt.Sprintf("%s-%d", port.Name, portNumber))
+					} else {
+						newPort.Add("name", port.Name)
+					}
+					newPort.Add("protocol", port.Protocol)
+					ports = append(ports, newPort)
+				}
 			}
 		}
 	}
@@ -371,11 +377,17 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 			}
 
 			portName := strings.Replace(strings.ToLower(match[2]), "_", "-", -1)
-			var port *model.RoleRunExposedPort
-			for _, exposedPort := range role.Run.ExposedPorts {
-				if (exposedPort.PortIsConfigurable || exposedPort.CountIsConfigurable) && exposedPort.Name == portName {
-					port = exposedPort
-					break
+			var port *model.JobExposedPort
+			for _, job := range role.JobReferences {
+				if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+					continue
+				}
+
+				for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {
+					if (exposedPort.PortIsConfigurable || exposedPort.CountIsConfigurable) && exposedPort.Name == portName {
+						port = exposedPort
+						break
+					}
 				}
 			}
 			if port == nil {
@@ -601,11 +613,17 @@ func getContainerReadinessProbe(role *model.InstanceGroup) (helm.Node, error) {
 				return probe.Sort(), err
 			}
 		}
-		var readinessPort *model.RoleRunExposedPort
-		for _, port := range role.Run.ExposedPorts {
-			if port.Protocol == "TCP" {
-				readinessPort = port
-				break
+		var readinessPort *model.JobExposedPort
+		for _, job := range role.JobReferences {
+			if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+				continue
+			}
+
+			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+				if port.Protocol == "TCP" {
+					readinessPort = port
+					break
+				}
 			}
 		}
 		if readinessPort == nil {

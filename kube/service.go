@@ -13,35 +13,39 @@ import (
 func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
-	if clustering {
-		// Create headless, private service
-		svc, err := newService(role, newServiceTypeHeadless, settings)
-		if err != nil {
-			return nil, err
+	for _, job := range role.JobReferences {
+		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+			continue
 		}
-		if svc != nil {
-			items = append(items, svc)
-		}
-	}
 
-	if !role.HasTag(model.RoleTagHeadless) {
+		if clustering {
+			// Create headless, private service
+			svc, err := newService(role, job, newServiceTypeHeadless, settings)
+			if err != nil {
+				return nil, err
+			}
+			if svc != nil {
+				items = append(items, svc)
+			}
+		}
+
 		// Create private service
-		svc, err := newService(role, newServiceTypePrivate, settings)
+		svc, err := newService(role, job, newServiceTypePrivate, settings)
 		if err != nil {
 			return nil, err
 		}
 		if svc != nil {
 			items = append(items, svc)
 		}
-	}
 
-	// Create public service
-	svc, err := newService(role, newServiceTypePublic, settings)
-	if err != nil {
-		return nil, err
-	}
-	if svc != nil {
-		items = append(items, svc)
+		// Create public service
+		svc, err = newService(role, job, newServiceTypePublic, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
 	}
 
 	if len(items) == 0 {
@@ -65,16 +69,20 @@ const (
 )
 
 // newService creates a new k8s service (ClusterIP or LoadBalanced)
-func newService(role *model.InstanceGroup, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
+func newService(role *model.InstanceGroup, job *model.JobReference, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
-	for _, port := range role.Run.ExposedPorts {
+	if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+		return nil, nil
+	}
+
+	for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 		if serviceType == newServiceTypePublic && !port.Public {
 			// Skip non-public ports when creating public services
 			continue
 		}
 
 		if settings.CreateHelmChart && port.CountIsConfigurable {
-			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
+			sizing := fmt.Sprintf(".Values.sizing.%s-%s.ports.%s", makeVarName(role.Name), makeVarName(job.Job.Name), makeVarName(port.Name))
 
 			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
 
@@ -111,8 +119,8 @@ func newService(role *model.InstanceGroup, serviceType newServiceType, settings 
 
 				var portNumber interface{}
 				if settings.CreateHelmChart && port.PortIsConfigurable {
-					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
-						makeVarName(role.Name), makeVarName(port.Name), portIndex)
+					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s-%s.ports.%s.port) %d }}",
+						makeVarName(role.Name), makeVarName(job.Job.Name), makeVarName(port.Name), portIndex)
 				} else {
 					portNumber = port.ExternalPort + portIndex
 				}
@@ -164,11 +172,11 @@ func newService(role *model.InstanceGroup, serviceType newServiceType, settings 
 	var serviceName string
 	switch serviceType {
 	case newServiceTypeHeadless:
-		serviceName = role.Name + "-set"
+		serviceName = role.Name + "-" + job.Name + "-set"
 	case newServiceTypePrivate:
-		serviceName = role.Name
+		serviceName = role.Name + "-" + job.Name
 	case newServiceTypePublic:
-		serviceName = role.Name + "-public"
+		serviceName = role.Name + "-" + job.Name + "-public"
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}

@@ -1,12 +1,17 @@
 ---
 instance_groups:
 - name: myrole
-  jobs: []
   run:
-    exposed-ports:
-    - name: tcp-route
-      protocol: TCP
-      count-configurable: true
-      internal: 20000-20002
-      public: true
-      max: 30
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        ports:
+        - name: tcp-route
+          protocol: TCP
+          count-configurable: true
+          internal: 20000-20002
+          public: true
+          max: 30

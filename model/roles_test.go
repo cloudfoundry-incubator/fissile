@@ -172,7 +172,6 @@ func TestRoleManifestTagList(t *testing.T) {
 	for tag, acceptableRoleTypes := range map[string][]RoleType{
 		"stop-on-failure":    []RoleType{RoleTypeBoshTask},
 		"sequential-startup": []RoleType{RoleTypeBosh, RoleTypeDocker},
-		"headless":           []RoleType{RoleTypeBosh, RoleTypeDocker},
 		"active-passive":     []RoleType{RoleTypeBosh},
 		"indexed":            []RoleType{},
 		"clustered":          []RoleType{},
@@ -571,10 +570,6 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
-			// No error is expected for a headless public port
-			"bosh-run-headless-public-port.yml", []string{},
-		},
-		{
 			"bosh-run-bad-parse.yml", []string{
 				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
 				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
@@ -785,22 +780,6 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] instance groups, not bosh-task`)
-	})
-
-	t.Run("headless active/passive role", func(t *testing.T) {
-		t.Parallel()
-		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
-		err := yaml.Unmarshal(manifestContents, roleManifest)
-		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
-		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
-
-		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
-		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
-		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
-		assert.EqualError(t, err,
-			`instance_groups[myrole].tags[1]: Invalid value: "active-passive": headless instance groups may not be active-passive`)
 	})
 }
 
@@ -1270,17 +1249,12 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+	_, err = NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
 	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	_, err = NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
 	assert.NoError(err)
-
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
-	assert.Nil(roleManifest)
-	assert.EqualError(err, `instance_groups[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] instance groups, not colocated-container`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {
