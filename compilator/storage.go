@@ -56,7 +56,8 @@ func NewPackageStorage(kind string, config stow.Config, compilationWorkDir strin
 	return p, nil
 }
 
-// Exists checks whether a package already exists in the stow cache
+// Exists checks whether a package already exists in the configured
+// stow cache
 func (p *PackageStorage) Exists(pack *model.Package) (bool, error) {
 	item, _, err := p.container.Items(p.ImageName+pack.Fingerprint+".tgz", "", 1)
 	if err != nil {
@@ -81,7 +82,7 @@ func (p *PackageStorage) Exists(pack *model.Package) (bool, error) {
 	return false, nil
 }
 
-// Download downloads a package from the PackageStorage
+// Download downloads a package from the configured cache
 func (p *PackageStorage) Download(pack *model.Package) error {
 
 	packageCompiledDir := filepath.Join(p.CompilationWorkDir, pack.Fingerprint, "compiled")
@@ -114,14 +115,12 @@ func (p *PackageStorage) Download(pack *model.Package) error {
 	return nil
 }
 
-// Upload uploads a package to the PackageStorage
+// Upload uploads a package to the configured cache
 func (p *PackageStorage) Upload(pack *model.Package) error {
 
 	id := uuid.Must(uuid.NewV4())
 	archiveName := filepath.Join(os.TempDir(), fmt.Sprintf("package-%d.tgz", id.String()))
 	// Archive (tgz)
-	// filename must be a temp file (random)
-	// use defer to cleanup
 	packageCompiledDir := filepath.Join(p.CompilationWorkDir, pack.Fingerprint, "compiled")
 	err := archiver.TarGz.Make(archiveName, []string{packageCompiledDir})
 	defer os.RemoveAll(archiveName)

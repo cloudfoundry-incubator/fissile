@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Tests require a config file in order to function
+
 func TestStorePackageLocallyOK(t *testing.T) {
 	// Arrange
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
@@ -39,18 +41,27 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
 		panic(err)
 	}
+
 	var config stow.Config
-	if packageCacheConfig["kind"].(string) == "local" {
-		config = stow.ConfigMap{local.ConfigKeyPath: packageCacheConfig["configKeyPath"].(string)}
-	} else {
-		if packageCacheConfig["kind"].(string) == "s3" {
-			config = stow.ConfigMap{
-				s3.ConfigAccessKeyID: packageCacheConfig["access_key_id"].(string),
-				s3.ConfigSecretKey:   packageCacheConfig["secret_key"].(string),
-				s3.ConfigRegion:      packageCacheConfig["region"].(string),
-			}
+	var configMap stow.ConfigMap
+	configMap = make(stow.ConfigMap)
+
+	configParametersMap := map[string]string{
+		"configKeyPath": local.ConfigKeyPath,
+		"access_key_id": s3.ConfigAccessKeyID,
+		"secret_key":    s3.ConfigSecretKey,
+		"region":        s3.ConfigRegion,
+		"auth_type":     s3.ConfigAuthType,
+		"endpoint":      s3.ConfigEndpoint,
+		"disable_ssl":   s3.ConfigDisableSSL,
+	}
+
+	for key, value := range packageCacheConfig {
+		if len(configParametersMap[key]) > 0 {
+			configMap.Set(configParametersMap[key], value.(string))
 		}
 	}
+	config = configMap
 	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
 
 	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), config, compilationWorkDir, containerLocation, imageName)
@@ -92,6 +103,8 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Tests require a config file in order to function
+
 func TestStorePackageExists(t *testing.T) {
 	//Arrange
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
@@ -112,24 +125,35 @@ func TestStorePackageExists(t *testing.T) {
 	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
 		panic(err)
 	}
+
 	var config stow.Config
-	if packageCacheConfig["kind"].(string) == "local" {
-		config = stow.ConfigMap{local.ConfigKeyPath: packageCacheConfig["configKeyPath"].(string)}
-	} else {
-		if packageCacheConfig["kind"].(string) == "s3" {
-			config = stow.ConfigMap{
-				s3.ConfigAccessKeyID: packageCacheConfig["access_key_id"].(string),
-				s3.ConfigSecretKey:   packageCacheConfig["secret_key"].(string),
-				s3.ConfigRegion:      packageCacheConfig["region"].(string),
-			}
+	var configMap stow.ConfigMap
+	configMap = make(stow.ConfigMap)
+
+	configParametersMap := map[string]string{
+		"configKeyPath": local.ConfigKeyPath,
+		"access_key_id": s3.ConfigAccessKeyID,
+		"secret_key":    s3.ConfigSecretKey,
+		"region":        s3.ConfigRegion,
+		"auth_type":     s3.ConfigAuthType,
+		"endpoint":      s3.ConfigEndpoint,
+		"disable_ssl":   s3.ConfigDisableSSL,
+	}
+
+	for key, value := range packageCacheConfig {
+		if len(configParametersMap[key]) > 0 {
+			configMap.Set(configParametersMap[key], value.(string))
 		}
 	}
+	config = configMap
+
 	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
 
 	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), config, compilationWorkDir, containerLocation, imageName)
 	if err != nil {
 		panic(err)
 	}
+
 	//
 	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
 	assert.NoError(t, err)

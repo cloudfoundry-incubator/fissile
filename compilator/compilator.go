@@ -350,6 +350,7 @@ func (j compileJob) Run() {
 	}
 
 	// Check to see whether a package already exists in the configured cache
+	// and either download that package or compile and upload it
 	if exists == true {
 		downloadErr := c.packageStorage.Download(j.pkg)
 		if downloadErr != nil {

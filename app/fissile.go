@@ -334,7 +334,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
-	// Read a config file that contains stow configuration
+	// Read a json file that contains a stow configuration
 	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
 	if err != nil {
 		return fmt.Errorf("Failed to read the config file: %s", err.Error())
@@ -345,18 +345,28 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
 		return fmt.Errorf("Failed to unmarshal the config file: %s", err.Error())
 	}
+
 	var config stow.Config
-	if packageCacheConfig["kind"].(string) == "local" {
-		config = stow.ConfigMap{local.ConfigKeyPath: packageCacheConfig["configKeyPath"].(string)}
-	} else {
-		if packageCacheConfig["kind"].(string) == "s3" {
-			config = stow.ConfigMap{
-				s3.ConfigAccessKeyID: packageCacheConfig["access_key_id"].(string),
-				s3.ConfigSecretKey:   packageCacheConfig["secret_key"].(string),
-				s3.ConfigRegion:      packageCacheConfig["region"].(string),
-			}
+	var configMap stow.ConfigMap
+	configMap = make(stow.ConfigMap)
+
+	configParametersMap := map[string]string{
+		"configKeyPath": local.ConfigKeyPath,
+		"access_key_id": s3.ConfigAccessKeyID,
+		"secret_key":    s3.ConfigSecretKey,
+		"region":        s3.ConfigRegion,
+		"auth_type":     s3.ConfigAuthType,
+		"endpoint":      s3.ConfigEndpoint,
+		"disable_ssl":   s3.ConfigDisableSSL,
+	}
+
+	for key, value := range packageCacheConfig {
+		if len(configParametersMap[key]) > 0 {
+			configMap.Set(configParametersMap[key], value.(string))
 		}
 	}
+	config = configMap
+
 	// Generate container location
 	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
 
