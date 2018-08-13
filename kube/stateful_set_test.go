@@ -256,9 +256,7 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 							`, actual)
 						}
-						if variant == "headless" {
-							assert.Nil(t, internalService, "headless roles should not have internal services")
-						} else if assert.NotNil(t, internalService, "Internal service not found") {
+						if assert.NotNil(t, internalService, "Internal service not found") {
 							var actual interface{}
 							var err error
 							switch style {
