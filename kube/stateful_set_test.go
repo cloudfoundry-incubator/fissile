@@ -64,13 +64,13 @@ func TestStatefulSetPorts(t *testing.T) {
 		}
 	}
 	if assert.NotNil(t, endpointService, "endpoint service not found") {
-		assert.Equal(t, role.Name+"-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
+		assert.Equal(t, role.Name+"-tor-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
 	}
 	if assert.NotNil(t, headlessService, "headless service not found") {
-		assert.Equal(t, role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
+		assert.Equal(t, role.Name+"-tor-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
 	}
 	if assert.NotNil(t, privateService, "private service not found") {
-		assert.Equal(t, role.Name, privateService.Get("metadata", "name").String(), "unexpected private service name")
+		assert.Equal(t, role.Name+"-tor", privateService.Get("metadata", "name").String(), "unexpected private service name")
 	}
 
 	items = append(items, statefulset)
@@ -84,7 +84,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		-
 			# This is the per-pod naming port
 			metadata:
-				name: myrole-set
+				name: myrole-tor-set
 			spec:
 				ports:
 				-
@@ -103,7 +103,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		-
 			# This is the private service port
 			metadata:
-				name: myrole
+				name: myrole-tor
 			spec:
 				ports:
 				-
@@ -119,7 +119,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		-
 			# This is the public service port
 			metadata:
-				name: myrole-public
+				name: myrole-tor-public
 			spec:
 				ports:
 				-
@@ -178,13 +178,13 @@ func TestStatefulSetServices(t *testing.T) {
 				var headlessService, internalService, publicService helm.Node
 				for _, item := range items {
 					switch item.Get("metadata").Get("name").String() {
-					case "myrole-set":
+					case "myrole-tor-set":
 						assert.Nil(t, headlessService, "Multiple headless services found")
 						headlessService = item
-					case "myrole":
+					case "myrole-tor":
 						assert.Nil(t, internalService, "Multiple internal services found")
 						internalService = item
-					case "myrole-public":
+					case "myrole-tor-public":
 						assert.Nil(t, publicService, "Multiple public services found")
 						publicService = item
 					default:
@@ -209,7 +209,7 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole-set
+								name: myrole-tor-set
 							spec:
 								clusterIP: None
 								ports:
@@ -243,7 +243,7 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole-public
+								name: myrole-tor-public
 							spec:
 								externalIPs: [ 192.168.77.77 ]
 								ports:
@@ -274,7 +274,7 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole
+								name: myrole-tor
 							spec:
 								ports:
 								-
