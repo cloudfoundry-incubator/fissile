@@ -83,7 +83,7 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 		}
 
 		if settings.CreateHelmChart && port.CountIsConfigurable {
-			sizing := fmt.Sprintf(".Values.sizing.%s-%s.ports.%s", makeVarName(role.Name), makeVarName(job.Job.Name), makeVarName(port.Name))
+			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
 
 			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
 
@@ -120,8 +120,8 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 
 				var portNumber interface{}
 				if settings.CreateHelmChart && port.PortIsConfigurable {
-					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s-%s.ports.%s.port) %d }}",
-						makeVarName(role.Name), makeVarName(job.Job.Name), makeVarName(port.Name), portIndex)
+					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
+						makeVarName(role.Name), makeVarName(port.Name), portIndex)
 				} else {
 					portNumber = port.ExternalPort + portIndex
 				}
