@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -169,14 +170,16 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
+	jobName := strings.Replace(job.Name, "_", "-", -1)
+
 	var serviceName string
 	switch serviceType {
 	case newServiceTypeHeadless:
-		serviceName = role.Name + "-" + job.Name + "-set"
+		serviceName = role.Name + "-" + jobName + "-set"
 	case newServiceTypePrivate:
-		serviceName = role.Name + "-" + job.Name
+		serviceName = role.Name + "-" + jobName
 	case newServiceTypePublic:
-		serviceName = role.Name + "-" + job.Name + "-public"
+		serviceName = role.Name + "-" + jobName + "-public"
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
