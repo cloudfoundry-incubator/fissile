@@ -27,13 +27,13 @@ type Release struct {
 }
 
 type manifest struct {
-	Name               string            `yaml:"name"`
-	Version            string            `yaml:"version"`
-	CommitHash         string            `yaml:"commit_hash"`
-	UncommittedChanges bool              `yaml:"uncommitted_changes"`
-	Jobs               []interface{}     `yaml:"jobs"`
-	Packages           []interface{}     `yaml:"packages"`
-	License            map[string]string `yaml:"license"`
+	Name               string                        `yaml:"name"`
+	Version            string                        `yaml:"version"`
+	CommitHash         string                        `yaml:"commit_hash"`
+	UncommittedChanges bool                          `yaml:"uncommitted_changes"`
+	Jobs               []map[interface{}]interface{} `yaml:"jobs"`
+	Packages           []map[interface{}]interface{} `yaml:"packages"`
+	License            map[string]string             `yaml:"license"`
 }
 
 const (
@@ -132,9 +132,8 @@ func (r *Release) loadJobs() (err error) {
 		}
 	}()
 
-	jobs := r.manifest.Jobs
-	for _, job := range jobs {
-		j, err := newJob(r, job.(map[interface{}]interface{}))
+	for _, job := range r.manifest.Jobs {
+		j, err := newJob(r, job)
 		if err != nil {
 			return err
 		}
@@ -151,9 +150,8 @@ func (r *Release) loadPackages() (err error) {
 			err = fmt.Errorf("Error trying to load release %s packages from YAML manifest: %s", r.Name, p)
 		}
 	}()
-	packages := r.manifest.Packages
-	for _, pkg := range packages {
-		p, err := newPackage(r, pkg.(map[interface{}]interface{}))
+	for _, pkg := range r.manifest.Packages {
+		p, err := newPackage(r, pkg)
 		if err != nil {
 			return err
 		}
