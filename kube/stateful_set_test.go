@@ -51,7 +51,7 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(t, items, 3, "Should have three services per stateful role") {
+	if assert.Len(t, items, 4, "Should have three services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
@@ -81,6 +81,25 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	expected := `---
 		items:
+		-
+			# This is the per-pod naming port
+			metadata:
+				name: myrole-set
+			spec:
+				ports:
+				-
+					name: http
+					port: 80
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				-
+					name: https
+					port: 443
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				selector:
+					skiff-role-name: myrole
+				clusterIP: None
 		-
 			# This is the per-pod naming port
 			metadata:
@@ -175,9 +194,12 @@ func TestStatefulSetServices(t *testing.T) {
 				assert.NotNil(t, deps)
 				items := deps.Get("items").Values()
 
-				var headlessService, internalService, publicService helm.Node
+				var genericService, headlessService, internalService, publicService helm.Node
 				for _, item := range items {
 					switch item.Get("metadata").Get("name").String() {
+					case "myrole-set":
+						assert.Nil(t, genericService, "Multiple generic services found")
+						genericService = item
 					case "myrole-tor-set":
 						assert.Nil(t, headlessService, "Multiple headless services found")
 						headlessService = item

@@ -14,6 +14,16 @@ import (
 func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportSettings) (helm.Node, error) {
 	var items []helm.Node
 
+	if clustering {
+		svc, err := newGenericService(role, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
+	}
+
 	for _, job := range role.JobReferences {
 		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
 			continue
@@ -69,6 +79,107 @@ const (
 	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
 )
 
+func createPort(settings ExportSettings, serviceType newServiceType, roleName string, port *model.JobExposedPort, ports *[]helm.Node) {
+	if settings.CreateHelmChart && port.CountIsConfigurable {
+		sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(roleName), makeVarName(port.Name))
+
+		block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
+
+		portName := port.Name
+		if port.Max > 1 {
+			portName = fmt.Sprintf("%s-{{ $port }}", portName)
+		}
+
+		var portNumber string
+		if port.PortIsConfigurable {
+			portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
+		} else {
+			portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
+		}
+
+		newPort := helm.NewMapping(
+			"name", portName,
+			"port", portNumber,
+			"protocol", port.Protocol,
+		)
+		newPort.Set(helm.Block(block))
+		if serviceType == newServiceTypeHeadless {
+			newPort.Add("targetPort", 0)
+		} else {
+			newPort.Add("targetPort", portName)
+		}
+		*ports = append(*ports, newPort)
+	} else {
+		for portIndex := 0; portIndex < port.Count; portIndex++ {
+			portName := port.Name
+			if port.Max > 1 {
+				portName = fmt.Sprintf("%s-%d", portName, portIndex)
+			}
+
+			var portNumber interface{}
+			if settings.CreateHelmChart && port.PortIsConfigurable {
+				portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
+					makeVarName(roleName), makeVarName(port.Name), portIndex)
+			} else {
+				portNumber = port.ExternalPort + portIndex
+			}
+
+			newPort := helm.NewMapping(
+				"name", portName,
+				"port", portNumber,
+				"protocol", port.Protocol,
+			)
+
+			if serviceType == newServiceTypeHeadless {
+				newPort.Add("targetPort", 0)
+			} else {
+				// Use number instead of name here, in case we have multiple
+				// port definitions with the same internal port
+				newPort.Add("targetPort", port.InternalPort+portIndex)
+			}
+			*ports = append(*ports, newPort)
+		}
+	}
+}
+
+// newGenericService creates a new k8s service (ClusterIP or LoadBalanced)
+func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
+	var ports []helm.Node
+	for _, job := range role.JobReferences {
+		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
+			continue
+		}
+
+		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+			createPort(settings, newServiceTypeHeadless, role.Name, port, &ports)
+		}
+	}
+
+	if len(ports) == 0 {
+		// Kubernetes refuses to create services with no ports, so we should
+		// not return anything at all in this case
+		return nil, nil
+	}
+
+	spec := helm.NewMapping()
+
+	selector := helm.NewMapping(RoleNameLabel, role.Name)
+	if role.HasTag(model.RoleTagActivePassive) {
+		selector.Add("skiff-role-active", "true")
+	}
+	spec.Add("selector", selector)
+
+	spec.Add("clusterIP", "None")
+	spec.Add("ports", helm.NewNode(ports))
+
+	serviceName := role.Name + "-set"
+	service := newTypeMeta("v1", "Service")
+	service.Add("metadata", helm.NewMapping("name", serviceName))
+	service.Add("spec", spec.Sort())
+
+	return service, nil
+}
+
 // newService creates a new k8s service (ClusterIP or LoadBalanced)
 func newService(role *model.InstanceGroup, job *model.JobReference, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
@@ -82,66 +193,7 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 			continue
 		}
 
-		if settings.CreateHelmChart && port.CountIsConfigurable {
-			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
-
-			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
-
-			portName := port.Name
-			if port.Max > 1 {
-				portName = fmt.Sprintf("%s-{{ $port }}", portName)
-			}
-
-			var portNumber string
-			if port.PortIsConfigurable {
-				portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
-			} else {
-				portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
-			}
-
-			newPort := helm.NewMapping(
-				"name", portName,
-				"port", portNumber,
-				"protocol", port.Protocol,
-			)
-			newPort.Set(helm.Block(block))
-			if serviceType == newServiceTypeHeadless {
-				newPort.Add("targetPort", 0)
-			} else {
-				newPort.Add("targetPort", portName)
-			}
-			ports = append(ports, newPort)
-		} else {
-			for portIndex := 0; portIndex < port.Count; portIndex++ {
-				portName := port.Name
-				if port.Max > 1 {
-					portName = fmt.Sprintf("%s-%d", portName, portIndex)
-				}
-
-				var portNumber interface{}
-				if settings.CreateHelmChart && port.PortIsConfigurable {
-					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
-						makeVarName(role.Name), makeVarName(port.Name), portIndex)
-				} else {
-					portNumber = port.ExternalPort + portIndex
-				}
-
-				newPort := helm.NewMapping(
-					"name", portName,
-					"port", portNumber,
-					"protocol", port.Protocol,
-				)
-
-				if serviceType == newServiceTypeHeadless {
-					newPort.Add("targetPort", 0)
-				} else {
-					// Use number instead of name here, in case we have multiple
-					// port definitions with the same internal port
-					newPort.Add("targetPort", port.InternalPort+portIndex)
-				}
-				ports = append(ports, newPort)
-			}
-		}
+		createPort(settings, serviceType, role.Name, port, &ports)
 	}
 	if len(ports) == 0 {
 		// Kubernetes refuses to create services with no ports, so we should

@@ -420,10 +420,12 @@ func TestActivePassiveService(t *testing.T) {
 							require.NoError(t, err)
 							require.NotNil(t, services, "No services created")
 
-							var headlessService, privateService, publicService helm.Node
+							var genericService, headlessService, privateService, publicService helm.Node
 							for _, service := range services.Get("items").Values() {
 								serviceName := service.Get("metadata", "name").String()
 								switch serviceName {
+								case "myrole-set":
+									genericService = service
 								case "myrole-tor-set":
 									headlessService = service
 								case "myrole-tor":
@@ -436,6 +438,34 @@ func TestActivePassiveService(t *testing.T) {
 							}
 
 							if clustering == withClustering {
+								if assert.NotNil(t, genericService, "generic service not found") {
+									actual, err := roundTrip(genericService)
+									if assert.NoError(t, err) {
+										expected := `---
+											apiVersion: v1
+											kind: Service
+											metadata:
+												name: myrole-set
+											spec:
+												clusterIP: None
+												ports:
+												-
+													name: http
+													port: 80
+													protocol: TCP
+													targetPort: 0
+												-
+													name: https
+													port: 443
+													protocol: TCP
+													targetPort: 0
+												selector:
+													skiff-role-name: myrole
+													skiff-role-active: "true"
+										`
+										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
+									}
+								}
 								if assert.NotNil(t, headlessService, "headless service not found") {
 									actual, err := roundTrip(headlessService)
 									if assert.NoError(t, err) {
