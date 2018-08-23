@@ -22,9 +22,6 @@ import (
 	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
-	"github.com/graymeta/stow"
-	"github.com/graymeta/stow/local"
-	"github.com/graymeta/stow/s3"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
@@ -334,46 +331,9 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
-	// Read a json file that contains a stow configuration
-	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
+	packageStorage, err := compilator.NewPackageStorageFromConfig(packageCacheConfigFilename, targetPath, stemcellImageName)
 	if err != nil {
-		return fmt.Errorf("Failed to read the config file: %s", err.Error())
-	}
-
-	var packageCacheConfig map[string]interface{}
-
-	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
-		return fmt.Errorf("Failed to unmarshal the config file: %s", err.Error())
-	}
-
-	var config stow.Config
-	var configMap stow.ConfigMap
-	configMap = make(stow.ConfigMap)
-
-	configParametersMap := map[string]string{
-		"configKeyPath": local.ConfigKeyPath,
-		"access_key_id": s3.ConfigAccessKeyID,
-		"secret_key":    s3.ConfigSecretKey,
-		"region":        s3.ConfigRegion,
-		"auth_type":     s3.ConfigAuthType,
-		"endpoint":      s3.ConfigEndpoint,
-		"disable_ssl":   s3.ConfigDisableSSL,
-	}
-
-	for key, value := range packageCacheConfig {
-		if len(configParametersMap[key]) > 0 {
-			configMap.Set(configParametersMap[key], value.(string))
-		}
-	}
-	config = configMap
-
-	// Generate container location
-	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
-
-	// Generate a new instance of PackageStorage with the data from the config file
-	packageStorage, err := compilator.NewPackageStorage(packageCacheConfig["kind"].(string), config, targetPath, containerLocation, stemcellImageName)
-	if err != nil {
-		return fmt.Errorf("Error creating a new PackageStorage: %s", err.Error())
+		return err
 	}
 s
 	var comp *compilator.Compilator

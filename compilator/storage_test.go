@@ -1,11 +1,12 @@
 package compilator
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/SUSE/fissile/docker"
 	"github.com/SUSE/fissile/model"
@@ -14,172 +15,134 @@ import (
 
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
-	"github.com/graymeta/stow/s3"
 	"github.com/stretchr/testify/assert"
 )
 
-// Tests require a config file in order to function
-
 func TestStorePackageLocallyOK(t *testing.T) {
 	// Arrange
+	assert := assert.New(t)
+
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
-	assert.NoError(t, err)
+	assert.NoError(err)
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.NoError(t, err)
-	imageName := "splatform/fissile-stemcell-opensuse:42.2/"
+	assert.NoError(err)
+	imageName := "splatform/fissile-stemcell-opensuse:42.2"
 
-	packageCacheConfigFilename := filepath.Join(os.TempDir(), "s3example.json")
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.json")
 	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(err)
 
 	var packageCacheConfig map[string]interface{}
 
-	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
-		panic(err)
-	}
+	err = yaml.Unmarshal(packageCacheConfigReader, &packageCacheConfig)
+	assert.NoError(err)
 
-	var config stow.Config
 	var configMap stow.ConfigMap
 	configMap = make(stow.ConfigMap)
 
-	configParametersMap := map[string]string{
-		"configKeyPath": local.ConfigKeyPath,
-		"access_key_id": s3.ConfigAccessKeyID,
-		"secret_key":    s3.ConfigSecretKey,
-		"region":        s3.ConfigRegion,
-		"auth_type":     s3.ConfigAuthType,
-		"endpoint":      s3.ConfigEndpoint,
-		"disable_ssl":   s3.ConfigDisableSSL,
-	}
-
 	for key, value := range packageCacheConfig {
-		if len(configParametersMap[key]) > 0 {
-			configMap.Set(configParametersMap[key], value.(string))
-		}
+		configMap.Set(key, value.(string))
 	}
-	config = configMap
-	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
+	containerLocation, err := util.TempDir("", "fissile-stow-tests")
+	defer os.RemoveAll(containerLocation)
 
-	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), config, compilationWorkDir, containerLocation, imageName)
-	if err != nil {
-		panic(err)
-	}
+	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), false, configMap, compilationWorkDir, containerLocation, imageName)
+	assert.NoError(err)
+
+	localKeyPath, _ := p.Config.Config(local.ConfigKeyPath)
+	fullContainerPath := filepath.Join(localKeyPath, containerLocation)
+	defer os.RemoveAll(fullContainerPath)
 
 	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
-	assert.NoError(t, err)
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
+	assert.NoError(err)
+
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Act
 	err = c.compilePackageInDocker(release.Packages[0])
 	// Upload (stow)
 	pack := release.Packages[0]
-	defer p.location.Close()
 
 	err = p.Upload(pack)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(err)
 
 	err = p.Download(pack)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(err)
 
 	exists, err := p.Exists(pack)
-	if err != nil {
-		panic(err)
-	}
-	//Assert
-	assert.True(t, exists)
-	assert.NoError(t, err)
-}
+	assert.NoError(err)
 
-// Tests require a config file in order to function
+	//Assert
+	assert.True(exists)
+	assert.NoError(err)
+}
 
 func TestStorePackageExists(t *testing.T) {
 	//Arrange
+	assert := assert.New(t)
+
 	compilationWorkDir, err := util.TempDir("", "fissile-tests")
 	defer os.RemoveAll(compilationWorkDir)
 
 	dockerManager, err := docker.NewImageManager()
-	assert.NoError(t, err)
-	imageName := "splatform/fissile-stemcell-opensuse:42.2/"
-	//
-	packageCacheConfigFilename := filepath.Join(os.TempDir(), "localexample.json")
+	assert.NoError(err)
+	imageName := "splatform/fissile-stemcell-opensuse:42.2"
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.json")
 	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(err)
 
 	var packageCacheConfig map[string]interface{}
 
-	if err := json.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
-		panic(err)
-	}
+	err = yaml.Unmarshal(packageCacheConfigReader, &packageCacheConfig)
+	assert.NoError(err)
 
-	var config stow.Config
 	var configMap stow.ConfigMap
 	configMap = make(stow.ConfigMap)
 
-	configParametersMap := map[string]string{
-		"configKeyPath": local.ConfigKeyPath,
-		"access_key_id": s3.ConfigAccessKeyID,
-		"secret_key":    s3.ConfigSecretKey,
-		"region":        s3.ConfigRegion,
-		"auth_type":     s3.ConfigAuthType,
-		"endpoint":      s3.ConfigEndpoint,
-		"disable_ssl":   s3.ConfigDisableSSL,
-	}
-
 	for key, value := range packageCacheConfig {
-		if len(configParametersMap[key]) > 0 {
-			configMap.Set(configParametersMap[key], value.(string))
-		}
+		configMap.Set(key, value.(string))
 	}
-	config = configMap
+	containerLocation, err := util.TempDir("", "fissile-stow-tests")
+	defer os.RemoveAll(containerLocation)
+	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), false, configMap, compilationWorkDir, containerLocation, imageName)
+	assert.NoError(err)
 
-	containerLocation := packageCacheConfig["boshCompiledPackageLocation"].(string)
+	localKeyPath, _ := p.Config.Config(local.ConfigKeyPath)
+	fullContainerPath := filepath.Join(localKeyPath, containerLocation)
+	defer os.RemoveAll(fullContainerPath)
 
-	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), config, compilationWorkDir, containerLocation, imageName)
-	if err != nil {
-		panic(err)
-	}
-
-	//
 	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
-	assert.NoError(t, err)
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
+	assert.NoError(err)
+
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.NoError(t, err)
+	assert.NoError(err)
+
 	//Act
 	err = c.compilePackageInDocker(release.Packages[0])
-	pack := release.Packages[0]
-	defer p.location.Close()
-	existsFalse, err := p.Exists(pack)
-	if err != nil {
-		panic(err)
-	}
 
-	p.Upload(pack)
+	existsFalse, err := p.Exists(release.Packages[0])
+	assert.NoError(err)
 
-	existsTrue, err := p.Exists(pack)
-	if err != nil {
-		panic(err)
-	}
+	p.Upload(release.Packages[0])
+
+	existsTrue, err := p.Exists(release.Packages[0])
+	assert.NoError(err)
 
 	//Assert
-	assert.False(t, existsFalse)
-	assert.True(t, existsTrue)
+	assert.False(existsFalse)
+	assert.True(existsTrue)
 }

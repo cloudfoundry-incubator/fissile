@@ -342,27 +342,40 @@ func (j compileJob) Run() {
 	exists := false
 	if c.packageStorage != nil {
 		var err error
+		c.ui.Printf("cache: %s",
+			color.MagentaString("searching > "),
+		)
 		exists, err = c.packageStorage.Exists(j.pkg)
 		if err != nil {
 			j.doneCh <- compileResult{pkg: j.pkg, err: err}
-			return
 		}
 	}
 
 	// Check to see whether a package already exists in the configured cache
 	// and either download that package or compile and upload it
 	if exists == true {
+		c.ui.Printf("%s\n",
+			"package found > downloading..\n",
+		)
 		downloadErr := c.packageStorage.Download(j.pkg)
 		if downloadErr != nil {
-			j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
-			return
+			c.ui.Println(color.RedString("Error downloading the package"))
 		}
-	} else {
-		workerErr := c.compilePackage(c, j.pkg)
 
-		if workerErr == nil && c.packageStorage != nil {
+		j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
+
+	} else {
+		c.ui.Printf("%s",
+			"package not found > compiling",
+		)
+		var workerErr error
+		workerErr = c.compilePackage(c, j.pkg)
+
+		if workerErr == nil && c.packageStorage != nil && c.packageStorage.ReadOnly == false {
+			c.ui.Printf(" > uploading..")
 			workerErr = c.packageStorage.Upload(j.pkg)
 		}
+		c.ui.Printf("\n")
 		if c.metricsPath != "" {
 			stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
 		}
@@ -373,7 +386,6 @@ func (j compileJob) Run() {
 
 		j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
 	}
-
 }
 
 func createDepBuckets(packages []*model.Package) []*model.Package {

@@ -1,0 +1,8 @@
+{
+  "readOnly": "false",
+  "kind":"s3",
+  "access_key_id": "accesskey",
+  "secret_key": "secretkey",
+  "region": "region",
+  "boshCompiledPackageLocation": "bosh-packages"
+}

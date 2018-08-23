@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -37,7 +38,7 @@ compiled once.
 		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
-		flagBuildCompilationCacheConfig := buildViper.GetString("compilation-cache-config")
+		flagBuildCompilationCacheConfig := buildPackagesViper.GetString("compilation-cache-config")
 
 		err := fissile.LoadReleases(
 			flagRelease,

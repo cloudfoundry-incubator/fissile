@@ -1,0 +1,6 @@
+{
+  "readOnly": "false",
+  "kind": "local",
+  "path": "/tmp/fissile-stow-test/cache",
+  "boshCompiledPackageLocation": "bosh-packages"
+}
