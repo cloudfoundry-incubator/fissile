@@ -32,7 +32,7 @@ func TestRelease(t *testing.T) {
 
 	devReleaseInfo := ReleaseInfo{
 		Name:               "ntp",
-		CommitHash:         "4bc2f2fd",
+		CommitHash:         "45e25267",
 		UncommittedChanges: true,
 		Version:            "2+dev.3",
 	}
@@ -43,7 +43,7 @@ func TestRelease(t *testing.T) {
 
 	finalReleaseInfo := ReleaseInfo{
 		Name:               "ntp",
-		CommitHash:         "84166bb2",
+		CommitHash:         "84166e52",
 		UncommittedChanges: true,
 		Version:            "4",
 	}

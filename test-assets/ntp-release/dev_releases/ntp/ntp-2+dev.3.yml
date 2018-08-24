@@ -14,7 +14,7 @@ license:
   version: 596316b93cdeded339f835660a5b50eac2ecc57a
   fingerprint: 596316b93cdeded339f835660a5b50eac2ecc57a
   sha1: 795c6f45e6fa51d2cf22ca68d163393988fbd441
-commit_hash: 4bc2f2fd
+commit_hash: 45e25267
 uncommitted_changes: true
 name: ntp
 version: 2+dev.3

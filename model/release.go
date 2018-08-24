@@ -23,8 +23,17 @@ type Release struct {
 	Path               string
 	DevBOSHCacheDir    string
 	FinalRelease       bool
+	manifest           manifest
+}
 
-	manifest map[interface{}]interface{}
+type manifest struct {
+	Name               string                        `yaml:"name"`
+	Version            string                        `yaml:"version"`
+	CommitHash         string                        `yaml:"commit_hash"`
+	UncommittedChanges bool                          `yaml:"uncommitted_changes"`
+	Jobs               []map[interface{}]interface{} `yaml:"jobs"`
+	Packages           []map[interface{}]interface{} `yaml:"packages"`
+	License            map[string]string             `yaml:"license"`
 }
 
 const (
@@ -86,10 +95,10 @@ func (r *Release) loadMetadata() (err error) {
 		return err
 	}
 
-	r.CommitHash = r.manifest["commit_hash"].(string)
-	r.UncommittedChanges = r.manifest["uncommitted_changes"].(bool)
-	r.Name = r.manifest["name"].(string)
-	r.Version = r.manifest["version"].(string)
+	r.CommitHash = r.manifest.CommitHash
+	r.UncommittedChanges = r.manifest.UncommittedChanges
+	r.Name = r.manifest.Name
+	r.Version = r.manifest.Version
 
 	return nil
 }
@@ -123,9 +132,8 @@ func (r *Release) loadJobs() (err error) {
 		}
 	}()
 
-	jobs := r.manifest["jobs"].([]interface{})
-	for _, job := range jobs {
-		j, err := newJob(r, job.(map[interface{}]interface{}))
+	for _, job := range r.manifest.Jobs {
+		j, err := newJob(r, job)
 		if err != nil {
 			return err
 		}
@@ -142,15 +150,13 @@ func (r *Release) loadPackages() (err error) {
 			err = fmt.Errorf("Error trying to load release %s packages from YAML manifest: %s", r.Name, p)
 		}
 	}()
-	if packages, ok := r.manifest["packages"].([]interface{}); ok {
-		for _, pkg := range packages {
-			p, err := newPackage(r, pkg.(map[interface{}]interface{}))
-			if err != nil {
-				return err
-			}
-
-			r.Packages = append(r.Packages, p)
+	for _, pkg := range r.manifest.Packages {
+		p, err := newPackage(r, pkg)
+		if err != nil {
+			return err
 		}
+
+		r.Packages = append(r.Packages, p)
 	}
 
 	return nil
