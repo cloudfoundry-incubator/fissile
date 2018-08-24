@@ -264,7 +264,6 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	for _, release := range f.releases {
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-
 				// Extend map for newly seen properties
 				if _, ok := result[property.Name]; !ok {
 					result[property.Name] = newPropertyInfo(false)
@@ -541,7 +540,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(roleManifest, opinions); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(roleManifest, opinions, nil); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
@@ -1190,5 +1189,32 @@ func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) er
 	if _, err := fmt.Fprintf(f.graphFile, "\"%s\" -> \"%s\" %s\n", fromNode, toNode, attrString); err != nil {
 		return err
 	}
+	return nil
+}
+
+// Validate runs all checks against all inputs
+func (f *Fissile) Validate(roleManifestPath, lightManifestPath, darkManifestPath string, defaultFiles []string) error {
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	var defaultsFromEnvFiles map[string]string
+	if len(defaultFiles) > 0 {
+		f.UI.Println("Loading defaults from env files")
+		defaultsFromEnvFiles, err = godotenv.Read(defaultFiles...)
+		if err != nil {
+			return err
+		}
+	}
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+	if errs := f.validateManifestAndOpinions(roleManifest, opinions, defaultsFromEnvFiles); len(errs) != 0 {
+		return fmt.Errorf(errs.Errors())
+	}
+
 	return nil
 }
