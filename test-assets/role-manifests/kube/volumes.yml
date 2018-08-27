@@ -28,5 +28,8 @@ configuration:
 variables:
 - name: ALL_VAR
   options:
+    description: "foo"
     internal: true
 - name: SOME_VAR
+  options:
+    description: "foo"

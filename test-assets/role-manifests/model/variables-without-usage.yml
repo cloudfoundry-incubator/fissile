@@ -8,3 +8,5 @@ instance_groups:
   run: {}
 variables:
   - name: SOME_VAR # Unused
+    description: 'foo'
+

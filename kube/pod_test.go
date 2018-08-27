@@ -334,7 +334,12 @@ func TestPodGetEnvVars(t *testing.T) {
 		},
 	}
 
-	role.Configuration.Templates["properties.some-property"] = "((SOME_VAR))"
+	role.Configuration.Templates = append(
+		role.Configuration.Templates,
+		yaml.MapItem{
+			Key:   "properties.some-property",
+			Value: "((SOME_VAR))",
+		})
 
 	samples := []Sample{
 		{

@@ -184,7 +184,6 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 		allErrs = append(allErrs, validateVariablePreviousNames(m.Variables)...)
 		allErrs = append(allErrs, validateVariableUsage(m)...)
 		allErrs = append(allErrs, validateTemplateUsage(m)...)
-		allErrs = append(allErrs, validateNonTemplates(m)...)
 		allErrs = append(allErrs, validateServiceAccounts(m)...)
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(m)...)
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(m)...)
@@ -1026,36 +1025,6 @@ func normalizeFlightStage(instanceGroup *InstanceGroup) validation.ErrorList {
 			fmt.Sprintf("instance_groups[%s].run.flight-stage", instanceGroup.Name),
 			instanceGroup.Run.FlightStage,
 			"Expected one of flight, manual, post-flight, or pre-flight"))
-	}
-
-	return allErrs
-}
-
-// validateNonTemplates tests whether the global templates are
-// constant or not. It reports the contant templates as errors (They
-// should be opinions).
-func validateNonTemplates(roleManifest *RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	// Iterate over the global templates, extract the used
-	// variables. Report all templates not using any variable.
-
-	for _, templateDef := range roleManifest.Configuration.Templates {
-		property := templateDef.Key.(string)
-		template := templateDef.Value.(string)
-
-		varsInTemplate, err := parseTemplate(template)
-		if err != nil {
-			// Ignore bad template, cannot have sensible
-			// variable references
-			continue
-		}
-
-		if len(varsInTemplate) == 0 {
-			allErrs = append(allErrs, validation.Invalid("configuration.templates",
-				template,
-				fmt.Sprintf("Using '%s' as a constant", property)))
-		}
 	}
 
 	return allErrs

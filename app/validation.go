@@ -295,7 +295,7 @@ func (f *Fissile) checkEnvFileVariables(roleManifest *model.RoleManifest, defaul
 		return false
 	}
 
-	for key, _ := range defaults {
+	for key := range defaults {
 		if !exists(key) {
 			allErrs = append(allErrs, validation.NotFound(key,
 				"Variable from env file not defined in the manifest."))

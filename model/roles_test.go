@@ -186,7 +186,7 @@ func TestRoleManifestTagList(t *testing.T) {
 					roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 					err := yaml.Unmarshal(manifestContents, roleManifest)
 					require.NoError(t, err, "Error unmarshalling role manifest")
-					roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+					roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 					require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 					roleManifest.InstanceGroups[0].Type = roleType
 					roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTag(tag)}
@@ -326,16 +326,22 @@ func TestGetTemplateSignatures(t *testing.T) {
 		Name:          "aaa",
 		JobReferences: []*JobReference{},
 		Configuration: &Configuration{
-			Templates: map[string]string{"foo": "bar"},
-		},
+			Templates: yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "foo",
+					Value: "bar",
+				}}},
 	}
 
 	differentTemplate2 := &InstanceGroup{
 		Name:          "aaa",
 		JobReferences: []*JobReference{},
 		Configuration: &Configuration{
-			Templates: map[string]string{"bat": "baz"},
-		},
+			Templates: yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "bat",
+					Value: "baz",
+				}}},
 	}
 
 	differentTemplateHash1, _ := differentTemplate1.GetTemplateSignatures()
@@ -395,7 +401,7 @@ func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-usage.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(t, err,
-		`configuration.variables: Not found: "No templates using 'SOME_VAR'"`)
+		`SOME_VAR: Not found: "Not used in any template"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -427,7 +433,7 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/templates-non.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(t, err,
-		`configuration.templates: Invalid value: "": Using 'properties.tor.hostname' as a constant`)
+		`properties.tor.hostname: Forbidden: Templates used as constants are not allowed`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -713,7 +719,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 				err := yaml.Unmarshal(manifestContents, roleManifest)
 				require.NoError(t, err, "Error unmarshalling role manifest")
-				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+				roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 				require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 				if sample.roleType != RoleType("") {
 					roleManifest.InstanceGroups[0].Type = sample.roleType
@@ -736,7 +742,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
@@ -754,7 +760,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
@@ -770,7 +776,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBoshTask
@@ -786,7 +792,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh

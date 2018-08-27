@@ -34,6 +34,13 @@ variables:
 - name: BAR
   options:
     type: bogus
+    description: "foo"
 - name: FOO
+  options:
+    description: "foo"
 - name: HOME
+  options:
+    description: "foo"
 - name: PELERINUL
+  options:
+    description: "foo"

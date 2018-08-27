@@ -14,7 +14,15 @@ configuration:
     properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
 variables:
-  - name: BAR
-  - name: FOO
-  - name: HOME
-  - name: PELERINUL
+- name: BAR
+  options:
+    description: "foo"
+- name: FOO
+  options:
+    description: "foo"
+- name: HOME
+  options:
+    description: "foo"
+- name: PELERINUL
+  options:
+    description: "foo"

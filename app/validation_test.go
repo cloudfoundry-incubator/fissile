@@ -36,7 +36,7 @@ func TestValidation(t *testing.T) {
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
 
 	actual := errs.Errors()
 	allExpected := []string{
@@ -94,7 +94,7 @@ func TestValidationOk(t *testing.T) {
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
 
 	assert.Empty(t, errs)
 }
@@ -121,7 +121,7 @@ func TestValidationHash(t *testing.T) {
 	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
 
 	actual := errs.Errors()
 	allExpected := []string{

@@ -27,6 +27,14 @@ configuration:
     properties.fox: '((FOO): Not specified in any release'
 variables:
 - name: BAR
+  options:
+    description: "foo"
 - name: FOO
+  options:
+    description: "foo"
 - name: HOME
+  options:
+    description: "foo"
 - name: PELERINUL
+  options:
+    description: "foo"

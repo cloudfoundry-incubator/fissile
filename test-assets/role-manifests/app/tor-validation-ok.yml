@@ -32,9 +32,16 @@ configuration:
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
 variables:
 - name: BAR
+  options:
+    description: "foo"
 - name: FOO
+  options:
+    description: "foo"
 - name: HOME
+  options:
+    description: "foo"
 - name: KUPRIES
   options:
+    description: "foo"
     internal: true
 - name: PELERINUL
