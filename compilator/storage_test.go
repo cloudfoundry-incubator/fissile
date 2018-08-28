@@ -1,6 +1,7 @@
 package compilator
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,8 +14,9 @@ import (
 	"github.com/SUSE/fissile/scripts/compilation"
 	"github.com/SUSE/fissile/util"
 
+	"github.com/gosuri/uiprogress"
+	"github.com/gosuri/uiprogress/util/strutil"
 	"github.com/graymeta/stow"
-	"github.com/graymeta/stow/local"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +35,7 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.json")
+	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.yaml")
 	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
 	assert.NoError(err)
 
@@ -46,17 +48,15 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	configMap = make(stow.ConfigMap)
 
 	for key, value := range packageCacheConfig {
-		configMap.Set(key, value.(string))
+		if key != "boshPackageCacheKind" && key != "boshPackageCacheReadOnly" && key != "boshPackageCacheLocation" {
+			configMap.Set(key, value.(string))
+		}
 	}
-	containerLocation, err := util.TempDir("", "fissile-stow-tests")
-	defer os.RemoveAll(containerLocation)
-
-	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), false, configMap, compilationWorkDir, containerLocation, imageName)
+	containerDir, err := util.TempDir("", "fissile-stow-tests")
+	fullContainerPath := filepath.Join(containerDir, "cache")
+	defer os.RemoveAll(containerDir)
+	p, err := NewPackageStorage(packageCacheConfig["boshPackageCacheKind"].(string), false, configMap, compilationWorkDir, fullContainerPath, imageName)
 	assert.NoError(err)
-
-	localKeyPath, _ := p.Config.Config(local.ConfigKeyPath)
-	fullContainerPath := filepath.Join(localKeyPath, containerLocation)
-	defer os.RemoveAll(fullContainerPath)
 
 	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
 	assert.NoError(err)
@@ -74,7 +74,18 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	err = p.Upload(pack)
 	assert.NoError(err)
 
-	err = p.Download(pack)
+	bar := uiprogress.AddBar(100)
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.Resize(fmt.Sprintf("cache: %s/%s", pack.Release.Name, pack.Name), 22)
+	})
+
+	err = p.Download(pack, func(progress float64) {
+		if progress == -1 {
+			return
+		}
+
+		bar.Set(int(progress))
+	})
 	assert.NoError(err)
 
 	exists, err := p.Exists(pack)
@@ -99,7 +110,7 @@ func TestStorePackageExists(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.json")
+	packageCacheConfigFilename := filepath.Join(workDir, "../test-assets/package-cache-config/localexample.yaml")
 	packageCacheConfigReader, err := ioutil.ReadFile(packageCacheConfigFilename)
 	assert.NoError(err)
 
@@ -112,16 +123,15 @@ func TestStorePackageExists(t *testing.T) {
 	configMap = make(stow.ConfigMap)
 
 	for key, value := range packageCacheConfig {
-		configMap.Set(key, value.(string))
+		if key != "boshPackageCacheKind" && key != "boshPackageCacheReadOnly" && key != "boshPackageCacheLocation" {
+			configMap.Set(key, value.(string))
+		}
 	}
-	containerLocation, err := util.TempDir("", "fissile-stow-tests")
-	defer os.RemoveAll(containerLocation)
-	p, err := NewPackageStorage(packageCacheConfig["kind"].(string), false, configMap, compilationWorkDir, containerLocation, imageName)
+	containerDir, err := util.TempDir("", "fissile-stow-tests")
+	fullContainerPath := filepath.Join(containerDir, "cache")
+	defer os.RemoveAll(containerDir)
+	p, err := NewPackageStorage(packageCacheConfig["boshPackageCacheKind"].(string), false, configMap, compilationWorkDir, fullContainerPath, imageName)
 	assert.NoError(err)
-
-	localKeyPath, _ := p.Config.Config(local.ConfigKeyPath)
-	fullContainerPath := filepath.Join(localKeyPath, containerLocation)
-	defer os.RemoveAll(fullContainerPath)
 
 	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
 	assert.NoError(err)

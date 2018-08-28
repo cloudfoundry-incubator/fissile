@@ -1,17 +1,19 @@
 package compilator
 
 import (
-	"io/ioutil"
-	"math"
-
 	"github.com/SUSE/fissile/model"
 
+	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/graymeta/stow"
+	"github.com/machinebox/progress"
 	"github.com/mholt/archiver"
 	"github.com/satori/go.uuid"
 	"gopkg.in/yaml.v2"
@@ -28,6 +30,9 @@ import (
 	// support oracle storage
 	_ "github.com/graymeta/stow/oracle"
 )
+
+// DownloadProgressEvent represents a delegate for updating progress when downloading
+type DownloadProgressEvent = func(progressPercentage float64)
 
 // PackageStorage represents a compiled BOSH package location
 type PackageStorage struct {
@@ -137,7 +142,7 @@ func (p *PackageStorage) Exists(pack *model.Package) (bool, error) {
 }
 
 // Download downloads a package from the configured cache
-func (p *PackageStorage) Download(pack *model.Package) error {
+func (p *PackageStorage) Download(pack *model.Package, progressEvent DownloadProgressEvent) error {
 
 	// Find the item in the cache
 	item, _, err := p.container.Items(p.uploadedPackageFilePath(pack), "", math.MaxInt32)
@@ -145,6 +150,22 @@ func (p *PackageStorage) Download(pack *model.Package) error {
 	if err != nil {
 		return err
 	}
+
+	size, err := item[0].Size()
+	if err != nil {
+		return err
+	}
+	progressReader := progress.NewReader(cachedPackageReader)
+	go func() {
+		ctx := context.Background()
+		progressChan := progress.NewTicker(ctx, progressReader, size, 1*time.Second)
+		for p := range progressChan {
+			progressEvent(p.Percent())
+		}
+
+		progressEvent(-1)
+	}()
+
 	defer cachedPackageReader.Close()
 
 	// Create a temporary file where to download the package
@@ -161,7 +182,7 @@ func (p *PackageStorage) Download(pack *model.Package) error {
 	}()
 
 	// Download the package from the cache
-	_, err = io.Copy(file, cachedPackageReader)
+	_, err = io.Copy(file, progressReader)
 	if err != nil {
 		return err
 	}
@@ -191,6 +212,8 @@ func (p *PackageStorage) Upload(pack *model.Package) error {
 	if err != nil {
 		return err
 	}
+	fileSize := fileInfo.Size()
+
 	file, err := os.Open(archiveName)
 	if err != nil {
 		return err
@@ -200,7 +223,7 @@ func (p *PackageStorage) Upload(pack *model.Package) error {
 	_, err = p.container.Put(
 		p.uploadedPackageFilePath(pack),
 		file,
-		fileInfo.Size(),
+		fileSize,
 		nil,
 	)
 

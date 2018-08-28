@@ -20,6 +20,9 @@ import (
 	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
+	//"github.com/gosuri/uiprogress"
+	//"github.com/gosuri/uiprogress/util/strutil"
+	"github.com/cheggaaa/pb"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
@@ -342,9 +345,7 @@ func (j compileJob) Run() {
 	exists := false
 	if c.packageStorage != nil {
 		var err error
-		c.ui.Printf("cache: %s",
-			color.MagentaString("searching > "),
-		)
+		c.ui.Printf("cache: %s %s\n", color.MagentaString("searching for"), j.pkg.Name)
 		exists, err = c.packageStorage.Exists(j.pkg)
 		if err != nil {
 			j.doneCh <- compileResult{pkg: j.pkg, err: err}
@@ -354,10 +355,25 @@ func (j compileJob) Run() {
 	// Check to see whether a package already exists in the configured cache
 	// and either download that package or compile and upload it
 	if exists == true {
-		c.ui.Printf("%s\n",
-			"package found > downloading..\n",
-		)
-		downloadErr := c.packageStorage.Download(j.pkg)
+		c.ui.Printf("cache: %s %s/%s\n", color.MagentaString("downloading"), j.pkg.Release.Name, j.pkg.Name)
+		//		bar := uiprogress.AddBar(100)
+		//		bar.PrependFunc(func(b *uiprogress.Bar) string {
+		//			return strutil.Resize(fmt.Sprintf("cache: %s", j.pkg.Name), 22)
+		//		})
+		bar := pb.StartNew(100)
+
+		downloadErr := c.packageStorage.Download(j.pkg, func(progress float64) {
+			if progress == -1 {
+				c.ui.Printf("cache: %s %s\n", color.MagentaString("finished downloading"), j.pkg.Name)
+				return
+			} else {
+				if progress == 100 {
+					bar.Set(int(progress))
+					bar.Finish()
+				}
+			}
+			bar.Set(int(progress))
+		})
 		if downloadErr != nil {
 			c.ui.Println(color.RedString("Error downloading the package"))
 		}
@@ -365,9 +381,7 @@ func (j compileJob) Run() {
 		j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
 
 	} else {
-		c.ui.Printf("%s",
-			"package not found > compiling",
-		)
+		c.ui.Printf("compiling")
 		var workerErr error
 		workerErr = c.compilePackage(c, j.pkg)
 
