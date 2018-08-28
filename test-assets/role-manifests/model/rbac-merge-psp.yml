@@ -1,0 +1,13 @@
+---
+instance_groups:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        pod-security-policy: privileged
+  - name: hashmat
+    release: tor

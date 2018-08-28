@@ -916,6 +916,27 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 	if err != nil {
 		return err
 	}
+
+	// Check the accounts for the pod security policies they
+	// reference, and create their cluster roles. The necessary
+	// cluster role bindings will be created by NewRBACAccount.
+
+	for _, pspName := range model.PodSecurityPolicies() {
+		for _, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+			if accountSpec.PodSecurityPolicy == pspName {
+				node, err := kube.NewRBACClusterRolePSP(pspName, settings)
+				if err != nil {
+					return err
+				}
+				err = f.writeHelmNode(authDir, fmt.Sprintf("auth-clusterrole-%s.yaml", pspName), node)
+				if err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+
 	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
 		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
 		if err != nil {

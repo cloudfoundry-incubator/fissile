@@ -1,0 +1,26 @@
+---
+instance_groups:
+- name: myrole
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        pod-security-policy: privileged
+- name: myrole2
+  run:
+    foo: x
+  jobs:
+  - name: hashmat
+    release: tor
+- name: myrole3
+  run:
+    foo: x
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        pod-security-policy: nonprivileged
