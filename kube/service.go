@@ -126,7 +126,9 @@ func newService(role *model.InstanceGroup, serviceType newServiceType, settings 
 				if serviceType == newServiceTypeHeadless {
 					newPort.Add("targetPort", 0)
 				} else {
-					newPort.Add("targetPort", portName)
+					// Use number instead of name here, in case we have multiple
+					// port definitions with the same internal port
+					newPort.Add("targetPort", port.InternalPort+portIndex)
 				}
 				ports = append(ports, newPort)
 			}

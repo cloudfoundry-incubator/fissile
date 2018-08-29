@@ -64,11 +64,11 @@ func TestServiceKube(t *testing.T) {
 			-
 				name: http
 				port: 80
-				targetPort: http
+				targetPort: 8080
 			-
 				name: https
 				port: 443
-				targetPort: https
+				targetPort: 443
 			selector:
 				skiff-role-name: myrole
 	`, actual)
@@ -108,11 +108,11 @@ func TestServiceHelm(t *testing.T) {
 				-	name: "http"
 					port: 80
 					protocol: "TCP"
-					targetPort: "http"
+					targetPort: 8080
 				-	name: "https"
 					port: 443
 					protocol: "TCP"
-					targetPort: "https"
+					targetPort: 443
 				selector:
 					skiff-role-name: "myrole"
 		`, actual)
@@ -136,11 +136,11 @@ func TestServiceHelm(t *testing.T) {
 				-	name: "http"
 					port: 80
 					protocol: "TCP"
-					targetPort: "http"
+					targetPort: 8080
 				-	name: "https"
 					port: 443
 					protocol: "TCP"
-					targetPort: "https"
+					targetPort: 443
 				selector:
 					skiff-role-name: "myrole"
 		`, actual)
@@ -289,7 +289,7 @@ func TestPublicServiceKube(t *testing.T) {
 			-
 				name: https
 				port: 443
-				targetPort: https
+				targetPort: 443
 			selector:
 				skiff-role-name: myrole
 	`, actual)
@@ -333,7 +333,7 @@ func TestPublicServiceHelm(t *testing.T) {
 				-	name: "https"
 					port: 443
 					protocol: "TCP"
-					targetPort: "https"
+					targetPort: 443
 				selector:
 					skiff-role-name: "myrole"
 		`, actual)
@@ -358,7 +358,7 @@ func TestPublicServiceHelm(t *testing.T) {
 				-	name: "https"
 					port: 443
 					protocol: "TCP"
-					targetPort: "https"
+					targetPort: 443
 				selector:
 					skiff-role-name: "myrole"
 				type:	LoadBalancer
@@ -483,12 +483,12 @@ func TestActivePassiveService(t *testing.T) {
 												name: http
 												port: 80
 												protocol: TCP
-												targetPort: http
+												targetPort: 8080
 											-
 												name: https
 												port: 443
 												protocol: TCP
-												targetPort: https
+												targetPort: 443
 											selector:
 												skiff-role-name: myrole
 												skiff-role-active: "true"
@@ -512,7 +512,7 @@ func TestActivePassiveService(t *testing.T) {
 												name: https
 												port: 443
 												protocol: TCP
-												targetPort: https
+												targetPort: 443
 											selector:
 												skiff-role-name: myrole
 												skiff-role-active: "true"
