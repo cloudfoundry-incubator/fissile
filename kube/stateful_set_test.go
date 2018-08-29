@@ -249,6 +249,40 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 							`, actual)
 						}
+						if assert.NotNil(t, genericService, "Generic instance group service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = RoundtripNode(genericService, nil)
+							case "kube":
+								actual, err = RoundtripKube(genericService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole-set
+							spec:
+								clusterIP: None
+								ports:
+								-
+									name: http
+									port: 80
+									protocol: TCP
+									targetPort: 0
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: 0
+								selector:
+									skiff-role-name: myrole
+							`, actual)
+						}
 						if assert.NotNil(t, publicService, "Public service not found") {
 							var actual interface{}
 							var err error
