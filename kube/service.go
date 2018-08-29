@@ -75,6 +75,7 @@ const (
 	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
 )
 
+// createPort generates a helm mapping according to the JobExposedPort
 func createPort(settings ExportSettings, serviceType newServiceType, roleName string, port model.JobExposedPort, ports *[]helm.Node) {
 	if settings.CreateHelmChart && port.CountIsConfigurable {
 		sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(roleName), makeVarName(port.Name))
