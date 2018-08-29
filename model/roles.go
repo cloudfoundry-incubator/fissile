@@ -756,12 +756,8 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 	allErrs = append(allErrs, validateRoleCPU(instanceGroup)...)
 
 	for _, job := range instanceGroup.JobReferences {
-		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-			continue
-		}
-
-		for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {
-			allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, exposedPort)...)
+		for idx := range job.ContainerProperties.BoshContainerization.Ports {
+			allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
 		}
 	}
 
@@ -1142,10 +1138,6 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 			// more than one entry)
 			for _, toBeChecked := range append([]*InstanceGroup{instanceGroup}, instanceGroup.GetColocatedRoles()...) {
 				for _, job := range toBeChecked.JobReferences {
-					if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-						continue
-					}
-
 					for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {
 						for i := 0; i < exposedPort.Count; i++ {
 							protocolPortTuple := fmt.Sprintf("%s/%d", exposedPort.Protocol, exposedPort.ExternalPort+i)

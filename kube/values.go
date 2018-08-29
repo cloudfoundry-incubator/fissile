@@ -156,10 +156,6 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 		ports := helm.NewMapping()
 		for _, job := range instanceGroup.JobReferences {
-			if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-				continue
-			}
-
 			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 				config := helm.NewMapping()
 				if port.PortIsConfigurable {

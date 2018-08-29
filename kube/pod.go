@@ -211,10 +211,6 @@ func getContainerImageName(role *model.InstanceGroup, settings ExportSettings, g
 func getContainerPorts(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, job := range role.JobReferences {
-		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-			continue
-		}
-
 		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 			if settings.CreateHelmChart && port.CountIsConfigurable {
 				sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
@@ -379,13 +375,9 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 			portName := strings.Replace(strings.ToLower(match[2]), "_", "-", -1)
 			var port *model.JobExposedPort
 			for _, job := range role.JobReferences {
-				if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-					continue
-				}
-
 				for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {
 					if (exposedPort.PortIsConfigurable || exposedPort.CountIsConfigurable) && exposedPort.Name == portName {
-						port = exposedPort
+						port = &exposedPort
 						break
 					}
 				}
@@ -615,13 +607,9 @@ func getContainerReadinessProbe(role *model.InstanceGroup) (helm.Node, error) {
 		}
 		var readinessPort *model.JobExposedPort
 		for _, job := range role.JobReferences {
-			if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-				continue
-			}
-
 			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 				if port.Protocol == "TCP" {
-					readinessPort = port
+					readinessPort = &port
 					break
 				}
 			}

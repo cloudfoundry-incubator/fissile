@@ -25,10 +25,6 @@ func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportS
 	}
 
 	for _, job := range role.JobReferences {
-		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-			continue
-		}
-
 		if clustering {
 			// Create headless, private service
 			svc, err := newService(role, job, newServiceTypeHeadless, settings)
@@ -79,7 +75,7 @@ const (
 	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
 )
 
-func createPort(settings ExportSettings, serviceType newServiceType, roleName string, port *model.JobExposedPort, ports *[]helm.Node) {
+func createPort(settings ExportSettings, serviceType newServiceType, roleName string, port model.JobExposedPort, ports *[]helm.Node) {
 	if settings.CreateHelmChart && port.CountIsConfigurable {
 		sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(roleName), makeVarName(port.Name))
 
@@ -146,10 +142,6 @@ func createPort(settings ExportSettings, serviceType newServiceType, roleName st
 func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, job := range role.JobReferences {
-		if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-			continue
-		}
-
 		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 			createPort(settings, newServiceTypeHeadless, role.Name, port, &ports)
 		}
@@ -183,9 +175,6 @@ func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm
 // newService creates a new k8s service (ClusterIP or LoadBalanced)
 func newService(role *model.InstanceGroup, job *model.JobReference, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
-	if job.ContainerProperties == nil || job.ContainerProperties.BoshContainerization == nil || job.ContainerProperties.BoshContainerization.Ports == nil {
-		return nil, nil
-	}
 
 	for _, port := range job.ContainerProperties.BoshContainerization.Ports {
 		if serviceType == newServiceTypePublic && !port.Public {

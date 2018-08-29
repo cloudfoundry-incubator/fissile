@@ -69,7 +69,7 @@ type JobReference struct {
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
 	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`
 	ResolvedConsumers   map[string]jobConsumesInfo `yaml:"consumes"`
-	ContainerProperties *JobContainerProperties    `yaml:"properties"`
+	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
 
 // RoleRun describes how a role should behave at runtime
