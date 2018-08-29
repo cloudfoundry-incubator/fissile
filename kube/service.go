@@ -139,7 +139,8 @@ func createPort(settings ExportSettings, serviceType newServiceType, roleName st
 	}
 }
 
-// newGenericService creates a new k8s service (ClusterIP or LoadBalanced)
+// newGenericService creates a new k8s service (ClusterIP or LoadBalanced) for the overall role.
+// This allows individual pods to be addressed by their index.
 func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, job := range role.JobReferences {
@@ -173,7 +174,7 @@ func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm
 	return service, nil
 }
 
-// newService creates a new k8s service (ClusterIP or LoadBalanced)
+// newService creates a new k8s service (ClusterIP or LoadBalanced) for a job
 func newService(role *model.InstanceGroup, job *model.JobReference, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 
