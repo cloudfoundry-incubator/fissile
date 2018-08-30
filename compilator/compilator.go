@@ -20,9 +20,6 @@ import (
 	"github.com/SUSE/termui"
 
 	"github.com/fatih/color"
-	//"github.com/gosuri/uiprogress"
-	//"github.com/gosuri/uiprogress/util/strutil"
-	"github.com/cheggaaa/pb"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
@@ -355,24 +352,19 @@ func (j compileJob) Run() {
 	// Check to see whether a package already exists in the configured cache
 	// and either download that package or compile and upload it
 	if exists == true {
-		c.ui.Printf("cache: %s %s/%s\n", color.MagentaString("downloading"), j.pkg.Release.Name, j.pkg.Name)
-		//		bar := uiprogress.AddBar(100)
-		//		bar.PrependFunc(func(b *uiprogress.Bar) string {
-		//			return strutil.Resize(fmt.Sprintf("cache: %s", j.pkg.Name), 22)
-		//		})
-		bar := pb.StartNew(100)
-
+		c.ui.Printf("cache: downloading %s/%s\n", j.pkg.Release.Name, j.pkg.Name)
+		currentProgress := 0
+		previousProgress := 0
 		downloadErr := c.packageStorage.Download(j.pkg, func(progress float64) {
 			if progress == -1 {
-				c.ui.Printf("cache: %s %s\n", color.MagentaString("finished downloading"), j.pkg.Name)
+				c.ui.Printf("cache: finished downloading %s/%s\n", j.pkg.Release.Name, j.pkg.Name)
 				return
-			} else {
-				if progress == 100 {
-					bar.Set(int(progress))
-					bar.Finish()
-				}
 			}
-			bar.Set(int(progress))
+			currentProgress = int(progress)
+			if currentProgress/20 > previousProgress {
+				c.ui.Printf("cache: %s/%s %s \n", j.pkg.Release.Name, j.pkg.Name, color.MagentaString("%d%%", currentProgress))
+				previousProgress = currentProgress / 20
+			}
 		})
 		if downloadErr != nil {
 			c.ui.Println(color.RedString("Error downloading the package"))
