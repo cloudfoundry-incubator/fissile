@@ -38,7 +38,8 @@ compiled once.
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -67,7 +68,6 @@ compiled once.
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
 			compilationDir,
-			flagRoleManifest,
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),

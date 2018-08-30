@@ -14,7 +14,8 @@ Displays a report of all validation checks.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flagBuildHelmDefaultEnvFiles = splitNonEmpty(buildHelmViper.GetString("defaults-file"), ",")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -24,7 +25,7 @@ Displays a report of all validation checks.
 			return err
 		}
 
-		return fissile.Validate(flagRoleManifest, flagLightOpinions, flagDarkOpinions, flagBuildHelmDefaultEnvFiles)
+		return fissile.Validate(flagLightOpinions, flagDarkOpinions, flagBuildHelmDefaultEnvFiles)
 	},
 }
 

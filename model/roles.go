@@ -26,11 +26,20 @@ type RoleManifest struct {
 	Variables      Variables
 	Releases       []*ReleaseRef  `yaml:"releases"`
 
+	LoadedReleases   []*Release
 	manifestFilePath string
 }
 
+// ReleaseLoadParams describes how to load releases
+type ReleaseLoadParams struct {
+	ReleasePaths    []string
+	ReleaseNames    []string
+	ReleaseVersions []string
+	CacheDir        string
+}
+
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
-func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util.ModelGrapher) (*RoleManifest, error) {
+func LoadRoleManifest(manifestFilePath string, releaseLoadParams ReleaseLoadParams, grapher util.ModelGrapher) (*RoleManifest, error) {
 	manifestContents, err := ioutil.ReadFile(manifestFilePath)
 	if err != nil {
 		return nil, err
@@ -42,7 +51,18 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		return nil, err
 	}
 
-	releases, err = roleManifest.loadReleaseReferences(releases)
+	releases, err := LoadReleases(
+		releaseLoadParams.ReleasePaths,
+		releaseLoadParams.ReleaseNames,
+		releaseLoadParams.ReleaseVersions,
+		releaseLoadParams.CacheDir)
+
+	embeddedReleases, err := roleManifest.loadReleaseReferences()
+	if err != nil {
+		return nil, err
+	}
+
+	roleManifest.LoadedReleases = append(releases, embeddedReleases...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +95,9 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 
 // loadReleaseReferences downloads/builds and loads releases referenced in the
 // manifest
-func (m *RoleManifest) loadReleaseReferences(releases []*Release) ([]*Release, error) {
+func (m *RoleManifest) loadReleaseReferences() ([]*Release, error) {
+	releases := []*Release{}
+
 	var allErrs error
 	var wg sync.WaitGroup
 	progress := mpb.New(mpb.WithWaitGroup(&wg))
@@ -167,7 +189,7 @@ func (m *RoleManifest) loadReleaseReferences(releases []*Release) ([]*Release, e
 // resolveRoleManifest takes a role manifest as loaded from disk, and validates
 // it to ensure it has no errors, and that the various ancillary structures are
 // correctly populated.
-func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.ModelGrapher) error {
+func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 	allErrs := validation.ErrorList{}
 
 	// If template keys are not strings, we need to stop early to avoid panics
@@ -178,7 +200,7 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 
 	mappedReleases := map[string]*Release{}
 
-	for _, release := range releases {
+	for _, release := range m.LoadedReleases {
 		_, ok := mappedReleases[release.Name]
 
 		if ok {

@@ -27,7 +27,8 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 		flagShowImageWithSizes = showImagesViper.GetBool("with-sizes")
 		flagShowImageTagExtra = showImagesViper.GetString("tag-extra")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -41,7 +42,6 @@ This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissi
 			flagDockerRegistry,
 			flagDockerOrganization,
 			flagRepository,
-			flagRoleManifest,
 			flagLightOpinions,
 			flagDarkOpinions,
 			flagShowImageDockerOnly,

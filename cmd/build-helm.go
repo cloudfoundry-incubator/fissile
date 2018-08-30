@@ -32,7 +32,8 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -76,7 +77,7 @@ var buildHelmCmd = &cobra.Command{
 			}()
 		}
 
-		return fissile.GenerateKube(flagRoleManifest, flagBuildHelmDefaultEnvFiles, settings)
+		return fissile.GenerateKube(flagBuildHelmDefaultEnvFiles, settings)
 	},
 }
 var buildHelmViper = viper.New()

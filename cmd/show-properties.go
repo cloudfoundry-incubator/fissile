@@ -17,7 +17,8 @@ The report lists the properties per job per release, with their default value.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show property information
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
