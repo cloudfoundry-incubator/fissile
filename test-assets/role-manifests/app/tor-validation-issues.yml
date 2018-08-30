@@ -21,10 +21,10 @@ instance_groups:
     release: tor
 configuration:
   templates:
+    properties.fox: '((FOO): Not specified in any release'
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
-    properties.fox: '((FOO): Not specified in any release'
 variables:
 - name: BAR
   options:

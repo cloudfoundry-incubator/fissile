@@ -1,5 +1,9 @@
 package model
 
+import (
+	"gopkg.in/yaml.v2"
+)
+
 // Configuration contains information about how to configure the
 // resulting images
 type Configuration struct {
@@ -7,7 +11,7 @@ type Configuration struct {
 		Roles    map[string]AuthRole    `yaml:"roles,omitempty"`
 		Accounts map[string]AuthAccount `yaml:"accounts,omitempty"`
 	} `yaml:"auth,omitempty"`
-	Templates map[string]string `yaml:"templates"`
+	Templates yaml.MapSlice `yaml:"templates"`
 }
 
 // An AuthRule is a single rule for a RBAC authorization role

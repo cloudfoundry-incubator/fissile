@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -361,8 +363,8 @@ func (m *RoleManifest) SelectInstanceGroups(roleNames []string) (InstanceGroups,
 func validateVariableDescriptions(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	for _, variable := range roleManifest.Configuration.Variables {
-		if variable.Description == "" {
+	for _, variable := range roleManifest.Variables {
+		if variable.CVOptions.Description == "" {
 			allErrs = append(allErrs, validation.Required(variable.Name,
 				"Description is required"))
 		}
