@@ -1293,3 +1293,16 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-logs\n"+
 		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-store")
 }
+
+func TestLoadRoleManifestWithReleaseReferences(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/online-release-references.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{}, nil)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
+
+	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
+	assert.Len(t, roleManifest.InstanceGroups, 1)
+}

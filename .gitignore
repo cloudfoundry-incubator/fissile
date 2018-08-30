@@ -12,3 +12,4 @@ scripts/templates/transformations.go
 */*.test
 /test-assets/*/.dev_builds
 /test-assets/*/.blobs
+.final_releases

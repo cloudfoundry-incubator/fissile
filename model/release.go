@@ -11,6 +11,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// ReleaseRef represents a reference to a BOSH release from a manifest
+type ReleaseRef struct {
+	Name    string `yaml:"name"`
+	Url     string `yaml:"url"`
+	Sha1    string `yaml:"sha1"`
+	Version string `yaml:"version"`
+}
+
 // Release represents a BOSH release
 type Release struct {
 	Jobs               Jobs
