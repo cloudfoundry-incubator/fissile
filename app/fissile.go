@@ -58,12 +58,10 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
 	roleManifest, err := model.LoadRoleManifest(
 		roleManifestPath,
-		model.ReleaseLoadParams{
-			ReleasePaths:    releasePaths,
-			ReleaseNames:    releaseNames,
-			ReleaseVersions: releaseVersions,
-			CacheDir:        cacheDir,
-		},
+		releasePaths,
+		releaseNames,
+		releaseVersions,
+		cacheDir,
 		f)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
@@ -75,7 +73,7 @@ func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNam
 
 // ListPackages will list all BOSH packages within a list of releases
 func (f *Fissile) ListPackages(verbose bool) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -113,7 +111,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 
 // ListJobs will list all jobs within a list of releases
 func (f *Fissile) ListJobs(verbose bool) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -151,7 +149,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 
 // ListProperties will list all properties in all jobs within a list of releases
 func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -185,7 +183,7 @@ func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 
 // SerializePackages returns all packages in loaded releases, keyed by fingerprint
 func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
@@ -200,7 +198,7 @@ func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
 
 // SerializeReleases will return all of the loaded releases
 func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
@@ -213,7 +211,7 @@ func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 
 // SerializeJobs will return all of the jobs within the releases, keyed by fingerprint
 func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
@@ -320,7 +318,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 
 // Compile will compile a list of dev BOSH releases
 func (f *Fissile) Compile(stemcellImageName string, targetPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -376,7 +374,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 	//    variant of the code in ListPackages, we keep only the
 	//    hashes.
 
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -434,7 +432,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
 func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -487,7 +485,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 // GeneratePackagesRoleTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
 func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -536,7 +534,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 
 // GenerateRoleImages generates all role images using releases
 func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, instanceGroupNames []string, workerCount int, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -622,7 +620,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, opinionsPat
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
 
-	if len(f.Manifest.LoadedReleases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
