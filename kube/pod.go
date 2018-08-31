@@ -93,7 +93,7 @@ func NewPod(role *model.InstanceGroup, settings ExportSettings, grapher util.Mod
 
 // getContainerMapping returns the container list entry mapping for the provided role
 func getContainerMapping(role *model.InstanceGroup, settings ExportSettings, grapher util.ModelGrapher) (*helm.Mapping, error) {
-	roleName := strings.Replace(strings.ToLower(role.Name), "_", "-", -1)
+	roleName := util.ConvertNameToKey(role.Name)
 	roleVarName := makeVarName(roleName)
 
 	vars, err := getEnvVars(role, settings)
@@ -341,7 +341,7 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 		// KUBE_SIZING_role_COUNT
 		match := sizingCountRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
-			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
+			roleName := util.ConvertNameToKey(match[1])
 			role := settings.RoleManifest.LookupInstanceGroup(roleName)
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
@@ -363,7 +363,7 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 		// KUBE_SIZING_role_PORTS_port_MIN/MAX
 		match = sizingPortsRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
-			roleName := strings.Replace(strings.ToLower(match[1]), "_", "-", -1)
+			roleName := util.ConvertNameToKey(match[1])
 			role := settings.RoleManifest.LookupInstanceGroup(roleName)
 			if role == nil {
 				return nil, fmt.Errorf("Role %s for %s not found", roleName, config.Name)
@@ -372,7 +372,7 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
 			}
 
-			portName := strings.Replace(strings.ToLower(match[2]), "_", "-", -1)
+			portName := util.ConvertNameToKey(match[2])
 			var port *model.JobExposedPort
 			for _, job := range role.JobReferences {
 				for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {

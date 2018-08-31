@@ -2,10 +2,10 @@ package kube
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 )
 
 // NewServiceList creates a list of services
@@ -213,16 +213,17 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
-	jobName := strings.Replace(job.Name, "_", "-", -1)
+	jobName := util.ConvertNameToKey(job.Name)
+	serviceNamePrefix := util.ConvertNameToKey(role.Name)
 
 	var serviceName string
 	switch serviceType {
 	case newServiceTypeHeadless:
-		serviceName = role.Name + "-" + jobName + "-set"
+		serviceName = serviceNamePrefix + "-" + jobName + "-set"
 	case newServiceTypePrivate:
-		serviceName = role.Name + "-" + jobName
+		serviceName = serviceNamePrefix + "-" + jobName
 	case newServiceTypePublic:
-		serviceName = role.Name + "-" + jobName + "-public"
+		serviceName = serviceNamePrefix + "-" + jobName + "-public"
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
