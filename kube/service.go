@@ -15,7 +15,7 @@ func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportS
 	var items []helm.Node
 
 	if clustering {
-		svc, err := newGenericService(role, settings)
+		svc, err := newClusteringService(role, settings)
 		if err != nil {
 			return nil, err
 		}
@@ -142,9 +142,9 @@ func createPorts(settings ExportSettings, serviceType newServiceType, roleName s
 	return ports
 }
 
-// newGenericService creates a new k8s service (ClusterIP or LoadBalanced) for the overall role.
+// newClusteringService creates a new k8s service for the overall instance group.
 // This allows individual pods to be addressed by their index.
-func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
+func newClusteringService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
 	var ports []helm.Node
 	for _, job := range role.JobReferences {
 		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
