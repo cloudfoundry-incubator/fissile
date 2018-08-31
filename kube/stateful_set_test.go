@@ -51,7 +51,7 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(t, items, 4, "Should have three services per stateful role") {
+	if assert.Len(t, items, 4, "Should have four services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
