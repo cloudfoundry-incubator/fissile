@@ -75,8 +75,9 @@ const (
 	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
 )
 
-// createPort generates a helm mapping according to the JobExposedPort
-func createPort(settings ExportSettings, serviceType newServiceType, roleName string, port model.JobExposedPort, ports *[]helm.Node) {
+// createPorts generates a helm mapping according to the JobExposedPort
+func createPorts(settings ExportSettings, serviceType newServiceType, roleName string, port model.JobExposedPort) []helm.Node {
+	var ports []helm.Node
 	if settings.CreateHelmChart && port.CountIsConfigurable {
 		sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(roleName), makeVarName(port.Name))
 
@@ -105,7 +106,7 @@ func createPort(settings ExportSettings, serviceType newServiceType, roleName st
 		} else {
 			newPort.Add("targetPort", portName)
 		}
-		*ports = append(*ports, newPort)
+		ports = append(ports, newPort)
 	} else {
 		for portIndex := 0; portIndex < port.Count; portIndex++ {
 			portName := port.Name
@@ -134,9 +135,11 @@ func createPort(settings ExportSettings, serviceType newServiceType, roleName st
 				// port definitions with the same internal port
 				newPort.Add("targetPort", port.InternalPort+portIndex)
 			}
-			*ports = append(*ports, newPort)
+			ports = append(ports, newPort)
 		}
 	}
+
+	return ports
 }
 
 // newGenericService creates a new k8s service (ClusterIP or LoadBalanced) for the overall role.
@@ -145,7 +148,7 @@ func newGenericService(role *model.InstanceGroup, settings ExportSettings) (helm
 	var ports []helm.Node
 	for _, job := range role.JobReferences {
 		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
-			createPort(settings, newServiceTypeHeadless, role.Name, port, &ports)
+			ports = append(ports, createPorts(settings, newServiceTypeHeadless, role.Name, port)...)
 		}
 	}
 
@@ -184,7 +187,7 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 			continue
 		}
 
-		createPort(settings, serviceType, role.Name, port, &ports)
+		ports = append(ports, createPorts(settings, serviceType, role.Name, port)...)
 	}
 	if len(ports) == 0 {
 		// Kubernetes refuses to create services with no ports, so we should
