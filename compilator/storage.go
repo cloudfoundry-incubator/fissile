@@ -188,7 +188,7 @@ func (p *PackageStorage) Download(pack *model.Package, progressEvent DownloadPro
 	}
 
 	// Unpack the compiled contents
-	err = archiver.TarGz.Open(
+	err = archiver.Tar.Open(
 		path,
 		filepath.Join(p.CompilationWorkDir, pack.Fingerprint),
 	)
@@ -202,8 +202,8 @@ func (p *PackageStorage) Upload(pack *model.Package) error {
 	// Create a temporary archive with the compiled contents
 	archiveName := p.localPackageTempArchivePath(pack)
 
-	// Archive (tgz) the contents
-	err := archiver.TarGz.Make(archiveName, []string{pack.GetPackageCompiledDir(p.CompilationWorkDir)})
+	// Archive (tar) the contents
+	err := archiver.Tar.Make(archiveName, []string{pack.GetPackageCompiledDir(p.CompilationWorkDir)})
 	// Cleanup the archive when done
 	defer os.RemoveAll(archiveName)
 
@@ -235,10 +235,10 @@ func (p *PackageStorage) uploadedPackageFilePath(pack *model.Package) string {
 }
 
 func (p *PackageStorage) uploadedPackageFileName(pack *model.Package) string {
-	return fmt.Sprintf("%s.tgz", pack.Fingerprint)
+	return fmt.Sprintf("%s.tar", pack.Fingerprint)
 }
 
 func (p *PackageStorage) localPackageTempArchivePath(pack *model.Package) string {
 	id := uuid.Must(uuid.NewV4())
-	return filepath.Join(os.TempDir(), fmt.Sprintf("package-%s.tgz", id.String()))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("package-%s.tar", id.String()))
 }

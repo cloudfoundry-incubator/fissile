@@ -335,7 +335,6 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 	if err != nil {
 		return err
 	}
-s
 	var comp *compilator.Compilator
 	if withoutDocker {
 		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f, packageStorage)
