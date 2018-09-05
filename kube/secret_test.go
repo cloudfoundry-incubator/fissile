@@ -63,56 +63,62 @@ func TestMakeSecretsEmpty(t *testing.T) {
 
 func testCVMap() model.CVMap {
 	return model.CVMap{
-		"optional": &model.ConfigurationVariable{
-			// This variable is only defined to verify that missing non-required secrets won't throw any errors
-			Name:     "optional",
-			Required: false,
-			Default:  nil,
-		},
-		"min": &model.ConfigurationVariable{
-			Name: "min",
-		},
-		"desc": &model.ConfigurationVariable{
-			Name:        "desc",
-			Description: "<<<a description>>>",
-			Example:     "Use this",
-		},
-		"valued": &model.ConfigurationVariable{
-			Name:        "valued",
-			Description: "<<<invaluable>>>",
-			Default:     "you are very valued indeed",
-		},
-		"structured": &model.ConfigurationVariable{
-			Name:        "structured",
-			Description: "<<<non-scalar>>>",
-			Example:     "use: \"this\"\n",
-			Default:     map[string]string{"non": "scalar"},
-		},
-		"const": &model.ConfigurationVariable{
-			Name:        "const",
-			Description: "<<<don't change>>>",
-			Default:     "rock solid",
-			Required:    true,
-			Immutable:   true,
-		},
-		"genie": &model.ConfigurationVariable{
-			Name:        "genie",
-			Description: "<<<here is jeannie>>>",
-			Generator: &model.ConfigurationVariableGenerator{
-				ID:        "xxx",
-				Type:      model.GeneratorTypePassword,
-				ValueType: "snafu",
+		"optional": &model.VariableDefinition{
+			Name: "optional",
+			CVOptions: model.CVOptions{
+				// This variable is only defined to verify that missing non-required secrets won't throw any errors
+				Required: false,
+				Default:  nil,
 			},
 		},
-		"guinevere": &model.ConfigurationVariable{
+		"min": &model.VariableDefinition{
+			Name: "min",
+		},
+		"desc": &model.VariableDefinition{
+			Name: "desc",
+			CVOptions: model.CVOptions{
+				Description: "<<<a description>>>",
+				Example:     "Use this",
+			},
+		},
+		"valued": &model.VariableDefinition{
+			Name: "valued",
+			CVOptions: model.CVOptions{
+				Description: "<<<invaluable>>>",
+				Default:     "you are very valued indeed",
+			},
+		},
+		"structured": &model.VariableDefinition{
+			Name: "structured",
+			CVOptions: model.CVOptions{
+				Description: "<<<non-scalar>>>",
+				Example:     "use: \"this\"\n",
+				Default:     map[string]string{"non": "scalar"},
+			},
+		},
+		"const": &model.VariableDefinition{
+			Name: "const",
+			CVOptions: model.CVOptions{
+				Description: "<<<don't change>>>",
+				Default:     "rock solid",
+				Required:    true,
+				Immutable:   true,
+			},
+		},
+		"genie": &model.VariableDefinition{
+			Name: "genie",
+			Type: "password",
+			CVOptions: model.CVOptions{
+				Description: "<<<here is jeannie>>>",
+			},
+		},
+		"guinevere": &model.VariableDefinition{
 			// excluded from __helm__ output
-			Name:        "guinevere",
-			Description: "<<<helm hidden>>>",
-			Immutable:   true,
-			Generator: &model.ConfigurationVariableGenerator{
-				ID:        "xxx",
-				Type:      model.GeneratorTypePassword,
-				ValueType: "snafu",
+			Name: "guinevere",
+			Type: "password",
+			CVOptions: model.CVOptions{
+				Description: "<<<helm hidden>>>",
+				Immutable:   true,
 			},
 		},
 	}
@@ -134,10 +140,10 @@ func TestMakeSecretsKube(t *testing.T) {
 		return
 	}
 
-	varStructuredJSON, _ := json.Marshal(testCV["structured"].Default)
+	varStructuredJSON, _ := json.Marshal(testCV["structured"].CVOptions.Default)
 
-	varConstB64 := RenderEncodeBase64(testCV["const"].Default.(string))
-	varValuedB64 := RenderEncodeBase64(testCV["valued"].Default.(string))
+	varConstB64 := RenderEncodeBase64(testCV["const"].CVOptions.Default.(string))
+	varValuedB64 := RenderEncodeBase64(testCV["valued"].CVOptions.Default.(string))
 	varStructuredB64 := RenderEncodeBase64(string(varStructuredJSON))
 
 	// Check the comments, and also that they are associated with

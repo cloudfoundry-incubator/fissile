@@ -8,9 +8,9 @@ instance_groups:
   - name: hashmat
     release: tor
 configuration:
-  variables:
-  - name: FOO
   templates:
     properties.is.a.hash.foo: '((FOO)) extend hash, ok'
     properties.its.a.hash.foo: '((FOO)) extend possible hash, ok'
     properties.not.a.hash.foo: '((FOO)) extend a non-hash, fail'
+variables:
+- name: FOO

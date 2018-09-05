@@ -6,6 +6,5 @@ instance_groups:
   - name: tor
     release: tor
   run: {}
-configuration:
-  variables:
+variables:
   - name: SOME_VAR # Unused

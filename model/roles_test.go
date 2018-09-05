@@ -442,7 +442,8 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-cv-type.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err,
+
+	require.EqualError(t, err,
 		`configuration.variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
 	assert.Nil(t, roleManifest)
 }
