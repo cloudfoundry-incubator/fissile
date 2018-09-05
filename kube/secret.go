@@ -21,6 +21,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 		comment := cv.CVOptions.Description
 
 		if settings.CreateHelmChart {
+			// cv.Generator == nil
 			if cv.Type == "" {
 				if cv.CVOptions.Immutable {
 					comment += "\nThis value is immutable and must not be changed once set."

@@ -420,6 +420,21 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
+func TestLoadRoleManifestVariablesSSH(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	assert.NoError(t, err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-ssh.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, roleManifest)
+}
+
 func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)

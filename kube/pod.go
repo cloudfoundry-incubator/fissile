@@ -445,7 +445,7 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				if config.CVOptions.Immutable && config.Type != "" {
 					// Users cannot override immutable secrets that are generated
 					env = append(env, makeSecretVar(config.Name, true))
-				} else if config.Type == "" {
+				} else if config.Type == "" && independentSecret(config.Name) {
 					env = append(env, makeSecretVar(config.Name, false))
 				} else {
 					// Generated secrets can be overridden by the user (unless immutable)
@@ -491,6 +491,10 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 		return env[i].Get("name").String() < env[j].Get("name").String()
 	})
 	return helm.NewNode(env), nil
+}
+
+func independentSecret(name string) bool {
+	return !strings.HasSuffix(name, "_KEY") && !strings.HasSuffix(name, "_FINGERPRINT")
 }
 
 func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.Node {
