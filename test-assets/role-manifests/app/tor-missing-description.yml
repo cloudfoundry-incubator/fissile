@@ -1,4 +1,4 @@
-# This role manifest should pass validation with no issues
+# This role manifest misses a description for a variable
 ---
 instance_groups:
 - name: myrole

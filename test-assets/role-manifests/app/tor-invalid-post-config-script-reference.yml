@@ -1,4 +1,4 @@
-# This role manifest should pass validation with no issues
+# This role manifest references a post config script that doesn't exist
 ---
 instance_groups:
 - name: myrole
