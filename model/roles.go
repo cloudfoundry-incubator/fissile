@@ -192,6 +192,7 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 		allErrs = append(allErrs, validateColocatedContainerVolumeShares(m)...)
 		allErrs = append(allErrs, validateVariableDescriptions(m)...)
 		allErrs = append(allErrs, validateSortedTemplates(m)...)
+		allErrs = append(allErrs, validateScripts(m)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -396,11 +397,15 @@ func validateSortedTemplates(roleManifest *RoleManifest) validation.ErrorList {
 // validateScripts tests that all scripts exist and that all referenced scripts exist
 func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
-	scriptDir := filepath.Join(filepath.Dir(roleManifest.manifestFilePath), "scripts")
+	scriptDir := filepath.Dir(roleManifest.manifestFilePath)
 	usedScripts := map[string]bool{}
 
 	for _, instanceGroup := range roleManifest.InstanceGroups {
 		for _, script := range instanceGroup.Scripts {
+			if filepath.IsAbs(script) {
+				continue
+			}
+
 			fullScriptPath := filepath.Join(scriptDir, script)
 
 			if _, err := os.Stat(fullScriptPath); err != nil {
@@ -414,6 +419,10 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 		}
 
 		for _, script := range instanceGroup.EnvironScripts {
+			if filepath.IsAbs(script) {
+				continue
+			}
+
 			fullScriptPath := filepath.Join(scriptDir, script)
 
 			if _, err := os.Stat(fullScriptPath); err != nil {
@@ -425,27 +434,23 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 
 			usedScripts[fullScriptPath] = true
 		}
-	}
 
-	err := filepath.Walk(scriptDir,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
+		for _, script := range instanceGroup.PostConfigScripts {
+			if filepath.IsAbs(script) {
+				continue
 			}
 
-			if info.IsDir() {
-				return nil
+			fullScriptPath := filepath.Join(scriptDir, script)
+
+			if _, err := os.Stat(fullScriptPath); err != nil {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("%s post config script", instanceGroup.Name),
+					script,
+					err.Error()))
 			}
 
-			if _, ok := usedScripts[path]; !ok {
-				allErrs = append(allErrs, validation.Forbidden(path, "Script not used."))
-			}
-
-			return nil
-		})
-
-	if err != nil {
-		allErrs = append(allErrs, validation.InternalError("scripts", err))
+			usedScripts[fullScriptPath] = true
+		}
 	}
 
 	return allErrs

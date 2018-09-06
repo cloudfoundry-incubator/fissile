@@ -2,6 +2,8 @@
 ---
 instance_groups:
 - name: myrole
+  scripts:
+  - myrole.sh
   run:
     foo: x
   jobs:

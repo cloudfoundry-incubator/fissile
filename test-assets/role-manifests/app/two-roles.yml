@@ -2,6 +2,8 @@
 ---
 instance_groups:
 - name: myrole-deployment
+  scripts:
+  - myrole.sh
   jobs: []
   run:
     scaling:
