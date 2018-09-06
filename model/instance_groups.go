@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/SUSE/fissile/util"
+
+	"gopkg.in/yaml.v2"
 )
 
 // InstanceGroups is an array of Role*
@@ -274,7 +276,10 @@ func (g *InstanceGroup) GetTemplateSignatures() (string, error) {
 	i := 0
 	templates := make([]string, len(g.Configuration.Templates))
 
-	for k, v := range g.Configuration.Templates {
+	for _, templateDef := range g.Configuration.Templates {
+		k := templateDef.Key.(string)
+		v := templateDef.Value.(string)
+
 		templates[i] = fmt.Sprintf("%s: %s", k, v)
 		i++
 	}
@@ -465,16 +470,25 @@ func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
 		g.Configuration = &Configuration{}
 	}
 	if g.Configuration.Templates == nil {
-		g.Configuration.Templates = map[string]string{}
+		g.Configuration.Templates = yaml.MapSlice{}
 	}
 
-	roleConfigs := map[string]string{}
-	for k, v := range g.roleManifest.Configuration.Templates {
-		roleConfigs[k] = v
+	roleConfigs := yaml.MapSlice{}
+	for _, templateDef := range g.Configuration.Templates {
+		k := templateDef.Key.(string)
+		v := templateDef.Value
+
+		roleConfigs = append(roleConfigs, yaml.MapItem{Key: k, Value: v})
 	}
 
-	for k, v := range g.Configuration.Templates {
-		roleConfigs[k] = v
+	for _, templateDef := range g.roleManifest.Configuration.Templates {
+		k := templateDef.Key.(string)
+		v := templateDef.Value
+
+		if _, ok := getTemplate(roleConfigs, k); !ok {
+
+			roleConfigs = append(roleConfigs, yaml.MapItem{Key: k, Value: v})
+		}
 	}
 
 	g.Configuration.Templates = roleConfigs

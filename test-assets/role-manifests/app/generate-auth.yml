@@ -1,7 +1,9 @@
 # This role manifest is used to test generating kube roles
 ---
-roles:
+instance_groups:
 - name: non-default
+  scripts:
+  - myrole.sh
   run:
     service-account: non-default
 - name: default

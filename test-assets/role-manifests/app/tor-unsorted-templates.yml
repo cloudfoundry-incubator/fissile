@@ -1,9 +1,7 @@
-# This role manifest is used to check that various validation issues are found
+# This role manifest has unsorted variables
 ---
 instance_groups:
 - name: myrole
-  scripts:
-  - myrole.sh
   run:
     foo: x
   jobs:
@@ -11,9 +9,6 @@ instance_groups:
     release: tor
   - name: tor
     release: tor
-  configuration:
-    templates:
-      properties.tor.bogus: BOGUS
 - name: foorole
   type: bosh-task
   run:
@@ -23,9 +18,8 @@ instance_groups:
     release: tor
 configuration:
   templates:
-    properties.fox: '((FOO): Not specified in any release'
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.hostname: '((FOO))'
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
 variables:
 - name: BAR
@@ -37,6 +31,11 @@ variables:
 - name: HOME
   options:
     description: "foo"
+- name: KUPRIES
+  options:
+    description: "foo"
+    internal: true
 - name: PELERINUL
   options:
     description: "foo"
+

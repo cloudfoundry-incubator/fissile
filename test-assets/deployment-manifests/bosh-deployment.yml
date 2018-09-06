@@ -12,6 +12,7 @@ variables:
   type: password
   options:
     internal: true
+    description: "foo"
 - name: default_ca
   type: certificate
   options:
@@ -19,3 +20,4 @@ variables:
     is_ca: true
     common_name: ca
     internal: true
+    description: "foo"

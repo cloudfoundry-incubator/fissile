@@ -9,10 +9,16 @@ instance_groups:
     release: tor
 configuration:
   templates:
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))' # HOME is not declared
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
 variables:
 - name: BAR
+  options:
+    description: "foo"
 - name: FOO
+  options:
+    description: "foo"
 - name: PELERINUL
+  options:
+    description: "foo"

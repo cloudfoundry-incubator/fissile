@@ -2,6 +2,8 @@
 ---
 instance_groups:
 - name: myrole
+  scripts:
+  - myrole.sh
   run:
     foo: x
   jobs:
@@ -14,3 +16,6 @@ configuration:
     properties.not.a.hash.foo: '((FOO)) extend a non-hash, fail'
 variables:
 - name: FOO
+  options:
+    description: "foo"
+
