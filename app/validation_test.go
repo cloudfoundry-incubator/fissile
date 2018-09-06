@@ -209,6 +209,27 @@ func TestNonExistingVarsInEnvFile(t *testing.T) {
 	assert.Len(t, errs, len(allExpected))
 }
 
+func TestInvalidTemplateKeys(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-template-keys.yml")
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(t, err)
+
+	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `template key for instance group myrole: Invalid value: true: Template key must be a string`)
+	assert.Contains(t, err.Error(), `global template key: Invalid value: 1: Template key must be a string`)
+}
+
 func TestBadScriptReferences(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 

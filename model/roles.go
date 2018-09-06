@@ -67,6 +67,14 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 // it to ensure it has no errors, and that the various ancillary structures are
 // correctly populated.
 func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.ModelGrapher) error {
+	allErrs := validation.ErrorList{}
+
+	// If template keys are not strings, we need to stop early to avoid panics
+	allErrs = append(allErrs, validateTemplateKeys(m)...)
+	if len(allErrs) != 0 {
+		return fmt.Errorf(allErrs.Errors())
+	}
+
 	mappedReleases := map[string]*Release{}
 
 	for _, release := range releases {
@@ -84,8 +92,6 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 
 	// See also 'GetVariablesForRole' (mustache.go).
 	declaredConfigs := MakeMapOfVariables(m)
-
-	allErrs := validation.ErrorList{}
 
 	for i := len(m.InstanceGroups) - 1; i >= 0; i-- {
 		instanceGroup := m.InstanceGroups[i]
@@ -688,6 +694,41 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 			// not reported again.  One report is good
 			// enough.
 			declaredConfigs[envVar] = nil
+		}
+	}
+
+	return allErrs
+}
+
+// validateTemplateKeys tests whether all template keys are strings
+func validateTemplateKeys(roleManifest *RoleManifest) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, instanceGroup := range roleManifest.InstanceGroups {
+		if instanceGroup.Configuration == nil {
+			continue
+		}
+
+		for _, templateDef := range instanceGroup.Configuration.Templates {
+			if _, ok := templateDef.Key.(string); !ok {
+				allErrs = append(allErrs, validation.Invalid(
+					fmt.Sprintf("template key for instance group %s", instanceGroup.Name),
+					templateDef.Key,
+					"Template key must be a string"))
+			}
+		}
+	}
+
+	if roleManifest.Configuration == nil {
+		return allErrs
+	}
+
+	for _, templateDef := range roleManifest.Configuration.Templates {
+		if _, ok := templateDef.Key.(string); !ok {
+			allErrs = append(allErrs, validation.Invalid(
+				"global template key",
+				templateDef.Key,
+				"Template key must be a string"))
 		}
 	}
 
