@@ -10,38 +10,40 @@ all: clean format lint vet build test
 .PHONY: all clean format lint vet build test
 
 clean:
-	@printf "$(OK_COLOR)==> Cleaning$(NO_COLOR)\n"
+	@echo "$(OK_COLOR)==> Cleaning$(NO_COLOR)"
 
 format:
-	@printf "$(OK_COLOR)==> Checking format$(NO_COLOR)\n"
+	@echo "$(OK_COLOR)==> Checking format$(NO_COLOR)"
 	goimports -e -l .
-	@printf "$(NO_COLOR)"
+	@echo "$(NO_COLOR)\c"
 
 lint:
-	@printf "$(OK_COLOR)==> Linting$(NO_COLOR)\n"
-	@printf $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p}
-	@printf "$(NO_COLOR)"
+	@echo "$(OK_COLOR)==> Linting$(NO_COLOR)"
+	@echo $(PKGSDIRS) | tr ' ' '\n' | xargs -I '{p}' -n1 golint {p}
+	@echo "$(NO_COLOR)\c"
 
 vet:
-	@printf "$(OK_COLOR)==> Vetting$(NO_COLOR)\n"
+	@echo "$(OK_COLOR)==> Vetting$(NO_COLOR)"
 	go vet ./...
-	@printf "$(NO_COLOR)"
+	@echo "$(NO_COLOR)\c"
 
 build:
-	@printf "$(OK_COLOR)==> Building$(NO_COLOR)\n"
-	go build -ldflags="-X main.version $(APP_VERSION)"
-	@printf "$(NO_COLOR)"
+	@echo "$(OK_COLOR)==> Building$(NO_COLOR)"
+	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) && \
+		go build -ldflags="-X main.version $(APP_VERSION)"
+	@echo "$(NO_COLOR)\c"
 
 tools:
-	@printf "$(OK_COLOR)==> Installing tools$(NO_COLOR)\n"
+	@echo "$(OK_COLOR)==> Installing tools$(NO_COLOR)"
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/golang/lint/golint
 	go get -u github.com/axw/gocov/...
 	go get -u github.com/AlekSi/gocov-xml
 	go get github.com/tools/godep
-	@printf "$(NO_COLOR)"
+	@echo "$(NO_COLOR)\c"
 
 test:
-	@printf "$(OK_COLOR)==> Testing$(NO_COLOR)\n"
+	@echo "$(OK_COLOR)==> Testing$(NO_COLOR)"
+	export GOPATH=$(shell godep path):$(shell echo $$GOPATH) &&\
 	gocov test ./... | gocov-xml > coverage.xml
-	@printf "$(NO_COLOR)"
+	@echo "$(NO_COLOR)\c"

@@ -44,7 +44,7 @@ func TestCompilePackageInMountNS(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/no-license")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
 		return

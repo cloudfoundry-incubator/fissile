@@ -210,7 +210,7 @@ func TestStatefulSetServices(t *testing.T) {
 						assert.Nil(t, publicService, "Multiple public services found")
 						publicService = item
 					default:
-						assert.Failf(t, "Found unexpected service: \n%s", item.String())
+						assert.Fail(t, "Found unexpected service: \n%s", item.String())
 					}
 				}
 				for _, style := range []string{"kube", "helm"} {
