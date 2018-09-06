@@ -1,16 +1,21 @@
 ---
 instance_groups:
 - name: myrole
-  jobs: []
   run:
-    exposed-ports:
-    - name: a--b
-      protocol: TCP
-      internal: 80
-    - name: abcd-efgh-ijkl-x
-      protocol: TCP
-      internal: 8080
-    - name: abcdefghij
-      protocol: TCP
-      count-configurable: true
-      internal: 8008
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        ports:
+        - name: a--b
+          protocol: TCP
+          internal: 80
+        - name: abcd-efgh-ijkl-x
+          protocol: TCP
+          internal: 8080
+        - name: abcdefghij
+          protocol: TCP
+          count-configurable: true
+          internal: 8008

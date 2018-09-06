@@ -43,7 +43,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
 	statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
@@ -51,7 +51,7 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(t, items, 3, "Should have three services per stateful role") {
+	if assert.Len(t, items, 4, "Should have four services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
@@ -64,13 +64,13 @@ func TestStatefulSetPorts(t *testing.T) {
 		}
 	}
 	if assert.NotNil(t, endpointService, "endpoint service not found") {
-		assert.Equal(t, role.Name+"-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
+		assert.Equal(t, role.Name+"-tor-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
 	}
 	if assert.NotNil(t, headlessService, "headless service not found") {
-		assert.Equal(t, role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
+		assert.Equal(t, role.Name+"-tor-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
 	}
 	if assert.NotNil(t, privateService, "private service not found") {
-		assert.Equal(t, role.Name, privateService.Get("metadata", "name").String(), "unexpected private service name")
+		assert.Equal(t, role.Name+"-tor", privateService.Get("metadata", "name").String(), "unexpected private service name")
 	}
 
 	items = append(items, statefulset)
@@ -101,9 +101,28 @@ func TestStatefulSetPorts(t *testing.T) {
 					skiff-role-name: myrole
 				clusterIP: None
 		-
+			# This is the per-pod naming port
+			metadata:
+				name: myrole-tor-set
+			spec:
+				ports:
+				-
+					name: http
+					port: 80
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				-
+					name: https
+					port: 443
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				selector:
+					skiff-role-name: myrole
+				clusterIP: None
+		-
 			# This is the private service port
 			metadata:
-				name: myrole
+				name: myrole-tor
 			spec:
 				ports:
 				-
@@ -119,7 +138,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		-
 			# This is the public service port
 			metadata:
-				name: myrole-public
+				name: myrole-tor-public
 			spec:
 				ports:
 				-
@@ -167,7 +186,7 @@ func TestStatefulSetServices(t *testing.T) {
 				manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
 				require.NotNil(t, manifest)
 				require.NotNil(t, role)
-				require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
+				require.NotEmpty(t, role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0], "No exposed ports loaded")
 
 				statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
 				require.NoError(t, err)
@@ -175,16 +194,19 @@ func TestStatefulSetServices(t *testing.T) {
 				assert.NotNil(t, deps)
 				items := deps.Get("items").Values()
 
-				var headlessService, internalService, publicService helm.Node
+				var genericService, headlessService, internalService, publicService helm.Node
 				for _, item := range items {
 					switch item.Get("metadata").Get("name").String() {
 					case "myrole-set":
+						assert.Nil(t, genericService, "Multiple generic services found")
+						genericService = item
+					case "myrole-tor-set":
 						assert.Nil(t, headlessService, "Multiple headless services found")
 						headlessService = item
-					case "myrole":
+					case "myrole-tor":
 						assert.Nil(t, internalService, "Multiple internal services found")
 						internalService = item
-					case "myrole-public":
+					case "myrole-tor-public":
 						assert.Nil(t, publicService, "Multiple public services found")
 						publicService = item
 					default:
@@ -201,6 +223,40 @@ func TestStatefulSetServices(t *testing.T) {
 								actual, err = RoundtripNode(headlessService, nil)
 							case "kube":
 								actual, err = RoundtripKube(headlessService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole-tor-set
+							spec:
+								clusterIP: None
+								ports:
+								-
+									name: http
+									port: 80
+									protocol: TCP
+									targetPort: 0
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: 0
+								selector:
+									skiff-role-name: myrole
+							`, actual)
+						}
+						if assert.NotNil(t, genericService, "Generic instance group service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = RoundtripNode(genericService, nil)
+							case "kube":
+								actual, err = RoundtripKube(genericService)
 							default:
 								panic("Unexpected style " + style)
 							}
@@ -243,7 +299,7 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole-public
+								name: myrole-tor-public
 							spec:
 								externalIPs: [ 192.168.77.77 ]
 								ports:
@@ -256,9 +312,7 @@ func TestStatefulSetServices(t *testing.T) {
 									skiff-role-name: myrole
 							`, actual)
 						}
-						if variant == "headless" {
-							assert.Nil(t, internalService, "headless roles should not have internal services")
-						} else if assert.NotNil(t, internalService, "Internal service not found") {
+						if assert.NotNil(t, internalService, "Internal service not found") {
 							var actual interface{}
 							var err error
 							switch style {
@@ -274,7 +328,7 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole
+								name: myrole-tor
 							spec:
 								ports:
 								-

@@ -755,8 +755,10 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 	allErrs = append(allErrs, validateRoleMemory(instanceGroup)...)
 	allErrs = append(allErrs, validateRoleCPU(instanceGroup)...)
 
-	for _, exposedPort := range instanceGroup.Run.ExposedPorts {
-		allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, exposedPort)...)
+	for _, job := range instanceGroup.JobReferences {
+		for idx := range job.ContainerProperties.BoshContainerization.Ports {
+			allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
+		}
 	}
 
 	if instanceGroup.Run.ServiceAccount != "" {
@@ -830,7 +832,7 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 
 // ValidateExposedPorts validates exposed port ranges. It also translates the legacy
 // format of port ranges ("2000-2010") into the FirstPort and Count values.
-func ValidateExposedPorts(name string, exposedPorts *RoleRunExposedPort) validation.ErrorList {
+func ValidateExposedPorts(name string, exposedPorts *JobExposedPort) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	fieldName := fmt.Sprintf("instance_groups[%s].run.exposed-ports[%s]", name, exposedPorts.Name)
@@ -1135,14 +1137,16 @@ func validateColocatedContainerPortCollisions(RoleManifest *RoleManifest) valida
 			// names of the groups for each protocol/port (there should be no list with
 			// more than one entry)
 			for _, toBeChecked := range append([]*InstanceGroup{instanceGroup}, instanceGroup.GetColocatedRoles()...) {
-				for _, exposedPort := range toBeChecked.Run.ExposedPorts {
-					for i := 0; i < exposedPort.Count; i++ {
-						protocolPortTuple := fmt.Sprintf("%s/%d", exposedPort.Protocol, exposedPort.ExternalPort+i)
-						if _, ok := lookupMap[protocolPortTuple]; !ok {
-							lookupMap[protocolPortTuple] = []string{}
-						}
+				for _, job := range toBeChecked.JobReferences {
+					for _, exposedPort := range job.ContainerProperties.BoshContainerization.Ports {
+						for i := 0; i < exposedPort.Count; i++ {
+							protocolPortTuple := fmt.Sprintf("%s/%d", exposedPort.Protocol, exposedPort.ExternalPort+i)
+							if _, ok := lookupMap[protocolPortTuple]; !ok {
+								lookupMap[protocolPortTuple] = []string{}
+							}
 
-						lookupMap[protocolPortTuple] = append(lookupMap[protocolPortTuple], toBeChecked.Name)
+							lookupMap[protocolPortTuple] = append(lookupMap[protocolPortTuple], toBeChecked.Name)
+						}
 					}
 				}
 			}
@@ -1176,7 +1180,6 @@ func validateRoleTags(instanceGroup *InstanceGroup) validation.ErrorList {
 
 	acceptableRoleTypes := map[RoleTag][]RoleType{
 		RoleTagActivePassive:     []RoleType{RoleTypeBosh},
-		RoleTagHeadless:          []RoleType{RoleTypeBosh, RoleTypeDocker},
 		RoleTagSequentialStartup: []RoleType{RoleTypeBosh, RoleTypeDocker},
 		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
 	}
@@ -1185,18 +1188,11 @@ func validateRoleTags(instanceGroup *InstanceGroup) validation.ErrorList {
 		switch tag {
 		case RoleTagStopOnFailure:
 		case RoleTagSequentialStartup:
-		case RoleTagHeadless:
 		case RoleTagActivePassive:
 			if instanceGroup.Run == nil || instanceGroup.Run.ActivePassiveProbe == "" {
 				allErrs = append(allErrs, validation.Required(
 					fmt.Sprintf("instance_groups[%s].run.active-passive-probe", instanceGroup.Name),
 					"active-passive instance groups must specify the correct probe"))
-			}
-			if instanceGroup.HasTag(RoleTagHeadless) {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("instance_groups[%s].tags[%d]", instanceGroup.Name, tagNum),
-					tag,
-					"headless instance groups may not be active-passive"))
 			}
 
 		default:

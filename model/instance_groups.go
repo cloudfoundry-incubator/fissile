@@ -64,11 +64,12 @@ const (
 
 // JobReference represents a job in the context of a role
 type JobReference struct {
-	*Job              `yaml:"-"`                 // The resolved job
-	Name              string                     `yaml:"name"`    // The name of the job
-	ReleaseName       string                     `yaml:"release"` // The release the job comes from
-	ExportedProviders map[string]jobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers map[string]jobConsumesInfo `yaml:"consumes"`
+	*Job                `yaml:"-"`                 // The resolved job
+	Name                string                     `yaml:"name"`    // The name of the job
+	ReleaseName         string                     `yaml:"release"` // The release the job comes from
+	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`
+	ResolvedConsumers   map[string]jobConsumesInfo `yaml:"consumes"`
+	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
 
 // RoleRun describes how a role should behave at runtime
@@ -193,7 +194,6 @@ type RoleTag string
 const (
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
-	RoleTagHeadless          = RoleTag("headless")
 	RoleTagActivePassive     = RoleTag("active-passive")
 )
 
@@ -320,47 +320,49 @@ func (g *InstanceGroup) GetRoleDevVersion(opinions *Opinions, tagExtra, fissileV
 		[]string{"extra/", tagExtra},
 	}
 
-	// Job order comes from the role manifest, and is sort of
-	// fix. Avoid sorting for now.  Also note, if a property is
-	// used multiple times, in different jobs, it will be added
-	// that often. No deduplication across the jobs.
-	for _, jobReference := range g.JobReferences {
-		// Get properties ...
-		properties, err := jobReference.GetPropertiesForJob(opinions)
-		if err != nil {
-			return "", err
-		}
-
-		// ... and flatten the nest into a simple k/v mapping.
-		// Note, this is a total flattening, even over arrays.
-		flatProps := FlattenOpinions(properties, true)
-
-		// Get and sort the keys, ...
-		var keys []string
-		for property := range flatProps {
-			keys = append(keys, property)
-		}
-		sort.Strings(keys)
-
-		// ... then add them and their values to the hash precursor
-		// For the graph output, adding all properties individually results in
-		// too many nodes and makes graphviz fall over. So use the hash of them
-		// all instead.
-		propertyHasher := sha1.New()
-		for _, property := range keys {
-			value := flatProps[property]
-			signatures = append(signatures, property, value)
-			if grapher != nil {
-				propertyHasher.Write([]byte(property))
-				propertyHasher.Write([]byte{0x1F})
-				propertyHasher.Write([]byte(value))
-				propertyHasher.Write([]byte{0x1E})
+	if opinions != nil {
+		// Job order comes from the role manifest, and is sort of
+		// fix. Avoid sorting for now.  Also note, if a property is
+		// used multiple times, in different jobs, it will be added
+		// that often. No deduplication across the jobs.
+		for _, jobReference := range g.JobReferences {
+			// Get properties ...
+			properties, err := jobReference.GetPropertiesForJob(opinions)
+			if err != nil {
+				return "", err
 			}
-		}
-		if grapher != nil {
-			extraGraphEdges = append(extraGraphEdges, []string{
-				fmt.Sprintf("properties/%s:", jobReference.Name),
-				hex.EncodeToString(propertyHasher.Sum(nil))})
+
+			// ... and flatten the nest into a simple k/v mapping.
+			// Note, this is a total flattening, even over arrays.
+			flatProps := FlattenOpinions(properties, true)
+
+			// Get and sort the keys, ...
+			var keys []string
+			for property := range flatProps {
+				keys = append(keys, property)
+			}
+			sort.Strings(keys)
+
+			// ... then add them and their values to the hash precursor
+			// For the graph output, adding all properties individually results in
+			// too many nodes and makes graphviz fall over. So use the hash of them
+			// all instead.
+			propertyHasher := sha1.New()
+			for _, property := range keys {
+				value := flatProps[property]
+				signatures = append(signatures, property, value)
+				if grapher != nil {
+					propertyHasher.Write([]byte(property))
+					propertyHasher.Write([]byte{0x1F})
+					propertyHasher.Write([]byte(value))
+					propertyHasher.Write([]byte{0x1E})
+				}
+			}
+			if grapher != nil {
+				extraGraphEdges = append(extraGraphEdges, []string{
+					fmt.Sprintf("properties/%s:", jobReference.Name),
+					hex.EncodeToString(propertyHasher.Sum(nil))})
+			}
 		}
 	}
 	devVersion := AggregateSignatures(signatures)

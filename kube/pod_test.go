@@ -482,13 +482,19 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
-								Count:               55,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+											Count:               55,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -530,12 +536,18 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+										},
+									},
+								},
 							},
 						},
 					},

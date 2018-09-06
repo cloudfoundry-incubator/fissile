@@ -18,7 +18,6 @@ instance_groups:
 
 - name: to-be-colocated
   type: colocated-container
-  tags: [headless]
   jobs:
   - name: ntpd
     release: ntp
