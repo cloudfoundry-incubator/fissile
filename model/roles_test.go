@@ -1303,11 +1303,11 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 
-	_, err = NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+	_, err = NewDevRelease(torReleasePath, "", "", filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	_, err = NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	_, err = NewDevRelease(ntpReleasePath, "", "", filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(err)
 }
 
