@@ -476,12 +476,12 @@ func validateVariableType(variables Variables) validation.ErrorList {
 		case CVTypeEnv:
 			if cv.CVOptions.Internal {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("configuration.variables[%s].type", cv.Name),
+					fmt.Sprintf("variables[%s].type", cv.Name),
 					cv.CVOptions.Type, `type conflicts with flag "internal"`))
 			}
 		default:
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("configuration.variables[%s].type", cv.Name),
+				fmt.Sprintf("variables[%s].type", cv.Name),
 				cv.CVOptions.Type, "Expected one of user, or environment"))
 		}
 	}
@@ -497,11 +497,11 @@ func validateVariableSorting(variables Variables) validation.ErrorList {
 	previousName := ""
 	for _, cv := range variables {
 		if cv.Name < previousName {
-			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+			allErrs = append(allErrs, validation.Invalid("variables",
 				previousName,
 				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
 		} else if cv.Name == previousName {
-			allErrs = append(allErrs, validation.Invalid("configuration.variables",
+			allErrs = append(allErrs, validation.Invalid("variables",
 				previousName, "Appears more than once"))
 		}
 		previousName = cv.Name
@@ -519,13 +519,13 @@ func validateVariablePreviousNames(variables Variables) validation.ErrorList {
 		for _, previousOuter := range cvOuter.CVOptions.PreviousNames {
 			for _, cvInner := range variables {
 				if previousOuter == cvInner.Name {
-					allErrs = append(allErrs, validation.Invalid("configuration.variables",
+					allErrs = append(allErrs, validation.Invalid("variables",
 						cvOuter.Name,
 						fmt.Sprintf("Previous name '%s' also exist as a new variable", cvInner.Name)))
 				}
 				for _, previousInner := range cvInner.CVOptions.PreviousNames {
 					if cvOuter.Name != cvInner.Name && previousOuter == previousInner {
-						allErrs = append(allErrs, validation.Invalid("configuration.variables",
+						allErrs = append(allErrs, validation.Invalid("variables",
 							cvOuter.Name,
 							fmt.Sprintf("Previous name '%s' also claimed by '%s'", previousOuter, cvInner.Name)))
 					}
@@ -614,8 +614,8 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 			continue
 		}
 
-		allErrs = append(allErrs, validation.NotFound(cv,
-			"Not used in any template"))
+		allErrs = append(allErrs, validation.NotFound("variables",
+			fmt.Sprintf("No templates using '%s'", cv)))
 	}
 
 	return allErrs
@@ -653,7 +653,7 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 							continue
 						}
 
-						allErrs = append(allErrs, validation.NotFound("configuration.variables",
+						allErrs = append(allErrs, validation.NotFound("variables",
 							fmt.Sprintf("No declaration of '%s'", envVar)))
 
 						// Add a placeholder so that this variable is not reported again.

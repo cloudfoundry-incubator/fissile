@@ -361,9 +361,9 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	require.Error(t, err)
 
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "PELERINUL": Appears more than once`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Does not sort before 'BAR'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Appears more than once`)
 	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(t, roleManifest)
 }
@@ -381,9 +381,9 @@ func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	require.Error(t, err)
 
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAR' also exist as a new variable`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAZ' also claimed by 'QUX'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "QUX": Previous name 'BAZ' also claimed by 'FOO'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Previous name 'BAR' also exist as a new variable`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Previous name 'BAZ' also claimed by 'QUX'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "QUX": Previous name 'BAZ' also claimed by 'FOO'`)
 	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(t, roleManifest)
 }
@@ -400,7 +400,7 @@ func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-usage.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(t, err,
-		`SOME_VAR: Not found: "Not used in any template"`)
+		`variables: Not found: "No templates using 'SOME_VAR'"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -416,7 +416,7 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-decl.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(t, err,
-		`configuration.variables: Not found: "No declaration of 'HOME'"`)
+		`variables: Not found: "No declaration of 'HOME'"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -464,7 +464,7 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 
 	require.EqualError(t, err,
-		`configuration.variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
+		`variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -480,7 +480,7 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-cv-type-internal.yml")
 	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
 	assert.EqualError(t, err,
-		`configuration.variables[BAR].type: Invalid value: "environment": type conflicts with flag "internal"`)
+		`variables[BAR].type: Invalid value: "environment": type conflicts with flag "internal"`)
 	assert.Nil(t, roleManifest)
 }
 
