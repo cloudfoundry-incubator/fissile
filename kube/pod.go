@@ -493,10 +493,6 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 	return helm.NewNode(env), nil
 }
 
-func independentSecret(name string) bool {
-	return !strings.HasSuffix(name, "_KEY") && !strings.HasSuffix(name, "_FINGERPRINT")
-}
-
 func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.Node {
 	var hasAll string
 	var notAll string

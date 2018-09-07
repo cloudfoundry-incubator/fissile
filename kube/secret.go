@@ -3,6 +3,7 @@ package kube
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
@@ -22,7 +23,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 
 		if settings.CreateHelmChart {
 			// cv.Generator == nil
-			if cv.Type == "" {
+			if cv.Type == "" && independentSecret(cv.Name) {
 				if cv.CVOptions.Immutable {
 					comment += "\nThis value is immutable and must not be changed once set."
 				}
@@ -60,4 +61,8 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 	secret.Add("data", data)
 
 	return secret.Sort(), nil
+}
+
+func independentSecret(name string) bool {
+	return !strings.HasSuffix(name, "_KEY") && !strings.HasSuffix(name, "_FINGERPRINT")
 }
