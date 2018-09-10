@@ -199,7 +199,7 @@ func TestRoleManifestTagList(t *testing.T) {
 					roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTag(tag)}
 					if RoleTag(tag) == RoleTagActivePassive {
 						// An active/passive probe is required when tagged as active/passive
-						roleManifest.InstanceGroups[0].Run.ActivePassiveProbe = "hello"
+						roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{ActivePassiveProbe: "hello"}
 					}
 					err = roleManifest.resolveRoleManifest(nil)
 					acceptable := false
@@ -273,7 +273,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	refRole := &InstanceGroup{
 		Name: "bbb",
-		JobReferences: []*JobReference{
+		JobReferences: JobReferences{
 			{
 				Job: &Job{
 					SHA1: "Role 2 Job 1",
@@ -308,7 +308,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	differentPatch := &InstanceGroup{
 		Name:          refRole.Name,
-		JobReferences: []*JobReference{refRole.JobReferences[0], refRole.JobReferences[1]},
+		JobReferences: JobReferences{refRole.JobReferences[0], refRole.JobReferences[1]},
 		Scripts:       []string{scriptName},
 		roleManifest: &RoleManifest{
 			manifestFilePath: releasePath,
@@ -330,7 +330,7 @@ func TestGetTemplateSignatures(t *testing.T) {
 
 	differentTemplate1 := &InstanceGroup{
 		Name:          "aaa",
-		JobReferences: []*JobReference{},
+		JobReferences: JobReferences{},
 		Configuration: &Configuration{
 			Templates: yaml.MapSlice{
 				yaml.MapItem{
@@ -341,7 +341,7 @@ func TestGetTemplateSignatures(t *testing.T) {
 
 	differentTemplate2 := &InstanceGroup{
 		Name:          "aaa",
-		JobReferences: []*JobReference{},
+		JobReferences: JobReferences{},
 		Configuration: &Configuration{
 			Templates: yaml.MapSlice{
 				yaml.MapItem{
@@ -724,11 +724,6 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
-			"bosh-run-env.yml", []string{
-				`instance_groups[xrole].run.env: Forbidden: instance group declares bogus parameters`,
-			},
-		},
-		{
 			"bosh-run-ok.yml", []string{},
 		},
 	}
@@ -837,7 +832,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 				if sample.roleType != RoleType("") {
 					roleManifest.InstanceGroups[0].Type = sample.roleType
 				}
-				roleManifest.InstanceGroups[0].Run = &RoleRun{
+				roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{
 					HealthCheck: &sample.healthCheck,
 				}
 				err = roleManifest.resolveRoleManifest(nil)
@@ -861,7 +856,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{
 			ActivePassiveProbe: "/bin/true",
 		}
 		err = roleManifest.resolveRoleManifest(nil)
@@ -880,7 +875,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{}
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{}
 		err = roleManifest.resolveRoleManifest(nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].run.active-passive-probe: Required value: active-passive instance groups must specify the correct probe`)
@@ -897,7 +892,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBoshTask
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
 		err = roleManifest.resolveRoleManifest(nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] instance groups, not bosh-task`)
@@ -1071,7 +1066,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		InstanceGroups: InstanceGroups{
 			&InstanceGroup{
 				Name: "role-1",
-				JobReferences: []*JobReference{
+				JobReferences: JobReferences{
 					{
 						Job: job1,
 						ExportedProviders: map[string]jobProvidesInfo{
@@ -1085,7 +1080,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			},
 			&InstanceGroup{
 				Name: "role-2",
-				JobReferences: []*JobReference{
+				JobReferences: JobReferences{
 					{Job: job2},
 					{
 						Job: job3,
@@ -1104,7 +1099,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			&InstanceGroup{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				JobReferences: []*JobReference{{Job: job2}, {Job: job3}},
+				JobReferences: JobReferences{{Job: job2}, {Job: job3}},
 			},
 		},
 	}
@@ -1194,7 +1189,7 @@ func TestWriteConfigs(t *testing.T) {
 
 	role := &InstanceGroup{
 		Name: "dummy role",
-		JobReferences: []*JobReference{
+		JobReferences: JobReferences{
 			{
 				Job:  job,
 				Name: "silly job",
@@ -1275,7 +1270,7 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	assert.Len(roleManifest.InstanceGroups, 2)
 	assert.EqualValues(RoleTypeBosh, roleManifest.LookupInstanceGroup("main-role").Type)
 	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupInstanceGroup("to-be-colocated").Type)
-	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers, 1)
+	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers(), 1)
 
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
 		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupInstanceGroup(roleName).Run.Volumes)

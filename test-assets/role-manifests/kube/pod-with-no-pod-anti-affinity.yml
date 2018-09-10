@@ -1,6 +1,11 @@
 ---
 instance_groups:
 - name: some-group
-  run:
-    memory: 128
-    affinity: ~
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 128
+          affinity: ~

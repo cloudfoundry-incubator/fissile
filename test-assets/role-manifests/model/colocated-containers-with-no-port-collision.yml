@@ -2,8 +2,6 @@
 instance_groups:
 - name: main-role
   scripts: ["myrole.sh"]
-  run:
-    memory: 1
   jobs:
   - name: new_hostname
     release: tor
@@ -11,6 +9,8 @@ instance_groups:
     release: tor
     properties:
       bosh_containerization:
+        colocated_containers:
+        - to-be-colocated
         ports:
         - name: http
           protocol: TCP
@@ -20,8 +20,8 @@ instance_groups:
           protocol: TCP
           internal: 9443
           external: 443
-  colocated_containers:
-  - to-be-colocated
+        run:
+          memory: 1
 
 - name: to-be-colocated
   type: colocated-container
@@ -37,5 +37,5 @@ instance_groups:
         - name: udp-dbg-port
           protocol: UDP
           internal: 10443
-  run:
-    memory: 1
+        run:
+          memory: 1

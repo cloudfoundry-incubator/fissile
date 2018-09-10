@@ -1,5 +1,10 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    service-account: missing-account
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          service-account: missing-account

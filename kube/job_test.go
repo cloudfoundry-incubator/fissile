@@ -109,37 +109,6 @@ func TestJobPostFlight(t *testing.T) {
 	`, actual)
 }
 
-func TestJobWithAnnotations(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	instanceGroup := jobTestLoadRole(assert, "some-group", "job-with-annotation.yml")
-	if instanceGroup == nil {
-		return
-	}
-
-	job, err := NewJob(instanceGroup, ExportSettings{
-		Opinions: model.NewEmptyOpinions(),
-	}, nil)
-	if !assert.NoError(err, "Failed to create job from instance group pre-role") {
-		return
-	}
-	assert.NotNil(job)
-
-	actual, err := RoundtripKube(job)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: batch/v1
-		kind: Job
-		metadata:
-			name: some-group
-			annotations:
-				helm.sh/hook: post-install
-	`, actual)
-}
-
 func TestJobHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)

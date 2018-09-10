@@ -9,7 +9,9 @@ instance_groups:
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: "bar"
   - name: tor
     release: tor
-  run:
-    foo: "bar"

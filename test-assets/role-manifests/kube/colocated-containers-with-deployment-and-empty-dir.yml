@@ -1,26 +1,36 @@
 ---
 instance_groups:
 - name: some-group
-  run:
-    memory: 128
-    scaling:
-      min: 1
-      max: 1
-    volumes:
-    - path: /mnt/shared-data
-      type: emptyDir
-      tag: shared-data
-  colocated_containers:
-  - colocated
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        colocated_containers:
+        - colocated
+        run:
+          memory: 128
+          scaling:
+            min: 1
+            max: 1
+          volumes:
+          - path: /mnt/shared-data
+            type: emptyDir
+            tag: shared-data
 
 - name: colocated
   type: colocated-container
-  run:
-    memory: 128
-    scaling:
-      min: 1
-      max: 1
-    volumes:
-    - path: /mnt/shared-data
-      type: emptyDir
-      tag: shared-data
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 128
+          scaling:
+            min: 1
+            max: 1
+          volumes:
+          - path: /mnt/shared-data
+            type: emptyDir
+            tag: shared-data

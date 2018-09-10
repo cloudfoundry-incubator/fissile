@@ -2,12 +2,14 @@
 instance_groups:
 - name: main-role
   scripts: ["myrole.sh"]
-  run:
-    memory: 1
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        colocated_containers:
+        - to-be-colocated-typo
+        run:
+          memory: 1
   - name: tor
     release: tor
-  colocated_containers:
-  - to-be-colocated-typo

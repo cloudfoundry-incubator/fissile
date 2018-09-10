@@ -1,20 +1,25 @@
 ---
 instance_groups:
 - name: some-group
-  run:
-    memory: 128
-    scaling:
-      min: 1
-      max: 1
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-              - key: "skiff-role-name"
-                operator: In
-                values:
-                - some-group
-            topologyKey: "beta.kubernetes.io/os"
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 128
+          scaling:
+            min: 1
+            max: 1
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: "skiff-role-name"
+                      operator: In
+                      values:
+                      - some-group
+                  topologyKey: "beta.kubernetes.io/os"

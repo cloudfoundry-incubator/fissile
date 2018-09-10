@@ -5,14 +5,18 @@ instance_groups:
   jobs:
   - name: new_hostname
     release: tor
-  run:
-    flight-stage: pre-flight
-    memory: 128
+    properties:
+      bosh_containerization:
+        run:
+          flight-stage: pre-flight
+          memory: 128
 - name: post-role
   type: bosh-task
   jobs:
   - name: tor
     release: tor
-  run:
-    flight-stage: post-flight
-    memory: 256
+    properties:
+      bosh_containerization:
+        run:
+          flight-stage: post-flight
+          memory: 256

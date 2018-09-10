@@ -1,8 +1,6 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
@@ -12,3 +10,5 @@ instance_groups:
         - name: https
           protocol: TCP
           internal: 5678-123
+        run:
+          foo: x
