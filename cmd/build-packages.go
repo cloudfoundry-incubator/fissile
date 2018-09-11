@@ -129,7 +129,7 @@ func init() {
 		"compilation-cache-config",
 		"",
 		filepath.Join(os.Getenv("HOME"), ".fissile", "package-cache.yaml"),
-		"Points to a file containing configuration for a compiled package cache",
+		"Points to a file containing configuration for a compiled package cache or contains the configuration as valid yaml",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())

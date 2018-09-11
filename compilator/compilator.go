@@ -89,7 +89,7 @@ func NewDockerCompilator(
 	keepContainer bool,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
-	packStorage *PackageStorage,
+	packageStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -104,7 +104,7 @@ func NewDockerCompilator(
 		keepContainer:      keepContainer,
 		ui:                 ui,
 		grapher:            grapher,
-		packageStorage:     packStorage,
+		packageStorage:     packageStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -121,7 +121,7 @@ func NewMountNSCompilator(
 	fissileVersion string,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
-	packStorage *PackageStorage,
+	packageStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -133,7 +133,7 @@ func NewMountNSCompilator(
 		compilePackage:     (*Compilator).compilePackageInMountNS,
 		ui:                 ui,
 		grapher:            grapher,
-		packageStorage:     packStorage,
+		packageStorage:     packageStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -351,7 +351,7 @@ func (j compileJob) Run() {
 
 	// Check to see whether a package already exists in the configured cache
 	// and either download that package or compile and upload it
-	if exists == true {
+	if exists {
 		c.ui.Printf("cache: downloading %s/%s\n", j.pkg.Release.Name, j.pkg.Name)
 		currentProgress := 0
 		previousProgress := 0

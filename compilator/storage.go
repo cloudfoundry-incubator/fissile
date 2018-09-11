@@ -1,8 +1,6 @@
 package compilator
 
 import (
-	"github.com/SUSE/fissile/model"
-
 	"context"
 	"fmt"
 	"io"
@@ -12,17 +10,19 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SUSE/fissile/model"
+
 	"github.com/graymeta/stow"
+	"github.com/graymeta/stow/local"
 	"github.com/machinebox/progress"
 	"github.com/mholt/archiver"
 	"github.com/satori/go.uuid"
 	"gopkg.in/yaml.v2"
+
 	// support Azure storage
 	_ "github.com/graymeta/stow/azure"
 	// support Google storage
 	_ "github.com/graymeta/stow/google"
-	// support local storage
-	"github.com/graymeta/stow/local"
 	// support swift storage
 	_ "github.com/graymeta/stow/swift"
 	// support s3 storage
@@ -51,19 +51,22 @@ type packageStorageConfig struct {
 	ContainerPath string `yaml:"boshPackageCacheLocation"`
 }
 
+// NewPackageStorageFromConfig creates a new PackageStorage based on a configuration file
 func NewPackageStorageFromConfig(configFilePath, compilationWorkDir, stemcellImageName string) (*PackageStorage, error) {
+	var packageCacheConfigReader []byte
+
 	// Read a yaml file that contains a stow configuration
 	if _, err := os.Stat(configFilePath); err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			packageCacheConfigReader = []byte(configFilePath)
 		} else {
 			return nil, err
 		}
-	}
-
-	packageCacheConfigReader, err := ioutil.ReadFile(configFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read the package cache config file: %s", err.Error())
+	} else {
+		packageCacheConfigReader, err = ioutil.ReadFile(configFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read the package cache config file: %s", err.Error())
+		}
 	}
 
 	var stowConfig map[string]interface{}
