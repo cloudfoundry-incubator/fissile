@@ -1,0 +1,46 @@
+# This role manifest should pass validation with no issues
+---
+instance_groups:
+- name: myrole
+  scripts:
+  - myrole.sh
+  run:
+    foo: x
+  jobs:
+  - name: new_hostname
+    release: tor
+  - name: tor
+    release: tor
+  configuration:
+    templates:
+      properties.tor.hashed_control_password: 123
+      properties.tor.hostname: false	
+- name: foorole
+  type: bosh-task
+  run:
+    foo: x
+  jobs:
+  - name: tor
+    release: tor
+configuration:
+  templates:
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+variables:
+- name: BAR
+  options:
+    description: "foo"
+- name: FOO
+  options:
+    description: "foo"
+- name: HOME
+  options:
+    description: "foo"
+- name: KUPRIES
+  options:
+    description: "foo"
+    internal: true
+- name: PELERINUL
+  options:
+    description: "foo"

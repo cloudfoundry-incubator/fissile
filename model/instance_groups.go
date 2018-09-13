@@ -277,10 +277,7 @@ func (g *InstanceGroup) GetTemplateSignatures() (string, error) {
 	templates := make([]string, len(g.Configuration.Templates))
 
 	for _, templateDef := range g.Configuration.Templates {
-		k := templateDef.Key.(string)
-		v := templateDef.Value.(string)
-
-		templates[i] = fmt.Sprintf("%s: %s", k, v)
+		templates[i] = fmt.Sprintf("%v: %v", templateDef.Key, templateDef.Value)
 		i++
 	}
 

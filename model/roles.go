@@ -70,7 +70,7 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 	allErrs := validation.ErrorList{}
 
 	// If template keys are not strings, we need to stop early to avoid panics
-	allErrs = append(allErrs, validateTemplateKeys(m)...)
+	allErrs = append(allErrs, validateTemplateKeysAndValues(m)...)
 	if len(allErrs) != 0 {
 		return fmt.Errorf(allErrs.Errors())
 	}
@@ -700,8 +700,9 @@ func validateTemplateUsage(roleManifest *RoleManifest) validation.ErrorList {
 	return allErrs
 }
 
-// validateTemplateKeys tests whether all template keys are strings
-func validateTemplateKeys(roleManifest *RoleManifest) validation.ErrorList {
+// validateTemplateKeys tests whether all template keys are strings and that
+// global template values are strings
+func validateTemplateKeysAndValues(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	for _, instanceGroup := range roleManifest.InstanceGroups {
@@ -729,6 +730,13 @@ func validateTemplateKeys(roleManifest *RoleManifest) validation.ErrorList {
 				"global template key",
 				templateDef.Key,
 				"Template key must be a string"))
+		}
+
+		if _, ok := templateDef.Value.(string); !ok {
+			allErrs = append(allErrs, validation.Invalid(
+				"global template value",
+				templateDef.Key,
+				"Template value must be a string"))
 		}
 	}
 

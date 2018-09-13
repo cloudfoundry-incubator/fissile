@@ -41,7 +41,7 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 			for _, templateDef := range r.Configuration.Templates {
 
 				templatePropName := templateDef.Key.(string)
-				template := templateDef.Value.(string)
+				template := fmt.Sprintf("%v", templateDef.Value)
 
 				switch true {
 				case templatePropName == propertyName:

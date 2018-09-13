@@ -289,3 +289,43 @@ func TestBadPostConfigScriptReferences(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole post config script: Invalid value: "foobar.sh"`)
 }
+
+func TestNonStringGlobalTemplate(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-global-template-type.yml")
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(t, err)
+
+	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hashed_control_password": Template value must be a string`)
+	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hostname": Template value must be a string`)
+}
+
+func TestNonStringInstanceGroupTemplate(t *testing.T) {
+	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
+
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-valid-instance-group-template-type.yml")
+	f := NewFissileApplication(".", ui)
+
+	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	assert.NoError(t, err)
+
+	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+
+	assert.NoError(t, err)
+}
