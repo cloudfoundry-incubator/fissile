@@ -443,12 +443,15 @@ func TestLoadRoleManifestVariablesSSH(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-ssh.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
 	assert.NoError(t, err)
 	assert.NotNil(t, roleManifest)
 }

@@ -311,14 +311,15 @@ func TestNonStringGlobalTemplate(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-global-template-type.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hashed_control_password": Template value must be a string`)
@@ -332,14 +333,15 @@ func TestNonStringInstanceGroupTemplate(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-valid-instance-group-template-type.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.NoError(t, err)
 }
