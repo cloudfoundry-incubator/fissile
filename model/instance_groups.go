@@ -58,7 +58,6 @@ type RoleType string
 const (
 	RoleTypeBoshTask           = RoleType("bosh-task")           // A role that is a BOSH task
 	RoleTypeBosh               = RoleType("bosh")                // A role that is a BOSH job
-	RoleTypeDocker             = RoleType("docker")              // A role that is a raw Docker image
 	RoleTypeColocatedContainer = RoleType("colocated-container") // A role that is supposed to be used by other roles to specify a colocated container
 )
 
