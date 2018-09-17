@@ -1,0 +1,39 @@
+# This role manifest checks for an invalid variable type
+---
+instance_groups:
+- name: myrole
+  environment_scripts:
+  - environ.sh
+  - /environ/script/with/absolute/path.sh
+  scripts:
+  - myrole.sh
+  - /script/with/absolute/path.sh
+  post_config_scripts:
+  - post_config_script.sh
+  - /var/vcap/jobs/myrole/pre-start
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key.thing: '((#BAR))((HOME))((/BAR))'
+variables:
+- name: BAR
+  type: invalid
+  options:
+    description: "foo"
+- name: FOO
+  options:
+    description: "foo"
+- name: HOME
+  options:
+    description: "foo"
+- name: PELERINUL
+  options:
+    description: "foo"

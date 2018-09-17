@@ -471,6 +471,25 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
+func TestLoadRoleManifestBadType(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-type.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
+	require.EqualError(t, err,
+		`variables[BAR].type: Invalid value: "invalid": Expected one of certificate, password, rsa, ssh or empty`)
+	assert.Nil(t, roleManifest)
+}
+
 func TestLoadRoleManifestBadCVType(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
@@ -486,7 +505,7 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 		nil)
 
 	require.EqualError(t, err,
-		`variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
+		`variables[BAR].options.type: Invalid value: "bogus": Expected one of user, or environment`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -504,7 +523,7 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 		filepath.Join(workDir, "../test-assets/bosh-cache"),
 		nil)
 	assert.EqualError(t, err,
-		`variables[BAR].type: Invalid value: "environment": type conflicts with flag "internal"`)
+		`variables[BAR].options.type: Invalid value: "environment": type conflicts with flag "internal"`)
 	assert.Nil(t, roleManifest)
 }
 
