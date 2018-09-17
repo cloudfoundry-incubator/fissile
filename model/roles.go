@@ -263,10 +263,8 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 	// See also 'GetVariablesForRole' (mustache.go).
 	declaredConfigs := MakeMapOfVariables(m)
 
-	for i := len(m.InstanceGroups) - 1; i >= 0; i-- {
-		instanceGroup := m.InstanceGroups[i]
-
-		// Remove all instance groups that are not of the "bosh" or "bosh-task" type
+	for _, instanceGroup := range m.InstanceGroups {
+		// Don't allow any instance groups that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
 		// The kept instance groups are validated.
 		switch instanceGroup.Type {
@@ -274,12 +272,10 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 			instanceGroup.Type = RoleTypeBosh
 		case RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer:
 			// Nothing to do.
-		case RoleTypeDocker:
-			m.InstanceGroups = append(m.InstanceGroups[:i], m.InstanceGroups[i+1:]...)
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("instance_groups[%s].type", instanceGroup.Name),
-				instanceGroup.Type, "Expected one of bosh, bosh-task, docker, or colocated-container"))
+				instanceGroup.Type, "Expected one of bosh, bosh-task, or colocated-container"))
 		}
 
 		allErrs = append(allErrs, validateRoleTags(instanceGroup)...)
@@ -984,26 +980,11 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 		return allErrs
 	}
 
-	if instanceGroup.Type == RoleTypeDocker {
-		// The environment variables used by docker roles must
-		// all be declared, report those which are not.
+	// Bosh instance groups must not provide environment variables.
 
-		for _, envVar := range instanceGroup.Run.Environment {
-			if _, ok := declared[envVar]; ok {
-				continue
-			}
-
-			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("instance_groups[%s].run.env", instanceGroup.Name),
-				fmt.Sprintf("No variable declaration of '%s'", envVar)))
-		}
-	} else {
-		// Bosh instance groups must not provide environment variables.
-
-		allErrs = append(allErrs, validation.Forbidden(
-			fmt.Sprintf("instance_groups[%s].run.env", instanceGroup.Name),
-			"Non-docker instance group declares bogus parameters"))
-	}
+	allErrs = append(allErrs, validation.Forbidden(
+		fmt.Sprintf("instance_groups[%s].run.env", instanceGroup.Name),
+		"instance group declares bogus parameters"))
 
 	return allErrs
 }
@@ -1219,13 +1200,6 @@ func validateHealthProbe(instanceGroup *InstanceGroup, probeName string, probe *
 				"bosh-task instance groups cannot have health checks"))
 		}
 
-	case RoleTypeDocker:
-		if len(probe.Command) > 1 {
-			allErrs = append(allErrs, validation.Forbidden(
-				fmt.Sprintf("instance_groups[%s].run.healthcheck.%s", instanceGroup.Name, probeName),
-				"docker instance groups do not support multiple commands"))
-		}
-
 	default:
 		// We should have caught the invalid role type when loading the role manifest
 		panic("Unexpected role type " + string(instanceGroup.Type) + " in instance group " + instanceGroup.Name)
@@ -1358,7 +1332,7 @@ func validateRoleTags(instanceGroup *InstanceGroup) validation.ErrorList {
 
 	acceptableRoleTypes := map[RoleTag][]RoleType{
 		RoleTagActivePassive:     []RoleType{RoleTypeBosh},
-		RoleTagSequentialStartup: []RoleType{RoleTypeBosh, RoleTypeDocker},
+		RoleTagSequentialStartup: []RoleType{RoleTypeBosh},
 		RoleTagStopOnFailure:     []RoleType{RoleTypeBoshTask},
 	}
 

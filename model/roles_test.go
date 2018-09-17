@@ -178,14 +178,14 @@ func TestRoleManifestTagList(t *testing.T) {
 
 	for tag, acceptableRoleTypes := range map[string][]RoleType{
 		"stop-on-failure":    []RoleType{RoleTypeBoshTask},
-		"sequential-startup": []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"sequential-startup": []RoleType{RoleTypeBosh},
 		"active-passive":     []RoleType{RoleTypeBosh},
 		"indexed":            []RoleType{},
 		"clustered":          []RoleType{},
 		"invalid":            []RoleType{},
 		"no-monit":           []RoleType{},
 	} {
-		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeDocker, RoleTypeColocatedContainer} {
+		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer} {
 			func(tag string, roleType RoleType, acceptableRoleTypes []RoleType) {
 				t.Run(tag, func(t *testing.T) {
 					t.Parallel()
@@ -231,7 +231,7 @@ func TestRoleManifestTagList(t *testing.T) {
 	}
 }
 
-func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
+func TestNonBoshRolesAreNotAllowed(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
@@ -244,11 +244,8 @@ func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
 		[]string{},
 		filepath.Join(workDir, "../test-assets/bosh-cache"),
 		nil)
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
-
-	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
-	assert.Len(t, roleManifest.InstanceGroups, 2)
+	assert.EqualError(t, err, "instance_groups[dockerrole].type: Invalid value: \"docker\": Expected one of bosh, bosh-task, or colocated-container")
+	assert.Nil(t, roleManifest)
 }
 
 func TestRolesSort(t *testing.T) {
@@ -511,23 +508,6 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
-func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/docker-run-env.yml")
-	roleManifest, err := LoadRoleManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
-	assert.EqualError(t, err, `instance_groups[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
-	assert.Nil(t, roleManifest)
-}
-
 func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
@@ -632,7 +612,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		},
 		{
 			"bosh-run-env.yml", []string{
-				`instance_groups[xrole].run.env: Forbidden: Non-docker instance group declares bogus parameters`,
+				`instance_groups[xrole].run.env: Forbidden: instance group declares bogus parameters`,
 			},
 		},
 		{
@@ -685,32 +665,6 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	for _, sample := range []sampleStruct{
 		{
 			name: "empty",
-		},
-		{
-			name:     "too many kinds",
-			roleType: RoleTypeDocker,
-			healthCheck: HealthCheck{
-				Readiness: &HealthProbe{
-					Command: []string{"hello"},
-					URL:     "about:blank",
-					Port:    6667,
-				},
-			},
-			err: []string{
-				`instance_groups[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
-			},
-		},
-		{
-			name:     "docker multi-arg commands",
-			roleType: RoleTypeDocker,
-			healthCheck: HealthCheck{
-				Readiness: &HealthProbe{
-					Command: []string{"hello", "world"},
-				},
-			},
-			err: []string{
-				`instance_groups[myrole].run.healthcheck.readiness: Forbidden: docker instance groups do not support multiple commands`,
-			},
 		},
 		{
 			name:     "bosh task with health check",

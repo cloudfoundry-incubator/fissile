@@ -595,35 +595,6 @@ func getContainerReadinessProbe(role *model.InstanceGroup) (helm.Node, error) {
 		// Tasks have no readiness probes
 		return nil, nil
 
-	case model.RoleTypeDocker:
-		var probe *helm.Mapping
-		if role.Run.HealthCheck != nil && role.Run.HealthCheck.Readiness != nil {
-			var complete bool
-			var err error
-			probe, complete, err = configureContainerProbe(role, "readiness", role.Run.HealthCheck.Readiness)
-			if complete || err != nil {
-				return probe.Sort(), err
-			}
-		}
-		var readinessPort *model.JobExposedPort
-		for _, job := range role.JobReferences {
-			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
-				if port.Protocol == "TCP" {
-					readinessPort = &port
-					break
-				}
-			}
-		}
-		if readinessPort == nil {
-			return nil, nil
-		}
-
-		if probe == nil {
-			probe = helm.NewMapping()
-		}
-		probe.Add("tcpSocket", helm.NewMapping("port", readinessPort.InternalPort))
-		return probe.Sort(), nil
-
 	case model.RoleTypeColocatedContainer:
 		// Colocated containers have no readiness probes
 		return nil, nil
