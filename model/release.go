@@ -15,7 +15,7 @@ import (
 type ReleaseRef struct {
 	Name    string `yaml:"name"`
 	URL     string `yaml:"url"`
-	Sha1    string `yaml:"sha1"`
+	SHA1    string `yaml:"sha1"`
 	Version string `yaml:"version"`
 }
 
