@@ -29,9 +29,11 @@ variables:
   options:
     description: "foo"
 - name: FOO
+  type: rsa
   options:
     description: "foo"
 - name: HOME
+  type: password
   options:
     description: "foo"
 - name: PELERINUL

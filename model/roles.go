@@ -663,8 +663,11 @@ func validateVariableType(variables Variables) validation.ErrorList {
 		case "":
 		case "certificate":
 		case "password":
-		case "rsa":
 		case "ssh":
+		case "rsa":
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("variables[%s].type", cv.Name),
+				cv.Type, "The rsa type is not yet supported by the secret generator"))
 		default:
 			allErrs = append(allErrs, validation.Invalid(
 				fmt.Sprintf("variables[%s].type", cv.Name),

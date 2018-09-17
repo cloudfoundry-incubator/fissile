@@ -485,8 +485,10 @@ func TestLoadRoleManifestBadType(t *testing.T) {
 		filepath.Join(workDir, "../test-assets/bosh-cache"),
 		nil)
 
-	require.EqualError(t, err,
+	require.Contains(t, err.Error(),
 		`variables[BAR].type: Invalid value: "invalid": Expected one of certificate, password, rsa, ssh or empty`)
+	require.Contains(t, err.Error(),
+		`variables[FOO].type: Invalid value: "rsa": The rsa type is not yet supported by the secret generator`)
 	assert.Nil(t, roleManifest)
 }
 
