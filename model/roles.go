@@ -3,15 +3,21 @@ package model
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/SUSE/fissile/util"
 	"github.com/SUSE/fissile/validation"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/mholt/archiver"
+	"github.com/vbauerster/mpb"
+	"github.com/vbauerster/mpb/decor"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,12 +26,14 @@ type RoleManifest struct {
 	InstanceGroups InstanceGroups `yaml:"instance_groups"`
 	Configuration  *Configuration `yaml:"configuration"`
 	Variables      Variables
+	Releases       []*ReleaseRef `yaml:"releases"`
 
+	LoadedReleases   []*Release
 	manifestFilePath string
 }
 
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
-func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util.ModelGrapher) (*RoleManifest, error) {
+func LoadRoleManifest(manifestFilePath string, releasePaths, releaseNames, releaseVersions []string, boshCacheDir string, grapher util.ModelGrapher) (*RoleManifest, error) {
 	manifestContents, err := ioutil.ReadFile(manifestFilePath)
 	if err != nil {
 		return nil, err
@@ -34,6 +42,25 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 	roleManifest := RoleManifest{}
 	roleManifest.manifestFilePath = manifestFilePath
 	if err := yaml.Unmarshal(manifestContents, &roleManifest); err != nil {
+		return nil, err
+	}
+
+	releases, err := LoadReleases(
+		releasePaths,
+		releaseNames,
+		releaseVersions,
+		boshCacheDir)
+	if err != nil {
+		return nil, err
+	}
+
+	embeddedReleases, err := roleManifest.loadReleaseReferences()
+	if err != nil {
+		return nil, err
+	}
+
+	roleManifest.LoadedReleases = append(releases, embeddedReleases...)
+	if err != nil {
 		return nil, err
 	}
 
@@ -56,17 +83,160 @@ func LoadRoleManifest(manifestFilePath string, releases []*Release, grapher util
 		roleManifest.Variables[i].CVOptions = v.CVOptions
 	}
 
-	err = roleManifest.resolveRoleManifest(releases, grapher)
+	err = roleManifest.resolveRoleManifest(grapher)
 	if err != nil {
 		return nil, err
 	}
 	return &roleManifest, nil
 }
 
+//LoadReleases loads information about BOSH releases
+func LoadReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) ([]*Release, error) {
+	releases := make([]*Release, len(releasePaths))
+	for idx, releasePath := range releasePaths {
+		var releaseName, releaseVersion string
+		if len(releaseNames) != 0 {
+			releaseName = releaseNames[idx]
+		}
+		if len(releaseVersions) != 0 {
+			releaseVersion = releaseVersions[idx]
+		}
+		var release *Release
+		var err error
+		if _, err = isFinalReleasePath(releasePath); err == nil {
+			// For final releases, only can use release name and version defined in release.MF, cannot specify them through flags.
+			release, err = NewFinalRelease(releasePath)
+			if err != nil {
+				return nil, fmt.Errorf("Error loading final release information: %s", err.Error())
+			}
+		} else {
+			release, err = NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
+			if err != nil {
+				return nil, fmt.Errorf("Error loading dev release information: %s", err.Error())
+			}
+		}
+		releases[idx] = release
+	}
+	return releases, nil
+}
+func isFinalReleasePath(releasePath string) (bool, error) {
+	if err := util.ValidatePath(releasePath, true, "release directory"); err != nil {
+		return false, err
+	}
+	if err := util.ValidatePath(filepath.Join(releasePath, "release.MF"), false, "release 'release.MF' file"); err != nil {
+		return false, err
+	}
+	if err := util.ValidatePath(filepath.Join(releasePath, "dev_releases"), true, "release 'dev_releases' file"); err == nil {
+		return false, err
+	}
+	if err := util.ValidatePath(filepath.Join(releasePath, "jobs"), true, "release 'jobs' directory"); err != nil {
+		return false, err
+	}
+	if err := util.ValidatePath(filepath.Join(releasePath, "packages"), true, "release 'packages' directory"); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// loadReleaseReferences downloads/builds and loads releases referenced in the
+// manifest
+func (m *RoleManifest) loadReleaseReferences() ([]*Release, error) {
+	releases := []*Release{}
+
+	var allErrs error
+	var wg sync.WaitGroup
+	progress := mpb.New(mpb.WithWaitGroup(&wg))
+
+	// go through each referenced release
+	for _, releaseRef := range m.Releases {
+		wg.Add(1)
+
+		go func(releaseRef *ReleaseRef) {
+			defer wg.Done()
+			_, err := url.ParseRequestURI(releaseRef.URL)
+			if err != nil {
+				// this is a local release that we need to build/load
+				// TODO: support this
+				allErrs = multierror.Append(allErrs, fmt.Errorf("Dev release %s is not supported as manifest references", releaseRef.Name))
+				return
+			}
+			// this is a final release that we need to download
+			manifestDir := filepath.Dir(m.manifestFilePath)
+			finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
+			finalReleaseTarballPath := filepath.Join(
+				finalReleasesWorkDir,
+				fmt.Sprintf("%s-%s-%s.tgz", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
+			finalReleaseUnpackedPath := filepath.Join(
+				finalReleasesWorkDir,
+				fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
+
+			if _, err := os.Stat(filepath.Join(finalReleaseUnpackedPath, "release.MF")); err != nil && os.IsNotExist(err) {
+				err = os.MkdirAll(finalReleaseUnpackedPath, 0700)
+				if err != nil {
+					allErrs = multierror.Append(allErrs, err)
+					return
+				}
+
+				// Show download progress
+				bar := progress.AddBar(
+					100,
+					mpb.BarRemoveOnComplete(),
+					mpb.PrependDecorators(
+						decor.Name(releaseRef.Name, decor.WCSyncSpaceR),
+						decor.Percentage(decor.WCSyncWidth),
+					))
+				lastPercentage := 0
+
+				// download the release in a directory next to the role manifest
+				err = util.DownloadFile(finalReleaseTarballPath, releaseRef.URL, func(percentage int) {
+					bar.IncrBy(percentage - lastPercentage)
+					lastPercentage = percentage
+				})
+				if err != nil {
+					allErrs = multierror.Append(allErrs, err)
+					return
+				}
+				defer func() {
+					os.Remove(finalReleaseTarballPath)
+				}()
+
+				// unpack
+				err = archiver.TarGz.Open(finalReleaseTarballPath, finalReleaseUnpackedPath)
+				if err != nil {
+					allErrs = multierror.Append(allErrs, err)
+					return
+				}
+			}
+		}(releaseRef)
+	}
+
+	wg.Wait()
+
+	// Now that all releases have been downloaded and unpacked,
+	// add them to the collection
+	for _, releaseRef := range m.Releases {
+		manifestDir := filepath.Dir(m.manifestFilePath)
+		finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
+		finalReleaseUnpackedPath := filepath.Join(
+			finalReleasesWorkDir,
+			fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
+
+		// create a release object and add it to the collection
+		release, err := NewFinalRelease(finalReleaseUnpackedPath)
+
+		if err != nil {
+			allErrs = multierror.Append(allErrs, err)
+		}
+		releases = append(releases, release)
+	}
+
+	return releases, allErrs
+}
+
 // resolveRoleManifest takes a role manifest as loaded from disk, and validates
 // it to ensure it has no errors, and that the various ancillary structures are
 // correctly populated.
-func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.ModelGrapher) error {
+func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 	allErrs := validation.ErrorList{}
 
 	// If template keys are not strings, we need to stop early to avoid panics
@@ -77,7 +247,7 @@ func (m *RoleManifest) resolveRoleManifest(releases []*Release, grapher util.Mod
 
 	mappedReleases := map[string]*Release{}
 
-	for _, release := range releases {
+	for _, release := range m.LoadedReleases {
 		_, ok := mappedReleases[release.Name]
 
 		if ok {

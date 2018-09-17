@@ -20,18 +20,20 @@ func TestValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-issues.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(t, err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
+	roleManifest := f.Manifest
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
@@ -77,19 +79,21 @@ func TestValidationOk(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
 	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
 	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
 
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(t, err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
+	roleManifest := f.Manifest
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
@@ -106,17 +110,19 @@ func TestValidationHash(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/hashmat.yml")
 	emptyManifestPath := filepath.Join(workDir, "../test-assets/misc/empty.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(t, err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
+	roleManifest := f.Manifest
 
 	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
 	assert.NoError(t, err)
@@ -141,14 +147,15 @@ func TestMandatoryDescriptions(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-missing-description.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `PELERINUL: Required value: Description is required`)
@@ -161,14 +168,15 @@ func TestTemplateSorting(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-unsorted-templates.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `properties.tor.hostname: Forbidden: Template key does not sort before 'properties.tor.hashed_control_password'`)
@@ -181,15 +189,17 @@ func TestNonExistingVarsInEnvFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
 	emptyManifestPath := filepath.Join(workDir, "../test-assets/misc/empty.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	roleManifest := f.Manifest
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -216,14 +226,15 @@ func TestInvalidTemplateKeys(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-template-keys.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `template key for instance group myrole: Invalid value: true: Template key must be a string`)
@@ -237,14 +248,15 @@ func TestBadScriptReferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-script-reference.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole script: Invalid value: "foobar.sh"`)
@@ -257,14 +269,15 @@ func TestBadEnvScriptReferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-environ-script-reference.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole env script: Invalid value: "foobar.sh"`)
@@ -277,14 +290,15 @@ func TestBadPostConfigScriptReferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-post-config-script-reference.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole post config script: Invalid value: "foobar.sh"`)
@@ -297,14 +311,15 @@ func TestNonStringGlobalTemplate(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-global-template-type.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hashed_control_password": Template value must be a string`)
@@ -318,14 +333,15 @@ func TestNonStringInstanceGroupTemplate(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-valid-instance-group-template-type.yml")
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	_, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.NoError(t, err)
 }

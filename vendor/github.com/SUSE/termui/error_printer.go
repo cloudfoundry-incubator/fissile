@@ -2,7 +2,7 @@ package termui
 
 import (
 	"github.com/fatih/color"
-	"github.com/SUSE/termui/sigint"
+	"github.com/hpcloud/termui/sigint"
 )
 
 var (

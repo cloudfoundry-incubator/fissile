@@ -1,0 +1,6 @@
+# This is an empty manifest
+---
+instance_groups: []
+configuration:
+  variables: []
+  templates: {}

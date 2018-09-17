@@ -30,7 +30,8 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -73,7 +74,7 @@ var buildKubeCmd = &cobra.Command{
 			}()
 		}
 
-		return fissile.GenerateKube(flagRoleManifest, flagBuildKubeDefaultEnvFiles, settings)
+		return fissile.GenerateKube(flagBuildKubeDefaultEnvFiles, settings)
 	},
 }
 var buildKubeViper = viper.New()

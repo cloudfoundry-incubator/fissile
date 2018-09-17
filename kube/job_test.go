@@ -17,14 +17,13 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(
+		manifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if !assert.NoError(err) {
 		return nil
 	}

@@ -29,7 +29,7 @@ func TestDevAndFinalReleasePackage(t *testing.T) {
 	assert.NoError(err)
 
 	ntpDevReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpDevReleasePathCacheDir := filepath.Join(ntpDevReleasePath, "bosh-cache")
+	ntpDevReleasePathCacheDir := filepath.Join(workDir, "../test-assets/bosh-cache")
 	devRelease, err := NewDevRelease(ntpDevReleasePath, "", "", ntpDevReleasePathCacheDir)
 	assert.NoError(err)
 
