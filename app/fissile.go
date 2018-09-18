@@ -234,7 +234,7 @@ func (f *Fissile) listPropertiesForHuman() {
 			f.UI.Printf("%s (%s): %s\n", color.YellowString(job.Name),
 				color.WhiteString(job.Version), job.Description)
 
-			for _, property := range job.Properties {
+			for _, property := range job.SpecProperties {
 				f.UI.Printf("\t%s: %v\n", color.YellowString(property.Name),
 					property.Default)
 			}
@@ -253,7 +253,7 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 
 		for _, job := range release.Jobs {
 			result[release.Name][job.Name] = make(map[string]interface{})
-			for _, property := range job.Properties {
+			for _, property := range job.SpecProperties {
 				result[release.Name][job.Name][property.Name] = property.Default
 			}
 		}
@@ -280,7 +280,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 
 	for _, release := range f.Manifest.LoadedReleases {
 		for _, job := range release.Jobs {
-			for _, property := range job.Properties {
+			for _, property := range job.SpecProperties {
 				// Extend map for newly seen properties
 				if _, ok := result[property.Name]; !ok {
 					result[property.Name] = newPropertyInfo(false)
@@ -805,7 +805,7 @@ func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 		}
 		// Get the spec configs
 		for _, job := range release.Jobs {
-			for _, property := range job.Properties {
+			for _, property := range job.SpecProperties {
 				key := fmt.Sprintf("%s:%s:%s", release.Name, job.Name, property.Name)
 				hashes[idx][key] = stringifyValue(reflect.ValueOf(property.Default))
 			}

@@ -48,7 +48,7 @@ type Job struct {
 	Path               string
 	Fingerprint        string
 	SHA1               string
-	Properties         []*JobProperty
+	SpecProperties     []*JobSpecProperty
 	Version            string
 	Release            *Release
 	AvailableProviders map[string]jobProvidesInfo
@@ -78,8 +78,8 @@ func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job,
 	return job, nil
 }
 
-func (j *Job) getProperty(name string) (*JobProperty, error) {
-	for _, property := range j.Properties {
+func (j *Job) getProperty(name string) (*JobSpecProperty, error) {
+	for _, property := range j.SpecProperties {
 		if property.Name == name {
 			return property, nil
 		}
@@ -242,14 +242,14 @@ func (j *Job) loadJobSpec() (err error) {
 	sort.Strings(propertyNames)
 	for _, propertyName := range propertyNames {
 
-		property := &JobProperty{
+		property := &JobSpecProperty{
 			Name:        propertyName,
 			Job:         j,
 			Description: jobSpec.Properties[propertyName].Description,
 			Default:     jobSpec.Properties[propertyName].Default,
 		}
 
-		j.Properties = append(j.Properties, property)
+		j.SpecProperties = append(j.SpecProperties, property)
 	}
 
 	j.AvailableProviders = make(map[string]jobProvidesInfo)
@@ -292,7 +292,7 @@ func (j *Job) MergeSpec(otherJob *Job) {
 	// Ignore otherJob.Name, otherJob.Description
 	// Skip templates -- they're only in place to keep `create-release` happy.
 	j.Packages = append(j.Packages, otherJob.Packages...)
-	j.Properties = append(j.Properties, otherJob.Properties...)
+	j.SpecProperties = append(j.SpecProperties, otherJob.SpecProperties...)
 }
 
 // jobConfigTemplate is one "templates:" entry in the job config output
@@ -319,7 +319,7 @@ func (j *Job) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, e
 	if !ok {
 		return nil, fmt.Errorf("getPropertiesForJob: can't convert darkOpinions into a string map")
 	}
-	for _, property := range j.Properties {
+	for _, property := range j.SpecProperties {
 		keyPieces, err := getKeyGrams(property.Name)
 		if err != nil {
 			return nil, err
@@ -402,8 +402,8 @@ func (j *Job) Marshal() (interface{}, error) {
 		pkgs = append(pkgs, pkg.Fingerprint)
 	}
 
-	properties := make([]*JobProperty, 0, len(j.Properties))
-	for _, prop := range j.Properties {
+	properties := make([]*JobSpecProperty, 0, len(j.SpecProperties))
+	for _, prop := range j.SpecProperties {
 		properties = append(properties, prop)
 	}
 

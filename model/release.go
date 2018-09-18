@@ -59,7 +59,7 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 	result := map[string]*ReleaseConfig{}
 
 	for _, job := range r.Jobs {
-		for _, property := range job.Properties {
+		for _, property := range job.SpecProperties {
 
 			if config, ok := result[property.Name]; ok {
 				config.UsageCount++

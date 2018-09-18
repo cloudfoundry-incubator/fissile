@@ -328,8 +328,8 @@ func TestPodGetEnvVars(t *testing.T) {
 		return
 	}
 
-	role.JobReferences[0].Properties = []*model.JobProperty{
-		&model.JobProperty{
+	role.JobReferences[0].SpecProperties = []*model.JobSpecProperty{
+		&model.JobSpecProperty{
 			Name: "some-property",
 		},
 	}

@@ -786,7 +786,7 @@ func validateVariableUsage(roleManifest *RoleManifest) validation.ErrorList {
 
 	for _, role := range roleManifest.InstanceGroups {
 		for _, jobReference := range role.JobReferences {
-			for _, property := range jobReference.Properties {
+			for _, property := range jobReference.SpecProperties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 				if template, ok := getTemplate(role.Configuration.Templates, propertyName); ok {
@@ -863,7 +863,7 @@ func validateTemplateUsage(roleManifest *RoleManifest, declaredConfigs CVMap) va
 		// references) and continue to check everything else.
 
 		for _, jobReference := range instanceGroup.JobReferences {
-			for _, property := range jobReference.Properties {
+			for _, property := range jobReference.SpecProperties {
 				propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 				if template, ok := getTemplate(instanceGroup.Configuration.Templates, propertyName); ok {

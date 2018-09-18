@@ -9,12 +9,12 @@ import (
 
 var jobPropertyMarshalTestCases = []struct {
 	name     string
-	property *JobProperty
+	property *JobSpecProperty
 	expected map[string]interface{}
 }{
 	{
 		name: "simple",
-		property: &JobProperty{
+		property: &JobSpecProperty{
 			Name:        "simple-property",
 			Description: "A description",
 			Default:     3,
@@ -29,7 +29,7 @@ var jobPropertyMarshalTestCases = []struct {
 	},
 	{
 		name: "jobless",
-		property: &JobProperty{
+		property: &JobSpecProperty{
 			Name:        "jobless-property",
 			Description: "A different description",
 			Default:     map[string]interface{}{"a": 1},

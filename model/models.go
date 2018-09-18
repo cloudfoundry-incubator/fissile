@@ -10,8 +10,9 @@ type ReleaseLicense struct {
 	Release *Release
 }
 
-// JobProperty is a generic key-value property referenced by a job
-type JobProperty struct {
+// JobSpecProperty is a generic key-value property referenced by a job
+// See https://bosh.io/docs/jobs/ usage in releases
+type JobSpecProperty struct {
 	Name        string
 	Description string
 	Default     interface{}
@@ -19,7 +20,7 @@ type JobProperty struct {
 }
 
 // MarshalJSON implements the encoding/json.Marshaler interface
-func (p *JobProperty) MarshalJSON() ([]byte, error) {
+func (p *JobSpecProperty) MarshalJSON() ([]byte, error) {
 	data, err := p.MarshalYAML()
 	if err != nil {
 		return nil, err
@@ -28,7 +29,7 @@ func (p *JobProperty) MarshalJSON() ([]byte, error) {
 }
 
 // MarshalYAML implements the yaml.Marshaler interface
-func (p *JobProperty) MarshalYAML() (interface{}, error) {
+func (p *JobSpecProperty) MarshalYAML() (interface{}, error) {
 	var jobName string
 	if p.Job != nil {
 		jobName = p.Job.Name

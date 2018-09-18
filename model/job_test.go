@@ -169,14 +169,14 @@ func testJobPropertiesOk(fakeRelease *Release) func(*testing.T) {
 		assert := assert.New(t)
 
 		assert.Len(fakeRelease.Jobs, 1)
-		assert.Len(fakeRelease.Jobs[0].Properties, 3)
+		assert.Len(fakeRelease.Jobs[0].SpecProperties, 3)
 
-		assert.Equal("ntp_conf", fakeRelease.Jobs[0].Properties[0].Name)
-		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].Properties[0].Description)
+		assert.Equal("ntp_conf", fakeRelease.Jobs[0].SpecProperties[0].Name)
+		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].SpecProperties[0].Description)
 		// Looks like properties are sorted by name.
-		assert.Equal("tor.private_key", fakeRelease.Jobs[0].Properties[1].Name)
-		assert.Equal("M3Efvw4x3kzW+YBWR1oPG7hoUcPcFYXWxoYkYR5+KT4=", fakeRelease.Jobs[0].Properties[1].Default)
-		assert.Equal("", fakeRelease.Jobs[0].Properties[1].Description)
+		assert.Equal("tor.private_key", fakeRelease.Jobs[0].SpecProperties[1].Name)
+		assert.Equal("M3Efvw4x3kzW+YBWR1oPG7hoUcPcFYXWxoYkYR5+KT4=", fakeRelease.Jobs[0].SpecProperties[1].Default)
+		assert.Equal("", fakeRelease.Jobs[0].SpecProperties[1].Description)
 	}
 }
 
@@ -185,9 +185,9 @@ func testFinalJobPropertiesOk(fakeRelease *Release) func(*testing.T) {
 		assert := assert.New(t)
 
 		assert.Len(fakeRelease.Jobs, 1)
-		assert.Len(fakeRelease.Jobs[0].Properties, 1)
-		assert.Equal("ntp_conf", fakeRelease.Jobs[0].Properties[0].Name)
-		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].Properties[0].Description)
+		assert.Len(fakeRelease.Jobs[0].SpecProperties, 1)
+		assert.Equal("ntp_conf", fakeRelease.Jobs[0].SpecProperties[0].Name)
+		assert.Equal("ntpd's configuration file (ntp.conf)", fakeRelease.Jobs[0].SpecProperties[0].Description)
 	}
 }
 
@@ -196,7 +196,7 @@ func testGetJobPropertyOk(fakeRelease *Release, jobPropertyLen int) func(*testin
 		assert := assert.New(t)
 
 		assert.Len(fakeRelease.Jobs, 1)
-		assert.Len(fakeRelease.Jobs[0].Properties, jobPropertyLen)
+		assert.Len(fakeRelease.Jobs[0].SpecProperties, jobPropertyLen)
 		property, err := fakeRelease.Jobs[0].getProperty("ntp_conf")
 
 		assert.NoError(err)
@@ -209,7 +209,7 @@ func testGetJobPropertyNotOk(fakeRelease *Release, jobPropertyLen int) func(*tes
 		assert := assert.New(t)
 
 		assert.Len(fakeRelease.Jobs, 1)
-		assert.Len(fakeRelease.Jobs[0].Properties, jobPropertyLen)
+		assert.Len(fakeRelease.Jobs[0].SpecProperties, jobPropertyLen)
 		_, err := fakeRelease.Jobs[0].getProperty("foo")
 		assert.NotNil(err)
 		assert.Contains(err.Error(), "not found in job")
@@ -379,8 +379,8 @@ func TestJobMarshal(t *testing.T) {
 				Path:        "/path/to/thing",
 				Fingerprint: "abc123",
 				SHA1:        "def456",
-				Properties: []*JobProperty{
-					&JobProperty{
+				SpecProperties: []*JobSpecProperty{
+					&JobSpecProperty{
 						Name:        "property",
 						Description: "some job property",
 						Default:     1,

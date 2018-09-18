@@ -7,7 +7,8 @@ import (
 
 // JobReference represents a job in the context of a role
 type JobReference struct {
-	*Job                `yaml:"-"`                 // The resolved job
+	*Job `yaml:"-"` // embed the resolved job from the release manifest
+
 	Name                string                     `yaml:"name"`    // The name of the job
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
 	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`

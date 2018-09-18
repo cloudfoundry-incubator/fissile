@@ -35,7 +35,7 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 	// First, render all referenced variables of type user.
 
 	for _, jobReference := range r.JobReferences {
-		for _, property := range jobReference.Properties {
+		for _, property := range jobReference.SpecProperties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
 			for _, templateDef := range r.Configuration.Templates {

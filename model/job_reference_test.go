@@ -14,8 +14,8 @@ func TestWriteConfigs(t *testing.T) {
 
 	job := &Job{
 		Name: "silly job",
-		Properties: []*JobProperty{
-			&JobProperty{
+		SpecProperties: []*JobSpecProperty{
+			&JobSpecProperty{
 				Name:    "prop",
 				Default: "bar",
 			},
