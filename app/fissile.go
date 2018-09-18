@@ -938,6 +938,13 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 	}
 
 	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
+		// Ignore roles referenced by a single instance
+		// group. These are not written as their own files,
+		// but as part of the instance group.
+		if settings.RoleManifest.Configuration.Authorization.RoleUse[roleName] < 2 {
+			continue
+		}
+
 		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
 		if err != nil {
 			return err
@@ -948,6 +955,13 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 		}
 	}
 	for accountName, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+		// Ignore accounts referenced by a single instance
+		// group. These are not written as their own files,
+		// but as part of the instance group.
+		if accountSpec.NumGroups < 2 {
+			continue
+		}
+
 		nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
 		if err != nil {
 			return err
@@ -991,21 +1005,72 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 }
 
 func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model.InstanceGroup, settings kube.ExportSettings) error {
+
+	var node helm.Node
+	var err error
+
 	if instanceGroup.HasTag(model.RoleTagStopOnFailure) {
-		pod, err := kube.NewPod(instanceGroup, settings, f)
-		if err != nil {
-			return err
-		}
-		err = helm.NewEncoder(outputFile).Encode(pod)
-		if err != nil {
-			return err
-		}
+		node, err = kube.NewPod(instanceGroup, settings, f)
 	} else {
-		job, err := kube.NewJob(instanceGroup, settings, f)
+		node, err = kube.NewJob(instanceGroup, settings, f)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	enc := helm.NewEncoder(outputFile)
+
+	err = enc.Encode(node)
+	if err != nil {
+		return err
+	}
+
+	err = f.generateAuthCoupledToRole(enc,
+		instanceGroup.Run.ServiceAccount,
+		settings)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *Fissile) generateAuthCoupledToRole(enc *helm.Encoder, accountName string, settings kube.ExportSettings) error {
+
+	accountSpec := settings.RoleManifest.Configuration.Authorization.Accounts[accountName]
+
+	// The instance group references a service account which is
+	// used by multiple roles, i.e. is not tightly coupled to
+	// it. The auth for this was written by `generateAuth`. Here
+	// we ignore it.
+
+	if accountSpec.NumGroups > 1 {
+		return nil
+	}
+
+	nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
+	if err != nil {
+		return err
+	}
+
+	for _, roleName := range accountSpec.Roles {
+		role := settings.RoleManifest.Configuration.Authorization.RoleUse[roleName]
+		if role > 1 {
+			continue
+		}
+
+		roleSpec := settings.RoleManifest.Configuration.Authorization.Roles[roleName]
+		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
 		if err != nil {
 			return err
 		}
-		err = helm.NewEncoder(outputFile).Encode(job)
+
+		nodes = append(nodes, node)
+	}
+
+	for _, n := range nodes {
+		err = enc.Encode(n)
 		if err != nil {
 			return err
 		}
@@ -1080,6 +1145,13 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 				if err != nil {
 					return err
 				}
+			}
+
+			err = f.generateAuthCoupledToRole(enc,
+				instanceGroup.Run.ServiceAccount,
+				settings)
+			if err != nil {
+				return err
 			}
 		}
 	}
