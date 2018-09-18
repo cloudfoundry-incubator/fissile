@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// JobReference represents a job in the context of a role
+// JobReference from the deployment manifest, references a job spec from a release by ReleaseName
 type JobReference struct {
 	*ReleaseJob `yaml:"-"` // embed the resolved job from the release manifest
 

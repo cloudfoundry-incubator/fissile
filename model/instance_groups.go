@@ -72,6 +72,7 @@ const (
 
 // Validate implements several checks for the instance group and its job references. It's run after the
 // instance groups are filtered and i.e. Run has been calculated.
+// It adds the ReleaseJob to the instance groups JobReferences
 func (g *InstanceGroup) Validate(mappedReleases releaseByName) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
@@ -468,6 +469,7 @@ func (g *InstanceGroup) HasTag(tag RoleTag) bool {
 	return false
 }
 
+// calculateRoleConfigurationTemplates merges instance group properties with role manifest properties
 func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
 	if g.Configuration == nil {
 		g.Configuration = &Configuration{}
