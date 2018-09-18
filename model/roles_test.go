@@ -547,13 +547,15 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir,
 		"../test-assets/role-manifests/model/rbac-merge-psp.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 
 	// The loaded manifest has a single role with two jobs,
 	// requesting differing psps (The second role's request is
@@ -591,13 +593,15 @@ func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir,
 		"../test-assets/role-manifests/model/rbac-clone-sa-psp-mismatch.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 
 	// The loaded manifest has three roles with one job each. All
 	// reference the same service account (default), while
