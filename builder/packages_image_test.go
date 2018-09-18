@@ -358,7 +358,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 			JobReferences: []*model.JobReference{
 				{
 					Name: "test-job",
-					Job: &model.Job{
+					ReleaseJob: &model.ReleaseJob{
 						Name: "test-job",
 						Packages: model.Packages{
 							&model.Package{

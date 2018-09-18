@@ -39,7 +39,7 @@ func TestJobTemplateMarshal(t *testing.T) {
 			template: &JobTemplate{
 				SourcePath:      "/source",
 				DestinationPath: "/dest",
-				Job:             &Job{Fingerprint: "asdf"},
+				Job:             &ReleaseJob{Fingerprint: "asdf"},
 				Content:         "<content>",
 			},
 			expected: map[string]interface{}{

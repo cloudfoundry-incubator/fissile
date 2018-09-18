@@ -12,7 +12,7 @@ import (
 func TestWriteConfigs(t *testing.T) {
 	assert := assert.New(t)
 
-	job := &Job{
+	job := &ReleaseJob{
 		Name: "silly job",
 		SpecProperties: []*JobSpecProperty{
 			&JobSpecProperty{
@@ -42,8 +42,8 @@ func TestWriteConfigs(t *testing.T) {
 		Name: "dummy role",
 		JobReferences: JobReferences{
 			{
-				Job:  job,
-				Name: "silly job",
+				ReleaseJob: job,
+				Name:       "silly job",
 				ResolvedConsumers: map[string]jobConsumesInfo{
 					"serious": jobConsumesInfo{
 						jobLinkInfo: jobLinkInfo{

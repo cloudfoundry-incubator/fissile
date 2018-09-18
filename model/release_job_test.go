@@ -297,7 +297,7 @@ func testFinalJobsProperties(fakeRelease *Release) func(*testing.T) {
 func TestJobsSort(t *testing.T) {
 	assert := assert.New(t)
 
-	jobs := Jobs{
+	jobs := ReleaseJobs{
 		{Name: "aaa"},
 		{Name: "bbb"},
 	}
@@ -305,7 +305,7 @@ func TestJobsSort(t *testing.T) {
 	assert.Equal(jobs[0].Name, "aaa")
 	assert.Equal(jobs[1].Name, "bbb")
 
-	jobs = Jobs{
+	jobs = ReleaseJobs{
 		{Name: "ddd"},
 		{Name: "ccc"},
 	}
@@ -316,11 +316,11 @@ func TestJobsSort(t *testing.T) {
 
 func TestJobMarshal(t *testing.T) {
 	testCases := []struct {
-		value    *Job
+		value    *ReleaseJob
 		expected string
 	}{
 		{
-			value: &Job{
+			value: &ReleaseJob{
 				Name: "simple",
 			},
 			expected: `---
@@ -328,7 +328,7 @@ func TestJobMarshal(t *testing.T) {
 			`,
 		},
 		{
-			value: &Job{
+			value: &ReleaseJob{
 				Name: "release-name",
 				Release: &Release{
 					Name: "some-release",
@@ -340,13 +340,13 @@ func TestJobMarshal(t *testing.T) {
 			`,
 		},
 		{
-			value: &Job{
+			value: &ReleaseJob{
 				Name: "templates",
 				Templates: []*JobTemplate{
 					&JobTemplate{
 						SourcePath: "/source",
 						Content:    "<content>",
-						Job:        &Job{Name: "templates"}, // fake a loop
+						Job:        &ReleaseJob{Name: "templates"}, // fake a loop
 					},
 				},
 			},
@@ -358,7 +358,7 @@ func TestJobMarshal(t *testing.T) {
 			`,
 		},
 		{
-			value: &Job{
+			value: &ReleaseJob{
 				Name: "packages",
 				Packages: []*Package{
 					{
@@ -373,7 +373,7 @@ func TestJobMarshal(t *testing.T) {
 			`,
 		},
 		{
-			value: &Job{
+			value: &ReleaseJob{
 				Name:        "filled-out",
 				Description: "a filled-out job",
 				Path:        "/path/to/thing",
@@ -384,7 +384,7 @@ func TestJobMarshal(t *testing.T) {
 						Name:        "property",
 						Description: "some job property",
 						Default:     1,
-						Job:         &Job{Name: "filled-out"}, // fake a loop
+						Job:         &ReleaseJob{Name: "filled-out"}, // fake a loop
 					},
 				},
 				Version: "v123",

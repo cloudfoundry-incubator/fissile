@@ -318,7 +318,7 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 
 		if grapher != nil {
 			for _, jobReference := range instanceGroup.JobReferences {
-				grapher.GraphNode(jobReference.Job.Fingerprint, map[string]string{"label": "job/" + jobReference.Job.Name})
+				grapher.GraphNode(jobReference.ReleaseJob.Fingerprint, map[string]string{"label": "job/" + jobReference.ReleaseJob.Name})
 			}
 		}
 	}
@@ -443,7 +443,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	for _, instanceGroup := range m.InstanceGroups {
 		for _, jobReference := range instanceGroup.JobReferences {
 			var availableProviders []string
-			for availableName, availableProvider := range jobReference.Job.AvailableProviders {
+			for availableName, availableProvider := range jobReference.ReleaseJob.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
 				if availableProvider.Type != "" {
 					providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
@@ -458,7 +458,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 				}
 			}
 			for name, provider := range jobReference.ExportedProviders {
-				info, ok := jobReference.Job.AvailableProviders[name]
+				info, ok := jobReference.ReleaseJob.AvailableProviders[name]
 				if !ok {
 					errors = append(errors, validation.NotFound(
 						fmt.Sprintf("instance_groups[%s].jobs[%s].provides[%s]", instanceGroup.Name, jobReference.Name, name),
@@ -484,8 +484,8 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	// Resolve the consumers
 	for _, instanceGroup := range m.InstanceGroups {
 		for _, jobReference := range instanceGroup.JobReferences {
-			expectedConsumers := make([]jobConsumesInfo, len(jobReference.Job.DesiredConsumers))
-			copy(expectedConsumers, jobReference.Job.DesiredConsumers)
+			expectedConsumers := make([]jobConsumesInfo, len(jobReference.ReleaseJob.DesiredConsumers))
+			copy(expectedConsumers, jobReference.ReleaseJob.DesiredConsumers)
 			// Deal with any explicitly marked consumers in the role manifest
 			for consumerName, consumerInfo := range jobReference.ResolvedConsumers {
 				consumerAlias := consumerName

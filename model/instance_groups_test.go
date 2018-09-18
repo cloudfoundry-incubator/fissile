@@ -62,7 +62,7 @@ func TestGetScriptSignatures(t *testing.T) {
 		Name: "bbb",
 		JobReferences: JobReferences{
 			{
-				Job: &Job{
+				ReleaseJob: &ReleaseJob{
 					SHA1: "Role 2 Job 1",
 					Packages: Packages{
 						{Name: "aaa", SHA1: "Role 2 Job 1 Package 1"},
@@ -71,7 +71,7 @@ func TestGetScriptSignatures(t *testing.T) {
 				},
 			},
 			{
-				Job: &Job{
+				ReleaseJob: &ReleaseJob{
 					SHA1: "Role 2 Job 2",
 					Packages: Packages{
 						{Name: "ccc", SHA1: "Role 2 Job 2 Package 1"},

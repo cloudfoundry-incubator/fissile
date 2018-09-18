@@ -16,7 +16,7 @@ type JobSpecProperty struct {
 	Name        string
 	Description string
 	Default     interface{}
-	Job         *Job
+	Job         *ReleaseJob
 }
 
 // MarshalJSON implements the encoding/json.Marshaler interface

@@ -7,7 +7,7 @@ import (
 
 // JobReference represents a job in the context of a role
 type JobReference struct {
-	*Job `yaml:"-"` // embed the resolved job from the release manifest
+	*ReleaseJob `yaml:"-"` // embed the resolved job from the release manifest
 
 	Name                string                     `yaml:"name"`    // The name of the job
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
@@ -202,13 +202,13 @@ func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsP
 	if err != nil {
 		return nil, err
 	}
-	properties, err := j.Job.GetPropertiesForJob(opinions)
+	properties, err := j.ReleaseJob.GetPropertiesForJob(opinions)
 	if err != nil {
 		return nil, err
 	}
 	config.Properties = properties
 
-	for _, provider := range j.Job.AvailableProviders {
+	for _, provider := range j.ReleaseJob.AvailableProviders {
 		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
 	}
 

@@ -18,7 +18,7 @@ var jobPropertyMarshalTestCases = []struct {
 			Name:        "simple-property",
 			Description: "A description",
 			Default:     3,
-			Job:         &Job{Name: "job-name"},
+			Job:         &ReleaseJob{Name: "job-name"},
 		},
 		expected: map[string]interface{}{
 			"name":        "simple-property",

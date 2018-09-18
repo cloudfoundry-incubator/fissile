@@ -158,8 +158,8 @@ func initTestSerializeInput() {
 	releases := []*model.Release{
 		&model.Release{
 			Name: "first release",
-			Jobs: model.Jobs{
-				&model.Job{
+			Jobs: model.ReleaseJobs{
+				&model.ReleaseJob{
 					Name:        "first job",
 					Description: "a first job",
 					Fingerprint: "job-one",
@@ -189,8 +189,8 @@ func initTestSerializeInput() {
 		},
 		&model.Release{
 			Name: "second release",
-			Jobs: model.Jobs{
-				&model.Job{
+			Jobs: model.ReleaseJobs{
+				&model.ReleaseJob{
 					Name:        "second job",
 					Description: "a second job",
 					Fingerprint: "job-two",

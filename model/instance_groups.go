@@ -102,7 +102,7 @@ func (g *InstanceGroup) Validate(mappedReleases releaseByName) validation.ErrorL
 				jobReference.ReleaseName, err.Error()))
 			continue
 		}
-		jobReference.Job = job
+		jobReference.ReleaseJob = job
 
 		if jobReference.ResolvedConsumers == nil {
 			// No explicitly specified consumers
@@ -513,7 +513,7 @@ func (g *InstanceGroup) ColocatedContainers() []string {
 // LookupJob will find the given job in this role, or nil if not found
 func (g *InstanceGroup) LookupJob(name string) *JobReference {
 	for _, jobReference := range g.JobReferences {
-		if jobReference.Job.Name == name {
+		if jobReference.ReleaseJob.Name == name {
 			return jobReference
 		}
 	}

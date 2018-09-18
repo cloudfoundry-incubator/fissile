@@ -733,7 +733,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	job1 := &Job{
+	job1 := &ReleaseJob{
 		Name: "job-1",
 		AvailableProviders: map[string]jobProvidesInfo{
 			"job-1-provider-1": {
@@ -765,7 +765,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 
-	job2 := &Job{
+	job2 := &ReleaseJob{
 		Name: "job-2",
 		AvailableProviders: map[string]jobProvidesInfo{
 			"job-2-provider-1": {
@@ -777,7 +777,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 
-	job3 := &Job{
+	job3 := &ReleaseJob{
 		Name: "job-3",
 		AvailableProviders: map[string]jobProvidesInfo{
 			"job-3-provider-3": {
@@ -831,22 +831,22 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 				Name: "role-1",
 				JobReferences: JobReferences{
 					{
-						Job: job1,
+						ReleaseJob: job1,
 						ExportedProviders: map[string]jobProvidesInfo{
 							"job-1-provider-3": jobProvidesInfo{
 								Alias: "unique-alias",
 							},
 						},
 					},
-					{Job: job2},
+					{ReleaseJob: job2},
 				},
 			},
 			&InstanceGroup{
 				Name: "role-2",
 				JobReferences: JobReferences{
-					{Job: job2},
+					{ReleaseJob: job2},
 					{
-						Job: job3,
+						ReleaseJob: job3,
 						// This has an explicitly exported provider
 						ExportedProviders: map[string]jobProvidesInfo{
 							"job-3-provider-3": jobProvidesInfo{},
@@ -862,13 +862,13 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			&InstanceGroup{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				JobReferences: JobReferences{{Job: job2}, {Job: job3}},
+				JobReferences: JobReferences{{ReleaseJob: job2}, {ReleaseJob: job3}},
 			},
 		},
 	}
 	for _, r := range roleManifest.InstanceGroups {
 		for _, jobReference := range r.JobReferences {
-			jobReference.Name = jobReference.Job.Name
+			jobReference.Name = jobReference.ReleaseJob.Name
 			if jobReference.ResolvedConsumers == nil {
 				jobReference.ResolvedConsumers = make(map[string]jobConsumesInfo)
 			}

@@ -343,8 +343,8 @@ func TestGetDeploymentConfig(t *testing.T) {
 func TestReleaseMarshal(t *testing.T) {
 	assert := assert.New(t)
 	sample := &Release{
-		Jobs: Jobs{
-			&Job{
+		Jobs: ReleaseJobs{
+			&ReleaseJob{
 				Fingerprint: "abc",
 				Packages: Packages{
 					&Package{
@@ -352,7 +352,7 @@ func TestReleaseMarshal(t *testing.T) {
 					},
 				},
 			},
-			&Job{
+			&ReleaseJob{
 				Fingerprint: "def",
 				Packages: Packages{
 					&Package{

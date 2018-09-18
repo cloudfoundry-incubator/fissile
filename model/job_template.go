@@ -4,7 +4,7 @@ package model
 type JobTemplate struct {
 	SourcePath      string
 	DestinationPath string
-	Job             *Job
+	Job             *ReleaseJob
 	Content         string
 }
 

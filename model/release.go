@@ -21,7 +21,7 @@ type ReleaseRef struct {
 
 // Release represents a BOSH release
 type Release struct {
-	Jobs               Jobs
+	Jobs               ReleaseJobs
 	Packages           Packages
 	License            ReleaseLicense
 	Name               string
@@ -67,7 +67,7 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 			} else {
 				result[property.Name] = &ReleaseConfig{
 					Name:        property.Name,
-					Jobs:        Jobs{job},
+					Jobs:        ReleaseJobs{job},
 					UsageCount:  1,
 					Description: property.Description,
 				}
@@ -123,7 +123,7 @@ func (r *Release) LookupPackage(packageName string) (*Package, error) {
 }
 
 // LookupJob will find a job within a BOSH release
-func (r *Release) LookupJob(jobName string) (*Job, error) {
+func (r *Release) LookupJob(jobName string) (*ReleaseJob, error) {
 	for _, job := range r.Jobs {
 		if job.Name == jobName {
 			return job, nil
@@ -141,7 +141,7 @@ func (r *Release) loadJobs() (err error) {
 	}()
 
 	for _, job := range r.manifest.Jobs {
-		j, err := newJob(r, job)
+		j, err := newReleaseJob(r, job)
 		if err != nil {
 			return err
 		}

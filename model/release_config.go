@@ -4,6 +4,6 @@ package model
 type ReleaseConfig struct {
 	Name        string
 	Description string
-	Jobs        Jobs
+	Jobs        ReleaseJobs
 	UsageCount  int
 }

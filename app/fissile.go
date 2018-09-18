@@ -272,7 +272,7 @@ type propertyDefaults map[string]*propertyInfo
 
 type propertyInfo struct {
 	maybeHash bool
-	defaults  map[string][]*model.Job
+	defaults  map[string][]*model.ReleaseJob
 }
 
 func (f *Fissile) collectPropertyDefaults() propertyDefaults {
@@ -311,7 +311,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 // newPropertyInfo creates a new information block for a property.
 func newPropertyInfo(maybeHash bool) *propertyInfo {
 	return &propertyInfo{
-		defaults:  make(map[string][]*model.Job),
+		defaults:  make(map[string][]*model.ReleaseJob),
 		maybeHash: maybeHash,
 	}
 }

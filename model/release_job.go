@@ -39,8 +39,8 @@ type jobConsumesInfo struct {
 	Optional bool
 }
 
-// Job represents a BOSH job
-type Job struct {
+// ReleaseJob represents a BOSH job
+type ReleaseJob struct {
 	Name               string
 	Description        string
 	Templates          []*JobTemplate
@@ -57,11 +57,11 @@ type Job struct {
 	jobReleaseInfo map[interface{}]interface{}
 }
 
-// Jobs is an array of Job*
-type Jobs []*Job
+// ReleaseJobs is an array of Job*
+type ReleaseJobs []*ReleaseJob
 
-func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job, error) {
-	job := &Job{
+func newReleaseJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*ReleaseJob, error) {
+	job := &ReleaseJob{
 		Release: release,
 
 		jobReleaseInfo: jobReleaseInfo,
@@ -78,7 +78,7 @@ func newJob(release *Release, jobReleaseInfo map[interface{}]interface{}) (*Job,
 	return job, nil
 }
 
-func (j *Job) getProperty(name string) (*JobSpecProperty, error) {
+func (j *ReleaseJob) getProperty(name string) (*JobSpecProperty, error) {
 	for _, property := range j.SpecProperties {
 		if property.Name == name {
 			return property, nil
@@ -90,7 +90,7 @@ func (j *Job) getProperty(name string) (*JobSpecProperty, error) {
 
 // ValidateSHA1 validates that the SHA1 of the actual job archive is the same
 // as the one from the release manifest
-func (j *Job) ValidateSHA1() error {
+func (j *ReleaseJob) ValidateSHA1() error {
 	file, err := os.Open(j.Path)
 	if err != nil {
 		return fmt.Errorf("Error opening the job archive %s for sha1 calculation", j.Path)
@@ -117,7 +117,7 @@ func (j *Job) ValidateSHA1() error {
 // Extract will extract the contents of the job archive to destination
 // It creates a directory with the name of the job
 // Returns the full path of the extracted archive
-func (j *Job) Extract(destination string) (string, error) {
+func (j *ReleaseJob) Extract(destination string) (string, error) {
 	targetDir := filepath.Join(destination, j.Name)
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return "", err
@@ -130,7 +130,7 @@ func (j *Job) Extract(destination string) (string, error) {
 	return targetDir, nil
 }
 
-func (j *Job) loadJobInfo() (err error) {
+func (j *ReleaseJob) loadJobInfo() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("Error trying to load job information: %s", r)
@@ -146,7 +146,7 @@ func (j *Job) loadJobInfo() (err error) {
 	return nil
 }
 
-func (j *Job) loadJobSpec() (err error) {
+func (j *ReleaseJob) loadJobSpec() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("Error trying to load job spec: %s", r)
@@ -288,7 +288,7 @@ func (j *Job) loadJobSpec() (err error) {
 // the fissile-compat/patch-properties job.  The code assumes package and property objects are immutable,
 // as they're now being shared across jobs. Also, when specified packages or properties are
 // specified in the "other" job, that one takes precedence.
-func (j *Job) MergeSpec(otherJob *Job) {
+func (j *ReleaseJob) MergeSpec(otherJob *ReleaseJob) {
 	// Ignore otherJob.Name, otherJob.Description
 	// Skip templates -- they're only in place to keep `create-release` happy.
 	j.Packages = append(j.Packages, otherJob.Packages...)
@@ -301,7 +301,7 @@ type jobConfigTemplate struct {
 }
 
 // GetPropertiesForJob returns the parameters for the given job, using its specs and opinions
-func (j *Job) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, error) {
+func (j *ReleaseJob) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, error) {
 	props := make(map[string]interface{})
 	lightOpinions, ok := opinions.Light["properties"]
 	if !ok {
@@ -363,21 +363,21 @@ func (j *Job) GetPropertiesForJob(opinions *Opinions) (map[string]interface{}, e
 }
 
 // Len implements the Len function to satisfy sort.Interface
-func (slice Jobs) Len() int {
+func (slice ReleaseJobs) Len() int {
 	return len(slice)
 }
 
 // Less implements the Less function to satisfy sort.Interface
-func (slice Jobs) Less(i, j int) bool {
+func (slice ReleaseJobs) Less(i, j int) bool {
 	return slice[i].Name < slice[j].Name
 }
 
 // Swap implements the Swap function to satisfy sort.Interface
-func (slice Jobs) Swap(i, j int) {
+func (slice ReleaseJobs) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func (j *Job) jobArchivePath() string {
+func (j *ReleaseJob) jobArchivePath() string {
 	if j.Release.FinalRelease {
 		return filepath.Join(j.Release.Path, "jobs", j.Name+".tgz")
 	}
@@ -386,7 +386,7 @@ func (j *Job) jobArchivePath() string {
 }
 
 // Marshal implements the util.Marshaler interface
-func (j *Job) Marshal() (interface{}, error) {
+func (j *ReleaseJob) Marshal() (interface{}, error) {
 	var releaseName string
 	if j.Release != nil {
 		releaseName = j.Release.Name
