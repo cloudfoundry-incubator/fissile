@@ -404,6 +404,23 @@ func TestGenerateAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	samples := map[string][]string{
+		`auth/auth-clusterrole-nonprivileged.yaml`: []string{
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRole",
+				"metadata": {
+					"name": "psp-role-nonprivileged"
+				},
+				"rules": [
+					{
+						"apiGroups": ["extensions"],
+						"resourceNames": ["nonprivileged"],
+						"resources": ["podsecuritypolicies"],
+						"verbs": ["use"]
+					}
+				]
+			}`,
+		},
 		`auth/auth-role-extra-permissions.yaml`: []string{
 			`{
 				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
