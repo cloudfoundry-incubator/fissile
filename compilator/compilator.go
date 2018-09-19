@@ -373,15 +373,14 @@ func (j compileJob) Run() {
 		j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
 
 	} else {
-		c.ui.Printf("compiling")
+		c.ui.Printf("compiling\n")
 		var workerErr error
 		workerErr = c.compilePackage(c, j.pkg)
 
 		if workerErr == nil && c.packageStorage != nil && c.packageStorage.ReadOnly == false {
-			c.ui.Printf(" > uploading..")
+			c.ui.Printf("uploading\n")
 			workerErr = c.packageStorage.Upload(j.pkg)
 		}
-		c.ui.Printf("\n")
 		if c.metricsPath != "" {
 			stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
 		}

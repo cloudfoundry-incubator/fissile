@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SUSE/fissile/model"
@@ -58,7 +59,11 @@ func NewPackageStorageFromConfig(configFilePath, compilationWorkDir, stemcellIma
 	// Read a yaml file that contains a stow configuration
 	if _, err := os.Stat(configFilePath); err != nil {
 		if os.IsNotExist(err) {
-			packageCacheConfigReader = []byte(configFilePath)
+			if strings.HasPrefix(configFilePath, "{") {
+				packageCacheConfigReader = []byte(configFilePath)
+			} else {
+				return nil, nil
+			}
 		} else {
 			return nil, err
 		}
