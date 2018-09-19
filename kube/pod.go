@@ -44,7 +44,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("volumes", getNonClaimVolumes(role, settings.CreateHelmChart))
 	spec.Add("restartPolicy", "Always")
-	if role.Run.ServiceAccount != "" {
+	if role.Run.ServiceAccount != "default" {
 		// This role requires a custom service account
 		block := helm.Block("")
 		if settings.CreateHelmChart {
@@ -52,6 +52,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 		}
 		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
 	}
+
 	// BOSH can potentially have an infinite termination grace period; we don't
 	// really trust that, so we'll just go with ten minutes and hope it's enough
 	spec.Add("terminationGracePeriodSeconds", 600)

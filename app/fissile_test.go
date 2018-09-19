@@ -404,6 +404,23 @@ func TestGenerateAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	samples := map[string][]string{
+		`auth/auth-clusterrole-nonprivileged.yaml`: []string{
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRole",
+				"metadata": {
+					"name": "psp-role-nonprivileged"
+				},
+				"rules": [
+					{
+						"apiGroups": ["extensions"],
+						"resourceNames": ["nonprivileged"],
+						"resources": ["podsecuritypolicies"],
+						"verbs": ["use"]
+					}
+				]
+			}`,
+		},
 		`auth/auth-role-extra-permissions.yaml`: []string{
 			`{
 				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
@@ -462,6 +479,25 @@ func TestGenerateAuth(t *testing.T) {
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRoleBinding",
+				"metadata": {
+					"name": "non-default-binding-psp"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "non-default",
+						"namespace": "~"
+					}
+				],
+				"roleRef": {
+					"kind": "ClusterRole",
+					"name": "psp-role-nonprivileged",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
 		},
 		`auth/account-default.yaml`: []string{
 			// Service accounts named "default" should not get created
@@ -480,6 +516,25 @@ func TestGenerateAuth(t *testing.T) {
 				"roleRef": {
 					"kind": "Role",
 					"name": "pointless",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRoleBinding",
+				"metadata": {
+					"name": "default-binding-psp"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "default",
+						"namespace": "~"
+					}
+				],
+				"roleRef": {
+					"kind": "ClusterRole",
+					"name": "psp-role-nonprivileged",
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,

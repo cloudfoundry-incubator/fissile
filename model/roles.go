@@ -371,6 +371,63 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 		return fmt.Errorf(allErrs.Errors())
 	}
 
+	return m.resolvePodSecurityPolicies()
+}
+
+// resolvePodSecurityPolicies moves the PSP information found in
+// RoleManifest.InstanceGroup.JobReferences[].ContainerProperties.BoshContainerization.PodSecurityPolicy to
+// RoleManifest.Configuration.Authorization.Accounts[].PodSecurityPolicy
+// As service accounts can reference only one PSP the operation makes
+// clones of the base SA as needed. Note that the clones reference the same
+// roles as the base, and that the roles are not cloned.
+func (m *RoleManifest) resolvePodSecurityPolicies() error {
+	for _, instanceGroup := range m.InstanceGroups {
+		// Note: validateRoleRun ensured non-nil of instanceGroup.Run
+
+		pspName := groupPodSecurityPolicy(instanceGroup)
+		accountName := instanceGroup.Run.ServiceAccount
+		account, ok := m.Configuration.Authorization.Accounts[accountName]
+
+		if account.PodSecurityPolicy == "" {
+			// The account has no PSP information at all.
+			// Have it use the PSP of this group
+			if !ok {
+				m.Configuration.Authorization.Accounts = make(map[string]AuthAccount)
+			}
+			account.PodSecurityPolicy = pspName
+			m.Configuration.Authorization.Accounts[accountName] = account
+			continue
+		}
+
+		if account.PodSecurityPolicy == pspName {
+			// The account's PSP matches the group-requested PSP.
+			// There is nothing to do.
+			continue
+		}
+
+		// The group references a service account which
+		// references a different PSP than the group
+		// expects. To fix this we:
+		// 1. Clone the account
+		// 2. Set the clone's PSP to the group's PSP
+		// 3. Add the clone to the map, under a new name.
+		// 4. Change the group to reference the clone
+		//
+		// However: The clone may already exist. In that case
+		// only step 4 is needed.
+
+		newAccountName := fmt.Sprintf("%s-%s", accountName, pspName)
+
+		if _, ok := m.Configuration.Authorization.Accounts[newAccountName]; !ok {
+			newAccount := account
+			newAccount.PodSecurityPolicy = pspName
+
+			m.Configuration.Authorization.Accounts[newAccountName] = newAccount
+		}
+
+		instanceGroup.Run.ServiceAccount = newAccountName
+	}
+
 	return nil
 }
 
@@ -933,6 +990,19 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 		for idx := range job.ContainerProperties.BoshContainerization.Ports {
 			allErrs = append(allErrs, ValidateExposedPorts(instanceGroup.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
 		}
+
+		// Validate pod security policy, or default to least
+		if job.ContainerProperties.BoshContainerization.PodSecurityPolicy == "" {
+			job.ContainerProperties.BoshContainerization.PodSecurityPolicy = LeastPodSecurityPolicy()
+		} else {
+			if !ValidPodSecurityPolicy(job.ContainerProperties.BoshContainerization.PodSecurityPolicy) {
+				msg := fmt.Sprintf("Expected one of: %s", strings.Join(PodSecurityPolicies(), ", "))
+				ref := fmt.Sprintf("instance_groups[%s].jobs[%s].properties.bosh_containerization.pod-security-policy",
+					instanceGroup.Name, job.Name)
+				allErrs = append(allErrs, validation.Invalid(
+					ref, job.ContainerProperties.BoshContainerization.PodSecurityPolicy, msg))
+			}
+		}
 	}
 
 	if instanceGroup.Run.ServiceAccount != "" {
@@ -941,6 +1011,9 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 			allErrs = append(allErrs, validation.NotFound(
 				fmt.Sprintf("instance_groups[%s].run.service-account", instanceGroup.Name), accountName))
 		}
+	} else {
+		// Make the default ("default" (sic!)) explicit.
+		instanceGroup.Run.ServiceAccount = "default"
 	}
 
 	// Backwards compat: convert separate volume lists to the centralized one
@@ -1449,4 +1522,19 @@ func getTemplate(propertyDefs yaml.MapSlice, property string) (interface{}, bool
 	}
 
 	return "", false
+}
+
+// groupPodSecurityPolicy determines the name of the pod security policy
+// governing the specified instance group.
+func groupPodSecurityPolicy(instanceGroup *InstanceGroup) string {
+	result := LeastPodSecurityPolicy()
+
+	// Note: validateRoleRun ensured non-nil of job.ContainerProperties.BoshContainerization.PodSecurityPolicy
+
+	for _, job := range instanceGroup.JobReferences {
+		result = MergePodSecurityPolicies(result,
+			job.ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	}
+
+	return result
 }

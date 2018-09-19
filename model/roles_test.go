@@ -542,6 +542,111 @@ func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
+func TestLoadRoleManifestPSPMerge(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir,
+		"../test-assets/role-manifests/model/rbac-merge-psp.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
+	// The loaded manifest has a single role with two jobs,
+	// requesting differing psps (The second role's request is
+	// implicit, the default).  The sole service account ends up
+	// with the union of the two, the higher. This is the account
+	// referenced by the role
+
+	assert.NotNil(t, roleManifest)
+	assert.NotNil(t, roleManifest.Configuration)
+
+	assert.Len(t, roleManifest.InstanceGroups, 1)
+	assert.NotNil(t, roleManifest.InstanceGroups[0])
+
+	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 2)
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[1])
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+
+	// manifest value
+	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	// default
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[0].JobReferences[1].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
+	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 1)
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
+	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
+}
+
+func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir,
+		"../test-assets/role-manifests/model/rbac-clone-sa-psp-mismatch.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
+	// The loaded manifest has three roles with one job each. All
+	// reference the same service account (default), while
+	// requesting differing psps. This results in two service
+	// accounts, the second a clone of the first, but for the psp.
+	// Note how the third role (re)uses the account created by the
+	// second which did the cloning.
+
+	assert.NotNil(t, roleManifest)
+	assert.NotNil(t, roleManifest.Configuration)
+
+	assert.Len(t, roleManifest.InstanceGroups, 3)
+	assert.NotNil(t, roleManifest.InstanceGroups[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[1])
+	assert.NotNil(t, roleManifest.InstanceGroups[2])
+
+	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 1)
+	assert.Len(t, roleManifest.InstanceGroups[1].JobReferences, 1)
+	assert.Len(t, roleManifest.InstanceGroups[2].JobReferences, 1)
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[1].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[2].JobReferences[0])
+
+	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[1].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[2].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	assert.NotNil(t, roleManifest.InstanceGroups[1].Run)
+	assert.NotNil(t, roleManifest.InstanceGroups[2].Run)
+
+	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[1].Run.ServiceAccount)
+	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[2].Run.ServiceAccount)
+
+	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
+	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 2)
+
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default-nonprivileged")
+	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.Configuration.Authorization.Accounts["default-nonprivileged"].PodSecurityPolicy)
+}
+
 func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	t.Parallel()
 
@@ -556,6 +661,14 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	}
 
 	tests := []testCase{
+		{
+			"rbac-illegal-psp.yml", []string{
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.pod-security-policy: Invalid value: "bogus": Expected one of: nonprivileged, privileged`,
+			},
+		},
+		{
+			"rbac-ok-psp.yml", []string{},
+		},
 		{
 			"bosh-run-missing.yml", []string{
 				`instance_groups[myrole].run: Required value`,

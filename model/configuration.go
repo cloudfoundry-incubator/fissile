@@ -26,5 +26,6 @@ type AuthRole []AuthRule
 
 // An AuthAccount is a service account for RBAC authorization
 type AuthAccount struct {
-	Roles []string `yaml:"roles"`
+	Roles             []string `yaml:"roles"`
+	PodSecurityPolicy string
 }
