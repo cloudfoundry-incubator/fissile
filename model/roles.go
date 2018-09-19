@@ -371,20 +371,20 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 		return fmt.Errorf(allErrs.Errors())
 	}
 
-	return m.resolveSecurityPolicies()
+	return m.resolvePodSecurityPolicies()
 }
 
-// resolveSecurityPolicies moves the PSP information found in
+// resolvePodSecurityPolicies moves the PSP information found in
 // RoleManifest.InstanceGroup.JobReferences[].ContainerProperties.BoshContainerization.PodSecurityPolicy to
 // RoleManifest.Configuration.Authorization.Accounts[].PodSecurityPolicy
 // As service accounts can reference only one PSP the operation makes
 // clones of the base SA as needed. Note that the clones reference the same
 // roles as the base, and that the roles are not cloned.
-func (m *RoleManifest) resolveSecurityPolicies() error {
+func (m *RoleManifest) resolvePodSecurityPolicies() error {
 	for _, instanceGroup := range m.InstanceGroups {
 		// Note: validateRoleRun ensured non-nil of instanceGroup.Run
 
-		pspName := GroupPolicy(instanceGroup)
+		pspName := groupPodSecurityPolicy(instanceGroup)
 		accountName := instanceGroup.Run.ServiceAccount
 		account, ok := m.Configuration.Authorization.Accounts[accountName]
 
@@ -1524,9 +1524,9 @@ func getTemplate(propertyDefs yaml.MapSlice, property string) (interface{}, bool
 	return "", false
 }
 
-// GroupPolicy determines the name of the pod security policy
+// groupPodSecurityPolicy determines the name of the pod security policy
 // governing the specified instance group.
-func GroupPolicy(instanceGroup *InstanceGroup) string {
+func groupPodSecurityPolicy(instanceGroup *InstanceGroup) string {
 	result := LeastPodSecurityPolicy()
 
 	// Note: validateRoleRun ensured non-nil of job.ContainerProperties.BoshContainerization.PodSecurityPolicy

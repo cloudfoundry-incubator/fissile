@@ -48,7 +48,7 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 		// We have no proper namespace default for kube configuration.
 		namespace := "~"
 		if settings.CreateHelmChart {
-			blockPSP = authPSP(account.PodSecurityPolicy)
+			blockPSP = authPSPCondition(account.PodSecurityPolicy)
 			namespace = "{{ .Release.Namespace }}"
 		}
 
@@ -102,8 +102,8 @@ func NewRBACRole(name string, role model.AuthRole, settings ExportSettings) (hel
 	return container.Sort(), nil
 }
 
-// authPSP creates a block condition checking for RBAC and the named PSP
-func authPSP(psp string) helm.NodeModifier {
+// authPSPCondition creates a block condition checking for RBAC and the named PSP
+func authPSPCondition(psp string) helm.NodeModifier {
 	return helm.Block(fmt.Sprintf(`if and (%s) .Values.kube.psp.%s`,
 		`eq (printf "%s" .Values.kube.auth) "rbac"`, psp))
 }
@@ -121,7 +121,7 @@ func NewRBACClusterRolePSP(psp string, settings ExportSettings) (helm.Node, erro
 	container := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRole")
 
 	if settings.CreateHelmChart {
-		container.Set(authPSP(psp))
+		container.Set(authPSPCondition(psp))
 		psp = fmt.Sprintf("{{ .Values.kube.psp.%s | quote }}", psp)
 	}
 
