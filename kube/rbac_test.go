@@ -9,54 +9,6 @@ import (
 	"github.com/SUSE/fissile/testhelpers"
 )
 
-func TestNewRBACAccountKube(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	resources, err := NewRBACAccount("the-name",
-		model.AuthAccount{
-			Roles: []string{"a-role"},
-		}, ExportSettings{})
-
-	if !assert.NoError(err) {
-		return
-	}
-	if !assert.Len(resources, 2, "Should have account plus role") {
-		return
-	}
-
-	rbacAccount := resources[0]
-	actualAccount, err := RoundtripKube(rbacAccount)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "v1"
-		kind: "ServiceAccount"
-		metadata:
-			name: "the-name"
-	`, actualAccount)
-
-	rbacRole := resources[1]
-	actualRole, err := RoundtripKube(rbacRole)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		apiVersion: "rbac.authorization.k8s.io/v1beta1"
-		kind: "RoleBinding"
-		metadata:
-			name: "the-name-a-role-binding"
-		subjects:
-		-	kind: "ServiceAccount"
-			name: "the-name"
-		roleRef:
-			kind: "Role"
-			name: "a-role"
-			apiGroup: "rbac.authorization.k8s.io"
-	`, actualRole)
-}
-
 func TestNewRBACAccountPSPKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)

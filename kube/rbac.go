@@ -42,29 +42,27 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 	}
 
 	// Integrate a PSP, via ClusterRoleBinding to ClusterRole
-	if account.PodSecurityPolicy != "" && account.PodSecurityPolicy != "null" {
-		blockPSP := helm.Block("")
+	blockPSP := helm.Block("")
 
-		// We have no proper namespace default for kube configuration.
-		namespace := "~"
-		if settings.CreateHelmChart {
-			blockPSP = authPSPCondition(account.PodSecurityPolicy)
-			namespace = "{{ .Release.Namespace }}"
-		}
-
-		binding := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", blockPSP)
-		binding.Add("metadata", helm.NewMapping("name", fmt.Sprintf("%s-binding-psp", name)))
-		subjects := helm.NewList(helm.NewMapping(
-			"kind", "ServiceAccount",
-			"name", name,
-			"namespace", namespace))
-		binding.Add("subjects", subjects)
-		binding.Add("roleRef", helm.NewMapping(
-			"kind", "ClusterRole",
-			"name", authPSPRoleName(account.PodSecurityPolicy),
-			"apiGroup", "rbac.authorization.k8s.io"))
-		resources = append(resources, binding)
+	// We have no proper namespace default for kube configuration.
+	namespace := "~"
+	if settings.CreateHelmChart {
+		blockPSP = authPSPCondition(account.PodSecurityPolicy)
+		namespace = "{{ .Release.Namespace }}"
 	}
+
+	binding := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", blockPSP)
+	binding.Add("metadata", helm.NewMapping("name", fmt.Sprintf("%s-binding-psp", name)))
+	subjects := helm.NewList(helm.NewMapping(
+		"kind", "ServiceAccount",
+		"name", name,
+		"namespace", namespace))
+	binding.Add("subjects", subjects)
+	binding.Add("roleRef", helm.NewMapping(
+		"kind", "ClusterRole",
+		"name", authPSPRoleName(account.PodSecurityPolicy),
+		"apiGroup", "rbac.authorization.k8s.io"))
+	resources = append(resources, binding)
 
 	return resources, nil
 }

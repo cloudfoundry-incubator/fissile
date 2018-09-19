@@ -53,11 +53,6 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
 	}
 
-	// Note: This group's PSP reference is not used, as it is not
-	// relevant here anymore. The call to function
-	// `resolveSecurityPolicies` integrated them into the service
-	// accounts.
-
 	// BOSH can potentially have an infinite termination grace period; we don't
 	// really trust that, so we'll just go with ten minutes and hope it's enough
 	spec.Add("terminationGracePeriodSeconds", 600)
