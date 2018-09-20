@@ -38,7 +38,11 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 		for _, property := range jobReference.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
-			for templatePropName, template := range r.Configuration.Templates {
+			for _, templateDef := range r.Configuration.Templates {
+
+				templatePropName := templateDef.Key.(string)
+				template := fmt.Sprintf("%v", templateDef.Value)
+
 				switch true {
 				case templatePropName == propertyName:
 				case strings.HasPrefix(templatePropName, propertyName+"."):
@@ -46,6 +50,7 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 					// Not a matching property
 					continue
 				}
+
 				varsInTemplate, err := parseTemplate(template)
 				if err != nil {
 					return nil, err

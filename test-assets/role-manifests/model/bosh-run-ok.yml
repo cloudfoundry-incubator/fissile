@@ -1,19 +1,21 @@
 ---
 instance_groups:
 - name: myrole
-  jobs: []
-  run:
-    scaling:
-      min: 1
-      max: 2
-    exposed-ports:
-      - name: http
-        protocol: TCP
-        external: 80
-        internal: 8080
-        public: false
-      - name: https
-        protocol: TCP
-        external: 443
-        internal: 443
-        public: true
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        ports:
+        - name: http
+          protocol: TCP
+          external: 80
+          internal: 8080
+          public: false
+        - name: https
+          protocol: TCP
+          external: 443
+          internal: 443
+          public: true
+        run:
+          foo: x

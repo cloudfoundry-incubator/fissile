@@ -1,7 +1,0 @@
----
-instance_groups:
-- name: dockerrole
-  type: docker
-  run:
-    env:
-    - UNKNOWN

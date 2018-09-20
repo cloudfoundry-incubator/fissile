@@ -187,23 +187,24 @@ func TestCompilationRoleManifest(t *testing.T) {
 	assert.NoError(t, err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	assert.NoError(t, err)
 	// This release has 3 packages:
 	// `tor` is in the role manifest, and will be included
 	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
 	// `boguspackage` is neither, and will not be included
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/compilator/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
 	waitCh := make(chan struct{})
 	errCh := make(chan error)
 	go func() {
-		errCh <- c.Compile(1, []*model.Release{release}, roleManifest.InstanceGroups, false)
+		errCh <- c.Compile(1, []*model.Release{roleManifest.LoadedReleases[0]}, roleManifest.InstanceGroups, false)
 	}()
 	go func() {
 		// `libevent` is a dependency of `tor` and will be compiled first
@@ -381,7 +382,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	ntpReleasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
@@ -495,7 +496,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	ntpReleasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
@@ -521,7 +522,7 @@ func TestPackageFolderStructure(t *testing.T) {
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	ntpReleasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
@@ -552,7 +553,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 
 	workDir, err := os.Getwd()
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
+	torReleasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	assert.NoError(err)
 
@@ -600,7 +601,7 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 
 	workDir, err := os.Getwd()
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
+	ntpReleasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 

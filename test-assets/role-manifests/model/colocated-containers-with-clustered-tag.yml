@@ -2,29 +2,32 @@
 instance_groups:
 - name: main-role
   scripts: ["myrole.sh"]
-  run:
-    memory: 1
-    volumes:
-    - path: /var/vcap/store
-      type: emptyDir
-      tag: shared-data
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        colocated_containers:
+        - to-be-colocated
+        run:
+          memory: 1
+          volumes:
+          - path: /var/vcap/store
+            type: emptyDir
+            tag: shared-data
   - name: tor
     release: tor
-  colocated_containers:
-  - to-be-colocated
 
 - name: to-be-colocated
   type: colocated-container
-  tags: [headless]
   jobs:
   - name: ntpd
     release: ntp
-  run:
-    memory: 1
-    volumes:
-    - path: /var/vcap/store
-      type: emptyDir
-      tag: shared-data
+    properties:
+      bosh_containerization:
+        run:
+          memory: 1
+          volumes:
+          - path: /var/vcap/store
+            type: emptyDir
+            tag: shared-data

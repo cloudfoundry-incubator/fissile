@@ -152,22 +152,22 @@ release__, about excluded properties applies here as well too.
 ### All vars in env files must exist in the role manifest
 
 All variables found in the `.env` files given to the validator must
-exists under the key `configuration.variables` in the role manifest.
+exists under the key `variables` in the role manifest.
 
 ### All role manifest parameters must be sorted
 
-Check that all parameters declared under `configuration.variables` are
+Check that all parameters declared under `variables` are
 listed in lexicographical order.
 
 ### All role manifest parameters must be used
 
-The elements under key `configuration.variables` in the role manifest are also
+The elements under key `variables` in the role manifest are also
 called __parameters__.
 
 Go over the properties, process the mustache templates, extract the
 parameters used in them. Calls this the set `TP`.
 
-Check that all parameters declared under `configuration.variables`
+Check that all parameters declared under `variables`
 (the set `CV`) are used by at least one template. I.e. `CV - TP`
 should be empty.
 
@@ -176,7 +176,7 @@ should be empty.
 This check is complementary to __All role manifest parameters must be used__.
 
 Go over the parameters found in the mustache templates and check they
-they exist under `configuration.variables`. Using the definitions for
+they exist under `variables`. Using the definitions for
 `TP` and `CV` from the previous section, the set `TP - CV` should be
 empty.
 

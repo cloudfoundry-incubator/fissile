@@ -20,13 +20,13 @@ func serviceTestLoadRole(assert *assert.Assertions, manifestName string) (*model
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil, nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(
+		manifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if !assert.NoError(err) {
 		return nil, nil
 	}
@@ -46,11 +46,11 @@ func TestServiceKube(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	if !assert.NotNil(portDef) {
 		return
 	}
-	service, err := newService(role, newServiceTypePrivate, ExportSettings{})
+	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -58,7 +58,7 @@ func TestServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
-			name: myrole
+			name: myrole-tor
 		spec:
 			ports:
 			-
@@ -83,9 +83,9 @@ func TestServiceHelm(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
-	service, err := newService(role, newServiceTypePrivate, ExportSettings{
+	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole"
+				name: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -130,7 +130,7 @@ func TestServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole"
+				name: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -156,10 +156,10 @@ func TestHeadlessServiceKube(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
-	service, err := newService(role, newServiceTypeHeadless, ExportSettings{})
+	service, err := newService(role, role.JobReferences[0], newServiceTypeHeadless, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -167,7 +167,7 @@ func TestHeadlessServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
-			name: myrole-set
+			name: myrole-tor-set
 		spec:
 			ports:
 			-
@@ -195,10 +195,10 @@ func TestHeadlessServiceHelm(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
-	service, err := newService(role, newServiceTypeHeadless, ExportSettings{
+	service, err := newService(role, role.JobReferences[0], newServiceTypeHeadless, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole-set"
+				name: "myrole-tor-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -244,7 +244,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole-set"
+				name: "myrole-tor-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -271,10 +271,10 @@ func TestPublicServiceKube(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
-	service, err := newService(role, newServiceTypePublic, ExportSettings{})
+	service, err := newService(role, role.JobReferences[0], newServiceTypePublic, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -282,7 +282,7 @@ func TestPublicServiceKube(t *testing.T) {
 	require.NoError(t, err)
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
-			name: myrole-public
+			name: myrole-tor-public
 		spec:
 			externalIPs: [ 192.168.77.77 ]
 			ports:
@@ -304,10 +304,10 @@ func TestPublicServiceHelm(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
-	service, err := newService(role, newServiceTypePublic, ExportSettings{
+	service, err := newService(role, role.JobReferences[0], newServiceTypePublic, ExportSettings{
 		CreateHelmChart: true,
 	})
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole-public"
+				name: "myrole-tor-public"
 			spec:
 				externalIPs: "[127.0.0.1,127.0.0.2]"
 				ports:
@@ -352,7 +352,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			apiVersion: "v1"
 			kind: "Service"
 			metadata:
-				name: "myrole-public"
+				name: "myrole-tor-public"
 			spec:
 				ports:
 				-	name: "https"
@@ -374,7 +374,7 @@ func TestActivePassiveService(t *testing.T) {
 	}
 
 	require.NotNil(t, role.Run, "Role has no run information")
-	require.NotEmpty(t, role.Run.ExposedPorts, "Role has no exposed ports")
+	require.NotEmpty(t, role.JobReferences[0].ContainerProperties.BoshContainerization.Ports, "Role has no exposed ports")
 	role.Tags = []model.RoleTag{model.RoleTagActivePassive}
 
 	const (
@@ -420,15 +420,17 @@ func TestActivePassiveService(t *testing.T) {
 							require.NoError(t, err)
 							require.NotNil(t, services, "No services created")
 
-							var headlessService, privateService, publicService helm.Node
+							var genericService, headlessService, privateService, publicService helm.Node
 							for _, service := range services.Get("items").Values() {
 								serviceName := service.Get("metadata", "name").String()
 								switch serviceName {
 								case "myrole-set":
+									genericService = service
+								case "myrole-tor-set":
 									headlessService = service
-								case "myrole":
+								case "myrole-tor":
 									privateService = service
-								case "myrole-public":
+								case "myrole-tor-public":
 									publicService = service
 								default:
 									assert.Fail(t, "Unexpected service "+serviceName)
@@ -436,6 +438,34 @@ func TestActivePassiveService(t *testing.T) {
 							}
 
 							if clustering == withClustering {
+								if assert.NotNil(t, genericService, "generic service not found") {
+									actual, err := roundTrip(genericService)
+									if assert.NoError(t, err) {
+										expected := `---
+											apiVersion: v1
+											kind: Service
+											metadata:
+												name: myrole-set
+											spec:
+												clusterIP: None
+												ports:
+												-
+													name: http
+													port: 80
+													protocol: TCP
+													targetPort: 0
+												-
+													name: https
+													port: 443
+													protocol: TCP
+													targetPort: 0
+												selector:
+													skiff-role-name: myrole
+													skiff-role-active: "true"
+										`
+										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
+									}
+								}
 								if assert.NotNil(t, headlessService, "headless service not found") {
 									actual, err := roundTrip(headlessService)
 									if assert.NoError(t, err) {
@@ -443,7 +473,7 @@ func TestActivePassiveService(t *testing.T) {
 											apiVersion: v1
 											kind: Service
 											metadata:
-												name: myrole-set
+												name: myrole-tor-set
 											spec:
 												clusterIP: None
 												ports:
@@ -476,7 +506,7 @@ func TestActivePassiveService(t *testing.T) {
 										apiVersion: v1
 										kind: Service
 										metadata:
-											name: myrole
+											name: myrole-tor
 										spec:
 											ports:
 											-
@@ -504,7 +534,7 @@ func TestActivePassiveService(t *testing.T) {
 										apiVersion: v1
 										kind: Service
 										metadata:
-											name: myrole-public
+											name: myrole-tor-public
 										spec:
 											externalIPs: [ 192.0.2.42 ]
 											ports:

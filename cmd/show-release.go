@@ -21,7 +21,8 @@ The report contains the name, version, description and counts of jobs and packag
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show job information
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,

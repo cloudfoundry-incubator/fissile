@@ -5,6 +5,7 @@ import (
 
 	"github.com/SUSE/fissile/helm"
 	"github.com/SUSE/fissile/model"
+	"github.com/SUSE/fissile/util"
 )
 
 // NewServiceList creates a list of services
@@ -14,8 +15,7 @@ func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportS
 	var items []helm.Node
 
 	if clustering {
-		// Create headless, private service
-		svc, err := newService(role, newServiceTypeHeadless, settings)
+		svc, err := newClusteringService(role, settings)
 		if err != nil {
 			return nil, err
 		}
@@ -24,24 +24,35 @@ func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportS
 		}
 	}
 
-	if !role.HasTag(model.RoleTagHeadless) {
+	for _, job := range role.JobReferences {
+		if clustering {
+			// Create headless, private service
+			svc, err := newService(role, job, newServiceTypeHeadless, settings)
+			if err != nil {
+				return nil, err
+			}
+			if svc != nil {
+				items = append(items, svc)
+			}
+		}
+
 		// Create private service
-		svc, err := newService(role, newServiceTypePrivate, settings)
+		svc, err := newService(role, job, newServiceTypePrivate, settings)
 		if err != nil {
 			return nil, err
 		}
 		if svc != nil {
 			items = append(items, svc)
 		}
-	}
 
-	// Create public service
-	svc, err := newService(role, newServiceTypePublic, settings)
-	if err != nil {
-		return nil, err
-	}
-	if svc != nil {
-		items = append(items, svc)
+		// Create public service
+		svc, err = newService(role, job, newServiceTypePublic, settings)
+		if err != nil {
+			return nil, err
+		}
+		if svc != nil {
+			items = append(items, svc)
+		}
 	}
 
 	if len(items) == 0 {
@@ -64,30 +75,51 @@ const (
 	newServiceTypePublic   // Create a public endpoint service (externally visible traffic)
 )
 
-// newService creates a new k8s service (ClusterIP or LoadBalanced)
-func newService(role *model.InstanceGroup, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
+// createPorts generates a helm mapping according to the JobExposedPort
+func createPorts(settings ExportSettings, serviceType newServiceType, roleName string, port model.JobExposedPort) []helm.Node {
 	var ports []helm.Node
-	for _, port := range role.Run.ExposedPorts {
-		if serviceType == newServiceTypePublic && !port.Public {
-			// Skip non-public ports when creating public services
-			continue
+	if settings.CreateHelmChart && port.CountIsConfigurable {
+		sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(roleName), makeVarName(port.Name))
+
+		block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
+
+		portName := port.Name
+		if port.Max > 1 {
+			portName = fmt.Sprintf("%s-{{ $port }}", portName)
 		}
 
-		if settings.CreateHelmChart && port.CountIsConfigurable {
-			sizing := fmt.Sprintf(".Values.sizing.%s.ports.%s", makeVarName(role.Name), makeVarName(port.Name))
+		var portNumber string
+		if port.PortIsConfigurable {
+			portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
+		} else {
+			portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
+		}
 
-			block := fmt.Sprintf("range $port := until (int %s.count)", sizing)
-
+		newPort := helm.NewMapping(
+			"name", portName,
+			"port", portNumber,
+			"protocol", port.Protocol,
+		)
+		newPort.Set(helm.Block(block))
+		if serviceType == newServiceTypeHeadless {
+			newPort.Add("targetPort", 0)
+		} else {
+			newPort.Add("targetPort", portName)
+		}
+		ports = append(ports, newPort)
+	} else {
+		for portIndex := 0; portIndex < port.Count; portIndex++ {
 			portName := port.Name
 			if port.Max > 1 {
-				portName = fmt.Sprintf("%s-{{ $port }}", portName)
+				portName = fmt.Sprintf("%s-%d", portName, portIndex)
 			}
 
-			var portNumber string
-			if port.PortIsConfigurable {
-				portNumber = fmt.Sprintf("{{ add (int $%s.port) $port }}", sizing)
+			var portNumber interface{}
+			if settings.CreateHelmChart && port.PortIsConfigurable {
+				portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
+					makeVarName(roleName), makeVarName(port.Name), portIndex)
 			} else {
-				portNumber = fmt.Sprintf("{{ add %d $port }}", port.ExternalPort)
+				portNumber = port.ExternalPort + portIndex
 			}
 
 			newPort := helm.NewMapping(
@@ -95,44 +127,67 @@ func newService(role *model.InstanceGroup, serviceType newServiceType, settings 
 				"port", portNumber,
 				"protocol", port.Protocol,
 			)
-			newPort.Set(helm.Block(block))
+
 			if serviceType == newServiceTypeHeadless {
 				newPort.Add("targetPort", 0)
 			} else {
-				newPort.Add("targetPort", portName)
+				// Use number instead of name here, in case we have multiple
+				// port definitions with the same internal port
+				newPort.Add("targetPort", port.InternalPort+portIndex)
 			}
 			ports = append(ports, newPort)
-		} else {
-			for portIndex := 0; portIndex < port.Count; portIndex++ {
-				portName := port.Name
-				if port.Max > 1 {
-					portName = fmt.Sprintf("%s-%d", portName, portIndex)
-				}
-
-				var portNumber interface{}
-				if settings.CreateHelmChart && port.PortIsConfigurable {
-					portNumber = fmt.Sprintf("{{ add (int $.Values.sizing.%s.ports.%s.port) %d }}",
-						makeVarName(role.Name), makeVarName(port.Name), portIndex)
-				} else {
-					portNumber = port.ExternalPort + portIndex
-				}
-
-				newPort := helm.NewMapping(
-					"name", portName,
-					"port", portNumber,
-					"protocol", port.Protocol,
-				)
-
-				if serviceType == newServiceTypeHeadless {
-					newPort.Add("targetPort", 0)
-				} else {
-					// Use number instead of name here, in case we have multiple
-					// port definitions with the same internal port
-					newPort.Add("targetPort", port.InternalPort+portIndex)
-				}
-				ports = append(ports, newPort)
-			}
 		}
+	}
+
+	return ports
+}
+
+// newClusteringService creates a new k8s service for the overall instance group.
+// This allows individual pods to be addressed by their index.
+func newClusteringService(role *model.InstanceGroup, settings ExportSettings) (helm.Node, error) {
+	var ports []helm.Node
+	for _, job := range role.JobReferences {
+		for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+			ports = append(ports, createPorts(settings, newServiceTypeHeadless, role.Name, port)...)
+		}
+	}
+
+	if len(ports) == 0 {
+		// Kubernetes refuses to create services with no ports, so we should
+		// not return anything at all in this case
+		return nil, nil
+	}
+
+	spec := helm.NewMapping()
+
+	selector := helm.NewMapping(RoleNameLabel, role.Name)
+	if role.HasTag(model.RoleTagActivePassive) {
+		selector.Add("skiff-role-active", "true")
+	}
+	spec.Add("selector", selector)
+
+	spec.Add("clusterIP", "None")
+	spec.Add("ports", helm.NewNode(ports))
+
+	serviceName := role.Name + "-set"
+	service := newTypeMeta("v1", "Service")
+	service.Add("metadata", helm.NewMapping("name", serviceName))
+	service.Add("spec", spec.Sort())
+
+	return service, nil
+}
+
+// newService creates a new k8s service (ClusterIP or LoadBalanced) for a job
+func newService(role *model.InstanceGroup, job *model.JobReference, serviceType newServiceType, settings ExportSettings) (helm.Node, error) {
+	var ports []helm.Node
+
+	for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+		if serviceType == newServiceTypePublic && !port.Public {
+			// Skip non-public ports when creating public services
+			continue
+		}
+
+		ports = append(ports, createPorts(settings, serviceType, role.Name, port)...)
 	}
 	if len(ports) == 0 {
 		// Kubernetes refuses to create services with no ports, so we should
@@ -161,14 +216,17 @@ func newService(role *model.InstanceGroup, serviceType newServiceType, settings 
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
+	jobName := util.ConvertNameToKey(job.Name)
+	serviceNamePrefix := util.ConvertNameToKey(role.Name)
+
 	var serviceName string
 	switch serviceType {
 	case newServiceTypeHeadless:
-		serviceName = role.Name + "-set"
+		serviceName = serviceNamePrefix + "-" + jobName + "-set"
 	case newServiceTypePrivate:
-		serviceName = role.Name
+		serviceName = serviceNamePrefix + "-" + jobName
 	case newServiceTypePublic:
-		serviceName = role.Name + "-public"
+		serviceName = serviceNamePrefix + "-" + jobName + "-public"
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}

@@ -29,11 +29,16 @@ func TestCleanCacheEmpty(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 
 	f := NewFissileApplication(".", ui)
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	if assert.NoError(err) {
 		err = f.CleanCache(workDir + "compilation")
 		assert.Nil(err, "Expected CleanCache to find the release")
@@ -47,16 +52,25 @@ func TestListPackages(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
-
 	f := NewFissileApplication(".", ui)
-	err = f.LoadReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{badReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
+
 	assert.Error(err, "Expected ListPackages to not find the release")
 
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	if assert.NoError(err) {
 		err = f.ListPackages(false)
 		assert.Nil(err, "Expected ListPackages to find the release")
@@ -70,17 +84,26 @@ func TestListJobs(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{badReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.Error(err, "Expected ListJobs to not find the release")
 
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	if assert.NoError(err) {
 		err = f.ListJobs(false)
 		assert.Nil(err, "Expected ListJobs to find the release")
@@ -94,17 +117,26 @@ func TestListProperties(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	badReleasePathCacheDir := filepath.Join(badReleasePath, "bosh-cache")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 
 	f := NewFissileApplication(".", ui)
 
-	err = f.LoadReleases([]string{badReleasePath}, []string{""}, []string{""}, badReleasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{badReleasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.Error(err, "Expected ListProperties to not find the release")
 
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	if assert.NoError(err) {
 		err = f.ListProperties("human")
 		assert.NoError(err, "Expected ListProperties to list release properties for human consumption")
@@ -206,7 +238,10 @@ func initTestSerializeInput() {
 func TestSerializePackages(t *testing.T) {
 	assert := assert.New(t)
 	testSerializeInput.once.Do(initTestSerializeInput)
-	f := &Fissile{releases: testSerializeInput.releases}
+	f := &Fissile{
+		Manifest: &model.RoleManifest{
+			LoadedReleases: testSerializeInput.releases,
+		}}
 	result, err := f.SerializePackages()
 	if !assert.NoError(err) {
 		return
@@ -244,7 +279,10 @@ func TestSerializePackages(t *testing.T) {
 func TestSerializeReleases(t *testing.T) {
 	assert := assert.New(t)
 	testSerializeInput.once.Do(initTestSerializeInput)
-	f := &Fissile{releases: testSerializeInput.releases}
+	f := &Fissile{
+		Manifest: &model.RoleManifest{
+			LoadedReleases: testSerializeInput.releases,
+		}}
 	result, err := f.SerializeReleases()
 	if !assert.NoError(err) {
 		return
@@ -286,7 +324,10 @@ func TestSerializeReleases(t *testing.T) {
 func TestSerializeJobs(t *testing.T) {
 	assert := assert.New(t)
 	testSerializeInput.once.Do(initTestSerializeInput)
-	f := &Fissile{releases: testSerializeInput.releases}
+	f := &Fissile{
+		Manifest: &model.RoleManifest{
+			LoadedReleases: testSerializeInput.releases,
+		}}
 	result, err := f.SerializeJobs()
 	if !assert.NoError(err) {
 		return
@@ -340,17 +381,26 @@ func TestGenerateAuth(t *testing.T) {
 	f := NewFissileApplication(".", ui)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	require.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/generate-auth.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, f)
+	roleManifest, err := model.LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		f)
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
-	err = f.LoadReleases([]string{torReleasePath}, []string{""}, []string{""}, torReleasePathBoshCache)
-	require.NoError(t, err)
+	// Force the usage counters for accounts and roles to values
+	// which causes generateAuth to write the proper files.
+	for accountName, accountSpec := range roleManifest.Configuration.Authorization.Accounts {
+		accountSpec.NumGroups = 2
+		roleManifest.Configuration.Authorization.Accounts[accountName] = accountSpec
+	}
+	for roleName := range roleManifest.Configuration.Authorization.Roles {
+		roleManifest.Configuration.Authorization.RoleUse[roleName] = 2
+	}
 
 	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
 	require.NoError(t, err)
@@ -364,6 +414,23 @@ func TestGenerateAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	samples := map[string][]string{
+		`auth/auth-clusterrole-nonprivileged.yaml`: []string{
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRole",
+				"metadata": {
+					"name": "psp-role-nonprivileged"
+				},
+				"rules": [
+					{
+						"apiGroups": ["extensions"],
+						"resourceNames": ["nonprivileged"],
+						"resources": ["podsecuritypolicies"],
+						"verbs": ["use"]
+					}
+				]
+			}`,
+		},
 		`auth/auth-role-extra-permissions.yaml`: []string{
 			`{
 				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
@@ -422,6 +489,25 @@ func TestGenerateAuth(t *testing.T) {
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRoleBinding",
+				"metadata": {
+					"name": "non-default-binding-psp"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "non-default",
+						"namespace": "~"
+					}
+				],
+				"roleRef": {
+					"kind": "ClusterRole",
+					"name": "psp-role-nonprivileged",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
 		},
 		`auth/account-default.yaml`: []string{
 			// Service accounts named "default" should not get created
@@ -440,6 +526,25 @@ func TestGenerateAuth(t *testing.T) {
 				"roleRef": {
 					"kind": "Role",
 					"name": "pointless",
+					"apiGroup": "rbac.authorization.k8s.io"
+				}
+			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRoleBinding",
+				"metadata": {
+					"name": "default-binding-psp"
+				},
+				"subjects": [
+					{
+						"kind": "ServiceAccount",
+						"name": "default",
+						"namespace": "~"
+					}
+				],
+				"roleRef": {
+					"kind": "ClusterRole",
+					"name": "psp-role-nonprivileged",
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,
@@ -552,15 +657,17 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 
 	// Set up the test params
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/roles-to-build.yml")
-
 	f := NewFissileApplication(",", ui)
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	require.NoError(t, err)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	require.NoError(t, err, "Failed to load role manifest: %s", roleManifestPath)
+	roleManifest := f.Manifest
 
 	testSamples := []struct {
 		roleNames     []string
@@ -605,14 +712,20 @@ func TestFissileGetReleasesByName(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
 	releasePaths := []string{
 		filepath.Join(workDir, "../test-assets/extracted-license"),
 		filepath.Join(workDir, "../test-assets/extracted-license"),
 	}
-	cacheDir := filepath.Join(workDir, "../test-assets/extracted-license/bosh-cache")
+	cacheDir := filepath.Join(workDir, "../test-assets/bosh-cache")
 
 	f := NewFissileApplication(",", ui)
-	err = f.LoadReleases(releasePaths, []string{"test-dev", "test2"}, []string{}, cacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		releasePaths,
+		[]string{"test-dev", "test2"},
+		[]string{},
+		cacheDir)
 	if !assert.NoError(err) {
 		return
 	}
@@ -651,16 +764,18 @@ func TestFissileGenerateKubeRoles(t *testing.T) {
 
 	// Set up the test params
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCacheDir := filepath.Join(releasePath, "bosh-cache")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/two-roles.yml")
 
 	f := NewFissileApplication(".", ui)
-	err = f.LoadReleases([]string{releasePath}, []string{""}, []string{""}, releasePathCacheDir)
+	err = f.LoadManifest(
+		roleManifestPath,
+		[]string{releasePath},
+		[]string{""},
+		[]string{""},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	require.NoError(t, err, "Failed to load release from %s", releasePath)
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	require.NoError(t, err, "Failed to load role manifest: %s", roleManifestPath)
-	require.NotNil(t, roleManifest)
+	roleManifest := f.Manifest
 
 	outDir, err := ioutil.TempDir("", "fissile-test-generate-kube-roles")
 	require.NoError(t, err)

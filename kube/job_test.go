@@ -17,14 +17,13 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(
+		manifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -107,37 +106,6 @@ func TestJobPostFlight(t *testing.T) {
 					-
 						name: post-role
 					restartPolicy: OnFailure
-	`, actual)
-}
-
-func TestJobWithAnnotations(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	instanceGroup := jobTestLoadRole(assert, "some-group", "job-with-annotation.yml")
-	if instanceGroup == nil {
-		return
-	}
-
-	job, err := NewJob(instanceGroup, ExportSettings{
-		Opinions: model.NewEmptyOpinions(),
-	}, nil)
-	if !assert.NoError(err, "Failed to create job from instance group pre-role") {
-		return
-	}
-	assert.NotNil(job)
-
-	actual, err := RoundtripKube(job)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: batch/v1
-		kind: Job
-		metadata:
-			name: some-group
-			annotations:
-				helm.sh/hook: post-install
 	`, actual)
 }
 

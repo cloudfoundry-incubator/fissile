@@ -1,17 +1,20 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 
 variables:
 - name: admin_password
   type: password
   options:
     internal: true
+    description: "foo"
 - name: default_ca
   type: certificate
   options:
@@ -19,3 +22,4 @@ variables:
     is_ca: true
     common_name: ca
     internal: true
+    description: "foo"

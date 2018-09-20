@@ -2,39 +2,45 @@
 ---
 instance_groups:
 - name: myrole
-  environment_scripts:
-  - environ.sh
-  - /environ/script/with/absolute/path.sh
   scripts:
   - myrole.sh
-  - /script/with/absolute/path.sh
-  post_config_scripts:
-  - post_config_script.sh
-  - /var/vcap/jobs/myrole/pre-start
-  run:
-    foo: x
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
   - name: tor
     release: tor
 - name: foorole
   type: bosh-task
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 configuration:
   templates:
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
 variables:
 - name: BAR
+  options:
+    description: "foo"
 - name: FOO
+  options:
+    description: "foo"
 - name: HOME
+  options:
+    description: "foo"
 - name: KUPRIES
   options:
+    description: "foo"
     internal: true
 - name: PELERINUL
+  options:
+    description: "foo"

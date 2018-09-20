@@ -13,7 +13,8 @@ This command will inspect the compilation cache populated by its sibling "packag
 and remove all which are not required anymore.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,

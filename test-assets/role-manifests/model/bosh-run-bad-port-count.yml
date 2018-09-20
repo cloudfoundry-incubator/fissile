@@ -1,10 +1,15 @@
 ---
 instance_groups:
 - name: myrole
-  jobs: []
-  run:
-    exposed-ports:
-    - name: http
-      protocol: TCP
-      internal: 80-82
-      count: 2
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        ports:
+        - name: http
+          protocol: TCP
+          internal: 80-82
+          count: 2
+        run:
+          foo: x

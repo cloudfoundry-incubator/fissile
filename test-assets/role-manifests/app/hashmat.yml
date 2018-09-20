@@ -2,11 +2,15 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    foo: x
+  scripts:
+  - myrole.sh
   jobs:
   - name: hashmat
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 configuration:
   templates:
     properties.is.a.hash.foo: '((FOO)) extend hash, ok'
@@ -14,3 +18,6 @@ configuration:
     properties.not.a.hash.foo: '((FOO)) extend a non-hash, fail'
 variables:
 - name: FOO
+  options:
+    description: "foo"
+

@@ -2,41 +2,43 @@
 instance_groups:
 - name: main-role
   scripts: ["myrole.sh"]
-  run:
-    memory: 1
-    exposed-ports:
-    - name: http
-      protocol: TCP
-      internal: 8080
-      external: 80
-    - name: https
-      protocol: TCP
-      internal: 9443
-      external: 443
-    - name: range
-      protocol: TCP
-      internal: 10000-11000
-  tags:
-  - headless
   jobs:
   - name: new_hostname
     release: tor
   - name: tor
     release: tor
-  colocated_containers:
-  - to-be-colocated
+    properties:
+      bosh_containerization:
+        colocated_containers:
+        - to-be-colocated
+        ports:
+        - name: http
+          protocol: TCP
+          internal: 8080
+          external: 80
+        - name: https
+          protocol: TCP
+          internal: 9443
+          external: 443
+        - name: range
+          protocol: TCP
+          internal: 10000-11000
+        run:
+          memory: 1
 
 - name: to-be-colocated
   type: colocated-container
   jobs:
   - name: ntpd
     release: ntp
-  run:
-    memory: 1
-    exposed-ports:
-    - name: time-srv
-      protocol: TCP
-      internal: 80
-    - name: debug-port
-      protocol: TCP
-      internal: 10443
+    properties:
+      bosh_containerization:
+        ports:
+        - name: time-srv
+          protocol: TCP
+          internal: 80
+        - name: debug-port
+          protocol: TCP
+          internal: 10443
+        run:
+          memory: 1

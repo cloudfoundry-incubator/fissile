@@ -155,16 +155,18 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			entry.Add("disk_sizes", diskSizes.Sort())
 		}
 		ports := helm.NewMapping()
-		for _, port := range instanceGroup.Run.ExposedPorts {
-			config := helm.NewMapping()
-			if port.PortIsConfigurable {
-				config.Add("port", port.ExternalPort)
-			}
-			if port.CountIsConfigurable {
-				config.Add("count", port.Count)
-			}
-			if len(config.Names()) > 0 {
-				ports.Add(makeVarName(port.Name), config)
+		for _, job := range instanceGroup.JobReferences {
+			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+				config := helm.NewMapping()
+				if port.PortIsConfigurable {
+					config.Add("port", port.ExternalPort)
+				}
+				if port.CountIsConfigurable {
+					config.Add("count", port.Count)
+				}
+				if len(config.Names()) > 0 {
+					ports.Add(makeVarName(port.Name), config)
+				}
 			}
 		}
 		if len(ports.Names()) > 0 {

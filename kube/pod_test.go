@@ -24,13 +24,13 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/volumes.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(
+		manifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -334,7 +334,12 @@ func TestPodGetEnvVars(t *testing.T) {
 		},
 	}
 
-	role.Configuration.Templates["properties.some-property"] = "((SOME_VAR))"
+	role.Configuration.Templates = append(
+		role.Configuration.Templates,
+		yaml.MapItem{
+			Key:   "properties.some-property",
+			Value: "((SOME_VAR))",
+		})
 
 	samples := []Sample{
 		{
@@ -477,13 +482,19 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
-								Count:               55,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+											Count:               55,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -525,12 +536,18 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1622,42 +1639,6 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		func(sample sampleStruct) {
 			t.Run(sample.desc, func(t *testing.T) {
 				t.Parallel()
-				t.Run("docker", func(t *testing.T) {
-					t.Parallel()
-					role := podTemplateTestLoadRole(assert.New(t))
-					require.NotNil(t, role)
-					role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
-					role.Type = model.RoleTypeDocker
-					probe, err := getContainerReadinessProbe(role)
-					if sample.dockerError != "" {
-						assert.EqualError(t, err, sample.dockerError)
-						return
-					}
-					require.NoError(t, err)
-					if sample.dockerExpected == "" {
-						assert.Nil(t, probe)
-						return
-					}
-					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
-					t.Run("kube", func(t *testing.T) {
-						t.Parallel()
-						actual, err := RoundtripKube(probe)
-						if assert.NoError(t, err) {
-							// We use subset testing here because we don't want to bother with the
-							// default timeout lengths
-							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
-						}
-					})
-					t.Run("helm", func(t *testing.T) {
-						t.Parallel()
-						actual, err := RoundtripNode(probe, map[string]interface{}{})
-						if assert.NoError(t, err) {
-							// We use subset testing here because we don't want to bother with the
-							// default timeout lengths
-							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
-						}
-					})
-				})
 				t.Run("bosh", func(t *testing.T) {
 					t.Parallel()
 					role := podTemplateTestLoadRole(assert.New(t))
@@ -1705,13 +1686,13 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(
+		manifestPath,
+		[]string{releasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -2729,15 +2710,15 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := model.NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := model.NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/colocated-containers.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := model.LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 

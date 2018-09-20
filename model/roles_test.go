@@ -19,12 +19,14 @@ func TestLoadRoleManifestOK(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -49,12 +51,14 @@ func TestGetScriptPaths(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -70,12 +74,14 @@ func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-bad.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	_, err = LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Cannot find job foo in release")
 	}
@@ -86,12 +92,14 @@ func TestLoadDuplicateReleases(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{release, release}, nil)
+	_, err = LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "release tor has been loaded more than once")
@@ -103,17 +111,15 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	assert.NoError(t, err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/multiple-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -137,17 +143,15 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	assert.NoError(t, err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpReleasePathBoshCache := filepath.Join(ntpReleasePath, "bosh-cache")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/multiple-bad.yml")
-	_, err = LoadRoleManifest(roleManifestPath, []*Release{ntpRelease, torRelease}, nil)
+	_, err = LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(),
@@ -161,8 +165,11 @@ func TestRoleManifestTagList(t *testing.T) {
 	require.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	releases, err := LoadReleases(
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"))
 	require.NoError(t, err, "Error reading BOSH release")
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
@@ -171,30 +178,30 @@ func TestRoleManifestTagList(t *testing.T) {
 
 	for tag, acceptableRoleTypes := range map[string][]RoleType{
 		"stop-on-failure":    []RoleType{RoleTypeBoshTask},
-		"sequential-startup": []RoleType{RoleTypeBosh, RoleTypeDocker},
-		"headless":           []RoleType{RoleTypeBosh, RoleTypeDocker},
+		"sequential-startup": []RoleType{RoleTypeBosh},
 		"active-passive":     []RoleType{RoleTypeBosh},
 		"indexed":            []RoleType{},
 		"clustered":          []RoleType{},
 		"invalid":            []RoleType{},
 		"no-monit":           []RoleType{},
 	} {
-		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeDocker, RoleTypeColocatedContainer} {
+		for _, roleType := range []RoleType{RoleTypeBosh, RoleTypeBoshTask, RoleTypeColocatedContainer} {
 			func(tag string, roleType RoleType, acceptableRoleTypes []RoleType) {
 				t.Run(tag, func(t *testing.T) {
 					t.Parallel()
 					roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+					roleManifest.LoadedReleases = releases
 					err := yaml.Unmarshal(manifestContents, roleManifest)
 					require.NoError(t, err, "Error unmarshalling role manifest")
-					roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+					roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 					require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 					roleManifest.InstanceGroups[0].Type = roleType
 					roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTag(tag)}
 					if RoleTag(tag) == RoleTagActivePassive {
 						// An active/passive probe is required when tagged as active/passive
-						roleManifest.InstanceGroups[0].Run.ActivePassiveProbe = "hello"
+						roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{ActivePassiveProbe: "hello"}
 					}
-					err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+					err = roleManifest.resolveRoleManifest(nil)
 					acceptable := false
 					for _, acceptableRoleType := range acceptableRoleTypes {
 						if acceptableRoleType == roleType {
@@ -224,22 +231,21 @@ func TestRoleManifestTagList(t *testing.T) {
 	}
 }
 
-func TestNonBoshRolesAreIgnoredOK(t *testing.T) {
+func TestNonBoshRolesAreNotAllowed(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/non-bosh-roles.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
-
-	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
-	assert.Len(t, roleManifest.InstanceGroups, 2)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.EqualError(t, err, "instance_groups[dockerrole].type: Invalid value: \"docker\": Expected one of bosh, bosh-task, or colocated-container")
+	assert.Nil(t, roleManifest)
 }
 
 func TestRolesSort(t *testing.T) {
@@ -267,7 +273,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	refRole := &InstanceGroup{
 		Name: "bbb",
-		JobReferences: []*JobReference{
+		JobReferences: JobReferences{
 			{
 				Job: &Job{
 					SHA1: "Role 2 Job 1",
@@ -302,7 +308,7 @@ func TestGetScriptSignatures(t *testing.T) {
 
 	differentPatch := &InstanceGroup{
 		Name:          refRole.Name,
-		JobReferences: []*JobReference{refRole.JobReferences[0], refRole.JobReferences[1]},
+		JobReferences: JobReferences{refRole.JobReferences[0], refRole.JobReferences[1]},
 		Scripts:       []string{scriptName},
 		roleManifest: &RoleManifest{
 			manifestFilePath: releasePath,
@@ -324,18 +330,24 @@ func TestGetTemplateSignatures(t *testing.T) {
 
 	differentTemplate1 := &InstanceGroup{
 		Name:          "aaa",
-		JobReferences: []*JobReference{},
+		JobReferences: JobReferences{},
 		Configuration: &Configuration{
-			Templates: map[string]string{"foo": "bar"},
-		},
+			Templates: yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "foo",
+					Value: "bar",
+				}}},
 	}
 
 	differentTemplate2 := &InstanceGroup{
 		Name:          "aaa",
-		JobReferences: []*JobReference{},
+		JobReferences: JobReferences{},
 		Configuration: &Configuration{
-			Templates: map[string]string{"bat": "baz"},
-		},
+			Templates: yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "bat",
+					Value: "baz",
+				}}},
 	}
 
 	differentTemplateHash1, _ := differentTemplate1.GetTemplateSignatures()
@@ -348,17 +360,19 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-badly-sorted.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	require.Error(t, err)
 
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Does not sort before 'BAR'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "PELERINUL": Appears more than once`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Does not sort before 'BAR'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Appears more than once`)
 	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(t, roleManifest)
 }
@@ -368,17 +382,19 @@ func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-with-dup-prev-names.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	require.Error(t, err)
 
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAR' also exist as a new variable`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "FOO": Previous name 'BAZ' also claimed by 'QUX'`)
-	assert.Contains(t, err.Error(), `configuration.variables: Invalid value: "QUX": Previous name 'BAZ' also claimed by 'FOO'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Previous name 'BAR' also exist as a new variable`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Previous name 'BAZ' also claimed by 'QUX'`)
+	assert.Contains(t, err.Error(), `variables: Invalid value: "QUX": Previous name 'BAZ' also claimed by 'FOO'`)
 	// Note how this ignores other errors possibly present in the manifest and releases.
 	assert.Nil(t, roleManifest)
 }
@@ -388,14 +404,16 @@ func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-usage.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.EqualError(t, err,
-		`configuration.variables: Not found: "No templates using 'SOME_VAR'"`)
+		`variables: Not found: "No templates using 'SOME_VAR'"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -404,15 +422,35 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-decl.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.EqualError(t, err,
+		`variables: Not found: "No declaration of 'HOME'"`)
+	assert.Nil(t, roleManifest)
+}
+
+func TestLoadRoleManifestVariablesSSH(t *testing.T) {
+	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-without-decl.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err,
-		`configuration.variables: Not found: "No declaration of 'HOME'"`)
-	assert.Nil(t, roleManifest)
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variables-ssh.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, roleManifest)
 }
 
 func TestLoadRoleManifestNonTemplates(t *testing.T) {
@@ -420,14 +458,37 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/templates-non.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.EqualError(t, err,
+		`properties.tor.hostname: Forbidden: Templates used as constants are not allowed`)
+	assert.Nil(t, roleManifest)
+}
+
+func TestLoadRoleManifestBadType(t *testing.T) {
+	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/templates-non.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err,
-		`configuration.templates: Invalid value: "": Using 'properties.tor.hostname' as a constant`)
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-type.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+
+	require.Contains(t, err.Error(),
+		`variables[BAR].type: Invalid value: "invalid": Expected one of certificate, password, rsa, ssh or empty`)
+	require.Contains(t, err.Error(),
+		`variables[FOO].type: Invalid value: "rsa": The rsa type is not yet supported by the secret generator`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -436,15 +497,17 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-cv-type.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 
 	require.EqualError(t, err,
-		`configuration.variables[BAR].type: Invalid value: "bogus": Expected one of user, or environment`)
+		`variables[BAR].options.type: Invalid value: "bogus": Expected one of user, or environment`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -453,29 +516,16 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/bad-cv-type-internal.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.EqualError(t, err,
-		`configuration.variables[BAR].type: Invalid value: "environment": type conflicts with flag "internal"`)
-	assert.Nil(t, roleManifest)
-}
-
-func TestLoadRoleManifestRunEnvDocker(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/docker-run-env.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
-	assert.EqualError(t, err, `instance_groups[dockerrole].run.env: Not found: "No variable declaration of 'UNKNOWN'"`)
+		`variables[BAR].options.type: Invalid value: "environment": type conflicts with flag "internal"`)
 	assert.Nil(t, roleManifest)
 }
 
@@ -484,12 +534,14 @@ func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/rbac-missing-account.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.EqualError(t, err, `instance_groups[myrole].run.service-account: Not found: "missing-account"`)
 	assert.Nil(t, roleManifest)
 }
@@ -499,14 +551,123 @@ func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/rbac-missing-role.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.EqualError(t, err, `configuration.auth.accounts[test-account].roles: Not found: "missing-role"`)
 	assert.Nil(t, roleManifest)
+}
+
+func TestLoadRoleManifestPSPMerge(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir,
+		"../test-assets/role-manifests/model/rbac-merge-psp.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.NoError(t, err)
+
+	// The loaded manifest has a single role with two jobs,
+	// requesting differing psps (The second role's request is
+	// implicit, the default).  The sole service account ends up
+	// with the union of the two, the higher. This is the account
+	// referenced by the role
+
+	assert.NotNil(t, roleManifest)
+	assert.NotNil(t, roleManifest.Configuration)
+
+	assert.Len(t, roleManifest.InstanceGroups, 1)
+	assert.NotNil(t, roleManifest.InstanceGroups[0])
+
+	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 2)
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[1])
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+
+	// manifest value
+	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	// default
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[0].JobReferences[1].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
+	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 1)
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
+	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
+}
+
+func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir,
+		"../test-assets/role-manifests/model/rbac-clone-sa-psp-mismatch.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.NoError(t, err)
+
+	// The loaded manifest has three roles with one job each. All
+	// reference the same service account (default), while
+	// requesting differing psps. This results in two service
+	// accounts, the second a clone of the first, but for the psp.
+	// Note how the third role (re)uses the account created by the
+	// second which did the cloning.
+
+	assert.NotNil(t, roleManifest)
+	assert.NotNil(t, roleManifest.Configuration)
+
+	assert.Len(t, roleManifest.InstanceGroups, 3)
+	assert.NotNil(t, roleManifest.InstanceGroups[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[1])
+	assert.NotNil(t, roleManifest.InstanceGroups[2])
+
+	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 1)
+	assert.Len(t, roleManifest.InstanceGroups[1].JobReferences, 1)
+	assert.Len(t, roleManifest.InstanceGroups[2].JobReferences, 1)
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[1].JobReferences[0])
+	assert.NotNil(t, roleManifest.InstanceGroups[2].JobReferences[0])
+
+	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[1].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[2].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
+
+	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	assert.NotNil(t, roleManifest.InstanceGroups[1].Run)
+	assert.NotNil(t, roleManifest.InstanceGroups[2].Run)
+
+	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[1].Run.ServiceAccount)
+	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[2].Run.ServiceAccount)
+
+	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
+	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 2)
+
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
+	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default-nonprivileged")
+	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
+	assert.Equal(t, "nonprivileged", roleManifest.Configuration.Authorization.Accounts["default-nonprivileged"].PodSecurityPolicy)
 }
 
 func TestLoadRoleManifestRunGeneral(t *testing.T) {
@@ -516,9 +677,6 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 	require.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	require.NoError(t, err)
 
 	type testCase struct {
 		manifest string
@@ -527,8 +685,16 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 
 	tests := []testCase{
 		{
+			"rbac-illegal-psp.yml", []string{
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.pod-security-policy: Invalid value: "bogus": Expected one of: nonprivileged, privileged`,
+			},
+		},
+		{
+			"rbac-ok-psp.yml", []string{},
+		},
+		{
 			"bosh-run-missing.yml", []string{
-				`instance_groups[myrole].run: Required value`,
+				"instance_groups[myrole]: Required value: `properties.bosh_containerization.run` required for at least one Job",
 			},
 		},
 		{
@@ -565,10 +731,6 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
-			// No error is expected for a headless public port
-			"bosh-run-headless-public-port.yml", []string{},
-		},
-		{
 			"bosh-run-bad-parse.yml", []string{
 				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
 				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
@@ -585,11 +747,6 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			},
 		},
 		{
-			"bosh-run-env.yml", []string{
-				`instance_groups[xrole].run.env: Forbidden: Non-docker instance group declares bogus parameters`,
-			},
-		},
-		{
 			"bosh-run-ok.yml", []string{},
 		},
 	}
@@ -599,7 +756,14 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			t.Run(tc.manifest, func(t *testing.T) {
 				t.Parallel()
 				roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model", tc.manifest)
-				roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+				roleManifest, err := LoadRoleManifest(
+					roleManifestPath,
+					[]string{torReleasePath},
+					[]string{},
+					[]string{},
+					filepath.Join(workDir, "../test-assets/bosh-cache"),
+					nil)
+
 				if len(tc.message) > 0 {
 					assert.EqualError(t, err, strings.Join(tc.message, "\n"))
 					assert.Nil(t, roleManifest)
@@ -617,8 +781,7 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	require.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
+	release, err := NewDevRelease(torReleasePath, "", "", filepath.Join(workDir, "../test-assets/bosh-cache"))
 	require.NoError(t, err, "Error reading BOSH release")
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/tor-good.yml")
@@ -634,32 +797,6 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	for _, sample := range []sampleStruct{
 		{
 			name: "empty",
-		},
-		{
-			name:     "too many kinds",
-			roleType: RoleTypeDocker,
-			healthCheck: HealthCheck{
-				Readiness: &HealthProbe{
-					Command: []string{"hello"},
-					URL:     "about:blank",
-					Port:    6667,
-				},
-			},
-			err: []string{
-				`instance_groups[myrole].run.healthcheck.readiness: Invalid value: ["url","command","port"]: Expected at most one of url, command, or port`,
-			},
-		},
-		{
-			name:     "docker multi-arg commands",
-			roleType: RoleTypeDocker,
-			healthCheck: HealthCheck{
-				Readiness: &HealthProbe{
-					Command: []string{"hello", "world"},
-				},
-			},
-			err: []string{
-				`instance_groups[myrole].run.healthcheck.readiness: Forbidden: docker instance groups do not support multiple commands`,
-			},
 		},
 		{
 			name:     "bosh task with health check",
@@ -711,17 +848,18 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 			t.Run(sample.name, func(t *testing.T) {
 				t.Parallel()
 				roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+				roleManifest.LoadedReleases = []*Release{release}
 				err := yaml.Unmarshal(manifestContents, roleManifest)
 				require.NoError(t, err, "Error unmarshalling role manifest")
-				roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+				roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 				require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 				if sample.roleType != RoleType("") {
 					roleManifest.InstanceGroups[0].Type = sample.roleType
 				}
-				roleManifest.InstanceGroups[0].Run = &RoleRun{
+				roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{
 					HealthCheck: &sample.healthCheck,
 				}
-				err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+				err = roleManifest.resolveRoleManifest(nil)
 				if len(sample.err) > 0 {
 					assert.EqualError(t, err, strings.Join(sample.err, "\n"))
 					return
@@ -734,17 +872,18 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	t.Run("bosh role with untagged active/passive probe", func(t *testing.T) {
 		t.Parallel()
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		roleManifest.LoadedReleases = []*Release{release}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{
 			ActivePassiveProbe: "/bin/true",
 		}
-		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		err = roleManifest.resolveRoleManifest(nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].run.active-passive-probe: Invalid value: "/bin/true": Active/passive probes are only valid on instance groups with active-passive tag`)
 	})
@@ -752,15 +891,16 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	t.Run("active/passive bosh role without a probe", func(t *testing.T) {
 		t.Parallel()
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		roleManifest.LoadedReleases = []*Release{release}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{}
-		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{}
+		err = roleManifest.resolveRoleManifest(nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].run.active-passive-probe: Required value: active-passive instance groups must specify the correct probe`)
 	})
@@ -768,33 +908,18 @@ func TestLoadRoleManifestHealthChecks(t *testing.T) {
 	t.Run("bosh task tagged as active/passive", func(t *testing.T) {
 		t.Parallel()
 		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
+		roleManifest.LoadedReleases = []*Release{release}
 		err := yaml.Unmarshal(manifestContents, roleManifest)
 		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
+		roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
 		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
 
 		roleManifest.InstanceGroups[0].Type = RoleTypeBoshTask
 		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
-		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
+		roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
+		err = roleManifest.resolveRoleManifest(nil)
 		assert.EqualError(t, err,
 			`instance_groups[myrole].tags[0]: Invalid value: "active-passive": active-passive tag is only supported in [bosh] instance groups, not bosh-task`)
-	})
-
-	t.Run("headless active/passive role", func(t *testing.T) {
-		t.Parallel()
-		roleManifest := &RoleManifest{manifestFilePath: roleManifestPath}
-		err := yaml.Unmarshal(manifestContents, roleManifest)
-		require.NoError(t, err, "Error unmarshalling role manifest")
-		roleManifest.Configuration = &Configuration{Templates: map[string]string{}}
-		require.NotEmpty(t, roleManifest.InstanceGroups, "No instance groups loaded")
-
-		roleManifest.InstanceGroups[0].Type = RoleTypeBosh
-		roleManifest.InstanceGroups[0].Tags = []RoleTag{RoleTagHeadless, RoleTagActivePassive}
-		roleManifest.InstanceGroups[0].Run = &RoleRun{ActivePassiveProbe: "/bin/false"}
-		err = roleManifest.resolveRoleManifest([]*Release{release}, nil)
-		assert.EqualError(t, err,
-			`instance_groups[myrole].tags[1]: Invalid value: "active-passive": headless instance groups may not be active-passive`)
 	})
 }
 
@@ -803,19 +928,21 @@ func TestResolveLinks(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	var releases []*Release
+	releasePaths := []string{}
 
 	for _, dirName := range []string{"ntp-release", "tor-boshrelease"} {
 		releasePath := filepath.Join(workDir, "../test-assets", dirName)
-		releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-		release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
-		if assert.NoError(t, err) {
-			releases = append(releases, release)
-		}
+		releasePaths = append(releasePaths, releasePath)
 	}
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/multiple-good.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, releases, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		releasePaths,
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -963,7 +1090,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		InstanceGroups: InstanceGroups{
 			&InstanceGroup{
 				Name: "role-1",
-				JobReferences: []*JobReference{
+				JobReferences: JobReferences{
 					{
 						Job: job1,
 						ExportedProviders: map[string]jobProvidesInfo{
@@ -977,7 +1104,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			},
 			&InstanceGroup{
 				Name: "role-2",
-				JobReferences: []*JobReference{
+				JobReferences: JobReferences{
 					{Job: job2},
 					{
 						Job: job3,
@@ -996,7 +1123,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			&InstanceGroup{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				JobReferences: []*JobReference{{Job: job2}, {Job: job3}},
+				JobReferences: JobReferences{{Job: job2}, {Job: job3}},
 			},
 		},
 	}
@@ -1086,7 +1213,7 @@ func TestWriteConfigs(t *testing.T) {
 
 	role := &InstanceGroup{
 		Name: "dummy role",
-		JobReferences: []*JobReference{
+		JobReferences: JobReferences{
 			{
 				Job:  job,
 				Name: "silly job",
@@ -1152,22 +1279,22 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
 	assert.Len(roleManifest.InstanceGroups, 2)
 	assert.EqualValues(RoleTypeBosh, roleManifest.LookupInstanceGroup("main-role").Type)
 	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupInstanceGroup("to-be-colocated").Type)
-	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers, 1)
+	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers(), 1)
 
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
 		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupInstanceGroup(roleName).Run.Volumes)
@@ -1181,15 +1308,15 @@ func TestLoadRoleManifestColocatedContainersValidationMissingRole(t *testing.T) 
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-missing-role.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, `instance_groups[main-role].colocated_containers[0]: Invalid value: "to-be-colocated-typo": There is no such instance group defined`)
 }
@@ -1201,15 +1328,15 @@ func TestLoadRoleManifestColocatedContainersValidationUsusedRole(t *testing.T) {
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-unused-role.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "instance_group[to-be-colocated].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
 		"instance_group[orphaned].job[ntpd].consumes[ntp-server]: Required value: failed to resolve provider ntp-server (type ntpd)\n"+
@@ -1223,15 +1350,15 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-port-collision.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "instance_group[main-role]: Invalid value: \"TCP/10443\": port collision, the same protocol/port is used by: main-role, to-be-colocated"+"\n"+
 		"instance_group[main-role]: Invalid value: \"TCP/80\": port collision, the same protocol/port is used by: main-role, to-be-colocated")
@@ -1244,15 +1371,15 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisionsWithProtocol
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-no-port-collision.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 }
@@ -1264,17 +1391,13 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
+
+	_, err = NewDevRelease(torReleasePath, "", "", filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
+	_, err = NewDevRelease(ntpReleasePath, "", "", filepath.Join(workDir, "../test-assets/bosh-cache"))
 	assert.NoError(err)
-
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-clustered-tag.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
-	assert.Nil(roleManifest)
-	assert.EqualError(err, `instance_groups[to-be-colocated].tags[0]: Invalid value: "headless": headless tag is only supported in [bosh, docker] instance groups, not colocated-container`)
 }
 
 func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing.T) {
@@ -1284,17 +1407,36 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/colocated-containers-with-volume-share-issues.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{torReleasePath, ntpReleasePath},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
 	assert.Nil(roleManifest)
 	assert.EqualError(err, "instance_group[to-be-colocated]: Invalid value: \"/mnt/foobAr\": colocated instance group specifies a shared volume with tag mount-share, which path does not match the path of the main instance group shared volume with the same tag\n"+
 		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-logs\n"+
 		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-store")
+}
+
+func TestLoadRoleManifestWithReleaseReferences(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/online-release-references.yml")
+	roleManifest, err := LoadRoleManifest(
+		roleManifestPath,
+		[]string{},
+		[]string{},
+		[]string{},
+		filepath.Join(workDir, "../test-assets/bosh-cache"),
+		nil)
+	assert.NoError(t, err)
+	require.NotNil(t, roleManifest)
+
+	assert.Equal(t, roleManifestPath, roleManifest.manifestFilePath)
+	assert.Len(t, roleManifest.InstanceGroups, 1)
 }

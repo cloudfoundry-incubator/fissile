@@ -33,9 +33,6 @@ func NewJob(instanceGroup *model.InstanceGroup, settings ExportSettings, grapher
 
 	metadata := helm.NewMapping()
 	metadata.Add("name", name)
-	if instanceGroup.Run.ObjectAnnotations != nil {
-		metadata.Add("annotations", *instanceGroup.Run.ObjectAnnotations)
-	}
 	metadata.Sort()
 
 	job := newTypeMeta(apiVersion, "Job", helm.Comment(instanceGroup.GetLongDescription()))

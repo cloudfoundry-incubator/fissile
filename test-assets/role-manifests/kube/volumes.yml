@@ -4,29 +4,34 @@ instance_groups:
   jobs:
   - name: tor
     release: tor
-  run:
-    capabilities:
-    - something
-    scaling:
-      min: 1
-      max: 2
-    persistent-volumes:
-    - path: /mnt/persistent
-      tag: persistent-volume
-      size: 5 # parsecs
-    shared-volumes:
-    - path: /mnt/shared
-      tag: shared-volume
-      size: 40 # cakes
-    volumes:
-    - path: /sys/fs/cgroup
-      type: host
-      tag: host-volume
+    properties:
+      bosh_containerization:
+        run:
+          capabilities:
+          - something
+          scaling:
+            min: 1
+            max: 2
+          persistent-volumes:
+          - path: /mnt/persistent
+            tag: persistent-volume
+            size: 5 # parsecs
+          shared-volumes:
+          - path: /mnt/shared
+            tag: shared-volume
+            size: 40 # cakes
+          volumes:
+          - path: /sys/fs/cgroup
+            type: host
+            tag: host-volume
 configuration:
   templates:
     fox: ((SOME_VAR))
 variables:
 - name: ALL_VAR
   options:
+    description: "foo"
     internal: true
 - name: SOME_VAR
+  options:
+    description: "foo"

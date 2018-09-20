@@ -1,0 +1,45 @@
+# This role manifest tests that an undeclared variable is an error
+---
+instance_groups:
+- name: myrole
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.tor.ca: '((cacert)) ((cacert_KEY))'
+    properties.tor.certificate: '((FOO))((FOO_KEY))'
+    properties.tor.ssh: '((BAR))((BAR_FINGERPRINT))'
+variables:
+- name: BAR
+  type: ssh
+  options:
+    description: test
+    secret: true
+- name: BAR_FINGERPRINT
+  options:
+    secret: true
+    description: test
+- name: FOO
+  type: certificate
+  options:
+    secret: true
+    description: test
+- name: FOO_KEY
+  options:
+    secret: true
+    description: test
+- name: cacert
+  type: certificate
+  options:
+    is_ca: true
+    secret: true
+    description: test
+- name: cacert_KEY
+  options:
+    secret: true
+    description: test
