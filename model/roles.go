@@ -659,6 +659,21 @@ func validateVariableType(variables Variables) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	for _, cv := range variables {
+		switch cv.Type {
+		case "":
+		case "certificate":
+		case "password":
+		case "ssh":
+		case "rsa":
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("variables[%s].type", cv.Name),
+				cv.Type, "The rsa type is not yet supported by the secret generator"))
+		default:
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("variables[%s].type", cv.Name),
+				cv.Type, "Expected one of certificate, password, rsa, ssh or empty"))
+		}
+
 		switch cv.CVOptions.Type {
 		case "":
 			cv.CVOptions.Type = CVTypeUser
@@ -666,12 +681,12 @@ func validateVariableType(variables Variables) validation.ErrorList {
 		case CVTypeEnv:
 			if cv.CVOptions.Internal {
 				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("variables[%s].type", cv.Name),
+					fmt.Sprintf("variables[%s].options.type", cv.Name),
 					cv.CVOptions.Type, `type conflicts with flag "internal"`))
 			}
 		default:
 			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("variables[%s].type", cv.Name),
+				fmt.Sprintf("variables[%s].options.type", cv.Name),
 				cv.CVOptions.Type, "Expected one of user, or environment"))
 		}
 	}
