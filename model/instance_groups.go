@@ -146,7 +146,7 @@ func (g *InstanceGroup) calculateRoleRun() validation.ErrorList {
 
 	if ok := g.JobReferences.atLeastOnce(runPropertyPresent); !ok {
 		return append(allErrs, validation.Required(
-			fmt.Sprintf("instance_groups[%s].run", g.Name), ""))
+			fmt.Sprintf("instance_groups[%s]", g.Name), "`properties.bosh_containerization.run` required for at least one Job"))
 	}
 
 	jobReferences := g.JobReferences.WithRunProperty()

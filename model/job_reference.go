@@ -15,8 +15,14 @@ type JobReference struct {
 	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
 
+// JobContainerProperties describes job configuration
+type JobContainerProperties struct {
+	BoshContainerization JobBoshContainerization `yaml:"bosh_containerization"`
+}
+
 // JobBoshContainerization describes settings specific to containerization
 type JobBoshContainerization struct {
+	PodSecurityPolicy   string           `yaml:"pod-security-policy,omitempty"`
 	Ports               []JobExposedPort `yaml:"ports"`
 	Run                 *RoleRun         `yaml:"run"`
 	ColocatedContainers []string         `yaml:"colocated_containers,omitempty"`
@@ -35,11 +41,6 @@ type JobExposedPort struct {
 	CountIsConfigurable bool   `yaml:"count-configurable"`
 	InternalPort        int
 	ExternalPort        int
-}
-
-// JobContainerProperties describes job configuration
-type JobContainerProperties struct {
-	BoshContainerization JobBoshContainerization `yaml:"bosh_containerization"`
 }
 
 func runPropertyPresent(j JobReference) bool {

@@ -556,6 +556,7 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 		[]string{},
 		filepath.Join(workDir, "../test-assets/bosh-cache"),
 		nil)
+	assert.NoError(t, err)
 
 	// The loaded manifest has a single role with two jobs,
 	// requesting differing psps (The second role's request is
@@ -602,6 +603,7 @@ func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
 		[]string{},
 		filepath.Join(workDir, "../test-assets/bosh-cache"),
 		nil)
+	assert.NoError(t, err)
 
 	// The loaded manifest has three roles with one job each. All
 	// reference the same service account (default), while
@@ -671,7 +673,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		},
 		{
 			"bosh-run-missing.yml", []string{
-				`instance_groups[myrole].run: Required value`,
+				"instance_groups[myrole]: Required value: `properties.bosh_containerization.run` required for at least one Job",
 			},
 		},
 		{
@@ -740,6 +742,7 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 					[]string{},
 					filepath.Join(workDir, "../test-assets/bosh-cache"),
 					nil)
+
 				if len(tc.message) > 0 {
 					assert.EqualError(t, err, strings.Join(tc.message, "\n"))
 					assert.Nil(t, roleManifest)

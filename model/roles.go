@@ -167,10 +167,10 @@ func (m *RoleManifest) loadReleaseReferences() ([]*Release, error) {
 			finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
 			finalReleaseTarballPath := filepath.Join(
 				finalReleasesWorkDir,
-				fmt.Sprintf("%s-%s-%s.tgz", releaseRef.Name, releaseRef.Version, releaseRef.Sha1))
+				fmt.Sprintf("%s-%s-%s.tgz", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 			finalReleaseUnpackedPath := filepath.Join(
 				finalReleasesWorkDir,
-				fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.Sha1))
+				fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 
 			if _, err := os.Stat(filepath.Join(finalReleaseUnpackedPath, "release.MF")); err != nil && os.IsNotExist(err) {
 				err = os.MkdirAll(finalReleaseUnpackedPath, 0700)
@@ -221,7 +221,7 @@ func (m *RoleManifest) loadReleaseReferences() ([]*Release, error) {
 		finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
 		finalReleaseUnpackedPath := filepath.Join(
 			finalReleasesWorkDir,
-			fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.Sha1))
+			fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 
 		// create a release object and add it to the collection
 		release, err := NewFinalRelease(finalReleaseUnpackedPath)
@@ -381,8 +381,6 @@ func (m *RoleManifest) resolvePodSecurityPolicies() error {
 
 	return nil
 }
-
-
 
 func (m *RoleManifest) mappedReleases() (releaseByName, error) {
 	mappedReleases := releaseByName{}
@@ -1474,4 +1472,3 @@ func groupPodSecurityPolicy(instanceGroup *InstanceGroup) string {
 
 	return result
 }
-

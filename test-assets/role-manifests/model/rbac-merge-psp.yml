@@ -9,5 +9,7 @@ instance_groups:
     properties:
       bosh_containerization:
         pod-security-policy: privileged
+        run:
+          foo: x
   - name: hashmat
     release: tor
