@@ -3,7 +3,6 @@ package model
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/SUSE/fissile/util"
+	"github.com/SUSE/fissile/validation"
 
 	"gopkg.in/yaml.v2"
 )
@@ -36,17 +36,16 @@ func (igs InstanceGroups) Swap(i, j int) {
 
 // InstanceGroup represents a collection of jobs that are colocated on a container
 type InstanceGroup struct {
-	Name                string          `yaml:"name"`
-	Description         string          `yaml:"description"`
-	EnvironScripts      []string        `yaml:"environment_scripts"`
-	Scripts             []string        `yaml:"scripts"`
-	PostConfigScripts   []string        `yaml:"post_config_scripts"`
-	Type                RoleType        `yaml:"type,omitempty"`
-	JobReferences       []*JobReference `yaml:"jobs"`
-	Configuration       *Configuration  `yaml:"configuration"`
-	Run                 *RoleRun        `yaml:"run"`
-	Tags                []RoleTag       `yaml:"tags"`
-	ColocatedContainers []string        `yaml:"colocated_containers,omitempty"`
+	Name              string         `yaml:"name"`
+	Description       string         `yaml:"description"`
+	EnvironScripts    []string       `yaml:"environment_scripts"`
+	Scripts           []string       `yaml:"scripts"`
+	PostConfigScripts []string       `yaml:"post_config_scripts"`
+	Type              RoleType       `yaml:"type,omitempty"`
+	JobReferences     JobReferences  `yaml:"jobs"`
+	Configuration     *Configuration `yaml:"configuration"`
+	Tags              []RoleTag      `yaml:"tags"`
+	Run               *RoleRun       `yaml:"-"`
 
 	roleManifest *RoleManifest
 }
@@ -61,131 +60,6 @@ const (
 	RoleTypeColocatedContainer = RoleType("colocated-container") // A role that is supposed to be used by other roles to specify a colocated container
 )
 
-// JobReference represents a job in the context of a role
-type JobReference struct {
-	*Job                `yaml:"-"`                 // The resolved job
-	Name                string                     `yaml:"name"`    // The name of the job
-	ReleaseName         string                     `yaml:"release"` // The release the job comes from
-	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers   map[string]jobConsumesInfo `yaml:"consumes"`
-	ContainerProperties JobContainerProperties     `yaml:"properties"`
-}
-
-// RoleRun describes how a role should behave at runtime
-type RoleRun struct {
-	Scaling            *RoleRunScaling       `yaml:"scaling"`
-	Capabilities       []string              `yaml:"capabilities"`
-	PersistentVolumes  []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
-	SharedVolumes      []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
-	Volumes            []*RoleRunVolume      `yaml:"volumes"`
-	MemRequest         *int64                `yaml:"memory"`
-	Memory             *RoleRunMemory        `yaml:"mem"`
-	VirtualCPUs        *float64              `yaml:"virtual-cpus"`
-	CPU                *RoleRunCPU           `yaml:"cpu"`
-	ExposedPorts       []*RoleRunExposedPort `yaml:"exposed-ports"`
-	FlightStage        FlightStage           `yaml:"flight-stage"`
-	HealthCheck        *HealthCheck          `yaml:"healthcheck,omitempty"`
-	ActivePassiveProbe string                `yaml:"active-passive-probe,omitempty"`
-	ServiceAccount     string                `yaml:"service-account,omitempty"`
-	Affinity           *RoleRunAffinity      `yaml:"affinity,omitempty"`
-	Environment        []string              `yaml:"env"`
-	ObjectAnnotations  *map[string]string    `yaml:"object-annotations,omitempty"`
-}
-
-// RoleRunAffinity describes how a role should behave with regard to node / pod selection
-type RoleRunAffinity struct {
-	PodAntiAffinity interface{} `yaml:"podAntiAffinity,omitempty"`
-	PodAffinity     interface{} `yaml:"podAffinity,omitempty"`
-	NodeAffinity    interface{} `yaml:"nodeAffinity,omitempty"`
-}
-
-// RoleRunMemory describes how a role should behave with regard to memory usage.
-type RoleRunMemory struct {
-	Request *int64 `yaml:"request"`
-	Limit   *int64 `yaml:"limit"`
-}
-
-// RoleRunCPU describes how a role should behave with regard to cpu usage.
-type RoleRunCPU struct {
-	Request *float64 `yaml:"request"`
-	Limit   *float64 `yaml:"limit"`
-}
-
-// RoleRunScaling describes how a role should scale out at runtime
-type RoleRunScaling struct {
-	Min       int  `yaml:"min"`
-	Max       int  `yaml:"max"`
-	HA        int  `yaml:"ha,omitempty"`
-	MustBeOdd bool `yaml:"must_be_odd,omitempty"`
-}
-
-// RoleRunVolume describes a volume to be attached at runtime
-type RoleRunVolume struct {
-	Type        VolumeType        `yaml:"type"`
-	Path        string            `yaml:"path"`
-	Tag         string            `yaml:"tag"`
-	Size        int               `yaml:"size"`
-	Annotations map[string]string `yaml:"annotations"`
-}
-
-// VolumeType is the type of volume to create
-type VolumeType string
-
-// These are the volume type available
-const (
-	VolumeTypePersistent = VolumeType("persistent") // A volume that is only used for this instance of the role
-	VolumeTypeShared     = VolumeType("shared")     // A volume that acts as shared storage between multiple roles / instances
-	VolumeTypeHost       = VolumeType("host")       // A volume that is a mount of a host directory
-	VolumeTypeNone       = VolumeType("none")       // A volume that isn't mounted to anything
-	VolumeTypeEmptyDir   = VolumeType("emptyDir")   // A volume that is shared between containers
-)
-
-// RoleRunExposedPort describes a port to be available to other roles, or the outside world
-type RoleRunExposedPort struct {
-	Name                string `yaml:"name"`
-	Protocol            string `yaml:"protocol"`
-	External            string `yaml:"external"`
-	Internal            string `yaml:"internal"`
-	Public              bool   `yaml:"public"`
-	Count               int    `yaml:"count"`
-	Max                 int    `yaml:"max"`
-	PortIsConfigurable  bool   `yaml:"port-configurable"`
-	CountIsConfigurable bool   `yaml:"count-configurable"`
-	InternalPort        int
-	ExternalPort        int
-}
-
-// FlightStage describes when a role should be executed
-type FlightStage string
-
-// These are the flight stages available
-const (
-	FlightStagePreFlight  = FlightStage("pre-flight")  // A role that runs before the main jobs start
-	FlightStageFlight     = FlightStage("flight")      // A role that is a main job
-	FlightStagePostFlight = FlightStage("post-flight") // A role that runs after the main jobs are up
-	FlightStageManual     = FlightStage("manual")      // A role that only runs via user intervention
-)
-
-// HealthCheck describes a non-standard health check endpoint
-type HealthCheck struct {
-	Liveness  *HealthProbe `yaml:"liveness,omitempty"`  // Details of liveness probe configuration
-	Readiness *HealthProbe `yaml:"readiness,omitempty"` // Ditto for readiness probe
-}
-
-// HealthProbe holds the configuration for liveness and readiness
-// probes based on the HealthCheck containing them.
-type HealthProbe struct {
-	URL              string            `yaml:"url"`                         // URL for a HTTP GET to return 200~399. Cannot be used with other checks.
-	Headers          map[string]string `yaml:"headers"`                     // Custom headers; only used for URL.
-	Command          []string          `yaml:"command,omitempty"`           // Individual commands to run inside the container; each is interpreted as a shell command. Cannot be used with other checks.
-	Port             int               `yaml:"port"`                        // Port for a TCP probe. Cannot be used with other checks.
-	InitialDelay     int               `yaml:"initial_delay,omitempty"`     // Initial Delay in seconds, default 3, minimum 1
-	Period           int               `yaml:"period,omitempty"`            // Period in seconds, default 10, minimum 1
-	Timeout          int               `yaml:"timeout,omitempty"`           // Timeout in seconds, default 3, minimum 1
-	SuccessThreshold int               `yaml:"success_threshold,omitempty"` // Success threshold in seconds, default 1, minimum 1
-	FailureThreshold int               `yaml:"failure_threshold,omitempty"` // Failure threshold in seconds, default 3, minimum 1
-}
-
 // RoleTag are the acceptable tags
 type RoleTag string
 
@@ -195,6 +69,137 @@ const (
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
 	RoleTagActivePassive     = RoleTag("active-passive")
 )
+
+// Validate implements several checks for the instance group and its job references. It's run after the
+// instance groups are filtered and i.e. Run has been calculated.
+func (g *InstanceGroup) Validate(mappedReleases releaseByName) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	if g.Run.ActivePassiveProbe != "" {
+		if !g.HasTag(RoleTagActivePassive) {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("instance_groups[%s].run.active-passive-probe", g.Name),
+				g.Run.ActivePassiveProbe,
+				"Active/passive probes are only valid on instance groups with active-passive tag"))
+		}
+	}
+
+	for _, jobReference := range g.JobReferences {
+		release, ok := mappedReleases[jobReference.ReleaseName]
+
+		if !ok {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("instance_groups[%s].jobs[%s]", g.Name, jobReference.Name),
+				jobReference.ReleaseName,
+				"Referenced release is not loaded"))
+			continue
+		}
+
+		job, err := release.LookupJob(jobReference.Name)
+		if err != nil {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("instance_groups[%s].jobs[%s]", g.Name, jobReference.Name),
+				jobReference.ReleaseName, err.Error()))
+			continue
+		}
+		jobReference.Job = job
+
+		if jobReference.ResolvedConsumers == nil {
+			// No explicitly specified consumers
+			jobReference.ResolvedConsumers = make(map[string]jobConsumesInfo)
+		}
+
+		for name, info := range jobReference.ResolvedConsumers {
+			info.Name = name
+			jobReference.ResolvedConsumers[name] = info
+		}
+	}
+
+	g.calculateRoleConfigurationTemplates()
+
+	// Validate that specified colocated containers are configured and of the
+	// correct type
+	for idx, roleName := range g.ColocatedContainers() {
+		if lookupRole := g.roleManifest.LookupInstanceGroup(roleName); lookupRole == nil {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", g.Name, idx),
+				roleName,
+				"There is no such instance group defined"))
+
+		} else if lookupRole.Type != RoleTypeColocatedContainer {
+			allErrs = append(allErrs, validation.Invalid(
+				fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", g.Name, idx),
+				roleName,
+				"The instance group is not of required type colocated-container"))
+		}
+	}
+
+	return allErrs
+}
+
+// calculateRoleRun collects properties from the jobs run properties and puts them on the instance group
+// It also validates where necessary and is run *before* validateRoleRun
+func (g *InstanceGroup) calculateRoleRun() validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	g.Run = &RoleRun{}
+
+	if ok := g.JobReferences.atLeastOnce(runPropertyPresent); !ok {
+		return append(allErrs, validation.Required(
+			fmt.Sprintf("instance_groups[%s]", g.Name), "`properties.bosh_containerization.run` required for at least one Job"))
+	}
+
+	jobReferences := g.JobReferences.WithRunProperty()
+
+	// need to be the same across jobs, specifying on one job is enough
+	if ok := jobReferences.equalOrMissing(flightStagePresent); ok {
+		g.Run.FlightStage = jobReferences.firstFlightStage()
+	} else {
+		allErrs = append(allErrs, validation.Invalid(fmt.Sprintf("instance_groups[%s]", g.Name), g, "If specifying Run.FlightStage properties on multiple jobs of the same instance group, they need to have the same value"))
+	}
+
+	g.Run.setScaling(jobReferences)
+
+	g.Run.mergeCapabilities(jobReferences)
+
+	g.Run.mergeVolumes(jobReferences)
+
+	g.Run.setMaxFields(jobReferences)
+
+	for _, j := range jobReferences {
+		g.Run.ExposedPorts = append(g.Run.ExposedPorts, j.ContainerProperties.BoshContainerization.Run.ExposedPorts...)
+	}
+
+	if ok := jobReferences.atMostOnce(healthCheckPresent); ok {
+		g.Run.HealthCheck = jobReferences.firstHealthCheck()
+	} else {
+		allErrs = append(allErrs, validation.Invalid(fmt.Sprintf("instance_groups[%s]", g.Name), jobReferences.firstHealthCheck(), "Cannot specify Run.HealthCheck properties on more than one job of the same instance group"))
+	}
+
+	if property, err := jobReferences.uniqueStringProperty(func(j JobReference) string {
+		return j.ContainerProperties.BoshContainerization.Run.ActivePassiveProbe
+	}); err == nil {
+		g.Run.ActivePassiveProbe = property
+	} else {
+		allErrs = append(allErrs, validation.Invalid(fmt.Sprintf("instance_groups[%s]", g.Name), property, "Cannot specify Run.ActivePassiveProbe properties on more than one job of the same instance group"))
+	}
+
+	if property, err := jobReferences.uniqueStringProperty(func(j JobReference) string {
+		return j.ContainerProperties.BoshContainerization.Run.ServiceAccount
+	}); err == nil {
+		g.Run.ServiceAccount = property
+	} else {
+		allErrs = append(allErrs, validation.Invalid(fmt.Sprintf("instance_groups[%s]", g.Name), property, "Cannot specify Run.ServiceAccount properties on more than one job of the same instance group"))
+	}
+
+	if ok := jobReferences.atMostOnce(affinityPresent); ok {
+		g.Run.Affinity = jobReferences.firstAffinity()
+	} else {
+		allErrs = append(allErrs, validation.Invalid(fmt.Sprintf("instance_groups[%s]", g.Name), jobReferences.firstHealthCheck(), "Cannot specify Run.HealthCheck properties on more than one job of the same instance group"))
+	}
+
+	return allErrs
+}
 
 // GetLongDescription returns the description of the instance group plus a list of all included jobs
 func (g *InstanceGroup) GetLongDescription() string {
@@ -492,6 +497,19 @@ func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
 	g.Configuration.Templates = roleConfigs
 }
 
+// ColocatedContainers returns colocated_container entries from all jobs
+func (g *InstanceGroup) ColocatedContainers() []string {
+	var containers []string
+	for _, j := range g.JobReferences {
+		for _, c := range j.ContainerProperties.BoshContainerization.ColocatedContainers {
+
+			containers = append(containers, c)
+		}
+	}
+	return containers
+
+}
+
 // LookupJob will find the given job in this role, or nil if not found
 func (g *InstanceGroup) LookupJob(name string) *JobReference {
 	for _, jobReference := range g.JobReferences {
@@ -520,58 +538,15 @@ func (g *InstanceGroup) IsColocated() bool {
 }
 
 // GetColocatedRoles lists all colocation roles references by this instance group
-func (g *InstanceGroup) GetColocatedRoles() []*InstanceGroup {
-	result := make([]*InstanceGroup, len(g.ColocatedContainers))
-	for i, name := range g.ColocatedContainers {
-		if role := g.roleManifest.LookupInstanceGroup(name); role != nil {
-			result[i] = role
+func (g *InstanceGroup) GetColocatedRoles() InstanceGroups {
+	var result InstanceGroups
+	for _, job := range g.JobReferences {
+		for _, name := range job.ContainerProperties.BoshContainerization.ColocatedContainers {
+			if role := g.roleManifest.LookupInstanceGroup(name); role != nil {
+				result = append(result, role)
+			}
 		}
 	}
 
 	return result
-}
-
-// WriteConfigs merges the job's spec with the opinions and returns the result as JSON.
-func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsPath, darkOpinionsPath string) ([]byte, error) {
-	var config struct {
-		Job struct {
-			Name string `json:"name"`
-		} `json:"job"`
-		Parameters map[string]string      `json:"parameters"`
-		Properties map[string]interface{} `json:"properties"`
-		Networks   struct {
-			Default map[string]string `json:"default"`
-		} `json:"networks"`
-		ExportedProperties []string               `json:"exported_properties"`
-		Consumes           map[string]jobLinkInfo `json:"consumes"`
-	}
-
-	config.Parameters = make(map[string]string)
-	config.Properties = make(map[string]interface{})
-	config.Networks.Default = make(map[string]string)
-	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]jobLinkInfo)
-
-	config.Job.Name = instanceGroup.Name
-
-	for _, consumer := range j.ResolvedConsumers {
-		config.Consumes[consumer.Name] = consumer.jobLinkInfo
-	}
-
-	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
-	if err != nil {
-		return nil, err
-	}
-	properties, err := j.Job.GetPropertiesForJob(opinions)
-	if err != nil {
-		return nil, err
-	}
-	config.Properties = properties
-
-	for _, provider := range j.Job.AvailableProviders {
-		config.ExportedProperties = append(config.ExportedProperties, provider.Properties...)
-	}
-
-	// Write out the configuration
-	return json.MarshalIndent(config, "", "    ") // 4-space indent
 }

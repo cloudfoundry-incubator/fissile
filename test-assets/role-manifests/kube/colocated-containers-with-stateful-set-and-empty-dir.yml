@@ -4,41 +4,45 @@ instance_groups:
   jobs:
   - name: tor
     release: tor
-  run:
-    capabilities:
-    - something
-    scaling:
-      min: 1
-      max: 2
-    volumes:
-    - path: /sys/fs/cgroup
-      type: host
-      tag: host-volume
-    - path: /mnt/persistent
-      type: persistent
-      tag: persistent-volume
-      size: 5
-    - path: /mnt/shared-data
-      type: emptyDir
-      tag: shared-data
-  colocated_containers:
-  - colocated
+    properties:
+      bosh_containerization:
+        run:
+          capabilities:
+          - something
+          scaling:
+            min: 1
+            max: 2
+          volumes:
+          - path: /sys/fs/cgroup
+            type: host
+            tag: host-volume
+          - path: /mnt/persistent
+            type: persistent
+            tag: persistent-volume
+            size: 5
+          - path: /mnt/shared-data
+            type: emptyDir
+            tag: shared-data
+        colocated_containers:
+        - colocated
 
 - name: colocated
   type: colocated-container
   jobs:
   - name: tor
     release: tor
-  run:
-    capabilities:
-    - something
-    scaling:
-      min: 1
-      max: 2
-    volumes:
-    - path: /mnt/shared-data
-      type: emptyDir
-      tag: shared-data
+    properties:
+      bosh_containerization:
+        run:
+          capabilities:
+          - something
+          scaling:
+            min: 1
+            max: 2
+          volumes:
+          - path: /mnt/shared-data
+            type: emptyDir
+            tag: shared-data
 
 configuration:
   templates:

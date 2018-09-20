@@ -1,16 +1,20 @@
 ---
 instance_groups:
   - name: myrole
-    run:
-      memory: 1
     jobs:
       - name: new_hostname
         release: tor
+        properties:
+          bosh_containerization:
+            run:
+              memory: 1
       - name: tor
         release: tor
   - name: foorole
-    run:
-      memory: 1
     jobs:
       - name: foo # This job should not exist
         release: tor
+        properties:
+          bosh_containerization:
+            run:
+              memory: 1

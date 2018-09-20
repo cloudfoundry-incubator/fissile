@@ -2,10 +2,6 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    scaling:
-      min: 1
-      max: 1
   jobs:
   - name: tor
     release: tor
@@ -22,3 +18,7 @@ instance_groups:
           external: 443
           internal: 443
           public: true
+        run:
+          scaling:
+            min: 1
+            max: 1

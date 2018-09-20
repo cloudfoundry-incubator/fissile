@@ -2,13 +2,13 @@
 instance_groups:
 - name: xrole
   scripts: ["myrole.sh"]
-  run:
-    memory: 1
-    virtual-cpus: 1
-    env:
-    - FOO
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 1
+          virtual-cpus: 1
   - name: tor
     release: tor

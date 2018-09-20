@@ -4,24 +4,28 @@ instance_groups:
 - name: myrole
   scripts:
   - myrole.sh
-  run:
-    foo: x
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
   - name: tor
     release: tor
   configuration:
     templates:
       properties.tor.hashed_control_password: 123
-      properties.tor.hostname: false	
+      properties.tor.hostname: false
 - name: foorole
   type: bosh-task
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 configuration:
   templates:
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'

@@ -7,20 +7,24 @@ instance_groups:
       true: "foo"
   scripts:
   - myrole.sh
-  run:
-    foo: x
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
   - name: tor
     release: tor
 - name: foorole
   type: bosh-task
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 configuration:
   templates:
     1: 'foo'

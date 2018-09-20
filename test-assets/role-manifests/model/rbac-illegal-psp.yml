@@ -9,3 +9,5 @@ instance_groups:
     properties:
       bosh_containerization:
         pod-security-policy: bogus
+        run:
+          foo: x

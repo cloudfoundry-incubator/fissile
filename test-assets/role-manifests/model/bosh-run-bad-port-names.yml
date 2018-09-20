@@ -1,8 +1,6 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    foo: x
   jobs:
   - name: tor
     release: tor
@@ -19,3 +17,5 @@ instance_groups:
           protocol: TCP
           count-configurable: true
           internal: 8008
+        run:
+          foo: x

@@ -9,12 +9,18 @@ instance_groups:
     properties:
       bosh_containerization:
         pod-security-policy: privileged
+        run:
+          foo: x
 - name: myrole2
   run:
     foo: x
   jobs:
   - name: hashmat
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 - name: myrole3
   run:
     foo: x
@@ -24,3 +30,5 @@ instance_groups:
     properties:
       bosh_containerization:
         pod-security-policy: nonprivileged
+        run:
+          foo: x
