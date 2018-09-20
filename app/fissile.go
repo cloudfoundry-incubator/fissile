@@ -1021,14 +1021,14 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model
 
 	enc := helm.NewEncoder(outputFile)
 
-	err = enc.Encode(node)
+	err = f.generateAuthCoupledToRole(enc,
+		instanceGroup.Run.ServiceAccount,
+		settings)
 	if err != nil {
 		return err
 	}
 
-	err = f.generateAuthCoupledToRole(enc,
-		instanceGroup.Run.ServiceAccount,
-		settings)
+	err = enc.Encode(node)
 	if err != nil {
 		return err
 	}
@@ -1136,6 +1136,14 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 			if err != nil {
 				return err
 			}
+
+			err = f.generateAuthCoupledToRole(enc,
+				instanceGroup.Run.ServiceAccount,
+				settings)
+			if err != nil {
+				return err
+			}
+
 			err = enc.Encode(statefulSet)
 			if err != nil {
 				return err
@@ -1145,13 +1153,6 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 				if err != nil {
 					return err
 				}
-			}
-
-			err = f.generateAuthCoupledToRole(enc,
-				instanceGroup.Run.ServiceAccount,
-				settings)
-			if err != nil {
-				return err
 			}
 		}
 	}
