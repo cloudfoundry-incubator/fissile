@@ -261,6 +261,14 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 	// See also 'GetVariablesForRole' (mustache.go), and LoadRoleManifest (caller, this file)
 	declaredConfigs := MakeMapOfVariables(m)
 
+	if m.Configuration.Authorization.Accounts == nil {
+		m.Configuration.Authorization.Accounts = make(map[string]AuthAccount)
+	}
+
+	if m.Configuration.Authorization.RoleUse == nil {
+		m.Configuration.Authorization.RoleUse = make(map[string]int)
+	}
+
 	for _, instanceGroup := range m.InstanceGroups {
 		// Don't allow any instance groups that are not of the "bosh" or "bosh-task" type
 		// Default type is considered to be "bosh".
@@ -279,6 +287,21 @@ func (m *RoleManifest) resolveRoleManifest(grapher util.ModelGrapher) error {
 		allErrs = append(allErrs, instanceGroup.calculateRoleRun()...)
 		allErrs = append(allErrs, validateRoleTags(instanceGroup)...)
 		allErrs = append(allErrs, validateRoleRun(instanceGroup, m, declaredConfigs)...)
+
+		// Count how many instance groups use a particular
+		// service account. And its roles.
+
+		if instanceGroup.Run != nil {
+			account := m.Configuration.Authorization.Accounts[instanceGroup.Run.ServiceAccount]
+			account.NumGroups++
+			m.Configuration.Authorization.Accounts[instanceGroup.Run.ServiceAccount] = account
+
+			for _, roleName := range account.Roles {
+				role := m.Configuration.Authorization.RoleUse[roleName]
+				role++
+				m.Configuration.Authorization.RoleUse[roleName] = role
+			}
+		}
 	}
 
 	if len(allErrs) != 0 {

@@ -392,6 +392,16 @@ func TestGenerateAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
+	// Force the usage counters for accounts and roles to values
+	// which causes generateAuth to write the proper files.
+	for accountName, accountSpec := range roleManifest.Configuration.Authorization.Accounts {
+		accountSpec.NumGroups = 2
+		roleManifest.Configuration.Authorization.Accounts[accountName] = accountSpec
+	}
+	for roleName := range roleManifest.Configuration.Authorization.Roles {
+		roleManifest.Configuration.Authorization.RoleUse[roleName] = 2
+	}
+
 	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
 	require.NoError(t, err)
 	defer os.RemoveAll(outDir)
