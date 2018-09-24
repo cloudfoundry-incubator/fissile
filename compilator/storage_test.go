@@ -62,7 +62,7 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
@@ -137,7 +137,7 @@ func TestStorePackageExists(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 

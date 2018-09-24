@@ -38,7 +38,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 func getAffinityBlock(instanceGroup *model.InstanceGroup) *helm.Mapping {
 	affinity := helm.NewMapping()
 
-	if instanceGroup.Run.Affinity.PodAntiAffinity != nil {
+	if instanceGroup.Run != nil && instanceGroup.Run.Affinity != nil && instanceGroup.Run.Affinity.PodAntiAffinity != nil {
 		// Add pod anti affinity from role manifest
 		affinity.Add("podAntiAffinity", instanceGroup.Run.Affinity.PodAntiAffinity)
 	}
