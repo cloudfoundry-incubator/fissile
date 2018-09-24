@@ -19,7 +19,7 @@ type Job interface {
 type Worker struct {
 	maxJobs int
 
-	events map[Event][]func(...interface{})
+	events map[Event][]func(*Package, ...interface{})
 
 	nextID int64
 	idLock sync.Mutex
@@ -53,12 +53,12 @@ func (w *Worker) reset() {
 		w.maxJobs = 1
 	}
 
-	w.events = make(map[Event][]func(...interface{}))
+	w.events = make(map[Event][]func(*Package, ...interface{}))
 	w.runningJobs = make(register, w.maxJobs)
 }
 
 func (w *Worker) builtInEvents() {
-	w.events = make(map[Event][]func(...interface{}))
+	w.events = make(map[Event][]func(*Package, ...interface{}))
 
 	w.On(jobFinished, w.jobFinished)
 }
@@ -84,18 +84,18 @@ func (w *Worker) Add(j Job) {
 }
 
 // On attaches an event handler to a given Event.
-func (w *Worker) On(e Event, cb func(...interface{})) {
+func (w *Worker) On(e Event, cb func(*Package, ...interface{})) {
 	if _, exists := w.events[e]; !exists {
-		w.events[e] = make([]func(...interface{}), 0)
+		w.events[e] = make([]func(*Package, ...interface{}), 0)
 	}
 
 	w.events[e] = append(w.events[e], cb)
 }
 
-func (w *Worker) emit(e Event, arguments ...interface{}) {
+func (w *Worker) emit(e Event, pk *Package, arguments ...interface{}) {
 	if _, exists := w.events[e]; exists {
 		for _, v := range w.events[e] {
-			v(arguments...)
+			v(pk, arguments...)
 		}
 	}
 }
@@ -213,8 +213,7 @@ func (w *Worker) runJob(p *Package, returnCh chan bool) {
 	returnCh <- true
 }
 
-func (w *Worker) jobFinished(args ...interface{}) {
-	pk := args[0].(*Package)
+func (w *Worker) jobFinished(pk *Package, args ...interface{}) {
 	pk.SetStatus(Finished)
 }
 

@@ -12,7 +12,7 @@ import (
 
 	"github.com/SUSE/fissile/util"
 
-	"github.com/pivotal-golang/archiver/extractor"
+	"code.cloudfoundry.org/archiver/extractor"
 	"gopkg.in/yaml.v2"
 )
 

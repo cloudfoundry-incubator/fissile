@@ -177,7 +177,10 @@ func (p *PackageStorage) Download(pack *model.Package, progressEvent DownloadPro
 	defer cachedPackageReader.Close()
 
 	// Create a temporary file where to download the package
-	path := p.localPackageTempArchivePath(pack)
+	path, err := p.localPackageTempArchivePath(pack)
+	if err != nil {
+		return err
+	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -208,10 +211,13 @@ func (p *PackageStorage) Download(pack *model.Package, progressEvent DownloadPro
 func (p *PackageStorage) Upload(pack *model.Package) error {
 
 	// Create a temporary archive with the compiled contents
-	archiveName := p.localPackageTempArchivePath(pack)
+	archiveName, err := p.localPackageTempArchivePath(pack)
+	if err != nil {
+		return err
+	}
 
 	// Archive (tar) the contents
-	err := archiver.Tar.Make(archiveName, []string{pack.GetPackageCompiledDir(p.CompilationWorkDir)})
+	err = archiver.Tar.Make(archiveName, []string{pack.GetPackageCompiledDir(p.CompilationWorkDir)})
 	// Cleanup the archive when done
 	defer os.RemoveAll(archiveName)
 
@@ -246,7 +252,11 @@ func (p *PackageStorage) uploadedPackageFileName(pack *model.Package) string {
 	return fmt.Sprintf("%s.tar", pack.Fingerprint)
 }
 
-func (p *PackageStorage) localPackageTempArchivePath(pack *model.Package) string {
-	id := uuid.Must(uuid.NewV4())
-	return filepath.Join(os.TempDir(), fmt.Sprintf("package-%s.tar", id.String()))
+func (p *PackageStorage) localPackageTempArchivePath(pack *model.Package) (string, error) {
+	var err error
+	id := uuid.Must(uuid.NewV4(), err)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(os.TempDir(), fmt.Sprintf("package-%s.tar", id.String())), nil
 }

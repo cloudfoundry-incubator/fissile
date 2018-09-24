@@ -70,6 +70,7 @@ compiled once.
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
 			compilationDir,
+			flagRoleManifest,
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),
