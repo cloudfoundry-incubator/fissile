@@ -12,9 +12,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SUSE/fissile/kube"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
+	"github.com/cloudfoundry-incubator/fissile/kube"
+	"github.com/cloudfoundry-incubator/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/testhelpers"
 
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"

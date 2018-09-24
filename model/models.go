@@ -1,6 +1,6 @@
 package model
 
-import "github.com/SUSE/fissile/util"
+import "github.com/cloudfoundry-incubator/fissile/util"
 
 // ReleaseLicense represents the license of a BOSH release
 type ReleaseLicense struct {

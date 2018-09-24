@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SUSE/fissile/mustache"
+	"github.com/cloudfoundry-incubator/fissile/mustache"
 )
 
 // MakeMapOfVariables converts the sequence of configuration variables

@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/scripts/compilation"
-	"github.com/SUSE/fissile/util"
 	"github.com/SUSE/termui"
+	"github.com/cloudfoundry-incubator/fissile/docker"
+	"github.com/cloudfoundry-incubator/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/scripts/compilation"
+	"github.com/cloudfoundry-incubator/fissile/util"
 
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"

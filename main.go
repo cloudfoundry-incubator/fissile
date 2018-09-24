@@ -4,10 +4,10 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/SUSE/fissile/app"
-	"github.com/SUSE/fissile/cmd"
 	"github.com/SUSE/termui"
 	"github.com/SUSE/termui/sigint"
+	"github.com/cloudfoundry-incubator/fissile/app"
+	"github.com/cloudfoundry-incubator/fissile/cmd"
 
 	"github.com/fatih/color"
 )

@@ -9,10 +9,10 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/scripts/compilation"
-	"github.com/SUSE/fissile/util"
+	"github.com/cloudfoundry-incubator/fissile/docker"
+	"github.com/cloudfoundry-incubator/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/scripts/compilation"
+	"github.com/cloudfoundry-incubator/fissile/util"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uiprogress/util/strutil"

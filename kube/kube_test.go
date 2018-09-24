@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/SUSE/fissile/helm"
+	"github.com/cloudfoundry-incubator/fissile/helm"
 
 	"github.com/Masterminds/sprig"
 	"gopkg.in/yaml.v2"

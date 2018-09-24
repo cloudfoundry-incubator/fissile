@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SUSE/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/model"
 
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"

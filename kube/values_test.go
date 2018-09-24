@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
+	"github.com/cloudfoundry-incubator/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

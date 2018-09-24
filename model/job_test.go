@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/testhelpers"
-	"github.com/SUSE/fissile/util"
+	"github.com/cloudfoundry-incubator/fissile/testhelpers"
+	"github.com/cloudfoundry-incubator/fissile/util"
 
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"

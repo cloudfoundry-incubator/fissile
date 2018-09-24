@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/docker"
+	"github.com/cloudfoundry-incubator/fissile/model"
 
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"

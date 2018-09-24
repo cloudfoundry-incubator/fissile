@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/validation"
+	"github.com/cloudfoundry-incubator/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/validation"
 )
 
 // validateManifestAndOpinions applies a series of checks to the role

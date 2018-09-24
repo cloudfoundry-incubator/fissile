@@ -3,8 +3,8 @@ package kube
 import (
 	"fmt"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
+	"github.com/cloudfoundry-incubator/fissile/helm"
+	"github.com/cloudfoundry-incubator/fissile/model"
 )
 
 const authModeRBAC = `if eq (printf "%s" .Values.kube.auth) "rbac"`

@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/SUSE/fissile/util"
+	"github.com/cloudfoundry-incubator/fissile/util"
 
 	"code.cloudfoundry.org/archiver/extractor"
 	"gopkg.in/yaml.v2"
