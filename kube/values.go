@@ -41,7 +41,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		var value interface{}
 		if !cv.CVOptions.Secret || cv.Type == "" {
 			var ok bool
-			if ok, value = cv.Value(settings.Defaults); !ok {
+			if ok, value = cv.Value(); !ok {
 				value = nil
 			}
 		}

@@ -73,14 +73,10 @@ type internalVariableDefinitions struct {
 }
 
 // Value fetches the value of config variable
-func (config *VariableDefinition) Value(defaults map[string]string) (bool, string) {
+func (config *VariableDefinition) Value() (bool, string) {
 	var value interface{}
 
 	value = config.CVOptions.Default
-
-	if defaultValue, ok := defaults[config.Name]; ok {
-		value = defaultValue
-	}
 
 	if value == nil {
 		return false, ""
