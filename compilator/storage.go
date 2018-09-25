@@ -55,18 +55,10 @@ type packageStorageConfig struct {
 // NewPackageStorageFromConfig creates a new PackageStorage based on a configuration file
 func NewPackageStorageFromConfig(configFilePath, compilationWorkDir, stemcellImageName string) (*PackageStorage, error) {
 	var packageCacheConfigReader []byte
+	var err error
 
-	// Read a yaml file that contains a stow configuration
-	if _, err := os.Stat(configFilePath); err != nil {
-		if os.IsNotExist(err) {
-			if strings.HasPrefix(configFilePath, "{") {
-				packageCacheConfigReader = []byte(configFilePath)
-			} else {
-				return nil, nil
-			}
-		} else {
-			return nil, err
-		}
+	if strings.HasPrefix(configFilePath, "{") {
+		packageCacheConfigReader = []byte(configFilePath)
 	} else {
 		packageCacheConfigReader, err = ioutil.ReadFile(configFilePath)
 		if err != nil {
@@ -77,10 +69,10 @@ func NewPackageStorageFromConfig(configFilePath, compilationWorkDir, stemcellIma
 	var stowConfig map[string]interface{}
 	var packageCacheConfig packageStorageConfig
 
-	if err := yaml.Unmarshal(packageCacheConfigReader, &stowConfig); err != nil {
+	if err = yaml.Unmarshal(packageCacheConfigReader, &stowConfig); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal the package cache config file: %s", err.Error())
 	}
-	if err := yaml.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
+	if err = yaml.Unmarshal(packageCacheConfigReader, &packageCacheConfig); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal the package cache config file: %s", err.Error())
 	}
 
