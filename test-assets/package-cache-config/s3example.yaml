@@ -1,0 +1,11 @@
+---
+
+# Fissile configuration settings
+boshPackageCacheKind: "s3"
+boshPackageCacheLocation: "bosh-package-test"
+boshPackageCacheReadOnly: false
+
+# Remote cache configuration settings
+access_key_id: "AccessKey"
+secret_key: "SecretKey"
+region: "region"

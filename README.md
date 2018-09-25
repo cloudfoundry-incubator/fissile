@@ -64,8 +64,9 @@ Name | Value
 `FISSILE_TEST_DOCKER_IMAGE` | the name of the default docker image for testing(e.g. `splatform/fissile-opensuse-stemcell:42.2`)
 
 ### Vendoring
-Fissile uses [Godep] for vendoring required source code.  To update the vendored
-source tree, please run `godep save ./...` and double-check that it has not done
+Fissile uses [dep] for vendoring required source code.  To update the vendored
+source tree, please run `dep ensure` and double-check that it has not done
 anything silly.
 
-[Godep]: https://github.com/tools/godep#godep
+[dep]: https://github.com/golang/dep
+

@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 func TestCompilationEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	waitCh := make(chan struct{})
@@ -71,7 +71,7 @@ func TestCompilationBasic(t *testing.T) {
 	metrics := file.Name()
 	defer os.Remove(metrics)
 
-	c, err := NewDockerCompilator(nil, "", metrics, "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", metrics, "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	compileChan := make(chan string)
@@ -150,7 +150,7 @@ func TestCompilationSkipCompiled(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	compileChan := make(chan string)
@@ -173,7 +173,8 @@ func TestCompilationSkipCompiled(t *testing.T) {
 }
 
 func TestCompilationRoleManifest(t *testing.T) {
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(t, err)
 
 	compileChan := make(chan string, 2)
@@ -268,7 +269,7 @@ func doTestContainerKeptAfterCompilationWithErrors(t *testing.T, keepContainer b
 
 	imageName := "splatform/fissile-stemcell-opensuse:42.2"
 
-	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", keepContainer, ui, nil)
+	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", keepContainer, ui, nil, nil)
 	assert.NoError(err)
 
 	beforeCompileContainers, err := getContainerIDs(imageName)
@@ -356,7 +357,7 @@ func TestCompilationMultipleErrors(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	c.compilePackage = func(c *Compilator, pkg *model.Package) error {
@@ -386,7 +387,7 @@ func TestGetPackageStatusCompiled(t *testing.T) {
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
-	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil)
+	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	compiledPackagePath := filepath.Join(compilationWorkDir, release.Packages[0].Fingerprint, "compiled")
@@ -445,7 +446,7 @@ func TestCompilationParallel(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 	c.compilePackage = func(c *Compilator, pkg *model.Package) error {
 		mutex.Lock()
@@ -500,7 +501,7 @@ func TestGetPackageStatusNone(t *testing.T) {
 	// For this test we assume that the release does not have multiple packages with a single fingerprint
 	assert.NoError(err)
 
-	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil)
+	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	status, err := compilator.isPackageCompiled(release.Packages[0])
@@ -525,7 +526,7 @@ func TestPackageFolderStructure(t *testing.T) {
 	release, err := model.NewDevRelease(ntpReleasePath, "", "", ntpReleasePathBoshCache)
 	assert.NoError(err)
 
-	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil)
+	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	err = compilator.createCompilationDirStructure(release.Packages[0])
@@ -556,7 +557,7 @@ func TestPackageDependenciesPreparation(t *testing.T) {
 	release, err := model.NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
 	assert.NoError(err)
 
-	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil)
+	compilator, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", "fissile-test-compilator", compilation.FakeBase, "3.14.15", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	pkg, err := release.LookupPackage("tor")
@@ -606,7 +607,7 @@ func doTestCompilePackageInDocker(t *testing.T, keepInContainer bool) {
 
 	imageName := "splatform/fissile-stemcell-opensuse:42.2"
 
-	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", keepInContainer, ui, nil)
+	comp, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", keepInContainer, ui, nil, nil)
 	assert.NoError(err)
 
 	containerName := comp.getPackageContainerName(release.Packages[0])
@@ -713,7 +714,7 @@ func TestCreateDepBucketsOnChain(t *testing.T) {
 func TestGatherPackages(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	releases := genTestCase("ruby-2.5", "go-1.4.1:G", "go-1.4:G")
@@ -736,7 +737,7 @@ func TestRemoveCompiledPackages(t *testing.T) {
 
 	assert := assert.New(t)
 
-	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil)
+	c, err := NewDockerCompilator(nil, "", "", "", "", "", "", false, ui, nil, nil)
 	assert.NoError(err)
 
 	releases := genTestCase("ruby-2.5", "consul>go-1.4", "go-1.4")

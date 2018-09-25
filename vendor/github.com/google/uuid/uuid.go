@@ -58,11 +58,11 @@ func Parse(s string) (UUID, error) {
 		14, 16,
 		19, 21,
 		24, 26, 28, 30, 32, 34} {
-		v, ok := xtob(s[x], s[x+1])
-		if !ok {
+		if v, ok := xtob(s[x], s[x+1]); !ok {
 			return uuid, errors.New("invalid UUID format")
+		} else {
+			uuid[i] = v
 		}
-		uuid[i] = v
 	}
 	return uuid, nil
 }
@@ -88,30 +88,13 @@ func ParseBytes(b []byte) (UUID, error) {
 		14, 16,
 		19, 21,
 		24, 26, 28, 30, 32, 34} {
-		v, ok := xtob(b[x], b[x+1])
-		if !ok {
+		if v, ok := xtob(b[x], b[x+1]); !ok {
 			return uuid, errors.New("invalid UUID format")
+		} else {
+			uuid[i] = v
 		}
-		uuid[i] = v
 	}
 	return uuid, nil
-}
-
-// MustParse is like Parse but panics if the string cannot be parsed.
-// It simplifies safe initialization of global variables holding compiled UUIDs.
-func MustParse(s string) UUID {
-	uuid, err := Parse(s)
-	if err != nil {
-		panic(`uuid: Parse(` + s + `): ` + err.Error())
-	}
-	return uuid
-}
-
-// FromBytes creates a new UUID from a byte slice. Returns an error if the slice
-// does not have a length of 16. The bytes are copied from the slice.
-func FromBytes(b []byte) (uuid UUID, err error) {
-	err = uuid.UnmarshalBinary(b)
-	return uuid, err
 }
 
 // Must returns uuid if err is nil and panics otherwise.
@@ -140,7 +123,7 @@ func (uuid UUID) URN() string {
 }
 
 func encodeHex(dst []byte, uuid UUID) {
-	hex.Encode(dst, uuid[:4])
+	hex.Encode(dst[:], uuid[:4])
 	dst[8] = '-'
 	hex.Encode(dst[9:13], uuid[4:6])
 	dst[13] = '-'
@@ -193,7 +176,7 @@ func (v Variant) String() string {
 	return fmt.Sprintf("BadVariant%d", int(v))
 }
 
-// SetRand sets the random number generator to r, which implements io.Reader.
+// SetRand sets the random number generator to r, which implents io.Reader.
 // If r.Read returns an error when the package requests random data then
 // a panic will be issued.
 //

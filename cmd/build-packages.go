@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -37,6 +38,7 @@ compiled once.
 		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
+		flagBuildCompilationCacheConfig := buildPackagesViper.GetString("compilation-cache-config")
 
 		err := fissile.LoadManifest(
 			flagRoleManifest,
@@ -68,6 +70,7 @@ compiled once.
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
 			compilationDir,
+			flagRoleManifest,
 			flagMetrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),
@@ -75,6 +78,7 @@ compiled once.
 			flagBuildPackagesDockerNetworkMode,
 			flagBuildPackagesWithoutDocker,
 			flagVerbose,
+			flagBuildCompilationCacheConfig,
 		)
 	},
 }
@@ -120,6 +124,13 @@ func init() {
 		"s",
 		"",
 		"The source stemcell",
+	)
+
+	buildPackagesCmd.PersistentFlags().StringP(
+		"compilation-cache-config",
+		"",
+		filepath.Join(os.Getenv("HOME"), ".fissile", "package-cache.yaml"),
+		"Points to a file containing configuration for a compiled package cache or contains the configuration as valid yaml",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())

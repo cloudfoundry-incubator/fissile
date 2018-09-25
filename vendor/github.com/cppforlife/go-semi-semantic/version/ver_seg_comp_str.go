@@ -40,4 +40,6 @@ func (s VerSegCompStr) Compare(other VerSegComp) int {
 	panic("unreachable")
 }
 
+func (s VerSegCompStr) String() string { return s.AsString() }
+
 func (s VerSegCompStr) AsString() string { return s.S }
