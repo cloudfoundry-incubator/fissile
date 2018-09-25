@@ -6,6 +6,8 @@ set -o errexit
 
 printf "%b==> Vetting %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
 
+# make/bindata must be run first to generate scripts/compilation/compilation.go
+go generate ./docker/ # for mocks
 go vet $(go list -f '{{ .ImportPath }}' ./... | sed '\@fissile/scripts@d ; \@fissile/mustache@d ; \@/vendor/@d')
 
 printf "%b" "${NO_COLOR}"
