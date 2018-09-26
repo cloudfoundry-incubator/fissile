@@ -14,13 +14,13 @@
 
 ###
 
-set -o errexit -o nounset
+set -o errexit -o nounset -o pipefail
 
 # Grab monit port
 monit_port=$(awk '/httpd port/ { print $4 }' /etc/monitrc)
 
 # Check that monit thinks everything is ready
-curl -s -u admin:${MONIT_PASSWORD} http://127.0.0.1:${monit_port}/_status | gawk '
+curl -s -u admin:"${MONIT_PASSWORD}" http://127.0.0.1:"${monit_port}"/_status | gawk '
     BEGIN                                                     { status = 0 }
     $1 == "status" && $2 != "running" && $2 != "accessible"   { print ; status = 1 }
     END                                                       { exit status }
@@ -52,7 +52,7 @@ if test -n "${FISSILE_ACTIVE_PASSIVE_PROBE:-}" ; then
         return $?
     }
 
-    if eval ${FISSILE_ACTIVE_PASSIVE_PROBE} ; then
+    if eval "${FISSILE_ACTIVE_PASSIVE_PROBE}" ; then
         update_readiness true
     else
         update_readiness false
