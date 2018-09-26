@@ -9,7 +9,7 @@ allow operators to perform scriptable extensions of the default
 privileges as needed.
 
 For the curious, or developers, the relevant specification is found at
-https://github.com/SUSE/fissile/wiki/Operator-overrides-of-role-capabilities
+https://github.com/cloudfoundry-incubator/fissile/wiki/Operator-overrides-of-role-capabilities
 
 # Interface
 
