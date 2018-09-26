@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/cloudfoundry-incubator/fissile/util"
+	"code.cloudfoundry.org/fissile/util"
 
 	"github.com/cppforlife/go-semi-semantic/version"
 	"gopkg.in/yaml.v2"

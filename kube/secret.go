@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/fissile/helm"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // MakeSecrets creates Secret KubeConfig filled with the

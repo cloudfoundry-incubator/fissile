@@ -1,7 +1,7 @@
 package kube
 
 import (
-	"github.com/cloudfoundry-incubator/fissile/model"
+	"code.cloudfoundry.org/fissile/model"
 )
 
 // ExportSettings are configuration for creating Kubernetes configs

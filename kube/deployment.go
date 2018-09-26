@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/fissile/helm"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // NewDeployment creates a Deployment for the given instance group, and its attached services

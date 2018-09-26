@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 )
 
 func TestMakeSecretsEmpty(t *testing.T) {

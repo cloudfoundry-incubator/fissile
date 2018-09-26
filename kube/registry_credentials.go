@@ -1,7 +1,7 @@
 package kube
 
 import (
-	"github.com/cloudfoundry-incubator/fissile/helm"
+	"code.cloudfoundry.org/fissile/helm"
 )
 
 // MakeRegistryCredentials generates a template that contains Docker Registry credentials

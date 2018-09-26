@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/fissile/builder"
-	"github.com/cloudfoundry-incubator/fissile/helm"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/util"
+	"code.cloudfoundry.org/fissile/builder"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // defaultInitialDelaySeconds is the default initial delay for liveness probes

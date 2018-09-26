@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cloudfoundry-incubator/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/testhelpers"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"text/template"
 
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/dockerfiles"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-	"github.com/cloudfoundry-incubator/fissile/docker"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/scripts/dockerfiles"
-	"github.com/cloudfoundry-incubator/fissile/util"
 
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"

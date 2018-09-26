@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/fissile/helm"
-	"github.com/cloudfoundry-incubator/fissile/model"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
 )
 
 func formattedExample(example string, value interface{}) string {

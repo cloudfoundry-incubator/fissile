@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/fissile/app"
+	"code.cloudfoundry.org/fissile/app"
 
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"code.cloudfoundry.org/fissile/model"
 	"github.com/SUSE/termui"
-	"github.com/cloudfoundry-incubator/fissile/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

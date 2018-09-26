@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/compilation"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-	"github.com/cloudfoundry-incubator/fissile/docker"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/scripts/compilation"
-	"github.com/cloudfoundry-incubator/fissile/util"
 
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cloudfoundry-incubator/fissile/util"
+	"code.cloudfoundry.org/fissile/util"
 
 	"github.com/stretchr/testify/assert"
 )

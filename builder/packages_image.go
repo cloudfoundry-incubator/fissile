@@ -13,11 +13,11 @@ import (
 	"sort"
 	"strings"
 
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/dockerfiles"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/termui"
-	"github.com/cloudfoundry-incubator/fissile/docker"
-	"github.com/cloudfoundry-incubator/fissile/model"
-	"github.com/cloudfoundry-incubator/fissile/scripts/dockerfiles"
-	"github.com/cloudfoundry-incubator/fissile/util"
 )
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/cloudfoundry-incubator/fissile/app"
+	"code.cloudfoundry.org/fissile/app"
 
 	"github.com/spf13/cobra"
 )
