@@ -60,6 +60,13 @@ func NewPackageStorageFromConfig(configFilePath, compilationWorkDir, stemcellIma
 	if strings.HasPrefix(configFilePath, "{") {
 		packageCacheConfigReader = []byte(configFilePath)
 	} else {
+		if _, err := os.Stat(configFilePath); err != nil {
+			if os.IsNotExist(err) {
+				return nil, nil
+			}
+			return nil, err
+		}
+
 		packageCacheConfigReader, err = ioutil.ReadFile(configFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to read the package cache config file: %s", err.Error())
