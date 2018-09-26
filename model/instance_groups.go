@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SUSE/fissile/util"
-	"github.com/SUSE/fissile/validation"
+	"code.cloudfoundry.org/fissile/util"
+	"code.cloudfoundry.org/fissile/validation"
 
 	"gopkg.in/yaml.v2"
 )

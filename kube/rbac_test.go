@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 )
 
 func TestNewRBACAccountPSPKube(t *testing.T) {

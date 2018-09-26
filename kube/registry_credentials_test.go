@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/SUSE/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/testhelpers"
 )
 
 func TestMakeRegistryCredentialsKube(t *testing.T) {

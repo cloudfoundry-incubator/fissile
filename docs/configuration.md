@@ -82,7 +82,7 @@ Name | Description
 `KUBE_COMPONENT_INDEX` | Numeric index for instance groups with multiple replicas
 `KUBERNETES_CLUSTER_DOMAIN` | Kubernetes cluster domain, `cluster.local` by default
 
-[run.sh]: https://github.com/SUSE/fissile/blob/master/scripts/dockerfiles/run.sh
+[run.sh]: https://code.cloudfoundry.org/fissile/blob/master/scripts/dockerfiles/run.sh
 
 There are also some fields not shown above (as the are not needed for NATS):
 

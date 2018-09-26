@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/util"
 	"gopkg.in/yaml.v2"
 )
 

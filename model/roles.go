@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SUSE/fissile/util"
-	"github.com/SUSE/fissile/validation"
+	"code.cloudfoundry.org/fissile/util"
+	"code.cloudfoundry.org/fissile/validation"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/mholt/archiver"

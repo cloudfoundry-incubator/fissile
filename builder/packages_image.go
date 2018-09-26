@@ -13,10 +13,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/scripts/dockerfiles"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/dockerfiles"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/termui"
 )
 

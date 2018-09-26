@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
+	"code.cloudfoundry.org/fissile/helm"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/SUSE/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/testhelpers"
 )
 
 func TestNewTypeMeta(t *testing.T) {

@@ -21,8 +21,8 @@ Fissile requires generated code using additional tools, and therefore isn't
 `go get`-able.
 
 ```
-$ go get -d github.com/SUSE/fissile       # Download sources
-$ cd $GOPATH/src/github.com/SUSE/fissile
+$ go get -d code.cloudfoundry.org/fissile       # Download sources
+$ cd $GOPATH/src/code.cloudfoundry.org/fissile
 $ make tools                              # install required tools; only needed first time
 $ make docker-deps                        # pull docker images required to build
 $ make all
@@ -52,7 +52,7 @@ various linters.  To manually build fissile only, run
 `make bindata build`.  This will run the necessary code generation
 before building the binary.
 
-[pull request]: https://github.com/SUSE/fissile/pulls
+[pull request]: https://code.cloudfoundry.org/fissile/pulls
 
 ### Testing
 Run tests with `make test` (or use `go test` directly if you want to filter for

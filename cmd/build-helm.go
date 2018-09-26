@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/SUSE/fissile/kube"
-	"github.com/SUSE/fissile/model"
+	"code.cloudfoundry.org/fissile/kube"
+	"code.cloudfoundry.org/fissile/model"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
