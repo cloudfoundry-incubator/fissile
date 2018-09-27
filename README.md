@@ -11,9 +11,9 @@ agent.
 ## Getting fissile
 
 ### Prerequisites
-Building fissile needs [Go 1.7] or higher and [Docker].
+Building fissile needs [Go 1.9] or higher and [Docker].
 
-[Go 1.7]: https://golang.org/doc/install
+[Go 1.9]: https://golang.org/doc/install
 [Docker]: https://www.docker.com
 
 ### Build procedure
@@ -21,6 +21,8 @@ Fissile requires generated code using additional tools, and therefore isn't
 `go get`-able.
 
 ```
+$ make src                                      # make the directory src 
+$ export $GOPATH=$PWD                           # set GOPATH
 $ go get -d code.cloudfoundry.org/fissile       # Download sources
 $ cd $GOPATH/src/code.cloudfoundry.org/fissile
 $ make tools                              # install required tools; only needed first time
