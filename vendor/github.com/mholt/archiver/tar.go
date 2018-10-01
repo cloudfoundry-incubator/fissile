@@ -140,7 +140,14 @@ func tarFile(tarWriter *tar.Writer, source, dest string) error {
 			return fmt.Errorf("error walking to %s: %v", path, err)
 		}
 
-		header, err := tar.FileInfoHeader(info, path)
+		link := path
+		if (info.Mode() & os.ModeSymlink) != 0 {
+			link, err = os.Readlink(path)
+			if err != nil {
+				return fmt.Errorf("%s: readlink: %v", path, err)
+			}
+		}
+		header, err := tar.FileInfoHeader(info, link)
 		if err != nil {
 			return fmt.Errorf("%s: making header: %v", path, err)
 		}
