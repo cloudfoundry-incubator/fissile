@@ -56,13 +56,12 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 
 // LoadManifest loads the manifest in use by fissile
 func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
-	roleManifest, err := model.LoadRoleManifest(
-		roleManifestPath,
-		releasePaths,
-		releaseNames,
-		releaseVersions,
-		cacheDir,
-		f)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths:    releasePaths,
+		ReleaseNames:    releaseNames,
+		ReleaseVersions: releaseVersions,
+		BOSHCacheDir:    cacheDir,
+		Grapher:         f})
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}

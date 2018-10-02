@@ -47,62 +47,65 @@ func validateSortedTemplates(roleManifest *RoleManifest) validation.ErrorList {
 	return allErrs
 }
 
-// validateScripts tests that all scripts exist and that all referenced scripts exist
+// validateScripts tests that all referenced scripts exist, and that all scripts
+// are referenced.
 func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 	allErrs := validation.ErrorList{}
-	scriptDir := filepath.Dir(roleManifest.manifestFilePath)
+	roleManifestDirName := filepath.Dir(roleManifest.manifestFilePath)
+	scriptsDirName := filepath.Join(roleManifestDirName, "scripts")
 	usedScripts := map[string]bool{}
 
+	scriptsDir, err := os.Open(scriptsDirName)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return append(allErrs, validation.Invalid(scriptsDirName, err, "Error opening scripts directory"))
+		}
+		if !roleManifest.validationOptions.AllowMissingScripts {
+			return append(allErrs, validation.NotFound("role manifest scripts directory", err))
+		}
+	}
+	scriptsNames, err := scriptsDir.Readdirnames(0)
+	if err != nil && !roleManifest.validationOptions.AllowMissingScripts {
+		return append(allErrs, validation.Invalid(scriptsDirName, err.Error(), "Error listing files in scripts directory"))
+	}
+	for _, scriptName := range scriptsNames {
+		if !strings.HasPrefix(scriptName, ".") { // skip hidden files
+			usedScripts["scripts/"+scriptName] = false
+		}
+	}
+
 	for _, instanceGroup := range roleManifest.InstanceGroups {
-		for _, script := range instanceGroup.Scripts {
-			if filepath.IsAbs(script) {
-				continue
+		for scriptType, scriptList := range map[string][]string{
+			"script":             instanceGroup.Scripts,
+			"environment script": instanceGroup.EnvironScripts,
+			"post config script": instanceGroup.PostConfigScripts,
+		} {
+			for _, script := range scriptList {
+				if filepath.IsAbs(script) {
+					continue
+				}
+				if !filepath.HasPrefix(script, "scripts/") {
+					allErrs = append(allErrs, validation.Invalid(
+						fmt.Sprintf("%s %s", instanceGroup.Name, scriptType),
+						script,
+						"Script path does not start with scripts/"))
+				}
+				if !roleManifest.validationOptions.AllowMissingScripts {
+					if _, ok := usedScripts[script]; !ok {
+						allErrs = append(allErrs, validation.Invalid(
+							fmt.Sprintf("%s %s", instanceGroup.Name, scriptType),
+							script,
+							"script not found"))
+					}
+				}
+				usedScripts[script] = true
 			}
-
-			fullScriptPath := filepath.Join(scriptDir, script)
-
-			if _, err := os.Stat(fullScriptPath); err != nil {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("%s script", instanceGroup.Name),
-					script,
-					err.Error()))
-			}
-
-			usedScripts[fullScriptPath] = true
 		}
+	}
 
-		for _, script := range instanceGroup.EnvironScripts {
-			if filepath.IsAbs(script) {
-				continue
-			}
-
-			fullScriptPath := filepath.Join(scriptDir, script)
-
-			if _, err := os.Stat(fullScriptPath); err != nil {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("%s env script", instanceGroup.Name),
-					script,
-					err.Error()))
-			}
-
-			usedScripts[fullScriptPath] = true
-		}
-
-		for _, script := range instanceGroup.PostConfigScripts {
-			if filepath.IsAbs(script) {
-				continue
-			}
-
-			fullScriptPath := filepath.Join(scriptDir, script)
-
-			if _, err := os.Stat(fullScriptPath); err != nil {
-				allErrs = append(allErrs, validation.Invalid(
-					fmt.Sprintf("%s post config script", instanceGroup.Name),
-					script,
-					err.Error()))
-			}
-
-			usedScripts[fullScriptPath] = true
+	for scriptName, scriptUsed := range usedScripts {
+		if !scriptUsed {
+			allErrs = append(allErrs, validation.Required(scriptName, "Script is not used"))
 		}
 	}
 

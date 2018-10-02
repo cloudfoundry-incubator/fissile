@@ -1,0 +1,8 @@
+# This is an empty manifest
+# It is in a separate directory so that it doesn't need to reference the extra
+# script file scripts/myrole.sh
+---
+instance_groups: []
+configuration:
+  variables: []
+  templates: {}

@@ -3,7 +3,7 @@
 instance_groups:
 - name: myrole
   scripts:
-  - myrole.sh
+  - scripts/myrole.sh
   jobs:
   - name: hashmat
     release: tor

@@ -192,12 +192,12 @@ func TestCompilationRoleManifest(t *testing.T) {
 	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
 	// `boguspackage` is neither, and will not be included
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/compilator/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath,
-		[]string{releasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 

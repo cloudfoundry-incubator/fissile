@@ -27,28 +27,45 @@ type RoleManifest struct {
 
 	LoadedReleases   []*Release
 	manifestFilePath string
+
+	validationOptions RoleManifestValidationOptions
+}
+
+// RoleManifestValidationOptions allows tests to skip some parts of validation
+type RoleManifestValidationOptions struct {
+	AllowMissingScripts bool
 }
 
 type releaseByName map[string]*Release
 
+// LoadRoleManifestOptions provides the input to LoadRoleManifest()
+type LoadRoleManifestOptions struct {
+	ReleasePaths      []string
+	ReleaseNames      []string
+	ReleaseVersions   []string
+	BOSHCacheDir      string
+	Grapher           util.ModelGrapher
+	ValidationOptions RoleManifestValidationOptions
+}
+
 // LoadRoleManifest loads a yaml manifest that details how jobs get grouped into roles
-func LoadRoleManifest(manifestFilePath string, releasePaths, releaseNames, releaseVersions []string, boshCacheDir string, grapher util.ModelGrapher) (*RoleManifest, error) {
+func LoadRoleManifest(manifestFilePath string, options LoadRoleManifestOptions) (*RoleManifest, error) {
 	manifestContents, err := ioutil.ReadFile(manifestFilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	roleManifest := RoleManifest{}
+	roleManifest := RoleManifest{validationOptions: options.ValidationOptions}
 	roleManifest.manifestFilePath = manifestFilePath
 	if err := yaml.Unmarshal(manifestContents, &roleManifest); err != nil {
 		return nil, err
 	}
 
 	releases, err := LoadReleases(
-		releasePaths,
-		releaseNames,
-		releaseVersions,
-		boshCacheDir)
+		options.ReleasePaths,
+		options.ReleaseNames,
+		options.ReleaseVersions,
+		options.BOSHCacheDir)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +99,7 @@ func LoadRoleManifest(manifestFilePath string, releasePaths, releaseNames, relea
 		roleManifest.Variables[i].CVOptions = v.CVOptions
 	}
 
-	err = roleManifest.resolveRoleManifest(grapher)
+	err = roleManifest.resolveRoleManifest(options.Grapher)
 	if err != nil {
 		return nil, err
 	}
