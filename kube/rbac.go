@@ -52,7 +52,8 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 	}
 
 	binding := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", blockPSP)
-	binding.Add("metadata", helm.NewMapping("name", fmt.Sprintf("%s-binding-psp", name)))
+	binding.Add("metadata", helm.NewMapping("name",
+		authCRBindingName(name, settings.CreateHelmChart)))
 	subjects := helm.NewList(helm.NewMapping(
 		"kind", "ServiceAccount",
 		"name", name,
@@ -60,7 +61,7 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 	binding.Add("subjects", subjects)
 	binding.Add("roleRef", helm.NewMapping(
 		"kind", "ClusterRole",
-		"name", authPSPRoleName(account.PodSecurityPolicy),
+		"name", authPSPRoleName(account.PodSecurityPolicy, settings.CreateHelmChart),
 		"apiGroup", "rbac.authorization.k8s.io"))
 	resources = append(resources, binding)
 
@@ -107,14 +108,25 @@ func authPSPCondition(psp string) helm.NodeModifier {
 }
 
 // authPSPRoleName derives the name of the cluster role for a PSP
-func authPSPRoleName(psp string) string {
+func authPSPRoleName(psp string, helm bool) string {
+	if helm {
+		return fmt.Sprintf("{{ .Release.Namespace }}-psp-role-%s", psp)
+	}
 	return fmt.Sprintf("psp-role-%s", psp)
+}
+
+// authCRBindingName derives the name of the cluster role for a PSP
+func authCRBindingName(name string, helm bool) string {
+	if helm {
+		return fmt.Sprintf("{{ .Release.Namespace }}-%s-binding-psp", name)
+	}
+	return fmt.Sprintf("%s-binding-psp", name)
 }
 
 // NewRBACClusterRolePSP creates a new (Kubernetes RBAC) cluster role
 // referencing a pod security policy (PSP)
 func NewRBACClusterRolePSP(psp string, settings ExportSettings) (helm.Node, error) {
-	name := authPSPRoleName(psp)
+	name := authPSPRoleName(psp, settings.CreateHelmChart)
 
 	container := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRole")
 
