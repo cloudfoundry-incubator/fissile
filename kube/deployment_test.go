@@ -211,6 +211,12 @@ func TestNewDeploymentHelm(t *testing.T) {
 			metadata:
 				name: "some-group"
 				labels:
+					app.kubernetes.io/component: some-group
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "some-group"
 			spec:
 				replicas: 1
@@ -221,6 +227,12 @@ func TestNewDeploymentHelm(t *testing.T) {
 					metadata:
 						name: "some-group"
 						labels:
+							app.kubernetes.io/component: some-group
+							app.kubernetes.io/instance: MyRelease
+							app.kubernetes.io/managed-by: Tiller
+							app.kubernetes.io/name: MyChart
+							app.kubernetes.io/version: 1.22.333.4444
+							helm.sh/chart: MyChart-42.1_foo
 							skiff-role-name: "some-group"
 						annotations:
 							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3

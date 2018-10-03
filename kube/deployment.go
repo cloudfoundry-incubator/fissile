@@ -24,7 +24,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 	spec.Add("selector", newSelector(instanceGroup.Name))
 	spec.Add("template", podTemplate)
 
-	deployment := newKubeConfig("extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))
+	deployment := newKubeConfig(settings, "extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))
 	deployment.Add("spec", spec)
 	err = replicaCheck(instanceGroup, deployment, svc, settings)
 	if err != nil {

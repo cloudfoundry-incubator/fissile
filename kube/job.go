@@ -26,17 +26,11 @@ func NewJob(instanceGroup *model.InstanceGroup, settings ExportSettings, grapher
 	}
 
 	name := instanceGroup.Name
-	apiVersion := "batch/v1"
 	if settings.CreateHelmChart {
 		name += "-{{ .Release.Revision }}"
 	}
 
-	metadata := helm.NewMapping()
-	metadata.Add("name", name)
-	metadata.Sort()
-
-	job := newTypeMeta(apiVersion, "Job", helm.Comment(instanceGroup.GetLongDescription()))
-	job.Add("metadata", metadata)
+	job := newKubeConfig(settings, "batch/v1", "Job", name, helm.Comment(instanceGroup.GetLongDescription()))
 	job.Add("spec", helm.NewMapping("template", podTemplate))
 
 	return job.Sort(), nil
