@@ -214,14 +214,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			apiVersion: "rbac.authorization.k8s.io/v1"
 			kind: "ClusterRoleBinding"
 			metadata:
-				name: "the-name-binding-psp"
+				name: "a-namespace-the-name-binding-psp"
 			subjects:
 			-	kind: "ServiceAccount"
 				name: "the-name"
 				namespace: "a-namespace"
 			roleRef:
 				kind: "ClusterRole"
-				name: "psp-role-nonprivileged"
+				name: "a-namespace-psp-role-nonprivileged"
 				apiGroup: "rbac.authorization.k8s.io"
 		`, actualBinding)
 	})
@@ -373,6 +373,7 @@ func TestNewRBACClusterRolePSPHelm(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.kube.auth":         "rbac",
 		"Values.kube.psp.the_name": "foo",
+		"Release.Namespace":        "namespace",
 	}
 	actualCR, err := RoundtripNode(resource, config)
 	if !assert.NoError(err) {
@@ -382,7 +383,7 @@ func TestNewRBACClusterRolePSPHelm(t *testing.T) {
 		apiVersion: "rbac.authorization.k8s.io/v1"
 		kind: "ClusterRole"
 		metadata:
-			name: "psp-role-the_name"
+			name: "namespace-psp-role-the_name"
 		rules:
 		-	apiGroups:
 			-	"extensions"
