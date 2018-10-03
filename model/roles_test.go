@@ -69,6 +69,36 @@ func TestGetScriptPaths(t *testing.T) {
 	}
 }
 
+func TestScriptPathInvalid(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/script-bad-prefix.yml")
+	roleManifest, err := LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")})
+	require.Error(t, err, "invalid role manifest should return error")
+	assert.Nil(t, roleManifest, "invalid role manifest loaded")
+	for _, msg := range []string{
+		`myrole environment script: Invalid value: "lacking-prefix.sh": Script path does not start with scripts/`,
+		`myrole script: Invalid value: "scripts/missing.sh": script not found`,
+		`myrole post config script: Invalid value: "": script not found`,
+	} {
+		assert.Contains(t, err.Error(), msg, "missing expected validation error")
+	}
+	for _, msg := range []string{
+		`myrole environment script: Invalid value: "scripts/environ.sh":`,
+		`myrole environment script: Invalid value: "/environ/script/with/absolute/path.sh":`,
+		`myrole script: Invalid value: "scripts/myrole.sh":`,
+		`myrole script: Invalid value: "/script/with/absolute/path.sh":`,
+		`myrole post config script: Invalid value: "scripts/post_config_script.sh":`,
+		`myrole post config script: Invalid value: "/var/vcap/jobs/myrole/pre-start":`,
+	} {
+		assert.NotContains(t, err.Error(), msg, "unexpected validation error")
+	}
+}
+
 func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)

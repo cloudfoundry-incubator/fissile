@@ -1,0 +1,22 @@
+# This role manifest has a script that does not start with scripts/
+---
+instance_groups:
+- name: myrole
+  environment_scripts:
+  - lacking-prefix.sh                     # should start with scripts/
+  - scripts/environ.sh                    # valid
+  - /environ/script/with/absolute/path.sh # valid
+  scripts:
+  - scripts/missing.sh                    # file does not exist
+  - scripts/myrole.sh                     # valid
+  - /script/with/absolute/path.sh         # valid
+  post_config_scripts:
+  - ""
+  - scripts/post_config_script.sh         # valid
+  - /var/vcap/jobs/myrole/pre-start       # valid
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run: {}

@@ -103,9 +103,11 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 		}
 	}
 
-	for scriptName, scriptUsed := range usedScripts {
-		if !scriptUsed {
-			allErrs = append(allErrs, validation.Required(scriptName, "Script is not used"))
+	if !roleManifest.validationOptions.AllowMissingScripts {
+		for scriptName, scriptUsed := range usedScripts {
+			if !scriptUsed {
+				allErrs = append(allErrs, validation.Required(scriptName, "Script is not used"))
+			}
 		}
 	}
 
