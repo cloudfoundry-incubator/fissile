@@ -46,7 +46,7 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 	}
 	spec.Add("podManagementPolicy", podManagementPolicy)
 
-	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
+	statefulSet := newKubeConfig(settings, "apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
 	if err != nil {

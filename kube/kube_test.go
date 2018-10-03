@@ -38,6 +38,15 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 		"Template": map[string]interface{}{
 			"BasePath": "",
 		},
+		"Chart": map[string]interface{}{
+			"AppVersion": "1.22.333.4444",
+			"Name":       "MyChart",
+			"Version":    "42.1+foo",
+		},
+		"Release": map[string]interface{}{
+			"Name":    "MyRelease",
+			"Service": "Tiller",
+		},
 	}
 	if overrides, ok := config.(map[string]interface{}); ok {
 		for k, v := range overrides {

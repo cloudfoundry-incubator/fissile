@@ -34,9 +34,19 @@ func newSelector(name string) *helm.Mapping {
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	mapping := newTypeMeta(apiVersion, kind, modifiers...)
 	mapping.Add("metadata", newObjectMeta(name))
+	if settings.CreateHelmChart {
+		labels := mapping.Get("metadata").Get("labels").(*helm.Mapping)
+		labels.Add("app.kubernetes.io/component", name)
+		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name }}`)
+		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service }}`)
+		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}`)
+		labels.Add("app.kubernetes.io/version", `{{ .Chart.AppVersion }}`)
+		// labels.Add("app.kubernetes.io/part-of", `???`)
+		labels.Add("helm.sh/chart", `{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}`)
+	}
 	return mapping
 }
 

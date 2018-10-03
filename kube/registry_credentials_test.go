@@ -75,6 +75,12 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 		metadata:
 			name: "registry-credentials"
 			labels:
+				app.kubernetes.io/component: registry-credentials
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "registry-credentials"
 		type: "kubernetes.io/dockercfg"
 	`, dcfg), actual)

@@ -15,16 +15,6 @@ func TestMakeSecretsEmpty(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	expected := `---
-		apiVersion: "v1"
-		data: {}
-		kind: "Secret"
-		metadata:
-			name: "secrets"
-			labels:
-				skiff-role-name: "secrets"
-	`
-
 	t.Run("Kube", func(t *testing.T) {
 		t.Parallel()
 		secret, err := MakeSecrets(model.CVMap{}, ExportSettings{})
@@ -35,6 +25,15 @@ func TestMakeSecretsEmpty(t *testing.T) {
 		if !assert.NoError(err) {
 			return
 		}
+		expected := `---
+			apiVersion: "v1"
+			data: {}
+			kind: "Secret"
+			metadata:
+				name: "secrets"
+				labels:
+					skiff-role-name: "secrets"
+		`
 		testhelpers.IsYAMLEqualString(assert, expected, actual)
 	})
 
@@ -50,6 +49,21 @@ func TestMakeSecretsEmpty(t *testing.T) {
 		if !assert.NoError(err) {
 			return
 		}
+		expected := `---
+			apiVersion: "v1"
+			data: {}
+			kind: "Secret"
+			metadata:
+				name: "secrets"
+				labels:
+					app.kubernetes.io/component: secrets
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "secrets"
+		`
 		testhelpers.IsYAMLEqualString(assert, expected, actual)
 	})
 }
@@ -289,6 +303,12 @@ func TestMakeSecretsHelm(t *testing.T) {
 			metadata:
 				name: "secrets"
 				labels:
+					app.kubernetes.io/component: secrets
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "secrets"
 		`, varConstB64, varDescB64, varMinB64, varValuedB64, varStructuredB64, varGenieB64), actual)
 	})

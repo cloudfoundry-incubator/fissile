@@ -59,7 +59,10 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	spec.Sort()
 
 	podTemplate := helm.NewMapping()
-	meta := newObjectMeta(role.Name)
+
+	// Only calling newKubeConfig() to get the metadata with all the recommended labels; pod itself will not be used
+	pod := newKubeConfig(settings, "v1", "Pod", role.Name)
+	meta := pod.Get("metadata").(*helm.Mapping)
 	if settings.CreateHelmChart {
 		meta.Add("annotations", helm.NewMapping("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`))
 	}
@@ -86,7 +89,7 @@ func NewPod(role *model.InstanceGroup, settings ExportSettings, grapher util.Mod
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	pod := newKubeConfig("v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
+	pod := newKubeConfig(settings, "v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
 	pod.Add("spec", podTemplate.Get("spec"))
 
 	return pod.Sort(), nil
