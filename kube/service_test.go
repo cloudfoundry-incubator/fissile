@@ -70,7 +70,7 @@ func TestServiceKube(t *testing.T) {
 				port: 443
 				targetPort: 443
 			selector:
-				skiff-role-name: myrole
+				app.kubernetes.io/component: myrole
 	`, actual)
 }
 
@@ -114,7 +114,7 @@ func TestServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 443
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 
@@ -142,7 +142,7 @@ func TestServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 443
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 }
@@ -181,7 +181,7 @@ func TestHeadlessServiceKube(t *testing.T) {
 				# targetPort must be undefined for headless services
 				targetPort: 0
 			selector:
-				skiff-role-name: myrole
+				app.kubernetes.io/component: myrole
 			clusterIP: None
 	`, actual)
 }
@@ -228,7 +228,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 0
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 
@@ -257,7 +257,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 0
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 }
@@ -291,7 +291,7 @@ func TestPublicServiceKube(t *testing.T) {
 				port: 443
 				targetPort: 443
 			selector:
-				skiff-role-name: myrole
+				app.kubernetes.io/component: myrole
 	`, actual)
 }
 
@@ -335,7 +335,7 @@ func TestPublicServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 443
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 
@@ -360,7 +360,7 @@ func TestPublicServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 443
 				selector:
-					skiff-role-name: "myrole"
+					app.kubernetes.io/component: "myrole"
 				type:	LoadBalancer
 		`, actual)
 	})
@@ -460,7 +460,7 @@ func TestActivePassiveService(t *testing.T) {
 													protocol: TCP
 													targetPort: 0
 												selector:
-													skiff-role-name: myrole
+													app.kubernetes.io/component: myrole
 													skiff-role-active: "true"
 										`
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
@@ -488,7 +488,7 @@ func TestActivePassiveService(t *testing.T) {
 													protocol: TCP
 													targetPort: 0
 												selector:
-													skiff-role-name: myrole
+													app.kubernetes.io/component: myrole
 													skiff-role-active: "true"
 										`
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
@@ -520,7 +520,7 @@ func TestActivePassiveService(t *testing.T) {
 												protocol: TCP
 												targetPort: 443
 											selector:
-												skiff-role-name: myrole
+												app.kubernetes.io/component: myrole
 												skiff-role-active: "true"
 									`
 									testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
@@ -544,7 +544,7 @@ func TestActivePassiveService(t *testing.T) {
 												protocol: TCP
 												targetPort: 443
 											selector:
-												skiff-role-name: myrole
+												app.kubernetes.io/component: myrole
 												skiff-role-active: "true"
 									`
 									switch variant {

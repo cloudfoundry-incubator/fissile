@@ -98,7 +98,7 @@ func TestStatefulSetPorts(t *testing.T) {
 					# targetPort must be undefined for headless services
 					targetPort: 0
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 				clusterIP: None
 		-
 			# This is the per-pod naming port
@@ -117,7 +117,7 @@ func TestStatefulSetPorts(t *testing.T) {
 					# targetPort must be undefined for headless services
 					targetPort: 0
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 				clusterIP: None
 		-
 			# This is the private service port
@@ -134,7 +134,7 @@ func TestStatefulSetPorts(t *testing.T) {
 						port: 443
 						targetPort: 443
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 		-
 			# This is the public service port
 			metadata:
@@ -146,7 +146,7 @@ func TestStatefulSetPorts(t *testing.T) {
 						port: 443
 						targetPort: 443
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 		-
 			# This is the actual StatefulSet
 			metadata:
@@ -157,7 +157,7 @@ func TestStatefulSetPorts(t *testing.T) {
 				template:
 					metadata:
 						labels:
-							skiff-role-name: myrole
+							app.kubernetes.io/component: myrole
 						name: myrole
 					spec:
 						containers:
@@ -246,7 +246,7 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 0
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 						if assert.NotNil(t, genericService, "Generic instance group service not found") {
@@ -280,7 +280,7 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 0
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 						if assert.NotNil(t, publicService, "Public service not found") {
@@ -309,7 +309,7 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 443
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 						if assert.NotNil(t, internalService, "Internal service not found") {
@@ -342,7 +342,7 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 443
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 					})
@@ -438,7 +438,7 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -514,7 +514,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -605,7 +605,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -701,7 +701,7 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:

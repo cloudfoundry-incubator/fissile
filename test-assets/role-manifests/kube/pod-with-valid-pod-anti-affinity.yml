@@ -18,7 +18,7 @@ instance_groups:
                 podAffinityTerm:
                   labelSelector:
                     matchExpressions:
-                    - key: "skiff-role-name"
+                    - key: "app.kubernetes.io/component"
                       operator: In
                       values:
                       - some-group

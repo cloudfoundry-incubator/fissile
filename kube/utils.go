@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// RoleNameLabel is a thing
-	RoleNameLabel = "skiff-role-name"
+	// RoleNameLabel is the recommended kube label to specify the rolename
+	RoleNameLabel = "app.kubernetes.io/component"
 	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
@@ -39,7 +39,9 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string
 	mapping.Add("metadata", newObjectMeta(name))
 	if settings.CreateHelmChart {
 		labels := mapping.Get("metadata").Get("labels").(*helm.Mapping)
-		labels.Add("app.kubernetes.io/component", name)
+		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
+		labels.Add("skiff-role-name", name)
+		// "app.kubernetes.io/component" (aka RoleNameLabel) already added by newObjectMeta()
 		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name }}`)
 		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service }}`)
 		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}`)
