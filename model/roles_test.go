@@ -94,6 +94,8 @@ func TestScriptPathInvalid(t *testing.T) {
 		`myrole script: Invalid value: "/script/with/absolute/path.sh":`,
 		`myrole post config script: Invalid value: "scripts/post_config_script.sh":`,
 		`myrole post config script: Invalid value: "/var/vcap/jobs/myrole/pre-start":`,
+		`myrole post config script: Invalid value: "scripts/nested/run.sh":`,
+		`scripts/nested: Required value: Script is not used`,
 	} {
 		assert.NotContains(t, err.Error(), msg, "unexpected validation error")
 	}

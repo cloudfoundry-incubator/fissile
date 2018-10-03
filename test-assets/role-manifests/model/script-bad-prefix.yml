@@ -11,7 +11,8 @@ instance_groups:
   - scripts/myrole.sh                     # valid
   - /script/with/absolute/path.sh         # valid
   post_config_scripts:
-  - ""
+  - ""                                    # file does not exist
+  - scripts/nested/run.sh                 # valid
   - scripts/post_config_script.sh         # valid
   - /var/vcap/jobs/myrole/pre-start       # valid
   jobs:

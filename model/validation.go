@@ -54,24 +54,29 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 	roleManifestDirName := filepath.Dir(roleManifest.manifestFilePath)
 	scriptsDirName := filepath.Join(roleManifestDirName, "scripts")
 	usedScripts := map[string]bool{}
+	err := filepath.Walk(scriptsDirName, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(info.Name(), ".") {
+			if info.IsDir() {
+				return filepath.SkipDir // No need to walk hidden directories
+			}
+			return nil // Ignore all hidden files
+		}
+		if info.IsDir() {
+			return nil // Ignore directories, but recurse into them
+		}
 
-	scriptsDir, err := os.Open(scriptsDirName)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return append(allErrs, validation.Invalid(scriptsDirName, err, "Error opening scripts directory"))
+		relpath, err := filepath.Rel(scriptsDirName, path)
+		if err != nil {
+			return err
 		}
-		if !roleManifest.validationOptions.AllowMissingScripts {
-			return append(allErrs, validation.NotFound("role manifest scripts directory", err))
-		}
-	}
-	scriptsNames, err := scriptsDir.Readdirnames(0)
+		usedScripts["scripts/"+relpath] = false
+		return nil
+	})
 	if err != nil && !roleManifest.validationOptions.AllowMissingScripts {
 		return append(allErrs, validation.Invalid(scriptsDirName, err.Error(), "Error listing files in scripts directory"))
-	}
-	for _, scriptName := range scriptsNames {
-		if !strings.HasPrefix(scriptName, ".") { // skip hidden files
-			usedScripts["scripts/"+scriptName] = false
-		}
 	}
 
 	for _, instanceGroup := range roleManifest.InstanceGroups {
