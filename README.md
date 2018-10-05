@@ -23,7 +23,7 @@ Fissile requires generated code using additional tools, and therefore isn't
 `go get`-able.
 
 ```
-$ make src                                      # make the directory src 
+$ make src                                      # make the directory src
 $ export $GOPATH=$PWD                           # set GOPATH
 $ go get -d code.cloudfoundry.org/fissile       # Download sources
 $ cd $GOPATH/src/code.cloudfoundry.org/fissile
@@ -49,10 +49,15 @@ corresponding Kubernetes resource definition
 [stemcells]: ./docs/stemcells.md
 [usage reference]: ./docs/generated/fissile.md
 
-## Example Releases
+## Releases using Fissile
 
 * https://github.com/HeavyWombat/fissile-dev
+* https://github.com/SUSE/SCF
 * https://github.com/SUSE/nats-containerized-release
+* https://github.com/SUSE/scf-helper-release
+* https://github.com/SUSE/uaa-fissile-release
+
+For testing and developing fissile itself we use the [NATS containerized release](https://github.com/SUSE/nats-containerized-release).
 
 ## Developing Fissile
 In general, use of the default `make` target is preferred before
