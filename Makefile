@@ -8,7 +8,7 @@ endif
 
 .PHONY: all clean format lint vet bindata build test docker-deps reap dist
 
-all: clean format lint bindata vet docker-deps build test
+all: clean format lint vet test build
 
 clean:
 	${GIT_ROOT}/make/clean
@@ -21,9 +21,6 @@ lint:
 
 vet:
 	${GIT_ROOT}/make/vet
-
-bindata:
-	${GIT_ROOT}/make/bindata
 
 build:
 	${GIT_ROOT}/make/build
@@ -43,7 +40,6 @@ tools:
 show-versions:
 	make/show-versions
 
-# If this fails, try running 'make bindata' and rerun 'make test'
 test:
 	${GIT_ROOT}/make/test
 
