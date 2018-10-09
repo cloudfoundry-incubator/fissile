@@ -34,6 +34,7 @@ func TestValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	roleManifest := f.Manifest
+	require.NotNil(t, roleManifest, "error loading role manifest")
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
@@ -94,6 +95,7 @@ func TestValidationOk(t *testing.T) {
 	assert.NoError(t, err)
 
 	roleManifest := f.Manifest
+	require.NotNil(t, roleManifest, "error loading role manifest")
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
@@ -123,6 +125,7 @@ func TestValidationHash(t *testing.T) {
 	assert.NoError(t, err)
 
 	roleManifest := f.Manifest
+	require.NotNil(t, roleManifest, "error loading role manifest")
 
 	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
 	assert.NoError(t, err)
@@ -280,7 +283,7 @@ func TestBadEnvScriptReferences(t *testing.T) {
 		filepath.Join(workDir, "../test-assets/bosh-cache"))
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), `myrole env script: Invalid value: "foobar.sh"`)
+	assert.Contains(t, err.Error(), `myrole environment script: Invalid value: "foobar.sh"`)
 }
 
 func TestBadPostConfigScriptReferences(t *testing.T) {

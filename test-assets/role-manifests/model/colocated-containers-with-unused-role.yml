@@ -1,7 +1,7 @@
 ---
 instance_groups:
 - name: main-role
-  scripts: ["myrole.sh"]
+  scripts: [scripts/myrole.sh]
   jobs:
   - name: new_hostname
     release: tor

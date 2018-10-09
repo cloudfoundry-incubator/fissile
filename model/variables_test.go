@@ -16,13 +16,12 @@ func TestLoadDeploymentManifestVariables(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/deployment-manifests/bosh-deployment.yml")
 
-	roleManifest, err := LoadRoleManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	roleManifest, err := LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 

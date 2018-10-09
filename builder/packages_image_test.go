@@ -109,13 +109,12 @@ func TestNewDockerPopulator(t *testing.T) {
 	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 
 	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
@@ -228,14 +227,14 @@ func TestGetRolePackageImageName(t *testing.T) {
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	roleManifestDir := filepath.Join(workDir, "../test-assets/role-manifests/builder/")
 	roleManifestPath := filepath.Join(roleManifestDir, "tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(t, err)
+	require.NotNil(t, roleManifest, "Failed to load role manifest")
 
 	t.Run("FissileVersionShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
@@ -322,14 +321,14 @@ func TestGetRolePackageImageName(t *testing.T) {
 		defer os.Remove(tempManifestFile.Name())
 		assert.NoError(t, tempManifestFile.Close(), "Error closing temporary file")
 		assert.NoError(t, ioutil.WriteFile(tempManifestFile.Name(), yamlBytes, 0644), "Error writing modified role manifest")
-		modifiedRoleManifest, err := model.LoadRoleManifest(
-			tempManifestFile.Name(),
-			[]string{releasePath},
-			[]string{},
-			[]string{},
-			filepath.Join(workDir, "../test-assets/bosh-cache"),
-			nil)
+		modifiedRoleManifest, err := model.LoadRoleManifest(tempManifestFile.Name(), model.LoadRoleManifestOptions{
+			ReleasePaths: []string{releasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+			ValidationOptions: model.RoleManifestValidationOptions{
+				AllowMissingScripts: true,
+			}})
 		assert.NoError(t, err, "Error loading modified role manifest")
+		require.NotNil(t, modifiedRoleManifest, "Failed to load modified role manifest")
 
 		newImageName, err := builder.GetPackagesLayerImageName(modifiedRoleManifest, modifiedRoleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)

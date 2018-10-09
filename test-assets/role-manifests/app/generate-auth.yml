@@ -3,7 +3,7 @@
 instance_groups:
 - name: non-default
   scripts:
-  - myrole.sh
+  - scripts/myrole.sh
   jobs:
   - name: tor
     release: tor

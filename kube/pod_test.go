@@ -24,13 +24,12 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/volumes.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	manifest, err := model.LoadRoleManifest(
-		manifestPath,
-		[]string{releasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -1686,13 +1685,12 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	manifest, err := model.LoadRoleManifest(
-		manifestPath,
-		[]string{releasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -2748,13 +2746,12 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/colocated-containers.yml")
-	roleManifest, err := model.LoadRoleManifest(
-		roleManifestPath,
-		[]string{torReleasePath, ntpReleasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath, ntpReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 

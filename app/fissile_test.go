@@ -29,7 +29,7 @@ func TestCleanCacheEmpty(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 
 	f := NewFissileApplication(".", ui)
@@ -52,7 +52,7 @@ func TestListPackages(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	f := NewFissileApplication(".", ui)
@@ -84,7 +84,7 @@ func TestListJobs(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 
@@ -117,7 +117,7 @@ func TestListProperties(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
 	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 
@@ -382,13 +382,10 @@ func TestGenerateAuth(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/generate-auth.yml")
-	roleManifest, err := model.LoadRoleManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{},
-		[]string{},
-		filepath.Join(workDir, "../test-assets/bosh-cache"),
-		f)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		Grapher:      f})
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
@@ -712,7 +709,7 @@ func TestFissileGetReleasesByName(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups.yml")
+	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
 	releasePaths := []string{
 		filepath.Join(workDir, "../test-assets/extracted-license"),
 		filepath.Join(workDir, "../test-assets/extracted-license"),
@@ -726,9 +723,7 @@ func TestFissileGetReleasesByName(t *testing.T) {
 		[]string{"test-dev", "test2"},
 		[]string{},
 		cacheDir)
-	if !assert.NoError(err) {
-		return
-	}
+	require.NoError(t, err, "failed to load role manifest")
 
 	releases, err := f.getReleasesByName([]string{"test-dev"})
 	if assert.NoError(err) {
