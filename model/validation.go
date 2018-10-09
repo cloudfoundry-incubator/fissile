@@ -87,6 +87,8 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 		} {
 			for _, script := range scriptList {
 				if filepath.IsAbs(script) {
+					// We allow scripts with absolute paths, as they (likely) come from BOSH packages rather than being
+					// provided with the role manifest.
 					continue
 				}
 				if !filepath.HasPrefix(script, "scripts/") {
