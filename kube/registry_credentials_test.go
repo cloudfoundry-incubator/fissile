@@ -60,6 +60,10 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 		"Values.kube.registry.hostname": host,
 		"Values.kube.registry.username": user,
 		"Values.kube.registry.password": pass,
+
+		// Unrelated test to verify that app.kubernetes.io/version will fall back to
+		// .Chart.Version if .Chart.AppVersion is not set
+		"Chart.AppVersion": nil,
 	}
 
 	actual, err := RoundtripNode(registryCredentials, config)
@@ -79,7 +83,7 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
 				app.kubernetes.io/name: MyChart
-				app.kubernetes.io/version: 1.22.333.4444
+				app.kubernetes.io/version: 42.1+foo
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "registry-credentials"
 		type: "kubernetes.io/dockercfg"

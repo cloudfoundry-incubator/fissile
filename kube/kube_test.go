@@ -130,7 +130,12 @@ func mergeMap(obj map[string]interface{}, value interface{}, index int, key ...s
 		panic(fmt.Sprintf("Invalid index %d in keys %v", index, key))
 	}
 	if index == len(key)-1 {
-		obj[key[index]] = value
+		// This will only work for untyped nil values
+		if value == nil {
+			delete(obj, key[index])
+		} else {
+			obj[key[index]] = value
+		}
 		return obj
 	}
 	if _, ok := obj[key[index]]; !ok {

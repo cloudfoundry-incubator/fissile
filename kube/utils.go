@@ -43,7 +43,7 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string
 		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name }}`)
 		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service }}`)
 		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}`)
-		labels.Add("app.kubernetes.io/version", `{{ .Chart.AppVersion }}`)
+		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}`)
 	}
