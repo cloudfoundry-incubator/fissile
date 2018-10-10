@@ -221,7 +221,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 				replicas: 1
 				selector:
 					matchLabels:
-						skiff-role-name: "some-group"
+						app.kubernetes.io/component: "some-group"
 				template:
 					metadata:
 						name: "some-group"
@@ -242,7 +242,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 								-	podAffinityTerm:
 										labelSelector:
 											matchExpressions:
-											-	key: "skiff-role-name"
+											-	key: "app.kubernetes.io/component"
 												operator: "In"
 												values:
 												-	"some-group"

@@ -40,7 +40,7 @@ func TestNewObjectMeta(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, `---
 		name: "thename"
 		labels:
-			skiff-role-name: "thename"
+			app.kubernetes.io/component: "thename"
 	`, actual)
 }
 
@@ -56,7 +56,7 @@ func TestNewSelector(t *testing.T) {
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
 		matchLabels:
-			skiff-role-name: "thename"
+			app.kubernetes.io/component: "thename"
 	`, actual)
 }
 
@@ -76,7 +76,7 @@ func TestNewKubeConfig(t *testing.T) {
 		metadata:
 			name: "thename"
 			labels:
-				skiff-role-name: "thename"
+				app.kubernetes.io/component: "thename"
 	`, actual)
 }
 

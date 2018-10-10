@@ -31,7 +31,7 @@ func TestMakeRegistryCredentialsKube(t *testing.T) {
 		metadata:
 			name: "registry-credentials"
 			labels:
-				skiff-role-name: "registry-credentials"
+				app.kubernetes.io/component: "registry-credentials"
 		type: "kubernetes.io/dockercfg"
 	`, actual)
 }

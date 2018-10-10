@@ -32,7 +32,7 @@ func TestMakeSecretsEmpty(t *testing.T) {
 			metadata:
 				name: "secrets"
 				labels:
-					skiff-role-name: "secrets"
+					app.kubernetes.io/component: "secrets"
 		`
 		testhelpers.IsYAMLEqualString(assert, expected, actual)
 	})
@@ -192,7 +192,7 @@ func TestMakeSecretsKube(t *testing.T) {
 		metadata:
 			name: "secrets"
 			labels:
-				skiff-role-name: "secrets"
+				app.kubernetes.io/component: "secrets"
 	`, varConstB64, varValuedB64, varStructuredB64), actual)
 }
 
