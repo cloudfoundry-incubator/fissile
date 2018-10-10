@@ -1800,6 +1800,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 				readinessProbe: ~
 				resources: ~
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -1908,6 +1909,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 				readinessProbe: ~
 				resources: ~
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2028,6 +2030,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					requests:
 					limits:
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2111,6 +2114,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 					limits:
 						memory: "10Mi"
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2229,6 +2233,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					requests:
 					limits:
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2312,6 +2317,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 					limits:
 						cpu: "10m"
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2345,6 +2351,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
+			allowPrivilegeEscalation: false
 			capabilities:
 				add:
 				-	"SOMETHING"
@@ -2368,6 +2375,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	"SOMETHING"
@@ -2384,6 +2392,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				privileged: true
 			`, actual)
 		})
@@ -2398,6 +2407,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	"SOMETHING"
@@ -2423,7 +2433,17 @@ func TestGetSecurityContextNil(t *testing.T) {
 	t.Run("Kube", func(t *testing.T) {
 		t.Parallel()
 		sc := getSecurityContext(role, false)
-		assert.Nil(sc)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			allowPrivilegeEscalation: false
+		`, actual)
 	})
 
 	t.Run("Helm", func(t *testing.T) {
@@ -2443,6 +2463,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:	~
 			`, actual)
@@ -2458,6 +2479,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				privileged: true
 			`, actual)
 		})
@@ -2472,6 +2494,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	SOMETHING

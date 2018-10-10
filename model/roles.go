@@ -371,7 +371,7 @@ func (m *RoleManifest) resolvePodSecurityPolicies() error {
 	for _, instanceGroup := range m.InstanceGroups {
 		// Note: validateRoleRun ensured non-nil of instanceGroup.Run
 
-		pspName := groupPodSecurityPolicy(instanceGroup)
+		pspName := instanceGroup.PodSecurityPolicy()
 		accountName := instanceGroup.Run.ServiceAccount
 		account, ok := m.Configuration.Authorization.Accounts[accountName]
 
@@ -624,19 +624,4 @@ func getTemplate(propertyDefs yaml.MapSlice, property string) (interface{}, bool
 	}
 
 	return "", false
-}
-
-// groupPodSecurityPolicy determines the name of the pod security policy
-// governing the specified instance group.
-func groupPodSecurityPolicy(instanceGroup *InstanceGroup) string {
-	result := LeastPodSecurityPolicy()
-
-	// Note: validateRoleRun ensured non-nil of job.ContainerProperties.BoshContainerization.PodSecurityPolicy
-
-	for _, job := range instanceGroup.JobReferences {
-		result = MergePodSecurityPolicies(result,
-			job.ContainerProperties.BoshContainerization.PodSecurityPolicy)
-	}
-
-	return result
 }

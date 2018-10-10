@@ -270,6 +270,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 									command: [ /opt/fissile/readiness-probe.sh ]
 							resources: ~
 							securityContext:
+								allowPrivilegeEscalation: false
 								capabilities:
 									add:	~
 							volumeMounts: ~

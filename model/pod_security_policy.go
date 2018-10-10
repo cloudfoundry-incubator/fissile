@@ -8,12 +8,18 @@ package model
 // manifest is then responsible for mapping the abstract names/levels
 // to concrete policies implementing them.
 
+// Pod security policy constants
+const (
+	PodSecurityPolicyNonPrivileged = "nonprivileged"
+	PodSecurityPolicyPrivileged    = "privileged"
+)
+
 // PodSecurityPolicies returns the names of the pod security policies
 // usable in fissile manifests
 func PodSecurityPolicies() []string {
 	return []string{
-		"nonprivileged",
-		"privileged",
+		PodSecurityPolicyNonPrivileged,
+		PodSecurityPolicyPrivileged,
 	}
 }
 
@@ -31,14 +37,14 @@ func ValidPodSecurityPolicy(name string) bool {
 // MergePodSecurityPolicies takes two policies (names) and returns the
 // policy (name) representing the union of their privileges.
 func MergePodSecurityPolicies(policyA, policyB string) string {
-	if policyA == "privileged" || policyB == "privileged" {
-		return "privileged"
+	if policyA == PodSecurityPolicyPrivileged || policyB == PodSecurityPolicyPrivileged {
+		return PodSecurityPolicyPrivileged
 	}
-	return "nonprivileged"
+	return PodSecurityPolicyNonPrivileged
 }
 
 // LeastPodSecurityPolicy returns the name of the bottom-level pod
 // security policy (least-privileged)
 func LeastPodSecurityPolicy() string {
-	return "nonprivileged"
+	return PodSecurityPolicyNonPrivileged
 }
