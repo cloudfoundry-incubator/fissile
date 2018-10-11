@@ -75,7 +75,7 @@ func validateScripts(roleManifest *RoleManifest) validation.ErrorList {
 		usedScripts["scripts/"+relpath] = false
 		return nil
 	})
-	if err != nil && !roleManifest.validationOptions.AllowMissingScripts {
+	if err != nil && !os.IsNotExist(err) && !roleManifest.validationOptions.AllowMissingScripts {
 		return append(allErrs, validation.Invalid(scriptsDirName, err.Error(), "Error listing files in scripts directory"))
 	}
 
