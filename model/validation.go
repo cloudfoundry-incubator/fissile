@@ -427,7 +427,7 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 	// TODO this validation does not belong to role run? is it safe to move it?
 	for _, job := range instanceGroup.JobReferences {
 		for idx := range job.ContainerProperties.BoshContainerization.Ports {
-			allErrs = append(allErrs, validateExposedPorts(instanceGroup.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
+			allErrs = append(allErrs, validateExposedPorts(instanceGroup.Name, job.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
 		}
 
 		// Validate pod security policy, or default to least
@@ -475,10 +475,10 @@ func validateRoleRun(instanceGroup *InstanceGroup, roleManifest *RoleManifest, d
 
 // validateExposedPorts validates exposed port ranges. It also translates the legacy
 // format of port ranges ("2000-2010") into the FirstPort and Count values.
-func validateExposedPorts(name string, exposedPorts *JobExposedPort) validation.ErrorList {
+func validateExposedPorts(name, jobName string, exposedPorts *JobExposedPort) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	fieldName := fmt.Sprintf("instance_groups[%s].run.exposed-ports[%s]", name, exposedPorts.Name)
+	fieldName := fmt.Sprintf("instance_groups[%s].jobs[%s].properties.bosh_containerization.ports[%s]", name, jobName, exposedPorts.Name)
 
 	// Validate Name
 	if exposedPorts.Name == "" {
