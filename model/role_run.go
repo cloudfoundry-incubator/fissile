@@ -10,21 +10,20 @@ import (
 
 // RoleRun describes how a role should behave at runtime
 type RoleRun struct {
-	Scaling            *RoleRunScaling       `yaml:"scaling"`
-	Capabilities       []string              `yaml:"capabilities"`
-	PersistentVolumes  []*RoleRunVolume      `yaml:"persistent-volumes"` // Backwards compat only
-	SharedVolumes      []*RoleRunVolume      `yaml:"shared-volumes"`     // Backwards compat only
-	Volumes            []*RoleRunVolume      `yaml:"volumes"`
-	MemRequest         *int64                `yaml:"memory"`
-	Memory             *RoleRunMemory        `yaml:"mem"`
-	VirtualCPUs        *float64              `yaml:"virtual-cpus"`
-	CPU                *RoleRunCPU           `yaml:"cpu"`
-	ExposedPorts       []*RoleRunExposedPort `yaml:"exposed-ports"`
-	FlightStage        FlightStage           `yaml:"flight-stage"`
-	HealthCheck        *HealthCheck          `yaml:"healthcheck,omitempty"`
-	ActivePassiveProbe string                `yaml:"active-passive-probe,omitempty"`
-	ServiceAccount     string                `yaml:"service-account,omitempty"`
-	Affinity           *RoleRunAffinity      `yaml:"affinity,omitempty"`
+	Scaling            *RoleRunScaling  `yaml:"scaling"`
+	Capabilities       []string         `yaml:"capabilities"`
+	PersistentVolumes  []*RoleRunVolume `yaml:"persistent-volumes"` // Backwards compat only
+	SharedVolumes      []*RoleRunVolume `yaml:"shared-volumes"`     // Backwards compat only
+	Volumes            []*RoleRunVolume `yaml:"volumes"`
+	MemRequest         *int64           `yaml:"memory"`
+	Memory             *RoleRunMemory   `yaml:"mem"`
+	VirtualCPUs        *float64         `yaml:"virtual-cpus"`
+	CPU                *RoleRunCPU      `yaml:"cpu"`
+	FlightStage        FlightStage      `yaml:"flight-stage"`
+	HealthCheck        *HealthCheck     `yaml:"healthcheck,omitempty"`
+	ActivePassiveProbe string           `yaml:"active-passive-probe,omitempty"`
+	ServiceAccount     string           `yaml:"service-account,omitempty"`
+	Affinity           *RoleRunAffinity `yaml:"affinity,omitempty"`
 }
 
 // RoleRunAffinity describes how a role should behave with regard to node / pod selection
@@ -84,21 +83,6 @@ const (
 	VolumeTypeNone       = VolumeType("none")       // A volume that isn't mounted to anything
 	VolumeTypeEmptyDir   = VolumeType("emptyDir")   // A volume that is shared between containers
 )
-
-// RoleRunExposedPort describes a port to be available to other roles, or the outside world
-type RoleRunExposedPort struct {
-	Name                string `yaml:"name"`
-	Protocol            string `yaml:"protocol"`
-	External            string `yaml:"external"`
-	Internal            string `yaml:"internal"`
-	Public              bool   `yaml:"public"`
-	Count               int    `yaml:"count"`
-	Max                 int    `yaml:"max"`
-	PortIsConfigurable  bool   `yaml:"port-configurable"`
-	CountIsConfigurable bool   `yaml:"count-configurable"`
-	InternalPort        int
-	ExternalPort        int
-}
 
 // FlightStage describes when a role should be executed
 type FlightStage string

@@ -696,41 +696,41 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 		},
 		{
 			"bosh-run-bad-proto.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].protocol: Unsupported value: "AA": supported values: TCP, UDP`,
 			},
 		},
 		{
 			"bosh-run-bad-port-names.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[a--b].name: Invalid value: "a--b": port names must be lowercase words separated by hyphens`,
-				`instance_groups[myrole].run.exposed-ports[abcd-efgh-ijkl-x].name: Invalid value: "abcd-efgh-ijkl-x": port name must be no more than 15 characters`,
-				`instance_groups[myrole].run.exposed-ports[abcdefghij].name: Invalid value: "abcdefghij": user configurable port name must be no more than 9 characters`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[a--b].name: Invalid value: "a--b": port names must be lowercase words separated by hyphens`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[abcd-efgh-ijkl-x].name: Invalid value: "abcd-efgh-ijkl-x": port name must be no more than 15 characters`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[abcdefghij].name: Invalid value: "abcdefghij": user configurable port name must be no more than 9 characters`,
 			},
 		},
 		{
 			"bosh-run-bad-port-count.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[http].count: Invalid value: 2: count doesn't match port range 80-82`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[http].count: Invalid value: 2: count doesn't match port range 80-82`,
 			},
 		},
 		{
 			"bosh-run-bad-ports.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "-1": invalid syntax`,
-				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].internal: Invalid value: "-1": invalid syntax`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].external: Invalid value: 0: must be between 1 and 65535, inclusive`,
 			},
 		},
 		{
 			"bosh-run-missing-portrange.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "": invalid syntax`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].internal: Invalid value: "": invalid syntax`,
 			},
 		},
 		{
 			"bosh-run-reverse-portrange.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "5678-123": last port can't be lower than first port`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].internal: Invalid value: "5678-123": last port can't be lower than first port`,
 			},
 		},
 		{
 			"bosh-run-bad-parse.yml", []string{
-				`instance_groups[myrole].run.exposed-ports[https].internal: Invalid value: "qq": invalid syntax`,
-				`instance_groups[myrole].run.exposed-ports[https].external: Invalid value: "aa": invalid syntax`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].internal: Invalid value: "qq": invalid syntax`,
+				`instance_groups[myrole].jobs[tor].properties.bosh_containerization.ports[https].external: Invalid value: "aa": invalid syntax`,
 			},
 		},
 		{

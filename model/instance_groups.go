@@ -166,10 +166,6 @@ func (g *InstanceGroup) calculateRoleRun() validation.ErrorList {
 
 	g.Run.setMaxFields(jobReferences)
 
-	for _, j := range jobReferences {
-		g.Run.ExposedPorts = append(g.Run.ExposedPorts, j.ContainerProperties.BoshContainerization.Run.ExposedPorts...)
-	}
-
 	if ok := jobReferences.atMostOnce(healthCheckPresent); ok {
 		g.Run.HealthCheck = jobReferences.firstHealthCheck()
 	} else {
