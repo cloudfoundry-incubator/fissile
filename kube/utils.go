@@ -42,12 +42,12 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string
 		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
 		labels.Add("skiff-role-name", name)
 		// "app.kubernetes.io/component" (aka RoleNameLabel) already added by newObjectMeta()
-		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name }}`)
-		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service }}`)
-		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}`)
+		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name | quote }}`)
+		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service | quote }}`)
+		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" | quote }}`)
 		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
-		labels.Add("helm.sh/chart", `{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}`)
+		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
 	}
 	return mapping
 }
