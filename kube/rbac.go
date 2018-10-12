@@ -7,17 +7,11 @@ import (
 	"code.cloudfoundry.org/fissile/model"
 )
 
-const authModeRBAC = `if eq (printf "%s" .Values.kube.auth) "rbac"`
-
 // NewRBACAccount creates a new (Kubernetes RBAC) service account and associated
 // bindings.
 func NewRBACAccount(name string, account model.AuthAccount, settings ExportSettings) ([]helm.Node, error) {
-	block := helm.Block("")
-	if settings.CreateHelmChart {
-		block = helm.Block(authModeRBAC)
-	}
-
 	var resources []helm.Node
+	block := authModeRBAC(settings)
 
 	// If we want to modify the default account, there's no need to create it
 	// first -- it already exists
@@ -26,8 +20,7 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 	}
 
 	for _, role := range account.Roles {
-		binding := newTypeMeta("rbac.authorization.k8s.io/v1beta1", "RoleBinding", block)
-		binding.Add("metadata", helm.NewMapping("name", fmt.Sprintf("%s-%s-binding", name, role)))
+		binding := newKubeConfig(settings, "rbac.authorization.k8s.io/v1beta1", "RoleBinding", fmt.Sprintf("%s-%s-binding", name, role), block)
 		subjects := helm.NewList(helm.NewMapping(
 			"kind", "ServiceAccount",
 			"name", name))
@@ -39,19 +32,15 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 		resources = append(resources, binding)
 	}
 
-	// Integrate a PSP, via ClusterRoleBinding to ClusterRole
-	blockPSP := helm.Block("")
-
 	// We have no proper namespace default for kube configuration.
 	namespace := "~"
 	if settings.CreateHelmChart {
-		blockPSP = authPSPCondition(account.PodSecurityPolicy)
 		namespace = "{{ .Release.Namespace }}"
 	}
 
-	binding := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", blockPSP)
-	binding.Add("metadata", helm.NewMapping("name",
-		authCRBindingName(name, settings)))
+	binding := newKubeConfig(settings, "rbac.authorization.k8s.io/v1", "ClusterRoleBinding",
+		authCRBindingName(name, settings),
+		authPSPCondition(account.PodSecurityPolicy, settings))
 	subjects := helm.NewList(helm.NewMapping(
 		"kind", "ServiceAccount",
 		"name", name,
@@ -67,9 +56,9 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 }
 
 // NewRBACRole creates a new (Kubernetes RBAC) role
-func NewRBACRole(name string, role model.AuthRole, settings ExportSettings) (helm.Node, error) {
+func NewRBACRole(name string, authRole model.AuthRole, settings ExportSettings) (helm.Node, error) {
 	rules := helm.NewList()
-	for _, ruleSpec := range role {
+	for _, ruleSpec := range authRole {
 		rule := helm.NewMapping()
 		APIGroups := helm.NewList()
 		for _, APIGroup := range ruleSpec.APIGroups {
@@ -89,20 +78,26 @@ func NewRBACRole(name string, role model.AuthRole, settings ExportSettings) (hel
 		rules.Add(rule.Sort())
 	}
 
-	container := newTypeMeta("rbac.authorization.k8s.io/v1beta1", "Role")
-	if settings.CreateHelmChart {
-		container.Set(helm.Block(authModeRBAC))
-	}
-	container.Add("metadata", helm.NewMapping("name", name))
-	container.Add("rules", rules)
+	role := newKubeConfig(settings, "rbac.authorization.k8s.io/v1beta1", "Role", name, authModeRBAC(settings))
+	role.Add("rules", rules)
 
-	return container.Sort(), nil
+	return role.Sort(), nil
+}
+
+func authModeRBAC(settings ExportSettings) helm.NodeModifier {
+	if settings.CreateHelmChart {
+		return helm.Block(`if eq (printf "%s" .Values.kube.auth) "rbac"`)
+	}
+	return nil
 }
 
 // authPSPCondition creates a block condition checking for RBAC and the named PSP
-func authPSPCondition(psp string) helm.NodeModifier {
-	return helm.Block(fmt.Sprintf(`if and (%s) .Values.kube.psp.%s`,
-		`eq (printf "%s" .Values.kube.auth) "rbac"`, psp))
+func authPSPCondition(psp string, settings ExportSettings) helm.NodeModifier {
+	if settings.CreateHelmChart {
+		return helm.Block(fmt.Sprintf(`if and (%s) .Values.kube.psp.%s`,
+			`eq (printf "%s" .Values.kube.auth) "rbac"`, psp))
+	}
+	return nil
 }
 
 // authPSPRoleName derives the name of the cluster role for a PSP
@@ -126,10 +121,9 @@ func authCRBindingName(name string, settings ExportSettings) string {
 func NewRBACClusterRolePSP(psp string, settings ExportSettings) (helm.Node, error) {
 	name := authPSPRoleName(psp, settings)
 
-	container := newTypeMeta("rbac.authorization.k8s.io/v1", "ClusterRole")
+	clusterRole := newKubeConfig(settings, "rbac.authorization.k8s.io/v1", "ClusterRole", name, authPSPCondition(psp, settings))
 
 	if settings.CreateHelmChart {
-		container.Set(authPSPCondition(psp))
 		psp = fmt.Sprintf("{{ .Values.kube.psp.%s | quote }}", psp)
 	}
 
@@ -141,8 +135,7 @@ func NewRBACClusterRolePSP(psp string, settings ExportSettings) (helm.Node, erro
 	rule.Add("resourceNames", helm.NewList(psp))
 	rules.Add(rule.Sort())
 
-	container.Add("metadata", helm.NewMapping("name", name))
-	container.Add("rules", rules)
+	clusterRole.Add("rules", rules)
 
-	return container.Sort(), nil
+	return clusterRole.Sort(), nil
 }

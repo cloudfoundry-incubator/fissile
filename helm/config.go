@@ -98,7 +98,9 @@ func Comment(comment string) func(*sharedFields) {
 // Set applies NodeModifier functions to the embedded sharedFields struct.
 func (shared *sharedFields) Set(modifiers ...NodeModifier) {
 	for _, modifier := range modifiers {
-		modifier(shared)
+		if modifier != nil {
+			modifier(shared)
+		}
 	}
 }
 
