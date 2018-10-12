@@ -169,9 +169,7 @@ func newClusteringService(role *model.InstanceGroup, settings ExportSettings) (h
 	spec.Add("clusterIP", "None")
 	spec.Add("ports", helm.NewNode(ports))
 
-	serviceName := role.Name + "-set"
-	service := newTypeMeta("v1", "Service")
-	service.Add("metadata", helm.NewMapping("name", serviceName))
+	service := newKubeConfig(settings, "v1", "Service", role.Name+"-set")
 	service.Add("spec", spec.Sort())
 
 	return service, nil
@@ -230,8 +228,8 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
-	service := newTypeMeta("v1", "Service")
-	service.Add("metadata", helm.NewMapping("name", serviceName))
+
+	service := newKubeConfig(settings, "v1", "Service", serviceName)
 	service.Add("spec", spec.Sort())
 
 	return service, nil

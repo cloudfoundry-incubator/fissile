@@ -21,12 +21,6 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 	return mapping
 }
 
-func newObjectMeta(name string) *helm.Mapping {
-	meta := helm.NewMapping("name", name)
-	meta.Add("labels", helm.NewMapping(RoleNameLabel, name))
-	return meta
-}
-
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewMapping()
 	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
@@ -34,14 +28,11 @@ func newSelector(name string) *helm.Mapping {
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
-	mapping := newTypeMeta(apiVersion, kind, modifiers...)
-	mapping.Add("metadata", newObjectMeta(name))
+func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
 	if settings.CreateHelmChart {
-		labels := mapping.Get("metadata").Get("labels").(*helm.Mapping)
 		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
 		labels.Add("skiff-role-name", name)
-		// "app.kubernetes.io/component" (aka RoleNameLabel) already added by newObjectMeta()
 		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name | quote }}`)
 		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service | quote }}`)
 		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" | quote }}`)
@@ -49,7 +40,11 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind string, name string
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
 	}
-	return mapping
+
+	config := newTypeMeta(apiVersion, kind, modifiers...)
+	config.Add("metadata", helm.NewMapping("name", name, "labels", labels))
+
+	return config
 }
 
 func makeVarName(name string) string {

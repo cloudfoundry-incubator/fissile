@@ -3,6 +3,7 @@ package kube
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -102,6 +103,14 @@ func TestServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor"
+				labels:
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -130,6 +139,14 @@ func TestServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor"
+				labels:
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -215,6 +232,14 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor-set"
+				labels:
+					app.kubernetes.io/component: myrole-tor-set
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -244,6 +269,14 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor-set"
+				labels:
+					app.kubernetes.io/component: myrole-tor-set
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -326,6 +359,14 @@ func TestPublicServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor-public"
+				labels:
+					app.kubernetes.io/component: myrole-tor-public
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor-public"
 			spec:
 				externalIPs: "[127.0.0.1,127.0.0.2]"
 				ports:
@@ -352,6 +393,14 @@ func TestPublicServiceHelm(t *testing.T) {
 			kind: "Service"
 			metadata:
 				name: "myrole-tor-public"
+				labels:
+					app.kubernetes.io/component: myrole-tor-public
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor-public"
 			spec:
 				ports:
 				-	name: "https"
@@ -440,11 +489,19 @@ func TestActivePassiveService(t *testing.T) {
 								if assert.NotNil(t, genericService, "generic service not found") {
 									actual, err := roundTrip(genericService)
 									if assert.NoError(t, err) {
-										expected := `---
+										expected := expectedYAML(exportSettings, `---
 											apiVersion: v1
 											kind: Service
 											metadata:
 												name: myrole-set
+												labels:
+													app.kubernetes.io/component: myrole-set
+													app.kubernetes.io/instance: MyRelease
+													app.kubernetes.io/managed-by: Tiller
+													app.kubernetes.io/name: MyChart
+													app.kubernetes.io/version: 1.22.333.4444
+													helm.sh/chart: MyChart-42.1_foo
+													skiff-role-name: "myrole-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -461,18 +518,26 @@ func TestActivePassiveService(t *testing.T) {
 												selector:
 													app.kubernetes.io/component: myrole
 													skiff-role-active: "true"
-										`
+										`)
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 									}
 								}
 								if assert.NotNil(t, headlessService, "headless service not found") {
 									actual, err := roundTrip(headlessService)
 									if assert.NoError(t, err) {
-										expected := `---
+										expected := expectedYAML(exportSettings, `---
 											apiVersion: v1
 											kind: Service
 											metadata:
 												name: myrole-tor-set
+												labels:
+													app.kubernetes.io/component: myrole-tor-set
+													app.kubernetes.io/instance: MyRelease
+													app.kubernetes.io/managed-by: Tiller
+													app.kubernetes.io/name: MyChart
+													app.kubernetes.io/version: 1.22.333.4444
+													helm.sh/chart: MyChart-42.1_foo
+													skiff-role-name: "myrole-tor-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -489,7 +554,7 @@ func TestActivePassiveService(t *testing.T) {
 												selector:
 													app.kubernetes.io/component: myrole
 													skiff-role-active: "true"
-										`
+										`)
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 									}
 								}
@@ -501,11 +566,19 @@ func TestActivePassiveService(t *testing.T) {
 								actual, err := roundTrip(privateService)
 								if assert.NoError(t, err) {
 
-									expected := `---
+									expected := expectedYAML(exportSettings, `---
 										apiVersion: v1
 										kind: Service
 										metadata:
 											name: myrole-tor
+											labels:
+												app.kubernetes.io/component: myrole-tor
+												app.kubernetes.io/instance: MyRelease
+												app.kubernetes.io/managed-by: Tiller
+												app.kubernetes.io/name: MyChart
+												app.kubernetes.io/version: 1.22.333.4444
+												helm.sh/chart: MyChart-42.1_foo
+												skiff-role-name: "myrole-tor"
 										spec:
 											ports:
 											-
@@ -521,7 +594,7 @@ func TestActivePassiveService(t *testing.T) {
 											selector:
 												app.kubernetes.io/component: myrole
 												skiff-role-active: "true"
-									`
+									`)
 									testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 								}
 							}
@@ -529,11 +602,19 @@ func TestActivePassiveService(t *testing.T) {
 							if assert.NotNil(t, publicService, "public service not found") {
 								actual, err := roundTrip(publicService)
 								if assert.NoError(t, err) {
-									expected := `---
+									expected := expectedYAML(exportSettings, `---
 										apiVersion: v1
 										kind: Service
 										metadata:
 											name: myrole-tor-public
+											labels:
+												app.kubernetes.io/component: myrole-tor-public
+												app.kubernetes.io/instance: MyRelease
+												app.kubernetes.io/managed-by: Tiller
+												app.kubernetes.io/name: MyChart
+												app.kubernetes.io/version: 1.22.333.4444
+												helm.sh/chart: MyChart-42.1_foo
+												skiff-role-name: "myrole-tor-public"
 										spec:
 											externalIPs: [ 192.0.2.42 ]
 											ports:
@@ -545,7 +626,7 @@ func TestActivePassiveService(t *testing.T) {
 											selector:
 												app.kubernetes.io/component: myrole
 												skiff-role-active: "true"
-									`
+									`)
 									switch variant {
 									case withHelmLoadBalancer:
 										expected = strings.Replace(expected, "externalIPs: [ 192.0.2.42 ]", "type: LoadBalancer", 1)
@@ -562,4 +643,16 @@ func TestActivePassiveService(t *testing.T) {
 			})
 		}(variant)
 	}
+}
+
+func expectedYAML(settings ExportSettings, expected string) string {
+	if !settings.CreateHelmChart {
+		expected = regexp.MustCompile("app.kubernetes.io/instance: .*").ReplaceAllLiteralString(expected, "")
+		expected = regexp.MustCompile("app.kubernetes.io/managed-by: .*").ReplaceAllLiteralString(expected, "")
+		expected = regexp.MustCompile("app.kubernetes.io/name: .*").ReplaceAllLiteralString(expected, "")
+		expected = regexp.MustCompile("app.kubernetes.io/version: .*").ReplaceAllLiteralString(expected, "")
+		expected = regexp.MustCompile("helm.sh/chart: .*").ReplaceAllLiteralString(expected, "")
+		expected = regexp.MustCompile("skiff-role-name: .*").ReplaceAllLiteralString(expected, "")
+	}
+	return expected
 }

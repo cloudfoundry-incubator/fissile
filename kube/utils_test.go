@@ -27,23 +27,6 @@ func TestNewTypeMeta(t *testing.T) {
 	`, actual)
 }
 
-func TestNewObjectMeta(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	objectMeta := newObjectMeta("thename")
-
-	actual, err := RoundtripKube(objectMeta)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		name: "thename"
-		labels:
-			app.kubernetes.io/component: "thename"
-	`, actual)
-}
-
 func TestNewSelector(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
