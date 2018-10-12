@@ -36,6 +36,9 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		kind: "ServiceAccount"
 		metadata:
 			name: "the-name"
+			labels:
+				app.kubernetes.io/component: the-name
+
 	`, actualAccount)
 
 	rbacRole := resources[1]
@@ -137,6 +140,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		actualRole, err := RoundtripNode(rbacRole, config)
@@ -174,6 +185,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		// config: .Values.kube.psp.nonprivileged: ~
@@ -203,6 +222,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		actualBinding, err := RoundtripNode(pspBinding, config)

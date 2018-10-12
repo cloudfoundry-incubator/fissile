@@ -22,9 +22,7 @@ func NewRBACAccount(name string, account model.AuthAccount, settings ExportSetti
 	// If we want to modify the default account, there's no need to create it
 	// first -- it already exists
 	if name != "default" {
-		accountYAML := newTypeMeta("v1", "ServiceAccount", block)
-		accountYAML.Add("metadata", helm.NewMapping("name", name))
-		resources = append(resources, accountYAML)
+		resources = append(resources, newKubeConfig(settings, "v1", "ServiceAccount", name, block))
 	}
 
 	for _, role := range account.Roles {
