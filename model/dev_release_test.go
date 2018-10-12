@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/fissile/util"
-
 	"github.com/stretchr/testify/assert"
 )
 

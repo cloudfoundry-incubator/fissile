@@ -3,10 +3,9 @@ package kube
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewRBACAccountPSPKube(t *testing.T) {

@@ -10,9 +10,8 @@ import (
 	"reflect"
 	"sort"
 
-	"code.cloudfoundry.org/fissile/util"
-
 	"code.cloudfoundry.org/archiver/extractor"
+	"code.cloudfoundry.org/fissile/util"
 	"gopkg.in/yaml.v2"
 )
 

@@ -8,7 +8,6 @@ import (
 	"code.cloudfoundry.org/fissile/cmd"
 	"github.com/SUSE/termui"
 	"github.com/SUSE/termui/sigint"
-
 	"github.com/fatih/color"
 )
 

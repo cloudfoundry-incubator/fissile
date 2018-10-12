@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/fissile/helm"
-
-	"github.com/stretchr/testify/assert"
-
 	"code.cloudfoundry.org/fissile/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTypeMeta(t *testing.T) {

@@ -12,24 +12,17 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/fissile/model"
-
 	"github.com/graymeta/stow"
+	_ "github.com/graymeta/stow/azure"  // support azure storage
+	_ "github.com/graymeta/stow/google" // support google storage
 	"github.com/graymeta/stow/local"
+	_ "github.com/graymeta/stow/oracle" // support oracle storage
+	_ "github.com/graymeta/stow/s3"     // support s3 storage
+	_ "github.com/graymeta/stow/swift"  // support swift storage
 	"github.com/machinebox/progress"
 	"github.com/mholt/archiver"
 	"github.com/satori/go.uuid"
-	"gopkg.in/yaml.v2"
-
-	// support Azure storage
-	_ "github.com/graymeta/stow/azure"
-	// support Google storage
-	_ "github.com/graymeta/stow/google"
-	// support swift storage
-	_ "github.com/graymeta/stow/swift"
-	// support s3 storage
-	_ "github.com/graymeta/stow/s3"
-	// support oracle storage
-	_ "github.com/graymeta/stow/oracle"
+	"gopkg.in/yaml.v2" // support Azure storage
 )
 
 // DownloadProgressEvent represents a delegate for updating progress when downloading

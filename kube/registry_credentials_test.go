@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"code.cloudfoundry.org/fissile/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMakeRegistryCredentialsKube(t *testing.T) {

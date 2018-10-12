@@ -16,7 +16,6 @@ import (
 
 	"code.cloudfoundry.org/fissile/model"
 	"github.com/SUSE/termui"
-
 	"github.com/stretchr/testify/assert"
 )
 

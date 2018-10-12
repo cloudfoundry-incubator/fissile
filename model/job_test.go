@@ -11,7 +11,6 @@ import (
 
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"code.cloudfoundry.org/fissile/util"
-
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )

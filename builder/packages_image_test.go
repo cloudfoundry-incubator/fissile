@@ -14,7 +14,6 @@ import (
 
 	"code.cloudfoundry.org/fissile/docker"
 	"code.cloudfoundry.org/fissile/model"
-
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

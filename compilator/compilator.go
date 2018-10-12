@@ -18,7 +18,6 @@ import (
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"

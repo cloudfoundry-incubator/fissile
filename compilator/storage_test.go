@@ -7,17 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gopkg.in/yaml.v2"
-
 	"code.cloudfoundry.org/fissile/docker"
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/scripts/compilation"
 	"code.cloudfoundry.org/fissile/util"
-
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uiprogress/util/strutil"
 	"github.com/graymeta/stow"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestStorePackageLocallyOK(t *testing.T) {

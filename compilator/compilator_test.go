@@ -16,7 +16,6 @@ import (
 	"code.cloudfoundry.org/fissile/scripts/compilation"
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/termui"
-
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

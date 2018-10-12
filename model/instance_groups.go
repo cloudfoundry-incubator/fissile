@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/fissile/util"
 	"code.cloudfoundry.org/fissile/validation"
-
 	"gopkg.in/yaml.v2"
 )
 
