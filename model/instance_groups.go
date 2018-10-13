@@ -526,6 +526,21 @@ func (g *InstanceGroup) IsPrivileged() bool {
 	return false
 }
 
+// PodSecurityPolicy determines the name of the pod security policy
+// governing the specified instance group.
+func (g *InstanceGroup) PodSecurityPolicy() string {
+	result := LeastPodSecurityPolicy()
+
+	// Note: validateRoleRun ensured non-nil of job.ContainerProperties.BoshContainerization.PodSecurityPolicy
+
+	for _, job := range g.JobReferences {
+		result = MergePodSecurityPolicies(result,
+			job.ContainerProperties.BoshContainerization.PodSecurityPolicy)
+	}
+
+	return result
+}
+
 // IsColocated tests if the role is of type ColocatedContainer, or
 // not. It returns true if this role is of that type, or false otherwise.
 func (g *InstanceGroup) IsColocated() bool {

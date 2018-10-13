@@ -204,6 +204,7 @@ func TestJobHelm(t *testing.T) {
 						readinessProbe: ~
 						resources: ~
 						securityContext:
+							allowPrivilegeEscalation: false
 							capabilities:
 								add:	~
 						volumeMounts: ~

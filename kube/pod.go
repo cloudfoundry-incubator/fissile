@@ -503,13 +503,15 @@ func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.No
 		notAll = fmt.Sprintf(`if not (has "ALL" %s)`, config)
 	}
 
-	var capabilities []string
-	for _, cap := range role.Run.Capabilities {
-		if cap == "ALL" {
-			return helm.NewMapping("privileged", true)
-		}
-		capabilities = append(capabilities, cap)
+	if role.IsPrivileged() {
+		return helm.NewMapping("privileged", true)
 	}
+
+	sc := helm.NewMapping()
+	allowPrivileged := role.PodSecurityPolicy() == model.PodSecurityPolicyPrivileged
+	sc.Add("allowPrivilegeEscalation", allowPrivileged)
+
+	capabilities := role.Run.Capabilities
 	if createHelmChart {
 		// This code handles manifest modes `caplist` and `nil` (empty caplist).
 		//
@@ -525,15 +527,15 @@ func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.No
 		cla.Set(helm.Block(notAll))
 
 		// Complete the context, with conditional privileged mode
-		sc := helm.NewMapping()
 		sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
 		sc.Add("capabilities", cla)
-		return sc
+	} else {
+		if len(capabilities) > 0 {
+			sc.Add("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
+		}
 	}
-	if len(capabilities) == 0 {
-		return nil
-	}
-	return helm.NewMapping("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
+
+	return sc
 }
 
 func getContainerLivenessProbe(role *model.InstanceGroup) (helm.Node, error) {
