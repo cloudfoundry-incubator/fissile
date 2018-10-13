@@ -3,10 +3,9 @@ package kube
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewRBACAccountPSPKube(t *testing.T) {
@@ -36,6 +35,9 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		kind: "ServiceAccount"
 		metadata:
 			name: "the-name"
+			labels:
+				app.kubernetes.io/component: the-name
+
 	`, actualAccount)
 
 	rbacRole := resources[1]
@@ -48,6 +50,8 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		kind: "RoleBinding"
 		metadata:
 			name: "the-name-a-role-binding"
+			labels:
+				app.kubernetes.io/component: the-name-a-role-binding
 		subjects:
 		-	kind: "ServiceAccount"
 			name: "the-name"
@@ -67,6 +71,8 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		kind: "ClusterRoleBinding"
 		metadata:
 			name: "the-name-binding-psp"
+			labels:
+				app.kubernetes.io/component: the-name-binding-psp
 		subjects:
 		-	kind: "ServiceAccount"
 			name: "the-name"
@@ -137,6 +143,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		actualRole, err := RoundtripNode(rbacRole, config)
@@ -149,6 +163,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "RoleBinding"
 			metadata:
 				name: "the-name-a-role-binding"
+				labels:
+					app.kubernetes.io/component: the-name-a-role-binding
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name-a-role-binding"
 			subjects:
 			-	kind: "ServiceAccount"
 				name: "the-name"
@@ -174,6 +196,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		// config: .Values.kube.psp.nonprivileged: ~
@@ -203,6 +233,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		actualBinding, err := RoundtripNode(pspBinding, config)
@@ -215,6 +253,14 @@ func TestNewRBACAccountHelm(t *testing.T) {
 			kind: "ClusterRoleBinding"
 			metadata:
 				name: "a-namespace-the-name-binding-psp"
+				labels:
+					app.kubernetes.io/component: a-namespace-the-name-binding-psp
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "a-namespace-the-name-binding-psp"
 			subjects:
 			-	kind: "ServiceAccount"
 				name: "the-name"
@@ -254,6 +300,8 @@ func TestNewRBACRoleKube(t *testing.T) {
 		kind: "Role"
 		metadata:
 			name: "the-name"
+			labels:
+				app.kubernetes.io/component: the-name
 		rules:
 		-	apiGroups:
 			-	"api-group-1"
@@ -315,6 +363,14 @@ func TestNewRBACRoleHelm(t *testing.T) {
 			kind: "Role"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 			rules:
 			-	apiGroups:
 				-	"api-group-1"
@@ -346,6 +402,8 @@ func TestNewRBACClusterRolePSPKube(t *testing.T) {
 		kind: "ClusterRole"
 		metadata:
 			name: "psp-role-the-name"
+			labels:
+				app.kubernetes.io/component: psp-role-the-name
 		rules:
 		-	apiGroups:
 			-	"extensions"
@@ -384,6 +442,14 @@ func TestNewRBACClusterRolePSPHelm(t *testing.T) {
 		kind: "ClusterRole"
 		metadata:
 			name: "namespace-psp-role-the_name"
+			labels:
+				app.kubernetes.io/component: namespace-psp-role-the_name
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
+				skiff-role-name: "namespace-psp-role-the_name"
 		rules:
 		-	apiGroups:
 			-	"extensions"

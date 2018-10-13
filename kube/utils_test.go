@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/fissile/helm"
-
-	"github.com/stretchr/testify/assert"
-
 	"code.cloudfoundry.org/fissile/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTypeMeta(t *testing.T) {
@@ -24,23 +22,6 @@ func TestNewTypeMeta(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, `---
 		apiVersion: "the-api-version"
 		kind: "thekind"
-	`, actual)
-}
-
-func TestNewObjectMeta(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	objectMeta := newObjectMeta("thename")
-
-	actual, err := RoundtripKube(objectMeta)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		name: "thename"
-		labels:
-			app.kubernetes.io/component: "thename"
 	`, actual)
 }
 

@@ -231,6 +231,8 @@ func TestStatefulSetServices(t *testing.T) {
 							kind: Service
 							metadata:
 								name: myrole-tor-set
+								labels:
+									app.kubernetes.io/component: myrole-tor-set
 							spec:
 								clusterIP: None
 								ports:
@@ -265,6 +267,8 @@ func TestStatefulSetServices(t *testing.T) {
 							kind: Service
 							metadata:
 								name: myrole-set
+								labels:
+									app.kubernetes.io/component: myrole-set
 							spec:
 								clusterIP: None
 								ports:
@@ -299,6 +303,8 @@ func TestStatefulSetServices(t *testing.T) {
 							kind: Service
 							metadata:
 								name: myrole-tor-public
+								labels:
+									app.kubernetes.io/component: myrole-tor-public
 							spec:
 								externalIPs: [ 192.168.77.77 ]
 								ports:
@@ -328,6 +334,8 @@ func TestStatefulSetServices(t *testing.T) {
 							kind: Service
 							metadata:
 								name: myrole-tor
+								labels:
+									app.kubernetes.io/component: myrole-tor
 							spec:
 								ports:
 								-

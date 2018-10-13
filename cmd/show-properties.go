@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"code.cloudfoundry.org/fissile/app"
-
 	"github.com/spf13/cobra"
 )
 

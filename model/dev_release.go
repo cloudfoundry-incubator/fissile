@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/fissile/util"
-
 	"github.com/cppforlife/go-semi-semantic/version"
 	"gopkg.in/yaml.v2"
 )

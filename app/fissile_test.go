@@ -15,7 +15,6 @@ import (
 	"code.cloudfoundry.org/fissile/kube"
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
-
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

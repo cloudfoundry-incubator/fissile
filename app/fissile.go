@@ -20,7 +20,6 @@ import (
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"

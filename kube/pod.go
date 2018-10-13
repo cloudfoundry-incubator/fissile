@@ -46,11 +46,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	spec.Add("restartPolicy", "Always")
 	if role.Run.ServiceAccount != "default" {
 		// This role requires a custom service account
-		block := helm.Block("")
-		if settings.CreateHelmChart {
-			block = helm.Block(authModeRBAC)
-		}
-		spec.Add("serviceAccountName", role.Run.ServiceAccount, block)
+		spec.Add("serviceAccountName", role.Run.ServiceAccount, authModeRBAC(settings))
 	}
 
 	// BOSH can potentially have an infinite termination grace period; we don't

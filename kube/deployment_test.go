@@ -8,7 +8,6 @@ import (
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
-
 	"github.com/stretchr/testify/assert"
 )
 
