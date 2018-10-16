@@ -23,7 +23,9 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewMapping()
-	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	// meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	// XXX We need to match on legacy RoleNameLabel to maintain upgradability of stateful sets
+	meta.Add("matchLabels", helm.NewMapping("skiff-role-name", name))
 	return meta
 }
 

@@ -37,7 +37,7 @@ func TestNewSelector(t *testing.T) {
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
 		matchLabels:
-			app.kubernetes.io/component: "thename"
+			skiff-role-name: "thename"
 	`, actual)
 }
 

@@ -220,7 +220,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 				replicas: 1
 				selector:
 					matchLabels:
-						app.kubernetes.io/component: "some-group"
+						skiff-role-name: "some-group"
 				template:
 					metadata:
 						name: "some-group"
