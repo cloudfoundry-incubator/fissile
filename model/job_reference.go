@@ -26,6 +26,7 @@ type JobBoshContainerization struct {
 	Ports               []JobExposedPort `yaml:"ports"`
 	Run                 *RoleRun         `yaml:"run"`
 	ColocatedContainers []string         `yaml:"colocated_containers,omitempty"`
+	ServiceName         string           `yaml:"service_name,omitempty"`
 }
 
 // JobExposedPort describes a port to be available to other jobs, or the outside world

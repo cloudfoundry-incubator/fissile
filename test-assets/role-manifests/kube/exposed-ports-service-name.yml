@@ -1,0 +1,24 @@
+---
+instance_groups:
+- name: myrole
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        service_name: myservice
+        ports:
+        - name: http
+          protocol: TCP
+          external: 80
+          internal: 8080
+          public: false
+        - name: https
+          protocol: TCP
+          external: 443
+          internal: 443
+          public: true
+        run:
+          scaling:
+            min: 1
+            max: 1
