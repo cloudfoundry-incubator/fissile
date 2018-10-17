@@ -881,6 +881,16 @@ func (f *Fissile) GenerateKube(defaultFiles []string, settings kube.ExportSettin
 		return err
 	}
 
+	manifestSecret, err := kube.MakeBoshDeploymentManifestSecret(settings)
+	if err != nil {
+		return err
+	}
+
+	err = f.generateSecrets("deployment-manifest-secret.yaml", manifestSecret, settings)
+	if err != nil {
+		return err
+	}
+
 	if settings.CreateHelmChart {
 		values, err := kube.MakeValues(settings)
 		if err != nil {
