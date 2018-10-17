@@ -214,17 +214,18 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	}
 	spec.Add("ports", helm.NewNode(ports))
 
-	jobName := util.ConvertNameToKey(job.Name)
-	serviceNamePrefix := util.ConvertNameToKey(role.Name)
+	serviceName := job.ContainerProperties.BoshContainerization.ServiceName
+	if len(serviceName) == 0 {
+		serviceName = util.ConvertNameToKey(role.Name + "-" + job.Name)
+	}
 
-	var serviceName string
 	switch serviceType {
 	case newServiceTypeHeadless:
-		serviceName = serviceNamePrefix + "-" + jobName + "-set"
+		serviceName += "-set"
 	case newServiceTypePrivate:
-		serviceName = serviceNamePrefix + "-" + jobName
+		// all set
 	case newServiceTypePublic:
-		serviceName = serviceNamePrefix + "-" + jobName + "-public"
+		serviceName += "-public"
 	default:
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
