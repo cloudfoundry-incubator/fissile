@@ -461,11 +461,22 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 						-
 							name: shared-volume
 							mountPath: /mnt/shared
+						-
+							name: deployment-manifest
+							mountPath: /opt/fissile/config
+
 					volumes:
 					-
 						name: host-volume
 						hostPath:
 							path: /sys/fs/cgroup
+					-
+						name: deployment-manifest
+						secret:
+							secretName: deployment-manifest
+							items:
+							-	key: deployment-manifest
+								path: deployment-manifest.yml
 			volumeClaimTemplates:
 				-
 					metadata:
@@ -537,11 +548,21 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 						-
 							name: host-volume
 							mountPath: /sys/fs/cgroup
+						-
+							name: deployment-manifest
+							mountPath: /opt/fissile/config
 					volumes:
 					-
 						name: host-volume
 						hostPath:
 							path: /sys/fs/cgroup
+					-
+						name: deployment-manifest
+						secret:
+							secretName: deployment-manifest
+							items:
+							-	key: deployment-manifest
+								path: deployment-manifest.yml
 			volumeClaimTemplates:
 				-
 					metadata:
@@ -724,12 +745,18 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 						-
 							name: shared-data
 							mountPath: /mnt/shared-data
+						-
+							name: deployment-manifest
+							mountPath: /opt/fissile/config
 					-
 						name: colocated
 						volumeMounts:
 						-
 							name: shared-data
 							mountPath: /mnt/shared-data
+						-
+							name: deployment-manifest
+							mountPath: /opt/fissile/config
 					volumes:
 					-
 						name: host-volume
@@ -738,6 +765,13 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 					-
 						name: shared-data
 						emptyDir: {}
+					-
+						name: deployment-manifest
+						secret:
+							secretName: deployment-manifest
+							items:
+							-	key: deployment-manifest
+								path: deployment-manifest.yml
 			volumeClaimTemplates:
 				-
 					metadata:

@@ -42,7 +42,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	spec.Add("containers", containers)
 	spec.Add("imagePullSecrets", helm.NewList(imagePullSecrets))
 	spec.Add("dnsPolicy", "ClusterFirst")
-	spec.Add("volumes", getNonClaimVolumes(role, settings.CreateHelmChart))
+	spec.Add("volumes", getNonClaimVolumes(role, settings))
 	spec.Add("restartPolicy", "Always")
 	if role.Run.ServiceAccount != "default" {
 		// This role requires a custom service account
@@ -172,7 +172,7 @@ func getContainerMapping(role *model.InstanceGroup, settings ExportSettings, gra
 	container.Add("name", role.Name)
 	container.Add("image", image)
 	container.Add("ports", ports)
-	container.Add("volumeMounts", getVolumeMounts(role, settings.CreateHelmChart))
+	container.Add("volumeMounts", getVolumeMounts(role, settings))
 	container.Add("env", vars)
 	container.Add("resources", resources)
 	container.Add("securityContext", securityContext)
@@ -256,10 +256,10 @@ func getContainerPorts(role *model.InstanceGroup, settings ExportSettings) (helm
 }
 
 // getVolumeMounts gets the list of volume mounts for a role
-func getVolumeMounts(role *model.InstanceGroup, createHelmChart bool) helm.Node {
+func getVolumeMounts(role *model.InstanceGroup, settings ExportSettings) helm.Node {
 	var mounts []helm.Node
+	var mount helm.Node
 	for _, volume := range role.Run.Volumes {
-		var mount helm.Node
 		switch volume.Type {
 		case model.VolumeTypeEmptyDir:
 			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag)
@@ -268,14 +268,18 @@ func getVolumeMounts(role *model.InstanceGroup, createHelmChart bool) helm.Node 
 			mount = helm.NewMapping("mountPath", volume.Path, "name", volume.Tag, "readOnly", false)
 		}
 
-		if volume.Type == model.VolumeTypeHost && createHelmChart {
+		if volume.Type == model.VolumeTypeHost && settings.CreateHelmChart {
 			mount.Set(helm.Block("if .Values.kube.hostpath_available"))
 		}
 		mounts = append(mounts, mount)
 	}
-	if len(mounts) == 0 {
-		return nil
-	}
+
+	// Mount the bosh deployment manifest secret if it is available
+	mount = helm.NewMapping("mountPath", "/opt/fissile/config", "name", "deployment-manifest",
+		"readOnly", true)
+	mount.Set(boshDeploymentManifestCondition(settings))
+	mounts = append(mounts, mount)
+
 	return helm.NewNode(mounts)
 }
 
@@ -296,17 +300,17 @@ func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) 
 }
 
 // getNonClaimVolumes returns the list of pod volumes that are _not_ bound with volume claims
-func getNonClaimVolumes(role *model.InstanceGroup, createHelmChart bool) helm.Node {
+func getNonClaimVolumes(role *model.InstanceGroup, settings ExportSettings) helm.Node {
 	var mounts []helm.Node
 	for _, volume := range role.Run.Volumes {
 		switch volume.Type {
 		case model.VolumeTypeHost:
 			hostPathInfo := helm.NewMapping("path", volume.Path)
-			if createHelmChart {
+			if settings.CreateHelmChart {
 				hostPathInfo.Add("type", "Directory", helm.Block(fmt.Sprintf("if (%s)", minKubeVersion(1, 8))))
 			}
 			volumeEntry := helm.NewMapping("name", volume.Tag, "hostPath", hostPathInfo)
-			if createHelmChart {
+			if settings.CreateHelmChart {
 				volumeEntry.Set(helm.Block("if .Values.kube.hostpath_available"))
 			}
 			mounts = append(mounts, volumeEntry)
@@ -317,9 +321,15 @@ func getNonClaimVolumes(role *model.InstanceGroup, createHelmChart bool) helm.No
 			mounts = append(mounts, volumeEntry)
 		}
 	}
-	if len(mounts) == 0 {
-		return nil
-	}
+
+	// Mount the deployment manifest secret if it is available
+	mount := helm.NewMapping("name", "deployment-manifest")
+	items := helm.NewList(helm.NewMapping("key", "deployment-manifest", "path", "deployment-manifest.yml"))
+	secret := helm.NewMapping("secretName", "deployment-manifest", "items", items)
+	mount.Add("secret", secret)
+	mount.Set(boshDeploymentManifestCondition(settings))
+	mounts = append(mounts, mount)
+
 	return helm.NewNode(mounts)
 }
 
