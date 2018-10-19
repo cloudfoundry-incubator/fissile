@@ -858,34 +858,30 @@ func validateColocatedContainerVolumeShares(roleManifest *RoleManifest) validati
 			emptyDirVolumesCount := map[string]int{}
 
 			// Compile a map of all emptyDir volumes with tag -> path of the main instance group
-			for _, j := range instanceGroup.JobReferences.WithRunProperty() {
-				for _, volume := range j.ContainerProperties.BoshContainerization.Run.Volumes {
-					if volume.Type == VolumeTypeEmptyDir {
-						emptyDirVolumesTags = append(emptyDirVolumesTags, volume.Tag)
-						emptyDirVolumesPath[volume.Tag] = volume.Path
-						emptyDirVolumesCount[volume.Tag] = 0
-					}
+			for _, volume := range instanceGroup.Run.Volumes {
+				if volume.Type == VolumeTypeEmptyDir {
+					emptyDirVolumesTags = append(emptyDirVolumesTags, volume.Tag)
+					emptyDirVolumesPath[volume.Tag] = volume.Path
+					emptyDirVolumesCount[volume.Tag] = 0
 				}
 			}
 
 			for _, colocatedRole := range instanceGroup.GetColocatedRoles() {
-				for _, j := range colocatedRole.JobReferences {
-					for _, volume := range j.ContainerProperties.BoshContainerization.Run.Volumes {
-						if volume.Type == VolumeTypeEmptyDir {
-							if _, ok := emptyDirVolumesCount[volume.Tag]; !ok {
-								emptyDirVolumesCount[volume.Tag] = 0
-							}
+				for _, volume := range colocatedRole.Run.Volumes {
+					if volume.Type == VolumeTypeEmptyDir {
+						if _, ok := emptyDirVolumesCount[volume.Tag]; !ok {
+							emptyDirVolumesCount[volume.Tag] = 0
+						}
 
-							emptyDirVolumesCount[volume.Tag]++
+						emptyDirVolumesCount[volume.Tag]++
 
-							if path, ok := emptyDirVolumesPath[volume.Tag]; ok {
-								if path != volume.Path {
-									// Same tag, but different paths
-									allErrs = append(allErrs, validation.Invalid(
-										fmt.Sprintf("instance_group[%s]", colocatedRole.Name),
-										volume.Path,
-										fmt.Sprintf("colocated instance group specifies a shared volume with tag %s, which path does not match the path of the main instance group shared volume with the same tag", volume.Tag)))
-								}
+						if path, ok := emptyDirVolumesPath[volume.Tag]; ok {
+							if path != volume.Path {
+								// Same tag, but different paths
+								allErrs = append(allErrs, validation.Invalid(
+									fmt.Sprintf("instance_group[%s]", colocatedRole.Name),
+									volume.Path,
+									fmt.Sprintf("colocated instance group specifies a shared volume with tag %s, which path does not match the path of the main instance group shared volume with the same tag", volume.Tag)))
 							}
 						}
 					}
