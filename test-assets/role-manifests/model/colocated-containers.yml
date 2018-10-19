@@ -21,6 +21,8 @@ instance_groups:
 - name: to-be-colocated
   type: colocated-container
   jobs:
+  - name: new_hostname
+    release: tor
   - name: ntpd
     release: ntp
     properties:
