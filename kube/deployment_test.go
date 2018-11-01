@@ -383,6 +383,22 @@ func TestAddAffinityRules(t *testing.T) {
 	assert.Equal(spec, emptySpec)
 
 	//
+	// Test instance group without anti affinity
+	//
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-no-pod-anti-affinity.yml")
+	if instanceGroup == nil {
+		return
+	}
+
+	spec = createEmptySpec()
+
+	err = addAffinityRules(instanceGroup, spec, settings)
+
+	assert.Nil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
+	assert.NotNil(spec.Get("template", "spec", "affinity", "nodeAffinity"))
+	assert.NoError(err)
+
+	//
 	// Not creating the helm chart should only add the annotation
 	//
 	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
@@ -436,6 +452,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
+			"Values.sizing.some_group.affinity":     map[string]interface{}{},
 			"Values.sizing.some_group.count":        "1",
 			"Values.sizing.some_group.capabilities": []interface{}{},
 			"Values.sizing.colocated.capabilities":  []interface{}{},

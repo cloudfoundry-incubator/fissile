@@ -62,23 +62,23 @@ func addAffinityRules(instanceGroup *model.InstanceGroup, spec *helm.Mapping, se
 		if instanceGroup.Run.Affinity.PodAffinity != nil {
 			return errors.New("pod affinity in role manifest not supported")
 		}
-
-		if settings.CreateHelmChart {
-			podSpec := spec.Get("template", "spec").(*helm.Mapping)
-
-			podSpec.Add("affinity", getAffinityBlock(instanceGroup))
-			podSpec.Sort()
-		}
-
-		meta := spec.Get("template", "metadata").(*helm.Mapping)
-		if meta.Get("annotations") == nil {
-			meta.Add("annotations", helm.NewMapping())
-			meta.Sort()
-		}
-		annotations := meta.Get("annotations").(*helm.Mapping)
-
-		annotations.Sort()
 	}
+
+	if settings.CreateHelmChart {
+		podSpec := spec.Get("template", "spec").(*helm.Mapping)
+
+		podSpec.Add("affinity", getAffinityBlock(instanceGroup))
+		podSpec.Sort()
+	}
+
+	meta := spec.Get("template", "metadata").(*helm.Mapping)
+	if meta.Get("annotations") == nil {
+		meta.Add("annotations", helm.NewMapping())
+		meta.Sort()
+	}
+	annotations := meta.Get("annotations").(*helm.Mapping)
+
+	annotations.Sort()
 
 	return nil
 }

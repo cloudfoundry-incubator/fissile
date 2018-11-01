@@ -400,6 +400,7 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 					require.NoError(t, err)
 					actual, err := RoundtripNode(statefulset, map[string]interface{}{
 						"Values.sizing.myrole.count":                        "1",
+						"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 						"Values.sizing.myrole.capabilities":                 []string{},
 						"Values.sizing.myrole.disk_sizes.persistent_volume": 1,
 					})
@@ -592,6 +593,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.kube.registry.hostname":                     "",
 		"Values.kube.storage_class.persistent":              "persistent",
 		"Values.kube.storage_class.shared":                  "shared",
+		"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
@@ -664,6 +666,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.kube.hostpath_available":                    false,
 		"Values.kube.registry.hostname":                     "",
 		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
