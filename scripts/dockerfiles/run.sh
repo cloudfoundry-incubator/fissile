@@ -102,6 +102,20 @@ mkdir -p /var/vcap/instance
 echo {{ .instance_group.Name }} > /var/vcap/instance/name
 echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
+# BOSH creates various convenience symlinks under /var/vcap/data
+mkdir -p /var/vcap/data
+ln -s /var/vcap/jobs /var/vcap/data/jobs
+ln -s /var/vcap/packages /var/vcap/data/packages
+ln -s /var/vcap/sys /var/vcap/data/sys
+
+# Move packages from /var/vcap/packages-src to /var/vcap/packages
+# This is necessary because the ../packages-src symlink does not resolve inside bpm containers
+for pkg in /var/vcap/packages/*; do
+    target=$(readlink -f ${pkg})
+    rm ${pkg}
+    mv ${target} ${pkg}
+done
+
 # Run custom environment scripts (that are sourced)
 {{ range $script := .instance_group.EnvironScripts }}
     source {{ script_path $script }}
