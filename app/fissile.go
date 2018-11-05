@@ -548,7 +548,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, nil); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
@@ -1228,14 +1228,13 @@ func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) er
 
 // Validate runs all checks against all inputs
 func (f *Fissile) Validate(lightManifestPath, darkManifestPath string) error {
-	var defaultsFromEnvFiles map[string]string
 	var err error
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, defaultsFromEnvFiles); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 

@@ -39,7 +39,7 @@ func TestValidation(t *testing.T) {
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
 	actual := errs.Errors()
 	allExpected := []string{
@@ -100,7 +100,7 @@ func TestValidationOk(t *testing.T) {
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
 	assert.Empty(t, errs)
 }
@@ -130,7 +130,7 @@ func TestValidationHash(t *testing.T) {
 	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
 	assert.NoError(t, err)
 
-	errs := f.validateManifestAndOpinions(roleManifest, opinions, nil)
+	errs := f.validateManifestAndOpinions(roleManifest, opinions)
 
 	actual := errs.Errors()
 	allExpected := []string{
@@ -183,43 +183,6 @@ func TestTemplateSorting(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `properties.tor.hostname: Forbidden: Template key does not sort before 'properties.tor.hashed_control_password'`)
-}
-
-func TestNonExistingVarsInEnvFile(t *testing.T) {
-	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
-	emptyManifestPath := filepath.Join(workDir, "../test-assets/misc/empty.yml")
-	f := NewFissileApplication(".", ui)
-
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-	roleManifest := f.Manifest
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
-
-	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
-	assert.NoError(t, err)
-
-	errs := f.validateManifestAndOpinions(roleManifest, opinions, map[string]string{"FOOBAR": "pelerinul"})
-
-	actual := errs.Errors()
-	allExpected := []string{
-		`FOOBAR: Not found: "Variable from env file not defined in the manifest."`,
-		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
-	}
-	for _, expected := range allExpected {
-		assert.Contains(t, actual, expected)
-	}
-	assert.Len(t, errs, len(allExpected))
 }
 
 func TestInvalidTemplateKeys(t *testing.T) {
