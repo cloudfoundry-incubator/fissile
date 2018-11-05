@@ -125,9 +125,15 @@ done
     bash {{ script_path $script }}
 {{ end }}
 
+if [ -e /opt/fissile/config/deployment-manifest.yml ];
+then
+  deployment_manifest_args="--bosh-deployment-manifest /opt/fissile/config/deployment-manifest.yml"
+fi
+
 configgin \
 	--jobs /opt/fissile/job_config.json \
-	--env2conf /opt/fissile/env2conf.yml
+	--env2conf /opt/fissile/env2conf.yml \
+  ${deployment_manifest_args:-}
 
 if [ -e /etc/monitrc ]
 then

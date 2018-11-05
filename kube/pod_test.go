@@ -102,11 +102,14 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 		return
 	}
 
-	mounts := getNonClaimVolumes(role, true)
+	mounts := getNonClaimVolumes(role, ExportSettings{CreateHelmChart: true})
 	assert.NotNil(mounts)
 
-	actual, err := RoundtripNode(mounts, map[string]interface{}{
-		"Values.kube.hostpath_available": true})
+	config := map[string]interface{}{
+		"Values.kube.hostpath_available": true,
+		"Values.bosh.foo":                "bar",
+	}
+	actual, err := RoundtripNode(mounts, config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -115,6 +118,12 @@ func TestPodGetNonClaimVolumes(t *testing.T) {
 			hostPath:
 				path: "/sys/fs/cgroup"
 				type: "Directory"
+		-	name: "deployment-manifest"
+			secret:
+				secretName: "deployment-manifest"
+				items:
+				-	key: deployment-manifest
+					path: deployment-manifest.yml
 	`, actual)
 }
 
@@ -275,18 +284,22 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	for caseName, hasHostpath := range cases {
 		t.Run(caseName, func(t *testing.T) {
 
-			volumeMountNodes := getVolumeMounts(role, true)
-			volumeMounts, err := RoundtripNode(volumeMountNodes, map[string]interface{}{"Values.kube.hostpath_available": hasHostpath})
+			config := map[string]interface{}{
+				"Values.kube.hostpath_available": hasHostpath,
+				"Values.bosh.foo":                "bar",
+			}
+			volumeMountNodes := getVolumeMounts(role, ExportSettings{CreateHelmChart: true})
+			volumeMounts, err := RoundtripNode(volumeMountNodes, config)
 			if !assert.NoError(t, err) {
 				return
 			}
 			if hasHostpath {
-				assert.Len(t, volumeMounts, 3)
+				assert.Len(t, volumeMounts, 4)
 			} else {
-				assert.Len(t, volumeMounts, 2)
+				assert.Len(t, volumeMounts, 3)
 			}
 
-			var persistentMount, sharedMount, hostMount map[interface{}]interface{}
+			var persistentMount, sharedMount, hostMount, deploymentManifestMount map[interface{}]interface{}
 			for _, elem := range volumeMounts.([]interface{}) {
 				mount := elem.(map[interface{}]interface{})
 				switch mount["name"] {
@@ -296,6 +309,9 @@ func TestPodGetVolumeMounts(t *testing.T) {
 					sharedMount = mount
 				case "host-volume":
 					hostMount = mount
+					sharedMount = mount
+				case "deployment-manifest":
+					deploymentManifestMount = mount
 				default:
 					assert.Fail(t, "Got unexpected volume mount", "%+v", mount)
 				}
@@ -304,6 +320,9 @@ func TestPodGetVolumeMounts(t *testing.T) {
 			assert.Equal(t, false, persistentMount["readOnly"])
 			assert.Equal(t, "/mnt/shared", sharedMount["mountPath"])
 			assert.Equal(t, false, sharedMount["readOnly"])
+			assert.Equal(t, false, persistentMount["readOnly"])
+			assert.Equal(t, "/opt/fissile/config", deploymentManifestMount["mountPath"])
+			assert.Equal(t, true, deploymentManifestMount["readOnly"])
 			if hasHostpath {
 				assert.Equal(t, "/sys/fs/cgroup", hostMount["mountPath"])
 				assert.Equal(t, false, hostMount["readOnly"])
@@ -2778,7 +2797,7 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	assert.NotNil(roleManifest)
 
 	// Check non-claim volumes
-	mounts := getNonClaimVolumes(roleManifest.LookupInstanceGroup("main-role"), true)
+	mounts := getNonClaimVolumes(roleManifest.LookupInstanceGroup("main-role"), ExportSettings{CreateHelmChart: true})
 	assert.NotNil(mounts)
 	actual, err := RoundtripNode(mounts, nil)
 	if !assert.NoError(err) {
@@ -2793,7 +2812,7 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
 		role := roleManifest.LookupInstanceGroup(roleName)
 
-		mounts := getVolumeMounts(role, true)
+		mounts := getVolumeMounts(role, ExportSettings{CreateHelmChart: true})
 		assert.NotNil(mounts)
 		actual, err := RoundtripNode(mounts, nil)
 		if !assert.NoError(err) {

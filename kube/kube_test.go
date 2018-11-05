@@ -69,6 +69,7 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	functions := sprig.TxtFuncMap()
 	functions["include"] = renderInclude
 	functions["required"] = renderRequired
+	functions["toYaml"] = renderToYaml
 
 	// Note: Replicate helm's behaviour on missing keys.
 	tmpl, err := template.New("").Option("missingkey=zero").Funcs(functions).Parse(string(helmConfig.Bytes()))
@@ -175,6 +176,14 @@ func renderInclude(name string, data interface{}) (string, error) {
 	// first run at this generated a stack overflow.  The fake
 	// simply shows what path/name would have been included.
 	return filepath.Base(name), nil
+}
+
+func renderToYaml(data interface{}) (string, error) {
+	yml, err := yaml.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(yml)), nil
 }
 
 // getBasicConfig returns the built-in configuration
