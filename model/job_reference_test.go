@@ -72,6 +72,7 @@ func TestWriteConfigs(t *testing.T) {
 	json, err := role.JobReferences[0].WriteConfigs(role, tempFile.Name(), tempFile.Name())
 	assert.NoError(err)
 
+	// `service_name` is empty because we never resolved links
 	assert.JSONEq(`
 	{
 		"job": {
@@ -90,7 +91,8 @@ func TestWriteConfigs(t *testing.T) {
 		"consumes": {
 			"serious": {
 				"role": "dummy role",
-				"job": "silly job"
+				"job": "silly job",
+				"service_name": ""
 			}
 		},
 		"exported_properties": [
