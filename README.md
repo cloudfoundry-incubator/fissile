@@ -23,8 +23,8 @@ Fissile requires generated code using additional tools, and therefore isn't
 `go get`-able.
 
 ```
-$ make src                                      # make the directory src
-$ export $GOPATH=$PWD                           # set GOPATH
+$ mkdir -p src                                  # make the directory src in your workspace
+$ export GOPATH=$PWD                            # set GOPATH to current working directory
 $ go get -d code.cloudfoundry.org/fissile       # Download sources
 $ cd $GOPATH/src/code.cloudfoundry.org/fissile
 $ make tools                              # install required tools; only needed first time
