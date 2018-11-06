@@ -969,6 +969,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 								Alias: "unique-alias",
 							},
 						},
+						ContainerProperties: JobContainerProperties{
+							BoshContainerization: JobBoshContainerization{
+								ServiceName: "job-1-service",
+							},
+						},
 					},
 					{Job: job2},
 				},
@@ -1019,10 +1024,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	if assert.Contains(consumes, "job-1-provider-1", "failed to find role by type") {
 		assert.Equal(jobConsumesInfo{
 			jobLinkInfo: jobLinkInfo{
-				Name:     "job-1-provider-1",
-				Type:     "link-1",
-				RoleName: "role-1",
-				JobName:  "job-1",
+				Name:        "job-1-provider-1",
+				Type:        "link-1",
+				RoleName:    "role-1",
+				JobName:     "job-1",
+				ServiceName: "job-1-service",
 			},
 		}, consumes["job-1-provider-1"], "found incorrect role by type")
 	}
@@ -1033,10 +1039,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	if assert.Contains(consumes, "job-3-provider-3", "did not find explicitly named provider") {
 		assert.Equal(jobConsumesInfo{
 			jobLinkInfo: jobLinkInfo{
-				Name:     "job-3-provider-3",
-				Type:     "link-4",
-				RoleName: "role-2",
-				JobName:  "job-3",
+				Name:        "job-3-provider-3",
+				Type:        "link-4",
+				RoleName:    "role-2",
+				JobName:     "job-3",
+				ServiceName: "role-2-job-3",
 			},
 		}, consumes["job-3-provider-3"], "did not find explicitly named provider")
 	}
@@ -1044,10 +1051,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	if assert.Contains(consumes, "actual-consumer-name", "did not resolve consumer with alias") {
 		assert.Equal(jobConsumesInfo{
 			jobLinkInfo: jobLinkInfo{
-				Name:     "job-1-provider-3",
-				Type:     "link-5",
-				RoleName: "role-1",
-				JobName:  "job-1",
+				Name:        "job-1-provider-3",
+				Type:        "link-5",
+				RoleName:    "role-1",
+				JobName:     "job-1",
+				ServiceName: "job-1-service",
 			},
 		}, consumes["actual-consumer-name"], "resolved to incorrect provider for alias")
 	}
