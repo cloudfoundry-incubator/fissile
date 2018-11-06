@@ -187,13 +187,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		registry = "docker.io"
 	}
 	// Override registry settings
-	values.Get("kube").(*helm.Mapping).Add("registry", helm.NewMapping(
+	kube := values.Get("kube").(*helm.Mapping)
+	kube.Add("registry", helm.NewMapping(
 		"hostname", registry,
 		"username", settings.Username,
 		"password", settings.Password))
-	values.Get("kube").(*helm.Mapping).Add("organization", settings.Organization)
+	kube.Add("organization", settings.Organization)
 	if settings.AuthType != "" {
-		values.Get("kube").(*helm.Mapping).Add("auth", settings.AuthType)
+		kube.Add("auth", settings.AuthType)
 	}
 
 	return values, nil

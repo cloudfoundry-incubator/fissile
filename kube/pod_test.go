@@ -1822,13 +1822,22 @@ func TestPodPreFlightHelm(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -1931,13 +1940,22 @@ func TestPodPostFlightHelm(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -2052,13 +2070,22 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -2136,13 +2163,22 @@ func TestPodMemoryHelmActive(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -2255,13 +2291,22 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -2339,13 +2384,22 @@ func TestPodCPUHelmActive(t *testing.T) {
 					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
-				volumeMounts: ~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
 			dnsPolicy: "ClusterFirst"
 			imagePullSecrets:
 			-	name: "registry-credentials"
 			restartPolicy: "OnFailure"
 			terminationGracePeriodSeconds: 600
-			volumes: ~
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
 	`, actual)
 }
 
@@ -2806,7 +2860,13 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, `---
 		-	name: "shared-data"
 			emptyDir: {}
-`, actual)
+		-	name: deployment-manifest
+			secret:
+				items:
+				-	key: deployment-manifest
+					path: deployment-manifest.yml
+				secretName: deployment-manifest
+	`, actual)
 
 	// Check each role for its volume mount
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
@@ -2819,8 +2879,11 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
-			- mountPath: "/var/vcap/store"
-			  name: "shared-data"
-`, actual)
+			-	mountPath: "/var/vcap/store"
+				name: "shared-data"
+			-	mountPath: /opt/fissile/config
+				name: deployment-manifest
+				readOnly: true
+		`, actual)
 	}
 }

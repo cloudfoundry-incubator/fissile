@@ -651,12 +651,23 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 						-
 							name: shared-volume
 							mountPath: /mnt/shared
+						-
+							mountPath: /opt/fissile/config
+							name: deployment-manifest
+							readOnly: true
 					volumes:
 					-
 						name: host-volume
 						hostPath:
 							path: /sys/fs/cgroup
 							type: Directory
+					-
+						name: deployment-manifest
+						secret:
+							items:
+							-	key: deployment-manifest
+								path: deployment-manifest.yml
+							secretName: deployment-manifest
 			volumeClaimTemplates:
 				-
 					metadata:
@@ -700,7 +711,8 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 	for _, k := range []string{"spec", "template", "spec", "volumes"} {
 		volumes = volumes.(map[interface{}]interface{})[k]
 	}
-	assert.Empty(volumes, "Hostpath volumes should not be available")
+	assert.Len(volumes, 1, "Hostpath volumes should not be available")
+	assert.Equal("deployment-manifest", volumes.([]interface{})[0].(map[interface{}]interface{})["name"])
 }
 
 func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {

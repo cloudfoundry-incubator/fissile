@@ -95,6 +95,7 @@ func MakeBasicValues() *helm.Mapping {
 				"requests", helm.NewNode(false, helm.Comment("Flag to activate cpu requests")),
 				"limits", helm.NewNode(false, helm.Comment("Flag to activate cpu limits")),
 			), helm.Comment("Global CPU configuration"))),
+		"bosh", helm.NewMapping("instance_groups", helm.NewList()),
 		"env", helm.NewMapping(),
 		"sizing", helm.NewMapping(),
 		"secrets", helm.NewMapping(),
