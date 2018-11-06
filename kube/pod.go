@@ -275,9 +275,7 @@ func getVolumeMounts(role *model.InstanceGroup, settings ExportSettings) helm.No
 	}
 
 	// Mount the bosh deployment manifest secret if it is available
-	mount = helm.NewMapping("mountPath", "/opt/fissile/config", "name", "deployment-manifest",
-		"readOnly", true)
-	mount.Set(boshDeploymentManifestCondition(settings))
+	mount = helm.NewMapping("mountPath", "/opt/fissile/config", "name", "deployment-manifest", "readOnly", true)
 	mounts = append(mounts, mount)
 
 	return helm.NewNode(mounts)
@@ -327,7 +325,6 @@ func getNonClaimVolumes(role *model.InstanceGroup, settings ExportSettings) helm
 	items := helm.NewList(helm.NewMapping("key", "deployment-manifest", "path", "deployment-manifest.yml"))
 	secret := helm.NewMapping("secretName", "deployment-manifest", "items", items)
 	mount.Add("secret", secret)
-	mount.Set(boshDeploymentManifestCondition(settings))
 	mounts = append(mounts, mount)
 
 	return helm.NewNode(mounts)

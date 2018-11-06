@@ -55,7 +55,7 @@ func TestMakeBoshDeploymentManifestSecretHelm(t *testing.T) {
 		return
 	}
 
-	payload := b64.StdEncoding.EncodeToString([]byte("foo: bar"))
+	payload := b64.StdEncoding.EncodeToString([]byte("foo: bar\ninstance_groups: []"))
 
 	testhelpers.IsYAMLEqualString(assert, `---
 	apiVersion: "v1"

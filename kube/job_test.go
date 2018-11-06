@@ -207,12 +207,21 @@ func TestJobHelm(t *testing.T) {
 							allowPrivilegeEscalation: false
 							capabilities:
 								add:	~
-						volumeMounts: ~
+						volumeMounts:
+						-	mountPath: /opt/fissile/config
+							name: deployment-manifest
+							readOnly: true
 					dnsPolicy: "ClusterFirst"
 					imagePullSecrets:
 					-	name: "registry-credentials"
 					restartPolicy: "OnFailure"
 					terminationGracePeriodSeconds: 600
-					volumes: ~
+					volumes:
+					-	name: deployment-manifest
+						secret:
+							items:
+							-	key: deployment-manifest
+								path: deployment-manifest.yml
+							secretName: deployment-manifest
 	`, actual)
 }

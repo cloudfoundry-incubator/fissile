@@ -9,19 +9,11 @@ func MakeBoshDeploymentManifestSecret(settings ExportSettings) (helm.Node, error
 		value = "{{ .Values.bosh | toYaml | b64enc }}"
 	}
 
-	secret := newKubeConfig(settings, "v1", "Secret", "deployment-manifest", boshDeploymentManifestCondition(settings))
+	secret := newKubeConfig(settings, "v1", "Secret", "deployment-manifest")
 
 	data := helm.NewMapping("deployment-manifest", value)
 	secret.Add("data", data)
 	secret.Add("type", "Opaque")
 
 	return secret, nil
-}
-
-// boshDeploymentManifestCondition creates a block condition checking for an embedded bosh deployment manifest
-func boshDeploymentManifestCondition(settings ExportSettings) helm.NodeModifier {
-	if settings.CreateHelmChart {
-		return helm.Block("if .Values.bosh")
-	}
-	return nil
 }

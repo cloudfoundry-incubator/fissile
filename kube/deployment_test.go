@@ -273,13 +273,22 @@ func TestNewDeploymentHelm(t *testing.T) {
 								allowPrivilegeEscalation: false
 								capabilities:
 									add:	~
-							volumeMounts: ~
+							volumeMounts:
+							-	mountPath: /opt/fissile/config
+								name: deployment-manifest
+								readOnly: true
 						dnsPolicy: "ClusterFirst"
 						imagePullSecrets:
 						- name: "registry-credentials"
 						restartPolicy: "Always"
 						terminationGracePeriodSeconds: 600
-						volumes: ~
+						volumes:
+						-	name: deployment-manifest
+							secret:
+								items:
+								-	key: deployment-manifest
+									path: deployment-manifest.yml
+								secretName: deployment-manifest
 		`, actual)
 	})
 }
@@ -477,15 +486,30 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 							-
 								name: shared-data
 								mountPath: /mnt/shared-data
+							-
+								mountPath: /opt/fissile/config
+								name: deployment-manifest
+								readOnly: true
 						-	name: "colocated"
 							volumeMounts:
 							-
 								name: shared-data
 								mountPath: /mnt/shared-data
+							-
+								mountPath: /opt/fissile/config
+								name: deployment-manifest
+								readOnly: true
 						volumes:
 						-
 							name: shared-data
 							emptyDir: {}
+						-
+							name: deployment-manifest
+							secret:
+								items:
+								-	key: deployment-manifest
+									path: deployment-manifest.yml
+								secretName: deployment-manifest
 		`, actual)
 	})
 }
