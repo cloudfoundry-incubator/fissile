@@ -456,15 +456,20 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 	for _, instanceGroup := range m.InstanceGroups {
 		for _, jobReference := range instanceGroup.JobReferences {
 			var availableProviders []string
+			serviceName := jobReference.ContainerProperties.BoshContainerization.ServiceName
+			if serviceName == "" {
+				serviceName = fmt.Sprintf("%s-%s", util.ConvertNameToKey(instanceGroup.Name), util.ConvertNameToKey(jobReference.Name))
+			}
 			for availableName, availableProvider := range jobReference.Job.AvailableProviders {
 				availableProviders = append(availableProviders, availableName)
 				if availableProvider.Type != "" {
 					providersByType[availableProvider.Type] = append(providersByType[availableProvider.Type], jobProvidesInfo{
 						jobLinkInfo: jobLinkInfo{
-							Name:     availableProvider.Name,
-							Type:     availableProvider.Type,
-							RoleName: instanceGroup.Name,
-							JobName:  jobReference.Name,
+							Name:        availableProvider.Name,
+							Type:        availableProvider.Type,
+							RoleName:    instanceGroup.Name,
+							JobName:     jobReference.Name,
+							ServiceName: serviceName,
 						},
 						Properties: availableProvider.Properties,
 					})
@@ -483,10 +488,11 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 				}
 				providersByName[name] = jobProvidesInfo{
 					jobLinkInfo: jobLinkInfo{
-						Name:     info.Name,
-						Type:     info.Type,
-						RoleName: instanceGroup.Name,
-						JobName:  jobReference.Name,
+						Name:        info.Name,
+						Type:        info.Type,
+						RoleName:    instanceGroup.Name,
+						JobName:     jobReference.Name,
+						ServiceName: serviceName,
 					},
 					Properties: info.Properties,
 				}
@@ -555,6 +561,7 @@ func (m *RoleManifest) resolveLinks() validation.ErrorList {
 					info.Type = provider.Type
 					info.RoleName = provider.RoleName
 					info.JobName = provider.JobName
+					info.ServiceName = provider.ServiceName
 					jobReference.ResolvedConsumers[name] = info
 				} else if !consumerInfo.Optional {
 					errors = append(errors, validation.Required(
