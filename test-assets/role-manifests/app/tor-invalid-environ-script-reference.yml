@@ -1,0 +1,46 @@
+# This role manifest references an environment script that doesn't exist
+---
+instance_groups:
+- name: myrole
+  environment_scripts:
+  - foobar.sh
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+  - name: tor
+    release: tor
+- name: foorole
+  type: bosh-task
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
+    properties.tor.hostname: '((FOO))'
+    properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
+variables:
+- name: BAR
+  options:
+    description: "foo"
+- name: FOO
+  options:
+    description: "foo"
+- name: HOME
+  options:
+    description: "foo"
+- name: KUPRIES
+  options:
+    description: "foo"
+    internal: true
+- name: PELERINUL
+  options:
+    description: "foo"

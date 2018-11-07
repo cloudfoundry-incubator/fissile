@@ -17,6 +17,15 @@ type VersionSegment struct {
 	Components []VerSegComp
 }
 
+func MustNewVersionSegmentFromString(v string) VersionSegment {
+	verSeg, err := NewVersionSegmentFromString(v)
+	if err != nil {
+		panic(fmt.Sprintf("Invalid version segment '%s': %s", v, err))
+	}
+
+	return verSeg
+}
+
 func NewVersionSegmentFromString(v string) (VersionSegment, error) {
 	pieces := strings.Split(v, ".")
 
@@ -57,7 +66,37 @@ func NewVersionSegment(components []VerSegComp) (VersionSegment, error) {
 	return VersionSegment{components}, nil
 }
 
+func (s VersionSegment) Increment() (VersionSegment, error) {
+	if len(s.Components) == 0 {
+		errMsg := "Expected version segment to have at least one component to be incremented"
+		return VersionSegment{}, errors.New(errMsg)
+	}
+
+	lastComp := s.Components[len(s.Components)-1]
+
+	lastCompInt, isInt := lastComp.(VerSegCompInt)
+	if !isInt {
+		errMsg := fmt.Sprintf("Expected version segment '%s' to have last component '%s' to be an integer", s, lastComp)
+		return VersionSegment{}, errors.New(errMsg)
+	}
+
+	copiedComponents := make([]VerSegComp, len(s.Components))
+	copy(copiedComponents, s.Components)
+	copiedComponents[len(copiedComponents)-1] = VerSegCompInt{I: lastCompInt.I + 1}
+
+	return NewVersionSegment(copiedComponents)
+}
+
+func (s VersionSegment) Copy() VersionSegment {
+	// Don't use constructor; assuming that original components are valid
+	copiedComponents := make([]VerSegComp, len(s.Components))
+	copy(copiedComponents, s.Components)
+	return VersionSegment{copiedComponents}
+}
+
 func (s VersionSegment) Empty() bool { return len(s.Components) == 0 }
+
+func (s VersionSegment) String() string { return s.AsString() }
 
 func (s VersionSegment) AsString() string {
 	result := ""

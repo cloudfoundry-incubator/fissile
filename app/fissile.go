@@ -10,17 +10,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SUSE/fissile/builder"
-	"github.com/SUSE/fissile/compilator"
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/kube"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/scripts/compilation"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/builder"
+	"code.cloudfoundry.org/fissile/compilator"
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/kube"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/compilation"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
@@ -41,8 +40,8 @@ const (
 type Fissile struct {
 	Version   string
 	UI        *termui.UI
+	Manifest  *model.RoleManifest
 	cmdErr    error
-	releases  []*model.Release // Only applies for some commands
 	graphFile *os.File
 }
 
@@ -54,13 +53,29 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
+// LoadManifest loads the manifest in use by fissile
+func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths:    releasePaths,
+		ReleaseNames:    releaseNames,
+		ReleaseVersions: releaseVersions,
+		BOSHCacheDir:    cacheDir,
+		Grapher:         f})
+	if err != nil {
+		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+	}
+
+	f.Manifest = roleManifest
+	return nil
+}
+
 // ListPackages will list all BOSH packages within a list of releases
 func (f *Fissile) ListPackages(verbose bool) error {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		var releasePath string
 
 		if verbose {
@@ -94,11 +109,11 @@ func (f *Fissile) ListPackages(verbose bool) error {
 
 // ListJobs will list all jobs within a list of releases
 func (f *Fissile) ListJobs(verbose bool) error {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		var releasePath string
 
 		if verbose {
@@ -132,7 +147,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 
 // ListProperties will list all properties in all jobs within a list of releases
 func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -166,12 +181,12 @@ func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 
 // SerializePackages returns all packages in loaded releases, keyed by fingerprint
 func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
 	pkgs := make(map[string]interface{})
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		for _, pkg := range release.Packages {
 			pkgs[pkg.Fingerprint] = util.NewMarshalAdapter(pkg)
 		}
@@ -181,12 +196,12 @@ func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
 
 // SerializeReleases will return all of the loaded releases
 func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
 	releases := make(map[string]interface{})
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		releases[release.Name] = util.NewMarshalAdapter(release)
 	}
 	return releases, nil
@@ -194,12 +209,12 @@ func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 
 // SerializeJobs will return all of the jobs within the releases, keyed by fingerprint
 func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
 	}
 
 	jobs := make(map[string]interface{})
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		for _, job := range release.Jobs {
 			jobs[job.Fingerprint] = util.NewMarshalAdapter(job)
 		}
@@ -209,7 +224,7 @@ func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
 
 func (f *Fissile) listPropertiesForHuman() {
 	// Human readable output.
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		f.UI.Println(color.GreenString("%s release %s (%s)",
 			release.ReleaseType(), color.YellowString(release.Name), color.MagentaString(release.Version)))
 
@@ -231,7 +246,7 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 
 	result := make(map[string]map[string]map[string]interface{})
 
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		result[release.Name] = make(map[string]map[string]interface{})
 
 		for _, job := range release.Jobs {
@@ -261,10 +276,9 @@ type propertyInfo struct {
 func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	result := make(propertyDefaults)
 
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-
 				// Extend map for newly seen properties
 				if _, ok := result[property.Name]; !ok {
 					result[property.Name] = newPropertyInfo(false)
@@ -301,8 +315,8 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 }
 
 // Compile will compile a list of dev BOSH releases
-func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool) error {
-	if len(f.releases) == 0 {
+func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool, packageCacheConfigFilename string) error {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -316,11 +330,6 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
 	releases, err := f.getReleasesByName(releaseNames)
 	if err != nil {
 		return err
@@ -331,20 +340,24 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 		f.UI.Printf("         %s (%s)\n", color.YellowString(release.Name), color.MagentaString(release.Version))
 	}
 
+	packageStorage, err := compilator.NewPackageStorageFromConfig(packageCacheConfigFilename, targetPath, stemcellImageName)
+	if err != nil {
+		return err
+	}
 	var comp *compilator.Compilator
 	if withoutDocker {
-		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f)
+		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f, packageStorage)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	} else {
-		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI, f)
+		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI, f, packageStorage)
 		if err != nil {
 			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
 		}
 	}
 
-	instanceGroups, err := roleManifest.SelectInstanceGroups(instanceGroupNames)
+	instanceGroups, err := f.Manifest.SelectInstanceGroups(instanceGroupNames)
 	if err != nil {
 		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
 	}
@@ -363,12 +376,12 @@ func (f *Fissile) CleanCache(targetPath string) error {
 	//    variant of the code in ListPackages, we keep only the
 	//    hashes.
 
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
 	referenced := make(map[string]int)
-	for _, release := range f.releases {
+	for _, release := range f.Manifest.LoadedReleases {
 		for _, pkg := range release.Packages {
 			referenced[pkg.Version] = 1
 		}
@@ -421,7 +434,7 @@ func (f *Fissile) CleanCache(targetPath string) error {
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
 func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -474,7 +487,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 // GeneratePackagesRoleTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
 func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -522,8 +535,8 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, instanceGroupNames []string, workerCount int, roleManifestPath, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
-	if len(f.releases) == 0 {
+func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, instanceGroupNames []string, workerCount int, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -532,16 +545,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		defer stampy.Stamp(metricsPath, "fissile", "create-images", "done")
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(roleManifest, opinions); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, nil); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
@@ -570,21 +578,21 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	instanceGroups, err := roleManifest.SelectInstanceGroups(instanceGroupNames)
+	instanceGroups, err := f.Manifest.SelectInstanceGroups(instanceGroupNames)
 	if err != nil {
 		return err
 	}
 
 	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(stemcellImageName, roleManifest, noBuild, force, instanceGroups, packagesImageBuilder, labels)
+		err = f.GeneratePackagesRoleImage(stemcellImageName, f.Manifest, noBuild, force, instanceGroups, packagesImageBuilder, labels)
 	} else {
-		err = f.GeneratePackagesRoleTarball(stemcellImageName, roleManifest, noBuild, force, instanceGroups, outputDirectory, packagesImageBuilder, labels)
+		err = f.GeneratePackagesRoleTarball(stemcellImageName, f.Manifest, noBuild, force, instanceGroups, outputDirectory, packagesImageBuilder, labels)
 	}
 	if err != nil {
 		return err
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return err
 	}
@@ -609,12 +617,12 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifestPath, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool, tagExtra string) error {
+func (f *Fissile) ListRoleImages(registry, organization, repository, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool, tagExtra string) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
 
-	if len(f.releases) == 0 {
+	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
@@ -628,17 +636,12 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 		}
 	}
 
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
-
 	opinions, err := model.NewOpinions(opinionsPath, darkOpinionsPath)
 	if err != nil {
 		return fmt.Errorf("Error loading opinions: %s", err.Error())
 	}
 
-	for _, instanceGroup := range roleManifest.InstanceGroups {
+	for _, instanceGroup := range f.Manifest.InstanceGroups {
 		devVersion, err := instanceGroup.GetRoleDevVersion(opinions, tagExtra, f.Version, f)
 		if err != nil {
 			return fmt.Errorf("Error creating instance group checksum: %s", err.Error())
@@ -673,79 +676,17 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, roleManifes
 	return nil
 }
 
-//LoadReleases loads information about BOSH releases
-func (f *Fissile) LoadReleases(releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
-	releases := make([]*model.Release, len(releasePaths))
-
-	for idx, releasePath := range releasePaths {
-		var releaseName, releaseVersion string
-
-		if len(releaseNames) != 0 {
-			releaseName = releaseNames[idx]
-		}
-
-		if len(releaseVersions) != 0 {
-			releaseVersion = releaseVersions[idx]
-		}
-
-		var release *model.Release
-		var err error
-		if _, err = isFinalReleasePath(releasePath); err == nil {
-			// For final releases, only can use release name and version defined in release.MF, cannot specify them through flags.
-			release, err = model.NewFinalRelease(releasePath)
-			if err != nil {
-				return fmt.Errorf("Error loading final release information: %s", err.Error())
-			}
-		} else {
-			release, err = model.NewDevRelease(releasePath, releaseName, releaseVersion, cacheDir)
-			if err != nil {
-				return fmt.Errorf("Error loading dev release information: %s", err.Error())
-			}
-		}
-
-		releases[idx] = release
-	}
-
-	f.releases = releases
-
-	return nil
-}
-
-func isFinalReleasePath(releasePath string) (bool, error) {
-	if err := util.ValidatePath(releasePath, true, "release directory"); err != nil {
-		return false, err
-	}
-
-	if err := util.ValidatePath(filepath.Join(releasePath, "release.MF"), false, "release 'release.MF' file"); err != nil {
-		return false, err
-	}
-
-	if err := util.ValidatePath(filepath.Join(releasePath, "dev_releases"), true, "release 'dev_releases' file"); err == nil {
-		return false, err
-	}
-
-	if err := util.ValidatePath(filepath.Join(releasePath, "jobs"), true, "release 'jobs' directory"); err != nil {
-		return false, err
-	}
-
-	if err := util.ValidatePath(filepath.Join(releasePath, "packages"), true, "release 'packages' directory"); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // getReleasesByName returns all named releases, or all releases if no names are given
 func (f *Fissile) getReleasesByName(releaseNames []string) ([]*model.Release, error) {
 	if len(releaseNames) == 0 {
-		return f.releases, nil
+		return f.Manifest.LoadedReleases, nil
 	}
 
 	var releases []*model.Release
 	var missingReleases []string
 releaseNameLoop:
 	for _, releaseName := range releaseNames {
-		for _, release := range f.releases {
+		for _, release := range f.Manifest.LoadedReleases {
 			if release.Name == releaseName {
 				releases = append(releases, release)
 				continue releaseNameLoop
@@ -776,11 +717,11 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
 	defaultValues := []string{}
-	err := f.LoadReleases(releasePaths, defaultValues, defaultValues, cacheDir)
+	releases, err := model.LoadReleases(releasePaths, defaultValues, defaultValues, cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}
-	return getDiffsFromReleases(f.releases)
+	return getDiffsFromReleases(releases)
 }
 
 type keyHash map[string]string
@@ -895,12 +836,9 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, settings kube.ExportSettings) error {
+func (f *Fissile) GenerateKube(defaultFiles []string, settings kube.ExportSettings) error {
 	var err error
-	settings.RoleManifest, err = model.LoadRoleManifest(roleManifestPath, f.releases, f)
-	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
-	}
+	settings.RoleManifest = f.Manifest
 
 	if len(defaultFiles) > 0 {
 		f.UI.Println("Loading defaults from env files")
@@ -912,7 +850,7 @@ func (f *Fissile) GenerateKube(roleManifestPath string, defaultFiles []string, s
 
 	cvs := model.MakeMapOfVariables(settings.RoleManifest)
 	for key, value := range cvs {
-		if !value.Secret {
+		if !value.CVOptions.Secret {
 			delete(cvs, key)
 		}
 	}
@@ -980,7 +918,35 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 	if err != nil {
 		return err
 	}
+
+	// Check the accounts for the pod security policies they
+	// reference, and create their cluster roles. The necessary
+	// cluster role bindings will be created by NewRBACAccount.
+
+	for _, pspName := range model.PodSecurityPolicies() {
+		for _, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+			if accountSpec.PodSecurityPolicy == pspName {
+				node, err := kube.NewRBACClusterRolePSP(pspName, settings)
+				if err != nil {
+					return err
+				}
+				err = f.writeHelmNode(authDir, fmt.Sprintf("auth-clusterrole-%s.yaml", pspName), node)
+				if err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+
 	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
+		// Ignore roles referenced by a single instance
+		// group. These are not written as their own files,
+		// but as part of the instance group.
+		if settings.RoleManifest.Configuration.Authorization.RoleUse[roleName] < 2 {
+			continue
+		}
+
 		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
 		if err != nil {
 			return err
@@ -991,6 +957,13 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 		}
 	}
 	for accountName, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+		// Ignore accounts referenced by a single instance
+		// group. These are not written as their own files,
+		// but as part of the instance group.
+		if accountSpec.NumGroups < 2 {
+			continue
+		}
+
 		nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
 		if err != nil {
 			return err
@@ -1034,21 +1007,72 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 }
 
 func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model.InstanceGroup, settings kube.ExportSettings) error {
+
+	var node helm.Node
+	var err error
+
 	if instanceGroup.HasTag(model.RoleTagStopOnFailure) {
-		pod, err := kube.NewPod(instanceGroup, settings, f)
-		if err != nil {
-			return err
-		}
-		err = helm.NewEncoder(outputFile).Encode(pod)
-		if err != nil {
-			return err
-		}
+		node, err = kube.NewPod(instanceGroup, settings, f)
 	} else {
-		job, err := kube.NewJob(instanceGroup, settings, f)
+		node, err = kube.NewJob(instanceGroup, settings, f)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	enc := helm.NewEncoder(outputFile)
+
+	err = f.generateAuthCoupledToRole(enc,
+		instanceGroup.Run.ServiceAccount,
+		settings)
+	if err != nil {
+		return err
+	}
+
+	err = enc.Encode(node)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *Fissile) generateAuthCoupledToRole(enc *helm.Encoder, accountName string, settings kube.ExportSettings) error {
+
+	accountSpec := settings.RoleManifest.Configuration.Authorization.Accounts[accountName]
+
+	// The instance group references a service account which is
+	// used by multiple roles, i.e. is not tightly coupled to
+	// it. The auth for this was written by `generateAuth`. Here
+	// we ignore it.
+
+	if accountSpec.NumGroups > 1 {
+		return nil
+	}
+
+	nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
+	if err != nil {
+		return err
+	}
+
+	for _, roleName := range accountSpec.Roles {
+		role := settings.RoleManifest.Configuration.Authorization.RoleUse[roleName]
+		if role > 1 {
+			continue
+		}
+
+		roleSpec := settings.RoleManifest.Configuration.Authorization.Roles[roleName]
+		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
 		if err != nil {
 			return err
 		}
-		err = helm.NewEncoder(outputFile).Encode(job)
+
+		nodes = append(nodes, node)
+	}
+
+	for _, n := range nodes {
+		err = enc.Encode(n)
 		if err != nil {
 			return err
 		}
@@ -1114,6 +1138,14 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 			if err != nil {
 				return err
 			}
+
+			err = f.generateAuthCoupledToRole(enc,
+				instanceGroup.Run.ServiceAccount,
+				settings)
+			if err != nil {
+				return err
+			}
+
 			err = enc.Encode(statefulSet)
 			if err != nil {
 				return err
@@ -1190,5 +1222,29 @@ func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) er
 	if _, err := fmt.Fprintf(f.graphFile, "\"%s\" -> \"%s\" %s\n", fromNode, toNode, attrString); err != nil {
 		return err
 	}
+	return nil
+}
+
+// Validate runs all checks against all inputs
+func (f *Fissile) Validate(lightManifestPath, darkManifestPath string, defaultFiles []string) error {
+	var defaultsFromEnvFiles map[string]string
+	var err error
+
+	if len(defaultFiles) > 0 {
+		f.UI.Println("Loading defaults from env files")
+		defaultsFromEnvFiles, err = godotenv.Read(defaultFiles...)
+		if err != nil {
+			return err
+		}
+	}
+
+	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
+	if err != nil {
+		return err
+	}
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, defaultsFromEnvFiles); len(errs) != 0 {
+		return fmt.Errorf(errs.Errors())
+	}
+
 	return nil
 }

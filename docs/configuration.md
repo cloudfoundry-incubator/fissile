@@ -33,26 +33,28 @@ instance_groups:
 - name: nats                       # The name of the instance group
   jobs:                            # BOSH jobs this group will have
   - name: nats
-    release: nats             # The name of the BOSH release this is from
+    release: nats                  # The name of the BOSH release this is from
+    properties:
+      bosh_containerization:
+        run:                       # Runtime configuration
+          scaling:                 # Auto-scaling limits
+            min: 1
+            max: 3
+          memory: 256              # Memory request for each instance (MB)
+          virtual-cpus: 4          # CPU request for each instance
+        ports:
+        - name: nats
+          protocol: TCP            # TCP or UDP
+          external: 4222           # Port visible outside the container
+          internal: 4222           # Port inside the container
+          public: false            # Whether to expose to outside the cluster
+        - name: nats-routes
+          protocol: TCP
+          external: 4223
+          internal: 4223
+          public: false
   tags:
   - indexed                        # Mark this group as indexed (load-balanced) => StatefulSet
-  run:                             # Runtime configuration
-    scaling:                       # Auto-scaling limits
-      min: 1
-      max: 3
-    memory: 256                    # Memory request for each instance (MB)
-    virtual-cpus: 4                # CPU request for each instance
-    exposed-ports:
-    - name: nats
-      protocol: TCP                # TCP or UDP
-      external: 4222               # Port visible outside the container
-      internal: 4222               # Port inside the container
-      public: false                # Whether to expose to outside the cluster
-    - name: nats-routes
-      protocol: TCP
-      external: 4223
-      internal: 4223
-      public: false
 
 configuration:
   templates:
@@ -61,12 +63,15 @@ configuration:
     properties.nats.user: '"((NATS_USER))"' # In BOSH templates, `p('nats.user')`
     properties.nats.password: '"((NATS_PASSWORD))"'
 
-  variables:
-  - name: NATS_PASSWORD
+variables:
+- name: NATS_PASSWORD
+  options:
     description: Password for NATS
     secret: true
     required: true
-  - name: NATS_USER
+  type: password
+- name: NATS_USER
+  options:
     description: User name for NATS
     required: true
     previous_names: [NATS_USR]
@@ -82,7 +87,7 @@ Name | Description
 `KUBE_COMPONENT_INDEX` | Numeric index for instance groups with multiple replicas
 `KUBERNETES_CLUSTER_DOMAIN` | Kubernetes cluster domain, `cluster.local` by default
 
-[run.sh]: https://github.com/SUSE/fissile/blob/master/scripts/dockerfiles/run.sh
+[run.sh]: https://code.cloudfoundry.org/fissile/blob/master/scripts/dockerfiles/run.sh
 
 There are also some fields not shown above (as the are not needed for NATS):
 
@@ -162,34 +167,32 @@ instance_groups:
     release: cf-mysql
     provides:
       mysql: {}
-  processes:
-  - name: mariadb_ctrl
-  - name: galera-healthcheck
-  - name: gra-log-purger-executable
+    properties:
+      bosh_containerization:
+        run:
+          scaling:
+            min: 1
+            max: 3
+            ha: 2
+          capabilities: []
+          volumes:
+          - path: /var/vcap/store
+            tag: mysql-data
+            size: 20
+            type: persistent
+          memory: 2841
+          virtual-cpus: 2
+          healthcheck:
+            readiness:
+              url: http://container-ip:9200/
+        ports:
+        - name: mysql
+          protocol: TCP
+          internal: 3306
+        [...]
   tags:
   - clustered
   # No implicit LB, handled by mysql-proxy, and use of volumes.
-  run:
-    scaling:
-      min: 1
-      max: 3
-      ha: 2
-    capabilities: []
-    volumes:
-    - path: /var/vcap/store
-      tag: mysql-data
-      size: 20
-      type: persistent
-    memory: 2841
-    virtual-cpus: 2
-    exposed-ports:
-    - name: mysql
-      protocol: TCP
-      internal: 3306
-    [...]
-    healthcheck:
-      readiness:
-        url: http://container-ip:9200/
   configuration:
     templates:
       [...]

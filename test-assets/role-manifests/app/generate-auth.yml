@@ -1,11 +1,23 @@
 # This role manifest is used to test generating kube roles
 ---
-roles:
+instance_groups:
 - name: non-default
-  run:
-    service-account: non-default
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          service-account: non-default
 - name: default
-  run: {}
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run: {}
 configuration:
   auth:
     accounts:

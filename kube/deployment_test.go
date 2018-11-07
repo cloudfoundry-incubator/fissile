@@ -5,10 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
-
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,14 +17,12 @@ func deploymentTestLoad(assert *assert.Assertions, roleName, manifestName string
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -103,7 +100,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, not enough replicas", func(t *testing.T) {
@@ -118,7 +115,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, too many replicas", func(t *testing.T) {
@@ -133,7 +130,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :5:17: executing "" at <fail "some_group can...>: error calling fail: some_group cannot have more than 1 instances`)
+			`template: :7:17: executing "" at <fail "some_group can...>: error calling fail: some_group cannot have more than 1 instances`)
 	})
 
 	t.Run("Configured, bad key sizing.HA", func(t *testing.T) {
@@ -144,7 +141,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :13:21: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.HA. The new name to use is config.HA`)
+			`template: :15:21: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.HA. The new name to use is config.HA`)
 	})
 
 	t.Run("Configured, bad key sizing.memory.limits", func(t *testing.T) {
@@ -155,7 +152,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :25:70: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
+			`template: :27:70: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.memory.requests", func(t *testing.T) {
@@ -166,7 +163,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :29:74: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
+			`template: :31:74: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.limits", func(t *testing.T) {
@@ -177,7 +174,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :17:64: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
+			`template: :19:64: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.requests", func(t *testing.T) {
@@ -188,7 +185,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :21:68: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
+			`template: :23:68: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {
@@ -212,6 +209,12 @@ func TestNewDeploymentHelm(t *testing.T) {
 			metadata:
 				name: "some-group"
 				labels:
+					app.kubernetes.io/component: some-group
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "some-group"
 			spec:
 				replicas: 1
@@ -222,6 +225,12 @@ func TestNewDeploymentHelm(t *testing.T) {
 					metadata:
 						name: "some-group"
 						labels:
+							app.kubernetes.io/component: some-group
+							app.kubernetes.io/instance: MyRelease
+							app.kubernetes.io/managed-by: Tiller
+							app.kubernetes.io/name: MyChart
+							app.kubernetes.io/version: 1.22.333.4444
+							helm.sh/chart: MyChart-42.1_foo
 							skiff-role-name: "some-group"
 						annotations:
 							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
@@ -232,7 +241,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 								-	podAffinityTerm:
 										labelSelector:
 											matchExpressions:
-											-	key: "skiff-role-name"
+											-	key: "app.kubernetes.io/component"
 												operator: "In"
 												values:
 												-	"some-group"
@@ -247,7 +256,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 								valueFrom:
 									fieldRef:
 										fieldPath: "metadata.namespace"
-							image: "docker.suse.fake/splat/the_repos-some-group:bfff10016c4e9e46c9541d35e6bf52054c54e96a"
+							image: "docker.suse.fake/splat/the_repos-some-group:3b960ef56f837ae186cdd546d03750cca62676bc"
 							lifecycle:
 								preStop:
 									exec:
@@ -261,6 +270,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 									command: [ /opt/fissile/readiness-probe.sh ]
 							resources: ~
 							securityContext:
+								allowPrivilegeEscalation: false
 								capabilities:
 									add:	~
 							volumeMounts: ~
@@ -373,6 +383,22 @@ func TestAddAffinityRules(t *testing.T) {
 	assert.Equal(spec, emptySpec)
 
 	//
+	// Test instance group without anti affinity
+	//
+	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-no-pod-anti-affinity.yml")
+	if instanceGroup == nil {
+		return
+	}
+
+	spec = createEmptySpec()
+
+	err = addAffinityRules(instanceGroup, spec, settings)
+
+	assert.Nil(spec.Get("template", "spec", "affinity", "podAntiAffinity"))
+	assert.NotNil(spec.Get("template", "spec", "affinity", "nodeAffinity"))
+	assert.NoError(err)
+
+	//
 	// Not creating the helm chart should only add the annotation
 	//
 	instanceGroup = deploymentTestLoad(assert, "some-group", "pod-with-valid-pod-anti-affinity.yml")
@@ -420,12 +446,13 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :9:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
+			"Values.sizing.some_group.affinity":     map[string]interface{}{},
 			"Values.sizing.some_group.count":        "1",
 			"Values.sizing.some_group.capabilities": []interface{}{},
 			"Values.sizing.colocated.capabilities":  []interface{}{},

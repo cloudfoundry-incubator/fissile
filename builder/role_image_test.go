@@ -14,9 +14,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SUSE/fissile/model"
+	"code.cloudfoundry.org/fissile/model"
 	"github.com/SUSE/termui"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,17 +32,18 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -86,17 +86,18 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
@@ -107,15 +108,15 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.InstanceGroups[0], "run.sh")
 	if assert.NoError(err) {
-		assert.Contains(string(runScriptContents), "source /opt/fissile/startup/environ.sh")
+		assert.Contains(string(runScriptContents), "source /opt/fissile/startup/scripts/environ.sh")
 		assert.Contains(string(runScriptContents), "source /environ/script/with/absolute/path.sh")
 		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/environ/script/with/absolute/path.sh")
 		assert.NotContains(string(runScriptContents), "/opt/fissile/startup//environ/script/with/absolute/path.sh")
-		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/myrole.sh")
+		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/scripts/myrole.sh")
 		assert.Contains(string(runScriptContents), "bash /script/with/absolute/path.sh")
 		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/script/with/absolute/path.sh")
 		assert.NotContains(string(runScriptContents), "/opt/fissile/startup//script/with/absolute/path.sh")
-		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/post_config_script.sh")
+		assert.Contains(string(runScriptContents), "bash /opt/fissile/startup/scripts/post_config_script.sh")
 		assert.Contains(string(runScriptContents), "bash /var/vcap/jobs/myrole/pre-start")
 		assert.NotContains(string(runScriptContents), "/opt/fissile/startup/var/vcap/jobs/myrole/pre-start")
 		assert.NotContains(string(runScriptContents), "/opt/fissile//startup/var/vcap/jobs/myrole/pre-start")
@@ -157,17 +158,18 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -204,7 +206,6 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCache := filepath.Join(releasePath, "bosh-cache")
 	releasePathConfigSpec := filepath.Join(releasePath, "config_spec")
 
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
@@ -212,11 +213,13 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
@@ -240,7 +243,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		"root/opt/fissile/run.sh":                                 {desc: "run script", mode: 0755},
 		"root/opt/fissile/pre-stop.sh":                            {desc: "pre-stop script", mode: 0755},
 		"root/opt/fissile/readiness-probe.sh":                     {desc: "readiness probe script", mode: 0755},
-		"root/opt/fissile/startup/myrole.sh":                      {desc: "instance group specific startup script"},
+		"root/opt/fissile/startup/scripts/myrole.sh":              {desc: "instance group specific startup script"},
 		"root/var/vcap/jobs-src/tor/monit":                        {desc: "job monit file"},
 		"root/var/vcap/jobs-src/tor/templates/bin/monit_debugger": {desc: "job template file"},
 		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true, mode: 0644},
@@ -427,18 +430,15 @@ func TestBuildRoleImages(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathCache := filepath.Join(releasePath, "bosh-cache")
-
 	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
 	targetPath, err := ioutil.TempDir("", "fissile-test")
 	assert.NoError(err)
 	defer os.RemoveAll(targetPath)
 
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathCache)
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{release}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")})
 	assert.NoError(err)
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")

@@ -3,9 +3,9 @@ package kube
 import (
 	"fmt"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // NewJob creates a new Job for the given instance group, as well as any objects it depends on
@@ -26,20 +26,11 @@ func NewJob(instanceGroup *model.InstanceGroup, settings ExportSettings, grapher
 	}
 
 	name := instanceGroup.Name
-	apiVersion := "batch/v1"
 	if settings.CreateHelmChart {
 		name += "-{{ .Release.Revision }}"
 	}
 
-	metadata := helm.NewMapping()
-	metadata.Add("name", name)
-	if instanceGroup.Run.ObjectAnnotations != nil {
-		metadata.Add("annotations", *instanceGroup.Run.ObjectAnnotations)
-	}
-	metadata.Sort()
-
-	job := newTypeMeta(apiVersion, "Job", helm.Comment(instanceGroup.GetLongDescription()))
-	job.Add("metadata", metadata)
+	job := newKubeConfig(settings, "batch/v1", "Job", name, helm.Comment(instanceGroup.GetLongDescription()))
 	job.Add("spec", helm.NewMapping("template", podTemplate))
 
 	return job.Sort(), nil

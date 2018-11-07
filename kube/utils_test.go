@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
-
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/SUSE/fissile/testhelpers"
 )
 
 func TestNewTypeMeta(t *testing.T) {
@@ -24,23 +22,6 @@ func TestNewTypeMeta(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, `---
 		apiVersion: "the-api-version"
 		kind: "thekind"
-	`, actual)
-}
-
-func TestNewObjectMeta(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	objectMeta := newObjectMeta("thename")
-
-	actual, err := RoundtripKube(objectMeta)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLEqualString(assert, `---
-		name: "thename"
-		labels:
-			skiff-role-name: "thename"
 	`, actual)
 }
 
@@ -64,7 +45,7 @@ func TestNewKubeConfig(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	kubeConfig := newKubeConfig("theApiVersion", "thekind", "thename")
+	kubeConfig := newKubeConfig(ExportSettings{}, "theApiVersion", "thekind", "thename")
 
 	actual, err := RoundtripKube(kubeConfig)
 	if !assert.NoError(err) {
@@ -76,7 +57,7 @@ func TestNewKubeConfig(t *testing.T) {
 		metadata:
 			name: "thename"
 			labels:
-				skiff-role-name: "thename"
+				app.kubernetes.io/component: "thename"
 	`, actual)
 }
 

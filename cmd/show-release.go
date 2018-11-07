@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/SUSE/fissile/app"
-
+	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -21,7 +20,8 @@ The report contains the name, version, description and counts of jobs and packag
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show job information
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,

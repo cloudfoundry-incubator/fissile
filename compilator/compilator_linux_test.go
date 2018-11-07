@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SUSE/fissile/model"
+	"code.cloudfoundry.org/fissile/model"
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +44,7 @@ func TestCompilePackageInMountNS(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/no-license")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	if !assert.NoError(err) {
 		return
@@ -56,7 +56,7 @@ func TestCompilePackageInMountNS(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	c, err := NewMountNSCompilator(tempDir, "", "repo", "linux", "0", ui, nil)
+	c, err := NewMountNSCompilator(tempDir, "", "repo", "linux", "0", ui, nil, nil)
 	assert.NoError(err)
 
 	err = c.Compile(2, []*model.Release{release}, nil, false)

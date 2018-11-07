@@ -3,10 +3,11 @@ package kube
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // MakeSecrets creates Secret KubeConfig filled with the
@@ -18,16 +19,17 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 	for name, cv := range secrets {
 		key := util.ConvertNameToKey(name)
 		var value interface{}
-		comment := cv.Description
+		comment := cv.CVOptions.Description
 
 		if settings.CreateHelmChart {
-			if cv.Generator == nil {
-				if cv.Immutable {
+			// cv.Generator == nil
+			if cv.Type == "" && independentSecret(cv.Name) {
+				if cv.CVOptions.Immutable {
 					comment += "\nThis value is immutable and must not be changed once set."
 				}
-				comment += formattedExample(cv.Example, value)
+				comment += formattedExample(cv.CVOptions.Example, value)
 				required := `{{"" | b64enc | quote}}`
-				if cv.Required {
+				if cv.CVOptions.Required {
 					required = fmt.Sprintf(`{{fail "secrets.%s has not been set"}}`, cv.Name)
 				}
 				name := ".Values.secrets." + cv.Name
@@ -35,8 +37,8 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 					`{{%s | toJson | b64enc | quote}}{{else}}{{%s | b64enc | quote}}{{end}}{{else}}%s{{end}}`
 				value = fmt.Sprintf(tmpl, name, name, name, name, required)
 				data.Add(key, helm.NewNode(value, helm.Comment(comment)))
-			} else if !cv.Immutable {
-				comment += formattedExample(cv.Example, value)
+			} else if !cv.CVOptions.Immutable {
+				comment += formattedExample(cv.CVOptions.Example, value)
 				comment += "\nThis value uses a generated default."
 				value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
 				generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
@@ -48,15 +50,19 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				value = ""
 			}
 			value = base64.StdEncoding.EncodeToString([]byte(value))
-			comment += formattedExample(cv.Example, value)
+			comment += formattedExample(cv.CVOptions.Example, value)
 			data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}
 	data.Sort()
 	data.Merge(generated.Sort())
 
-	secret := newKubeConfig("v1", "Secret", userSecretsName)
+	secret := newKubeConfig(settings, "v1", "Secret", userSecretsName)
 	secret.Add("data", data)
 
 	return secret.Sort(), nil
+}
+
+func independentSecret(name string) bool {
+	return !strings.HasSuffix(name, "_KEY") && !strings.HasSuffix(name, "_FINGERPRINT")
 }

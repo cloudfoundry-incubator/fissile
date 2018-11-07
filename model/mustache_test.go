@@ -38,12 +38,13 @@ func TestRoleVariables(t *testing.T) {
 	assert.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torReleasePathBoshCache := filepath.Join(torReleasePath, "bosh-cache")
-	release, err := NewDevRelease(torReleasePath, "", "", torReleasePathBoshCache)
-	assert.NoError(t, err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variable-expansion.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, []*Release{release}, nil)
+	roleManifest, err := LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 

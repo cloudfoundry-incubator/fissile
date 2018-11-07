@@ -1,7 +1,11 @@
 ---
 instance_groups:
 - name: myrole
-  jobs: []
-  run:
-    memory: 1
-    virtual-cpus: -2
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 1
+          virtual-cpus: -2

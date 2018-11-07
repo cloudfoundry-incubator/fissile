@@ -9,9 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/testhelpers"
-	"github.com/SUSE/fissile/util"
-
+	"code.cloudfoundry.org/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -35,7 +34,7 @@ func TestDevAndFinalReleaseJob(t *testing.T) {
 	assert.NoError(err)
 
 	ntpDevReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpDevReleasePathCacheDir := filepath.Join(ntpDevReleasePath, "bosh-cache")
+	ntpDevReleasePathCacheDir := filepath.Join(workDir, "../test-assets/bosh-cache")
 	devRelease, err := NewDevRelease(ntpDevReleasePath, "", "", ntpDevReleasePathCacheDir)
 	assert.NoError(err)
 

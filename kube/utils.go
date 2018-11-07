@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SUSE/fissile/helm"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
 )
 
 const (
-	// RoleNameLabel is a thing
-	RoleNameLabel = "skiff-role-name"
+	// RoleNameLabel is the recommended kube label to specify the rolename
+	RoleNameLabel = "app.kubernetes.io/component"
 	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
@@ -20,23 +21,32 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 	return mapping
 }
 
-func newObjectMeta(name string) *helm.Mapping {
-	meta := helm.NewMapping("name", name)
-	meta.Add("labels", helm.NewMapping(RoleNameLabel, name))
-	return meta
-}
-
 func newSelector(name string) *helm.Mapping {
 	meta := helm.NewMapping()
-	meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	// meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+	// XXX We need to match on legacy RoleNameLabel to maintain upgradability of stateful sets
+	meta.Add("matchLabels", helm.NewMapping("skiff-role-name", name))
 	return meta
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(apiVersion, kind string, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
-	mapping := newTypeMeta(apiVersion, kind, modifiers...)
-	mapping.Add("metadata", newObjectMeta(name))
-	return mapping
+func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
+	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
+	if settings.CreateHelmChart {
+		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
+		labels.Add("skiff-role-name", name)
+		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name | quote }}`)
+		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service | quote }}`)
+		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" | quote }}`)
+		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
+		// labels.Add("app.kubernetes.io/part-of", `???`)
+		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
+	}
+
+	config := newTypeMeta(apiVersion, kind, modifiers...)
+	config.Add("metadata", helm.NewMapping("name", name, "labels", labels))
+
+	return config
 }
 
 func makeVarName(name string) string {
@@ -56,11 +66,18 @@ func minKubeVersion(major, minor int) string {
 // on any configuration.  This is exported so the tests from other packages can
 // access them.
 func MakeBasicValues() *helm.Mapping {
+
+	psp := helm.NewMapping()
+	for _, pspName := range model.PodSecurityPolicies() {
+		psp.Add(pspName, nil)
+	}
+
 	return helm.NewMapping(
 		"kube", helm.NewMapping(
 			"external_ips", helm.NewList(),
 			"secrets_generation_counter", helm.NewNode(1, helm.Comment("Increment this counter to rotate all generated secrets")),
 			"storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"),
+			"psp", psp,
 			"hostpath_available", helm.NewNode(false, helm.Comment("Whether HostPath volume mounts are available")),
 			"registry", helm.NewMapping(
 				"hostname", "docker.io",

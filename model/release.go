@@ -7,9 +7,17 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/util"
 	"gopkg.in/yaml.v2"
 )
+
+// ReleaseRef represents a reference to a BOSH release from a manifest
+type ReleaseRef struct {
+	Name    string `yaml:"name"`
+	URL     string `yaml:"url"`
+	SHA1    string `yaml:"sha1"`
+	Version string `yaml:"version"`
+}
 
 // Release represents a BOSH release
 type Release struct {

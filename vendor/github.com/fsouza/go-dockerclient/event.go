@@ -1,4 +1,4 @@
-// Copyright 2015 go-dockerclient authors. All rights reserved.
+// Copyright 2014 go-dockerclient authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -78,6 +78,10 @@ var (
 	// exists.
 	ErrListenerAlreadyExists = errors.New("listener already exists for docker events")
 
+	// ErrTLSNotSupported is the error returned when the client does not support
+	// TLS (this applies to the Windows named pipe client).
+	ErrTLSNotSupported = errors.New("tls not supported by this client")
+
 	// EOFEvent is sent when the event listener receives an EOF error.
 	EOFEvent = &APIEvents{
 		Type:   "EOF",
@@ -96,11 +100,7 @@ func (c *Client) AddEventListener(listener chan<- *APIEvents) error {
 			return err
 		}
 	}
-	err = c.eventMonitor.addListener(listener)
-	if err != nil {
-		return err
-	}
-	return nil
+	return c.eventMonitor.addListener(listener)
 }
 
 // RemoveEventListener removes a listener from the monitor.
@@ -195,10 +195,25 @@ func (eventState *eventMonitoringState) disableEventMonitoring() error {
 }
 
 func (eventState *eventMonitoringState) monitorEvents(c *Client) {
+	const (
+		noListenersTimeout  = 5 * time.Second
+		noListenersInterval = 10 * time.Millisecond
+		noListenersMaxTries = noListenersTimeout / noListenersInterval
+	)
+
 	var err error
-	for eventState.noListeners() {
+	for i := time.Duration(0); i < noListenersMaxTries && eventState.noListeners(); i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
+
+	if eventState.noListeners() {
+		// terminate if no listener is available after 5 seconds.
+		// Prevents goroutine leak when RemoveEventListener is called
+		// right after AddEventListener.
+		eventState.disableEventMonitoring()
+		return
+	}
+
 	if err = eventState.connectWithRetry(c); err != nil {
 		// terminate if connect failed
 		eventState.disableEventMonitoring()
@@ -216,7 +231,7 @@ func (eventState *eventMonitoringState) monitorEvents(c *Client) {
 				return
 			}
 			eventState.updateLastSeen(ev)
-			go eventState.sendEvent(ev)
+			eventState.sendEvent(ev)
 		case err = <-eventState.errC:
 			if err == ErrNoListeners {
 				eventState.disableEventMonitoring()
@@ -274,7 +289,10 @@ func (eventState *eventMonitoringState) sendEvent(event *APIEvents) {
 		}
 
 		for _, listener := range eventState.listeners {
-			listener <- event
+			select {
+			case listener <- event:
+			default:
+			}
 		}
 	}
 }
@@ -294,7 +312,7 @@ func (c *Client) eventHijack(startTime int64, eventChan chan *APIEvents, errChan
 	}
 	protocol := c.endpointURL.Scheme
 	address := c.endpointURL.Path
-	if protocol != "unix" {
+	if protocol != "unix" && protocol != "npipe" {
 		protocol = "tcp"
 		address = c.endpointURL.Host
 	}
@@ -303,7 +321,11 @@ func (c *Client) eventHijack(startTime int64, eventChan chan *APIEvents, errChan
 	if c.TLSConfig == nil {
 		dial, err = c.Dialer.Dial(protocol, address)
 	} else {
-		dial, err = tlsDialWithDialer(c.Dialer, protocol, address, c.TLSConfig)
+		netDialer, ok := c.Dialer.(*net.Dialer)
+		if !ok {
+			return ErrTLSNotSupported
+		}
+		dial, err = tlsDialWithDialer(netDialer, protocol, address, c.TLSConfig)
 	}
 	if err != nil {
 		return err
@@ -338,11 +360,12 @@ func (c *Client) eventHijack(startTime int64, eventChan chan *APIEvents, errChan
 			if event.Time == 0 {
 				continue
 			}
-			if !c.eventMonitor.isEnabled() || c.eventMonitor.C != eventChan {
-				return
-			}
 			transformEvent(&event)
-			eventChan <- &event
+			c.eventMonitor.RLock()
+			if c.eventMonitor.enabled && c.eventMonitor.C == eventChan {
+				eventChan <- &event
+			}
+			c.eventMonitor.RUnlock()
 		}
 	}(res, conn)
 	return nil

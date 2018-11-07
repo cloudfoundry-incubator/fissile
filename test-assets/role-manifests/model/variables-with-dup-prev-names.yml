@@ -1,11 +1,13 @@
 # This role manifest tests that multiple variables with the same previous_name is an error
 ---
 configuration:
-  variables:
-  - name: BAR
-  - name: FOO
-    previous_names: [BAR, BAZ]
-  - name: QUX
-    previous_names: [BAZ]
   templates:
     properties.tor.hostname: '((FOO))((BAR))((QUX))'
+variables:
+- name: BAR
+- name: FOO
+  options:
+    previous_names: [BAR, BAZ]
+- name: QUX
+  options:
+    previous_names: [BAZ]

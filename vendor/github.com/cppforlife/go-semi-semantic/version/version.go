@@ -20,6 +20,15 @@ type Version struct {
 	Segments []VersionSegment
 }
 
+func MustNewVersionFromString(v string) Version {
+	ver, err := NewVersionFromString(v)
+	if err != nil {
+		panic(fmt.Sprintf("Invalid version '%s': %s", v, err))
+	}
+
+	return ver
+}
+
 func NewVersionFromString(v string) (Version, error) {
 	var err error
 
@@ -75,6 +84,37 @@ func NewVersion(release, preRelease, postRelease VersionSegment) (Version, error
 
 	return version, nil
 }
+
+func (v Version) IncrementRelease() (Version, error) {
+	incRelease, err := v.Release.Increment()
+	if err != nil {
+		return Version{}, err
+	}
+
+	return NewVersion(incRelease, VersionSegment{}, VersionSegment{})
+}
+
+func (v Version) IncrementPostRelease(defaultPostRelease VersionSegment) (Version, error) {
+	var newPostRelease VersionSegment
+	var err error
+
+	if defaultPostRelease.Empty() {
+		return Version{}, errors.New("Expected default post relase to be non-empty")
+	}
+
+	if v.PostRelease.Empty() {
+		newPostRelease = defaultPostRelease.Copy()
+	} else {
+		newPostRelease, err = v.PostRelease.Increment()
+		if err != nil {
+			return Version{}, err
+		}
+	}
+
+	return NewVersion(v.Release.Copy(), v.PreRelease.Copy(), newPostRelease)
+}
+
+func (v Version) Empty() bool { return len(v.Segments) == 0 }
 
 func (v Version) String() string { return v.AsString() }
 

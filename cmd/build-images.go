@@ -57,7 +57,8 @@ from other specs.  At most one is allowed.
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagLabels = buildImagesViper.GetStringSlice("add-label")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -104,7 +105,6 @@ from other specs.  At most one is allowed.
 			flagBuildImagesTagExtra,
 			strings.FieldsFunc(flagBuildImagesRoles, func(r rune) bool { return r == ',' }),
 			flagWorkers,
-			flagRoleManifest,
 			workPathCompilationDir,
 			flagLightOpinions,
 			flagDarkOpinions,

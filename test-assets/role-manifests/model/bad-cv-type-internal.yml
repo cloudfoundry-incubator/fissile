@@ -2,15 +2,19 @@
 ---
 instance_groups:
 - name: myrole
-  run:
-    foo: x
   jobs:
   - name: new_hostname
     release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
 configuration:
-  variables:
-  - name: BAR
-    type: environment
-    internal: true
   templates:
     properties.tor.hostname: '((BAR))'
+variables:
+- name: BAR
+  options:
+    type: environment
+    internal: true
+    description: "foo"

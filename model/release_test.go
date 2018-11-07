@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SUSE/fissile/testhelpers"
-
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +25,7 @@ func TestRelease(t *testing.T) {
 	assert.NoError(err)
 
 	ntpDevReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpDevReleasePathCacheDir := filepath.Join(ntpDevReleasePath, "bosh-cache")
+	ntpDevReleasePathCacheDir := filepath.Join(workDir, "../test-assets/bosh-cache")
 	devRelease, err := NewDevRelease(ntpDevReleasePath, "", "", ntpDevReleasePathCacheDir)
 	assert.NoError(err)
 
@@ -234,7 +233,7 @@ func TestPackageDependencies(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 
@@ -272,7 +271,7 @@ func TestReleaseNoLicense(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/no-license")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 
 	assert.Nil(err, "Release without license should be valid")
@@ -318,7 +317,7 @@ func TestGetDeploymentConfig(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
+	releasePathBoshCache := filepath.Join(workDir, "../test-assets/bosh-cache")
 	release, err := NewDevRelease(releasePath, "", "", releasePathBoshCache)
 	assert.NoError(err)
 

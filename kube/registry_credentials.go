@@ -1,7 +1,7 @@
 package kube
 
 import (
-	"github.com/SUSE/fissile/helm"
+	"code.cloudfoundry.org/fissile/helm"
 )
 
 // MakeRegistryCredentials generates a template that contains Docker Registry credentials
@@ -30,7 +30,7 @@ func MakeRegistryCredentials(settings ExportSettings) (helm.Node, error) {
 
 	data := helm.NewMapping(".dockercfg", value)
 
-	secret := newKubeConfig("v1", "Secret", "registry-credentials")
+	secret := newKubeConfig(settings, "v1", "Secret", "registry-credentials")
 	secret.Add("data", data)
 	secret.Add("type", "kubernetes.io/dockercfg")
 

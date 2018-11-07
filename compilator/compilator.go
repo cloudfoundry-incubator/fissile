@@ -12,13 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SUSE/fissile/docker"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/scripts/compilation"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/docker"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/scripts/compilation"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
-
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
@@ -49,6 +48,7 @@ type Compilator struct {
 	fissileVersion    string
 	dockerNetworkMode string
 	compilePackage    func(*Compilator, *model.Package) error
+	packageStorage    *PackageStorage
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -88,21 +88,22 @@ func NewDockerCompilator(
 	keepContainer bool,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
+	packageStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		dockerManager:     dockerManager,
-		hostWorkDir:       hostWorkDir,
-		metricsPath:       metricsPath,
-		stemcellImageName: stemcellImageName,
-		baseType:          baseType,
-		fissileVersion:    fissileVersion,
-		compilePackage:    (*Compilator).compilePackageInDocker,
-		dockerNetworkMode: dockerNetworkMode,
-		keepContainer:     keepContainer,
-		ui:                ui,
-		grapher:           grapher,
-
+		dockerManager:      dockerManager,
+		hostWorkDir:        hostWorkDir,
+		metricsPath:        metricsPath,
+		stemcellImageName:  stemcellImageName,
+		baseType:           baseType,
+		fissileVersion:     fissileVersion,
+		compilePackage:     (*Compilator).compilePackageInDocker,
+		dockerNetworkMode:  dockerNetworkMode,
+		keepContainer:      keepContainer,
+		ui:                 ui,
+		grapher:            grapher,
+		packageStorage:     packageStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -119,18 +120,19 @@ func NewMountNSCompilator(
 	fissileVersion string,
 	ui *termui.UI,
 	grapher util.ModelGrapher,
+	packageStorage *PackageStorage,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
-		hostWorkDir:       hostWorkDir,
-		metricsPath:       metricsPath,
-		stemcellImageName: stemcellImageName,
-		baseType:          baseType,
-		fissileVersion:    fissileVersion,
-		compilePackage:    (*Compilator).compilePackageInMountNS,
-		ui:                ui,
-		grapher:           grapher,
-
+		hostWorkDir:        hostWorkDir,
+		metricsPath:        metricsPath,
+		stemcellImageName:  stemcellImageName,
+		baseType:           baseType,
+		fissileVersion:     fissileVersion,
+		compilePackage:     (*Compilator).compilePackageInMountNS,
+		ui:                 ui,
+		grapher:            grapher,
+		packageStorage:     packageStorage,
 		signalDependencies: make(map[string]chan struct{}),
 	}
 
@@ -336,17 +338,58 @@ func (j compileJob) Run() {
 		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "start")
 	}
 
-	workerErr := c.compilePackage(c, j.pkg)
-
-	if c.metricsPath != "" {
-		stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
+	exists := false
+	if c.packageStorage != nil {
+		var err error
+		c.ui.Printf("cache: %s %s\n", color.MagentaString("searching for"), j.pkg.Name)
+		exists, err = c.packageStorage.Exists(j.pkg)
+		if err != nil {
+			j.doneCh <- compileResult{pkg: j.pkg, err: err}
+		}
 	}
 
-	c.ui.Printf("done:    %s/%s\n",
-		color.MagentaString(j.pkg.Release.Name),
-		color.MagentaString(j.pkg.Name))
+	// Check to see whether a package already exists in the configured cache
+	// and either download that package or compile and upload it
+	if exists {
+		c.ui.Printf("cache: downloading %s/%s\n", j.pkg.Release.Name, j.pkg.Name)
+		currentProgress := 0
+		previousProgress := 0
+		downloadErr := c.packageStorage.Download(j.pkg, func(progress float64) {
+			if progress == -1 {
+				c.ui.Printf("cache: finished downloading %s/%s\n", j.pkg.Release.Name, j.pkg.Name)
+				return
+			}
+			currentProgress = int(progress)
+			if currentProgress/20 > previousProgress {
+				c.ui.Printf("cache: %s/%s %s \n", j.pkg.Release.Name, j.pkg.Name, color.MagentaString("%d%%", currentProgress))
+				previousProgress = currentProgress / 20
+			}
+		})
+		if downloadErr != nil {
+			c.ui.Println(color.RedString("Error downloading the package"))
+		}
 
-	j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
+		j.doneCh <- compileResult{pkg: j.pkg, err: downloadErr}
+
+	} else {
+		c.ui.Printf("compiling\n")
+		var workerErr error
+		workerErr = c.compilePackage(c, j.pkg)
+
+		if workerErr == nil && c.packageStorage != nil && c.packageStorage.ReadOnly == false {
+			c.ui.Printf("uploading\n")
+			workerErr = c.packageStorage.Upload(j.pkg)
+		}
+		if c.metricsPath != "" {
+			stampy.Stamp(c.metricsPath, "fissile", runSeriesName, "done")
+		}
+
+		c.ui.Printf("done:    %s/%s\n",
+			color.MagentaString(j.pkg.Release.Name),
+			color.MagentaString(j.pkg.Name))
+
+		j.doneCh <- compileResult{pkg: j.pkg, err: workerErr}
+	}
 }
 
 func createDepBuckets(packages []*model.Package) []*model.Package {

@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
-
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
@@ -24,13 +23,12 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/volumes.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -40,14 +38,15 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 	}
 
 	// Force a broadcast SECRET_VAR into the manifest, to see in all roles
-	manifest.Configuration.Variables =
-		append(manifest.Configuration.Variables,
-			&model.ConfigurationVariable{
-				Name:     "SECRET_VAR",
+	manifest.Variables = append(manifest.Variables,
+		&model.VariableDefinition{
+			Name: "SECRET_VAR",
+			CVOptions: model.CVOptions{
 				Type:     model.CVTypeUser,
 				Secret:   true,
 				Internal: true,
-			})
+			},
+		})
 	return instanceGroup
 }
 
@@ -333,7 +332,12 @@ func TestPodGetEnvVars(t *testing.T) {
 		},
 	}
 
-	role.Configuration.Templates["properties.some-property"] = "((SOME_VAR))"
+	role.Configuration.Templates = append(
+		role.Configuration.Templates,
+		yaml.MapItem{
+			Key:   "properties.some-property",
+			Value: "((SOME_VAR))",
+		})
 
 	samples := []Sample{
 		{
@@ -390,8 +394,8 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_COUNT",
 		},
 	}, ExportSettings{
@@ -427,8 +431,8 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_COUNT",
 		},
 	}, ExportSettings{
@@ -464,11 +468,11 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
 		},
-		&model.ConfigurationVariable{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
 		},
 	}, ExportSettings{
@@ -476,13 +480,19 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
-								Count:               55,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+											Count:               55,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -511,11 +521,11 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MIN",
 		},
-		&model.ConfigurationVariable{
+		&model.VariableDefinition{
 			Name: "KUBE_SIZING_FOO_PORTS_STORE_MAX",
 		},
 	}, ExportSettings{
@@ -524,12 +534,18 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
-					Run: &model.RoleRun{
-						ExposedPorts: []*model.RoleRunExposedPort{
-							&model.RoleRunExposedPort{
-								Name:                "store",
-								CountIsConfigurable: true,
-								InternalPort:        333,
+					JobReferences: []*model.JobReference{
+						&model.JobReference{
+							ContainerProperties: model.JobContainerProperties{
+								BoshContainerization: model.JobBoshContainerization{
+									Ports: []model.JobExposedPort{
+										model.JobExposedPort{
+											Name:                "store",
+											CountIsConfigurable: true,
+											InternalPort:        333,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -562,8 +578,8 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_COUNTER",
 		},
 	}, ExportSettings{
@@ -594,8 +610,8 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_COUNTER",
 		},
 	}, ExportSettings{
@@ -631,8 +647,8 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_NAME",
 		},
 	}, ExportSettings{
@@ -663,8 +679,8 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "KUBE_SECRETS_GENERATION_NAME",
 		},
 	}, ExportSettings{
@@ -700,10 +716,12 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:   "A_SECRET",
-			Secret: true,
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
+			Name: "A_SECRET",
+			CVOptions: model.CVOptions{
+				Secret: true,
+			},
 		},
 	}, ExportSettings{
 		RoleManifest: &model.RoleManifest{
@@ -749,10 +767,12 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 
 	t.Run("Plain", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:   "A_SECRET",
-				Secret: true,
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
+				Name: "A_SECRET",
+				CVOptions: model.CVOptions{
+					Secret: true,
+				},
 			},
 		}, settings)
 		if !assert.NoError(err) {
@@ -779,14 +799,12 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 
 	t.Run("Generated", func(t *testing.T) {
 		t.Parallel()
-		cv := []*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:   "A_SECRET",
-				Secret: true,
-				Generator: &model.ConfigurationVariableGenerator{
-					ID:        "no",
-					Type:      model.GeneratorTypePassword,
-					ValueType: "foo-login",
+		cv := model.Variables{
+			&model.VariableDefinition{
+				Name: "A_SECRET",
+				Type: "password",
+				CVOptions: model.CVOptions{
+					Secret: true,
 				},
 			},
 		}
@@ -846,7 +864,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 			`, actual)
 		})
 
-		cv[0].Immutable = true
+		cv[0].CVOptions.Immutable = true
 		ev, err = getEnvVarsFromConfigs(cv, settings)
 		if !assert.NoError(err) {
 			return
@@ -888,10 +906,12 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 
 	t.Run("Present", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
-				Name:    "SOMETHING",
-				Default: []string{"or", "other"},
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
+				Name: "SOMETHING",
+				CVOptions: model.CVOptions{
+					Default: []string{"or", "other"},
+				},
 			},
 		}, settings)
 
@@ -912,8 +932,8 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-			&model.ConfigurationVariable{
+		ev, err := getEnvVarsFromConfigs(model.Variables{
+			&model.VariableDefinition{
 				Name: "SOMETHING",
 			},
 		}, settings)
@@ -935,10 +955,12 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
 			Name: "SOMETHING",
-			Type: model.CVTypeUser,
+			CVOptions: model.CVOptions{
+				Type: model.CVTypeUser,
+			},
 		},
 	}, ExportSettings{
 		CreateHelmChart: true,
@@ -1000,11 +1022,13 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	ev, err := getEnvVarsFromConfigs([]*model.ConfigurationVariable{
-		&model.ConfigurationVariable{
-			Name:     "SOMETHING",
-			Type:     model.CVTypeUser,
-			Required: true,
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
+			Name: "SOMETHING",
+			CVOptions: model.CVOptions{
+				Type:     model.CVTypeUser,
+				Required: true,
+			},
 		},
 	}, ExportSettings{
 		CreateHelmChart: true,
@@ -1613,42 +1637,6 @@ func TestPodGetContainerReadinessProbe(t *testing.T) {
 		func(sample sampleStruct) {
 			t.Run(sample.desc, func(t *testing.T) {
 				t.Parallel()
-				t.Run("docker", func(t *testing.T) {
-					t.Parallel()
-					role := podTemplateTestLoadRole(assert.New(t))
-					require.NotNil(t, role)
-					role.Run.HealthCheck = &model.HealthCheck{Readiness: sample.input}
-					role.Type = model.RoleTypeDocker
-					probe, err := getContainerReadinessProbe(role)
-					if sample.dockerError != "" {
-						assert.EqualError(t, err, sample.dockerError)
-						return
-					}
-					require.NoError(t, err)
-					if sample.dockerExpected == "" {
-						assert.Nil(t, probe)
-						return
-					}
-					require.NotNil(t, probe, "No error getting readiness probe but it was nil")
-					t.Run("kube", func(t *testing.T) {
-						t.Parallel()
-						actual, err := RoundtripKube(probe)
-						if assert.NoError(t, err) {
-							// We use subset testing here because we don't want to bother with the
-							// default timeout lengths
-							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
-						}
-					})
-					t.Run("helm", func(t *testing.T) {
-						t.Parallel()
-						actual, err := RoundtripNode(probe, map[string]interface{}{})
-						if assert.NoError(t, err) {
-							// We use subset testing here because we don't want to bother with the
-							// default timeout lengths
-							testhelpers.IsYAMLSubsetString(assert.New(t), sample.dockerExpected, actual)
-						}
-					})
-				})
 				t.Run("bosh", func(t *testing.T) {
 					t.Parallel()
 					role := podTemplateTestLoadRole(assert.New(t))
@@ -1696,13 +1684,12 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -1785,6 +1772,12 @@ func TestPodPreFlightHelm(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app.kubernetes.io/component: pre-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
 		spec:
 			containers:
@@ -1807,6 +1800,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 				readinessProbe: ~
 				resources: ~
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -1887,6 +1881,12 @@ func TestPodPostFlightHelm(t *testing.T) {
 		metadata:
 			name: "post-role"
 			labels:
+				app.kubernetes.io/component: post-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "post-role"
 		spec:
 			containers:
@@ -1909,6 +1909,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 				readinessProbe: ~
 				resources: ~
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -1999,6 +2000,12 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app.kubernetes.io/component: pre-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
 		spec:
 			containers:
@@ -2023,6 +2030,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					requests:
 					limits:
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2074,6 +2082,12 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app.kubernetes.io/component: pre-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
 		spec:
 			containers:
@@ -2100,6 +2114,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 					limits:
 						memory: "10Mi"
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2188,6 +2203,12 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app.kubernetes.io/component: pre-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
 		spec:
 			containers:
@@ -2212,6 +2233,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					requests:
 					limits:
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2263,6 +2285,12 @@ func TestPodCPUHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app.kubernetes.io/component: pre-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
 		spec:
 			containers:
@@ -2289,6 +2317,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 					limits:
 						cpu: "10m"
 				securityContext:
+					allowPrivilegeEscalation: false
 					capabilities:
 						add:	~
 				volumeMounts: ~
@@ -2322,6 +2351,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
+			allowPrivilegeEscalation: false
 			capabilities:
 				add:
 				-	"SOMETHING"
@@ -2345,6 +2375,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	"SOMETHING"
@@ -2361,6 +2392,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				privileged: true
 			`, actual)
 		})
@@ -2375,6 +2407,7 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	"SOMETHING"
@@ -2400,7 +2433,17 @@ func TestGetSecurityContextNil(t *testing.T) {
 	t.Run("Kube", func(t *testing.T) {
 		t.Parallel()
 		sc := getSecurityContext(role, false)
-		assert.Nil(sc)
+		if !assert.NotNil(sc) {
+			return
+		}
+
+		actual, err := RoundtripKube(sc)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			allowPrivilegeEscalation: false
+		`, actual)
 	})
 
 	t.Run("Helm", func(t *testing.T) {
@@ -2420,6 +2463,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:	~
 			`, actual)
@@ -2435,6 +2479,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				privileged: true
 			`, actual)
 		})
@@ -2449,6 +2494,7 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
+				allowPrivilegeEscalation: false
 				capabilities:
 					add:
 					-	SOMETHING
@@ -2720,15 +2766,14 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	assert.NoError(err)
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	torRelease, err := model.NewDevRelease(torReleasePath, "", "", filepath.Join(torReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-	ntpRelease, err := model.NewDevRelease(ntpReleasePath, "", "", filepath.Join(ntpReleasePath, "bosh-cache"))
-	assert.NoError(err)
-
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/colocated-containers.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, []*model.Release{torRelease, ntpRelease}, nil)
+	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{torReleasePath, ntpReleasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 

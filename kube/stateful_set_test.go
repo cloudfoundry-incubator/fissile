@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,13 +19,12 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil, nil
-	}
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil, nil
 	}
@@ -43,7 +42,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		return
 	}
 
-	portDef := role.Run.ExposedPorts[0]
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
 	require.NotNil(t, portDef)
 
 	statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
@@ -51,7 +50,7 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(t, items, 3, "Should have three services per stateful role") {
+	if assert.Len(t, items, 4, "Should have four services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
@@ -64,13 +63,13 @@ func TestStatefulSetPorts(t *testing.T) {
 		}
 	}
 	if assert.NotNil(t, endpointService, "endpoint service not found") {
-		assert.Equal(t, role.Name+"-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
+		assert.Equal(t, role.Name+"-tor-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
 	}
 	if assert.NotNil(t, headlessService, "headless service not found") {
-		assert.Equal(t, role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
+		assert.Equal(t, role.Name+"-tor-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
 	}
 	if assert.NotNil(t, privateService, "private service not found") {
-		assert.Equal(t, role.Name, privateService.Get("metadata", "name").String(), "unexpected private service name")
+		assert.Equal(t, role.Name+"-tor", privateService.Get("metadata", "name").String(), "unexpected private service name")
 	}
 
 	items = append(items, statefulset)
@@ -98,12 +97,31 @@ func TestStatefulSetPorts(t *testing.T) {
 					# targetPort must be undefined for headless services
 					targetPort: 0
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
+				clusterIP: None
+		-
+			# This is the per-pod naming port
+			metadata:
+				name: myrole-tor-set
+			spec:
+				ports:
+				-
+					name: http
+					port: 80
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				-
+					name: https
+					port: 443
+					# targetPort must be undefined for headless services
+					targetPort: 0
+				selector:
+					app.kubernetes.io/component: myrole
 				clusterIP: None
 		-
 			# This is the private service port
 			metadata:
-				name: myrole
+				name: myrole-tor
 			spec:
 				ports:
 				-
@@ -115,11 +133,11 @@ func TestStatefulSetPorts(t *testing.T) {
 						port: 443
 						targetPort: 443
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 		-
 			# This is the public service port
 			metadata:
-				name: myrole-public
+				name: myrole-tor-public
 			spec:
 				ports:
 				-
@@ -127,7 +145,7 @@ func TestStatefulSetPorts(t *testing.T) {
 						port: 443
 						targetPort: 443
 				selector:
-					skiff-role-name: myrole
+					app.kubernetes.io/component: myrole
 		-
 			# This is the actual StatefulSet
 			metadata:
@@ -138,7 +156,7 @@ func TestStatefulSetPorts(t *testing.T) {
 				template:
 					metadata:
 						labels:
-							skiff-role-name: myrole
+							app.kubernetes.io/component: myrole
 						name: myrole
 					spec:
 						containers:
@@ -167,7 +185,7 @@ func TestStatefulSetServices(t *testing.T) {
 				manifest, role := statefulSetTestLoadManifest(assert.New(t), manifestName)
 				require.NotNil(t, manifest)
 				require.NotNil(t, role)
-				require.NotEmpty(t, role.Run.ExposedPorts, "No exposed ports loaded")
+				require.NotEmpty(t, role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0], "No exposed ports loaded")
 
 				statefulset, deps, err := NewStatefulSet(role, ExportSettings{}, nil)
 				require.NoError(t, err)
@@ -175,20 +193,23 @@ func TestStatefulSetServices(t *testing.T) {
 				assert.NotNil(t, deps)
 				items := deps.Get("items").Values()
 
-				var headlessService, internalService, publicService helm.Node
+				var genericService, headlessService, internalService, publicService helm.Node
 				for _, item := range items {
 					switch item.Get("metadata").Get("name").String() {
 					case "myrole-set":
+						assert.Nil(t, genericService, "Multiple generic services found")
+						genericService = item
+					case "myrole-tor-set":
 						assert.Nil(t, headlessService, "Multiple headless services found")
 						headlessService = item
-					case "myrole":
+					case "myrole-tor":
 						assert.Nil(t, internalService, "Multiple internal services found")
 						internalService = item
-					case "myrole-public":
+					case "myrole-tor-public":
 						assert.Nil(t, publicService, "Multiple public services found")
 						publicService = item
 					default:
-						assert.Failf(t, "Found unexpected service: \n%s", item.String())
+						assert.Fail(t, "Found unexpected service: \n%s", item.String())
 					}
 				}
 				for _, style := range []string{"kube", "helm"} {
@@ -209,7 +230,9 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole-set
+								name: myrole-tor-set
+								labels:
+									app.kubernetes.io/component: myrole-tor-set
 							spec:
 								clusterIP: None
 								ports:
@@ -224,7 +247,43 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 0
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
+							`, actual)
+						}
+						if assert.NotNil(t, genericService, "Generic instance group service not found") {
+							var actual interface{}
+							var err error
+							switch style {
+							case "helm":
+								actual, err = RoundtripNode(genericService, nil)
+							case "kube":
+								actual, err = RoundtripKube(genericService)
+							default:
+								panic("Unexpected style " + style)
+							}
+							require.NoError(t, err)
+							testhelpers.IsYAMLEqualString(assert.New(t), `---
+							apiVersion: v1
+							kind: Service
+							metadata:
+								name: myrole-set
+								labels:
+									app.kubernetes.io/component: myrole-set
+							spec:
+								clusterIP: None
+								ports:
+								-
+									name: http
+									port: 80
+									protocol: TCP
+									targetPort: 0
+								-
+									name: https
+									port: 443
+									protocol: TCP
+									targetPort: 0
+								selector:
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 						if assert.NotNil(t, publicService, "Public service not found") {
@@ -243,7 +302,9 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole-public
+								name: myrole-tor-public
+								labels:
+									app.kubernetes.io/component: myrole-tor-public
 							spec:
 								externalIPs: [ 192.168.77.77 ]
 								ports:
@@ -253,12 +314,10 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 443
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
-						if variant == "headless" {
-							assert.Nil(t, internalService, "headless roles should not have internal services")
-						} else if assert.NotNil(t, internalService, "Internal service not found") {
+						if assert.NotNil(t, internalService, "Internal service not found") {
 							var actual interface{}
 							var err error
 							switch style {
@@ -274,7 +333,9 @@ func TestStatefulSetServices(t *testing.T) {
 							apiVersion: v1
 							kind: Service
 							metadata:
-								name: myrole
+								name: myrole-tor
+								labels:
+									app.kubernetes.io/component: myrole-tor
 							spec:
 								ports:
 								-
@@ -288,7 +349,7 @@ func TestStatefulSetServices(t *testing.T) {
 									protocol: TCP
 									targetPort: 443
 								selector:
-									skiff-role-name: myrole
+									app.kubernetes.io/component: myrole
 							`, actual)
 						}
 					})
@@ -339,6 +400,7 @@ func TestStatefulSetStartupPolicy(t *testing.T) {
 					require.NoError(t, err)
 					actual, err := RoundtripNode(statefulset, map[string]interface{}{
 						"Values.sizing.myrole.count":                        "1",
+						"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 						"Values.sizing.myrole.capabilities":                 []string{},
 						"Values.sizing.myrole.disk_sizes.persistent_volume": 1,
 					})
@@ -384,7 +446,7 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -460,7 +522,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -531,6 +593,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.kube.registry.hostname":                     "",
 		"Values.kube.storage_class.persistent":              "persistent",
 		"Values.kube.storage_class.shared":                  "shared",
+		"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
@@ -551,7 +614,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:
@@ -603,6 +666,7 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 		"Values.kube.hostpath_available":                    false,
 		"Values.kube.registry.hostname":                     "",
 		"Values.kube.storage_class.persistent":              "persistent",
+		"Values.sizing.myrole.affinity":                     map[string]interface{}{},
 		"Values.sizing.myrole.capabilities":                 []interface{}{},
 		"Values.sizing.myrole.count":                        "1",
 		"Values.sizing.myrole.disk_sizes.persistent_volume": "5",
@@ -647,7 +711,7 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 			template:
 				metadata:
 					labels:
-						skiff-role-name: myrole
+						app.kubernetes.io/component: myrole
 					name: myrole
 				spec:
 					containers:

@@ -5,7 +5,11 @@ instance_groups:
   jobs:
   - name: tor
     release: tor
-  run: {}
-configuration:
-  variables:
-  - name: SOME_VAR # Unused
+    properties:
+      bosh_containerization:
+        run: {}
+variables:
+- name: SOME_VAR # Unused
+  options:
+    description: 'foo'
+

@@ -3,7 +3,6 @@
 set -o errexit
 
 go get -u golang.org/x/tools/cmd/goimports
-go get -u github.com/golang/lint/golint
+go get -u golang.org/x/lint/golint
 go get -u github.com/AlekSi/gocov-xml
 go get -u github.com/jteeuwen/go-bindata/...
-go get -u github.com/tools/godep

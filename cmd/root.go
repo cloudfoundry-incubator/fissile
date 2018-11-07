@@ -7,10 +7,9 @@ import (
 	"runtime"
 	"strings"
 
+	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/SUSE/fissile/app"
 )
 
 var (
@@ -324,10 +323,6 @@ func validateReleaseArgs() error {
 		flagReleaseVersion,
 		releaseVersionsCount,
 	)
-
-	if releasePathsCount == 0 {
-		return fmt.Errorf("Please specify at least one release path. Args: %s", argList)
-	}
 
 	if releaseNamesCount != 0 && releaseNamesCount != releasePathsCount {
 		return fmt.Errorf("If you specify custom release names, you need to do it for all of them. Args: %s", argList)

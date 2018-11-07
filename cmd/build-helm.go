@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"github.com/SUSE/fissile/kube"
-	"github.com/SUSE/fissile/model"
-
+	"code.cloudfoundry.org/fissile/kube"
+	"code.cloudfoundry.org/fissile/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -32,7 +31,8 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,
@@ -76,7 +76,7 @@ var buildHelmCmd = &cobra.Command{
 			}()
 		}
 
-		return fissile.GenerateKube(flagRoleManifest, flagBuildHelmDefaultEnvFiles, settings)
+		return fissile.GenerateKube(flagBuildHelmDefaultEnvFiles, settings)
 	},
 }
 var buildHelmViper = viper.New()

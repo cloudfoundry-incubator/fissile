@@ -2,6 +2,11 @@
 
 set -o errexit
 
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+${GIT_ROOT}/make/bindata
+${GIT_ROOT}/make/docker-deps
+
 . make/include/colors.sh
 
 printf "%b==> Testing %b\n" "${OK_COLOR}" "${NO_COLOR}"

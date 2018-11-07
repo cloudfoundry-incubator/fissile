@@ -3,25 +3,25 @@ package kube
 import (
 	"testing"
 
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
 )
 
-func TestNewRBACAccountKube(t *testing.T) {
+func TestNewRBACAccountPSPKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
 	resources, err := NewRBACAccount("the-name",
 		model.AuthAccount{
-			Roles: []string{"a-role"},
+			Roles:             []string{"a-role"},
+			PodSecurityPolicy: "privileged",
 		}, ExportSettings{})
 
 	if !assert.NoError(err) {
 		return
 	}
-	if !assert.Len(resources, 2, "Should have account plus role") {
+	if !assert.Len(resources, 3, "Should have account, role and cluster role bindings") {
 		return
 	}
 
@@ -35,6 +35,9 @@ func TestNewRBACAccountKube(t *testing.T) {
 		kind: "ServiceAccount"
 		metadata:
 			name: "the-name"
+			labels:
+				app.kubernetes.io/component: the-name
+
 	`, actualAccount)
 
 	rbacRole := resources[1]
@@ -47,6 +50,8 @@ func TestNewRBACAccountKube(t *testing.T) {
 		kind: "RoleBinding"
 		metadata:
 			name: "the-name-a-role-binding"
+			labels:
+				app.kubernetes.io/component: the-name-a-role-binding
 		subjects:
 		-	kind: "ServiceAccount"
 			name: "the-name"
@@ -55,15 +60,38 @@ func TestNewRBACAccountKube(t *testing.T) {
 			name: "a-role"
 			apiGroup: "rbac.authorization.k8s.io"
 	`, actualRole)
+
+	pspBinding := resources[2]
+	actualBinding, err := RoundtripKube(pspBinding)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1"
+		kind: "ClusterRoleBinding"
+		metadata:
+			name: "the-name-binding-psp"
+			labels:
+				app.kubernetes.io/component: the-name-binding-psp
+		subjects:
+		-	kind: "ServiceAccount"
+			name: "the-name"
+			namespace: "~"
+		roleRef:
+			kind: "ClusterRole"
+			name: "psp-role-privileged"
+			apiGroup: "rbac.authorization.k8s.io"
+	`, actualBinding)
 }
 
-func TestNewRBACAccountHelmNoAuth(t *testing.T) {
+func TestNewRBACAccountHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
 	resources, err := NewRBACAccount("the-name",
 		model.AuthAccount{
-			Roles: []string{"a-role"},
+			Roles:             []string{"a-role"},
+			PodSecurityPolicy: "nonprivileged",
 		}, ExportSettings{
 			CreateHelmChart: true,
 		})
@@ -71,12 +99,13 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 	if !assert.NoError(err) {
 		return
 	}
-	if !assert.Len(resources, 2, "Should have account plus role") {
+	if !assert.Len(resources, 3, "Should have account plus role and cluster role bindings") {
 		return
 	}
 
 	rbacAccount := resources[0]
 	rbacRole := resources[1]
+	pspBinding := resources[2]
 
 	t.Run("NoAuth", func(t *testing.T) {
 		t.Parallel()
@@ -114,6 +143,14 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 			kind: "ServiceAccount"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 		`, actualAccount)
 
 		actualRole, err := RoundtripNode(rbacRole, config)
@@ -126,6 +163,14 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 			kind: "RoleBinding"
 			metadata:
 				name: "the-name-a-role-binding"
+				labels:
+					app.kubernetes.io/component: the-name-a-role-binding
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name-a-role-binding"
 			subjects:
 			-	kind: "ServiceAccount"
 				name: "the-name"
@@ -134,6 +179,97 @@ func TestNewRBACAccountHelmNoAuth(t *testing.T) {
 				name: "a-role"
 				apiGroup: "rbac.authorization.k8s.io"
 		`, actualRole)
+	})
+
+	t.Run("NoPodSecurityPolicy", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.auth": "rbac",
+		}
+		// config: .Values.kube.psp.nonprivileged: ~
+		actualAccount, err := RoundtripNode(rbacAccount, config)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "ServiceAccount"
+			metadata:
+				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
+		`, actualAccount)
+
+		// config: .Values.kube.psp.nonprivileged: ~
+		actualBinding, err := RoundtripNode(pspBinding, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+		`, actualBinding)
+	})
+
+	t.Run("HasPodSecurityPolicy", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.auth":              "rbac",
+			"Values.kube.psp.nonprivileged": "foo",
+			"Release.Namespace":             "a-namespace",
+		}
+
+		actualAccount, err := RoundtripNode(rbacAccount, config)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "ServiceAccount"
+			metadata:
+				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
+		`, actualAccount)
+
+		actualBinding, err := RoundtripNode(pspBinding, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "rbac.authorization.k8s.io/v1"
+			kind: "ClusterRoleBinding"
+			metadata:
+				name: "a-namespace-the-name-binding-psp"
+				labels:
+					app.kubernetes.io/component: a-namespace-the-name-binding-psp
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "a-namespace-the-name-binding-psp"
+			subjects:
+			-	kind: "ServiceAccount"
+				name: "the-name"
+				namespace: "a-namespace"
+			roleRef:
+				kind: "ClusterRole"
+				name: "a-namespace-psp-role-nonprivileged"
+				apiGroup: "rbac.authorization.k8s.io"
+		`, actualBinding)
 	})
 }
 
@@ -164,6 +300,8 @@ func TestNewRBACRoleKube(t *testing.T) {
 		kind: "Role"
 		metadata:
 			name: "the-name"
+			labels:
+				app.kubernetes.io/component: the-name
 		rules:
 		-	apiGroups:
 			-	"api-group-1"
@@ -225,6 +363,14 @@ func TestNewRBACRoleHelm(t *testing.T) {
 			kind: "Role"
 			metadata:
 				name: "the-name"
+				labels:
+					app.kubernetes.io/component: the-name
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "the-name"
 			rules:
 			-	apiGroups:
 				-	"api-group-1"
@@ -234,4 +380,84 @@ func TestNewRBACRoleHelm(t *testing.T) {
 				-	"verb-iii"
 		`, actual)
 	})
+}
+
+func TestNewRBACClusterRolePSPKube(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	resource, err := NewRBACClusterRolePSP("the-name",
+		ExportSettings{})
+
+	if !assert.NoError(err) {
+		return
+	}
+
+	actualCR, err := RoundtripKube(resource)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1"
+		kind: "ClusterRole"
+		metadata:
+			name: "psp-role-the-name"
+			labels:
+				app.kubernetes.io/component: psp-role-the-name
+		rules:
+		-	apiGroups:
+			-	"extensions"
+			resourceNames:
+			-	"the-name"
+			resources:
+			-	"podsecuritypolicies"
+			verbs:
+			-	"use"
+	`, actualCR)
+}
+
+func TestNewRBACClusterRolePSPHelm(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	resource, err := NewRBACClusterRolePSP("the_name",
+		ExportSettings{
+			CreateHelmChart: true,
+		})
+	if !assert.NoError(err) {
+		return
+	}
+
+	config := map[string]interface{}{
+		"Values.kube.auth":         "rbac",
+		"Values.kube.psp.the_name": "foo",
+		"Release.Namespace":        "namespace",
+	}
+	actualCR, err := RoundtripNode(resource, config)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "rbac.authorization.k8s.io/v1"
+		kind: "ClusterRole"
+		metadata:
+			name: "namespace-psp-role-the_name"
+			labels:
+				app.kubernetes.io/component: namespace-psp-role-the_name
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
+				skiff-role-name: "namespace-psp-role-the_name"
+		rules:
+		-	apiGroups:
+			-	"extensions"
+			resourceNames:
+			-	"foo"
+			resources:
+			-	"podsecuritypolicies"
+			verbs:
+			-	"use"
+	`, actualCR)
 }

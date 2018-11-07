@@ -5,9 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/testhelpers"
-
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,14 +16,12 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	releasePathBoshCache := filepath.Join(releasePath, "bosh-cache")
-
-	release, err := model.NewDevRelease(releasePath, "", "", releasePathBoshCache)
-	if !assert.NoError(err) {
-		return nil
-	}
-
-	manifest, err := model.LoadRoleManifest(manifestPath, []*model.Release{release}, nil)
+	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleasePaths: []string{releasePath},
+		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
 	if !assert.NoError(err) {
 		return nil
 	}
@@ -110,37 +107,6 @@ func TestJobPostFlight(t *testing.T) {
 	`, actual)
 }
 
-func TestJobWithAnnotations(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	instanceGroup := jobTestLoadRole(assert, "some-group", "job-with-annotation.yml")
-	if instanceGroup == nil {
-		return
-	}
-
-	job, err := NewJob(instanceGroup, ExportSettings{
-		Opinions: model.NewEmptyOpinions(),
-	}, nil)
-	if !assert.NoError(err, "Failed to create job from instance group pre-role") {
-		return
-	}
-	assert.NotNil(job)
-
-	actual, err := RoundtripKube(job)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: batch/v1
-		kind: Job
-		metadata:
-			name: some-group
-			annotations:
-				helm.sh/hook: post-install
-	`, actual)
-}
-
 func TestJobHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -195,11 +161,25 @@ func TestJobHelm(t *testing.T) {
 		kind: "Job"
 		metadata:
 			name: "pre-role-42"
+			labels:
+				app.kubernetes.io/component: pre-role-42
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
+				skiff-role-name: pre-role-42
 		spec:
 			template:
 				metadata:
 					name: "pre-role"
 					labels:
+						app.kubernetes.io/component: pre-role
+						app.kubernetes.io/instance: MyRelease
+						app.kubernetes.io/managed-by: Tiller
+						app.kubernetes.io/name: MyChart
+						app.kubernetes.io/version: 1.22.333.4444
+						helm.sh/chart: MyChart-42.1_foo
 						skiff-role-name: "pre-role"
 					annotations:
 						checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
@@ -224,6 +204,7 @@ func TestJobHelm(t *testing.T) {
 						readinessProbe: ~
 						resources: ~
 						securityContext:
+							allowPrivilegeEscalation: false
 							capabilities:
 								add:	~
 						volumeMounts: ~

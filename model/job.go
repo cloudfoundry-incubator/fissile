@@ -10,18 +10,18 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/SUSE/fissile/util"
-
-	"github.com/pivotal-golang/archiver/extractor"
+	"code.cloudfoundry.org/archiver/extractor"
+	"code.cloudfoundry.org/fissile/util"
 	"gopkg.in/yaml.v2"
 )
 
 // jobLinkInfo describes a BOSH link provider or consumer
 type jobLinkInfo struct {
-	Name     string `json:"-" yaml:"-"`
-	Type     string `json:"-" yaml:"-"`
-	RoleName string `json:"role" yaml:"-"`
-	JobName  string `json:"job" yaml:"-"`
+	Name        string `json:"-" yaml:"-"`
+	Type        string `json:"-" yaml:"-"`
+	RoleName    string `json:"role" yaml:"-"`
+	JobName     string `json:"job" yaml:"-"`
+	ServiceName string `json:"service_name" yaml:"-"`
 }
 
 // jobProvidesInfo describes a BOSH link provider

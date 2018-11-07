@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/validation"
-
-	"github.com/fatih/color"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/validation"
 )
 
 // validateManifestAndOpinions applies a series of checks to the role
 // manifest and opinions, testing for consistency against each other
 // and the loaded bosh releases. The result is a (possibly empty)
 // array of any issues found.
-func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, opinions *model.Opinions) validation.ErrorList {
+func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, opinions *model.Opinions, defaultsFromEnvFiles map[string]string) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
@@ -45,9 +43,8 @@ func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, 
 	// opinions
 	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, roleManifest)...)
 
-	// All bosh properties in a release should have the same
-	// default across jobs -- WARNING only, not error
-	f.checkBOSHDefaults(boshPropertyDefaultsAndJobs)
+	// All vars in env files must exist in the role manifest
+	allErrs = append(allErrs, f.checkEnvFileVariables(roleManifest, defaultsFromEnvFiles)...)
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
@@ -130,13 +127,19 @@ func collectManifestProperties(roleManifest *model.RoleManifest) map[string]stri
 
 	// Per-instance-group properties
 	for _, instanceGroup := range roleManifest.InstanceGroups {
-		for property, template := range instanceGroup.Configuration.Templates {
-			properties[property] = template
+		for _, propertyDef := range instanceGroup.Configuration.Templates {
+			property := propertyDef.Key.(string)
+			template := propertyDef.Value
+
+			properties[property] = fmt.Sprintf("%v", template)
 		}
 	}
 
 	// And the global properties
-	for property, template := range roleManifest.Configuration.Templates {
+	for _, propertyDef := range roleManifest.Configuration.Templates {
+		property := propertyDef.Key.(string)
+		template := propertyDef.Value.(string)
+
 		properties[property] = template
 	}
 
@@ -184,7 +187,10 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 	check := make(map[string]struct{})
 
 	// The global properties, ...
-	for property, template := range roleManifest.Configuration.Templates {
+	for _, propertyDef := range roleManifest.Configuration.Templates {
+		property := propertyDef.Key.(string)
+		template := propertyDef.Value.(string)
+
 		allErrs = append(allErrs, checkForDuplicateProperty("configuration.templates", property, template, light, true)...)
 		check[property] = struct{}{}
 	}
@@ -193,14 +199,17 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 	for _, instanceGroup := range roleManifest.InstanceGroups {
 		prefix := fmt.Sprintf("instance-groups[%s].configuration.templates", instanceGroup.Name)
 
-		for property, template := range instanceGroup.Configuration.Templates {
+		for _, propertyDef := range instanceGroup.Configuration.Templates {
+			property := propertyDef.Key.(string)
+			template := propertyDef.Value
+
 			// Skip over duplicates of the global
 			// properties in the per-instance-group data, we already
 			// checked them, see above.
 			if _, ok := check[property]; ok {
 				continue
 			}
-			allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, template, light, false)...)
+			allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, fmt.Sprintf("%v", template), light, false)...)
 		}
 	}
 
@@ -230,50 +239,6 @@ func checkForDuplicateProperty(prefix, property, value string, light map[string]
 	return allErrs
 }
 
-// checkBOSHDefaults reports all properties which were given differing
-// defaults across BOSH releases and the jobs inside.
-func (f *Fissile) checkBOSHDefaults(pd propertyDefaults) {
-	for property, pInfo := range pd {
-		// Ignore properties with a single default across all definitions.
-		if len(pInfo.defaults) == 1 {
-			continue
-		}
-
-		f.UI.Printf("%s: Property %s has %s defaults:\n",
-			color.YellowString("Warning"),
-			color.YellowString(property),
-			color.YellowString(fmt.Sprintf("%d", len(pInfo.defaults))))
-
-		maxlen := 0
-		for defaultv := range pInfo.defaults {
-			ds := fmt.Sprintf("%v", defaultv)
-			if len(ds) > maxlen {
-				maxlen = len(ds)
-			}
-		}
-
-		leftjustified := fmt.Sprintf("%%-%ds", maxlen)
-
-		for defaultv, jobs := range pInfo.defaults {
-			ds := fmt.Sprintf("%v", defaultv)
-			if len(jobs) == 1 {
-				job := jobs[0]
-				f.UI.Printf("- Default %s: Release %s, job %s\n",
-					color.CyanString(fmt.Sprintf(leftjustified, ds)),
-					color.CyanString(job.Release.Name),
-					color.CyanString(job.Name))
-			} else {
-				f.UI.Printf("- Default %s:\n", color.CyanString(ds))
-				for _, job := range jobs {
-					f.UI.Printf("  - Release %s, job %s\n",
-						color.CyanString(job.Release.Name),
-						color.CyanString(job.Name))
-				}
-			}
-		}
-	}
-}
-
 // checkLightDefaults reports all light opinions whose value is
 // identical to their default in the BOSH releases
 func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefaults) validation.ErrorList {
@@ -295,11 +260,8 @@ func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefault
 			continue
 		}
 
-		// Ignore properties with ambigous defaults. Warn however.
+		// Ignore properties with ambigous defaults.
 		if len(pInfo.defaults) > 1 {
-			f.UI.Printf("light opinion %s ignored, %s\n",
-				color.YellowString(p),
-				color.YellowString("ambiguous default"))
 			continue
 		}
 
@@ -313,6 +275,30 @@ func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefault
 			allErrs = append(allErrs, validation.Forbidden(property,
 				fmt.Sprintf("Light opinion matches default of '%v'",
 					thedefault)))
+		}
+	}
+
+	return allErrs
+}
+
+// All vars in env files must exist in the role manifest
+func (f *Fissile) checkEnvFileVariables(roleManifest *model.RoleManifest, defaults map[string]string) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	exists := func(key string) bool {
+		for _, variable := range roleManifest.Variables {
+			if variable.Name == key {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	for key := range defaults {
+		if !exists(key) {
+			allErrs = append(allErrs, validation.NotFound(key,
+				"Variable from env file not defined in the manifest."))
 		}
 	}
 

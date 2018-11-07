@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
 )
 
 func formattedExample(example string, value interface{}) string {
@@ -29,40 +29,40 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	generated := helm.NewMapping()
 
 	for name, cv := range model.MakeMapOfVariables(settings.RoleManifest) {
-		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.Type == model.CVTypeEnv {
+		if strings.HasPrefix(name, "KUBE_SIZING_") || cv.CVOptions.Type == model.CVTypeEnv {
 			continue
 		}
 		// Immutable secrets that are generated cannot be overridden by the user
 		// and any default value would always be ignored.
-		if cv.Immutable && cv.Generator != nil {
+		if cv.CVOptions.Immutable && cv.Type != "" {
 			continue
 		}
 
 		var value interface{}
-		if !cv.Secret || cv.Generator == nil {
+		if !cv.CVOptions.Secret || cv.Type == "" {
 			var ok bool
 			if ok, value = cv.Value(settings.Defaults); !ok {
 				value = nil
 			}
 		}
-		comment := cv.Description
-		if cv.Secret {
+		comment := cv.CVOptions.Description
+		if cv.CVOptions.Secret {
 			thisValue := "This value"
-			if cv.Generator != nil {
+			if cv.Type != "" {
 				comment += "\n" + thisValue + " uses a generated default."
 				thisValue = "It"
 			}
-			if cv.Immutable {
+			if cv.CVOptions.Immutable {
 				comment += "\n" + thisValue + " is immutable and must not be changed once set."
 			}
-			comment += formattedExample(cv.Example, value)
-			if cv.Generator == nil {
+			comment += formattedExample(cv.CVOptions.Example, value)
+			if cv.Type == "" {
 				secrets.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			} else {
 				generated.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			}
 		} else {
-			comment += formattedExample(cv.Example, value)
+			comment += formattedExample(cv.CVOptions.Example, value)
 			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}
@@ -155,16 +155,18 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			entry.Add("disk_sizes", diskSizes.Sort())
 		}
 		ports := helm.NewMapping()
-		for _, port := range instanceGroup.Run.ExposedPorts {
-			config := helm.NewMapping()
-			if port.PortIsConfigurable {
-				config.Add("port", port.ExternalPort)
-			}
-			if port.CountIsConfigurable {
-				config.Add("count", port.Count)
-			}
-			if len(config.Names()) > 0 {
-				ports.Add(makeVarName(port.Name), config)
+		for _, job := range instanceGroup.JobReferences {
+			for _, port := range job.ContainerProperties.BoshContainerization.Ports {
+				config := helm.NewMapping()
+				if port.PortIsConfigurable {
+					config.Add("port", port.ExternalPort)
+				}
+				if port.CountIsConfigurable {
+					config.Add("count", port.Count)
+				}
+				if len(config.Names()) > 0 {
+					ports.Add(makeVarName(port.Name), config)
+				}
 			}
 		}
 		if len(ports.Names()) > 0 {

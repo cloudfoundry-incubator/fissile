@@ -3,9 +3,9 @@ package kube
 import (
 	"fmt"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // NewStatefulSet returns a stateful set and a list of services for the given role
@@ -30,6 +30,7 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 
 	spec := helm.NewMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
+	spec.Add("selector", newSelector(role.Name))
 	spec.Add("template", podTemplate)
 	// "updateStrategy" is new in kube 1.7, so we don't add anything to non-helm configs
 	// The default behaviour is "OnDelete"
@@ -46,7 +47,7 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 	}
 	spec.Add("podManagementPolicy", podManagementPolicy)
 
-	statefulSet := newKubeConfig("apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
+	statefulSet := newKubeConfig(settings, "apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
 	if err != nil {

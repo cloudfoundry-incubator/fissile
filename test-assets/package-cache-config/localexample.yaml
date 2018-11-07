@@ -1,0 +1,9 @@
+---
+
+# Fissile configuration settings
+boshPackageCacheKind: "local"
+boshPackageCacheLocation: "bosh-packages"
+boshPackageCacheReadOnly: false
+
+# Remote cache configuration settings
+path: "/tmp/"

@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"github.com/SUSE/fissile/app"
-
+	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +16,8 @@ The report lists the properties per job per release, with their default value.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show property information
 
-		err := fissile.LoadReleases(
+		err := fissile.LoadManifest(
+			flagRoleManifest,
 			flagRelease,
 			flagReleaseName,
 			flagReleaseVersion,

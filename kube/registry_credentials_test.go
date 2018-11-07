@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/SUSE/fissile/testhelpers"
 )
 
 func TestMakeRegistryCredentialsKube(t *testing.T) {
@@ -31,7 +30,7 @@ func TestMakeRegistryCredentialsKube(t *testing.T) {
 		metadata:
 			name: "registry-credentials"
 			labels:
-				skiff-role-name: "registry-credentials"
+				app.kubernetes.io/component: "registry-credentials"
 		type: "kubernetes.io/dockercfg"
 	`, actual)
 }
@@ -60,6 +59,10 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 		"Values.kube.registry.hostname": host,
 		"Values.kube.registry.username": user,
 		"Values.kube.registry.password": pass,
+
+		// Unrelated test to verify that app.kubernetes.io/version will fall back to
+		// .Chart.Version if .Chart.AppVersion is not set
+		"Chart.AppVersion": nil,
 	}
 
 	actual, err := RoundtripNode(registryCredentials, config)
@@ -75,6 +78,12 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 		metadata:
 			name: "registry-credentials"
 			labels:
+				app.kubernetes.io/component: registry-credentials
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 42.1+foo
+				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "registry-credentials"
 		type: "kubernetes.io/dockercfg"
 	`, dcfg), actual)

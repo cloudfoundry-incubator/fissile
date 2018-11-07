@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SUSE/fissile/helm"
-	"github.com/SUSE/fissile/model"
-	"github.com/SUSE/fissile/util"
+	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 // NewDeployment creates a Deployment for the given instance group, and its attached services
@@ -24,7 +24,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 	spec.Add("selector", newSelector(instanceGroup.Name))
 	spec.Add("template", podTemplate)
 
-	deployment := newKubeConfig("extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))
+	deployment := newKubeConfig(settings, "extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))
 	deployment.Add("spec", spec)
 	err = replicaCheck(instanceGroup, deployment, svc, settings)
 	if err != nil {
@@ -38,7 +38,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 func getAffinityBlock(instanceGroup *model.InstanceGroup) *helm.Mapping {
 	affinity := helm.NewMapping()
 
-	if instanceGroup.Run.Affinity.PodAntiAffinity != nil {
+	if instanceGroup.Run != nil && instanceGroup.Run.Affinity != nil && instanceGroup.Run.Affinity.PodAntiAffinity != nil {
 		// Add pod anti affinity from role manifest
 		affinity.Add("podAntiAffinity", instanceGroup.Run.Affinity.PodAntiAffinity)
 	}
@@ -62,23 +62,23 @@ func addAffinityRules(instanceGroup *model.InstanceGroup, spec *helm.Mapping, se
 		if instanceGroup.Run.Affinity.PodAffinity != nil {
 			return errors.New("pod affinity in role manifest not supported")
 		}
-
-		if settings.CreateHelmChart {
-			podSpec := spec.Get("template", "spec").(*helm.Mapping)
-
-			podSpec.Add("affinity", getAffinityBlock(instanceGroup))
-			podSpec.Sort()
-		}
-
-		meta := spec.Get("template", "metadata").(*helm.Mapping)
-		if meta.Get("annotations") == nil {
-			meta.Add("annotations", helm.NewMapping())
-			meta.Sort()
-		}
-		annotations := meta.Get("annotations").(*helm.Mapping)
-
-		annotations.Sort()
 	}
+
+	if settings.CreateHelmChart {
+		podSpec := spec.Get("template", "spec").(*helm.Mapping)
+
+		podSpec.Add("affinity", getAffinityBlock(instanceGroup))
+		podSpec.Sort()
+	}
+
+	meta := spec.Get("template", "metadata").(*helm.Mapping)
+	if meta.Get("annotations") == nil {
+		meta.Add("annotations", helm.NewMapping())
+		meta.Sort()
+	}
+	annotations := meta.Get("annotations").(*helm.Mapping)
+
+	annotations.Sort()
 
 	return nil
 }

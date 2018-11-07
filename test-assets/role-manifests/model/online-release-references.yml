@@ -1,0 +1,17 @@
+---
+releases:
+- name: "tor"
+  version: "0.3.5"
+  url: "https://bosh.io/d/github.com/cloudfoundry-community/tor-boshrelease?v=0.3.5"
+  sha1: "4586760d3cb6efb45b64309568290a8b357bc2c5"
+instance_groups:
+- name: myrole
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: "bar"
+  - name: tor
+    release: tor

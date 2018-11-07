@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pivotal-golang/archiver/extractor"
+	"code.cloudfoundry.org/archiver/extractor"
 )
 
 // Package represents a BOSH package
