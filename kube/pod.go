@@ -516,7 +516,6 @@ func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.No
 
 	sc := helm.NewMapping()
 	allowPrivileged := role.PodSecurityPolicy() == model.PodSecurityPolicyPrivileged
-	sc.Add("allowPrivilegeEscalation", allowPrivileged)
 
 	capabilities := role.Run.Capabilities
 	if createHelmChart {
@@ -536,10 +535,17 @@ func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.No
 		// Complete the context, with conditional privileged mode
 		sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
 		sc.Add("capabilities", cla)
+		if allowPrivileged {
+			sc.Add("allowPrivilegeEscalation", allowPrivileged)
+		} else {
+			// We ned to allow privilege escalation if if want privileged mode
+			sc.Add("allowPrivilegeEscalation", fmt.Sprintf("{{ %s -}} true {{- else -}} false {{- end }}", hasAll))
+		}
 	} else {
 		if len(capabilities) > 0 {
 			sc.Add("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
 		}
+		sc.Add("allowPrivilegeEscalation", allowPrivileged)
 	}
 
 	return sc
