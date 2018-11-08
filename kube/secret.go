@@ -27,7 +27,7 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				if cv.CVOptions.Immutable {
 					comment += "\nThis value is immutable and must not be changed once set."
 				}
-				comment += formattedExample(cv.CVOptions.Example, value)
+				comment += formattedExample(cv.CVOptions.Example)
 				required := `{{"" | b64enc | quote}}`
 				if cv.CVOptions.Required {
 					required = fmt.Sprintf(`{{fail "secrets.%s has not been set"}}`, cv.Name)
@@ -38,19 +38,16 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 				value = fmt.Sprintf(tmpl, name, name, name, name, required)
 				data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 			} else if !cv.CVOptions.Immutable {
-				comment += formattedExample(cv.CVOptions.Example, value)
+				comment += formattedExample(cv.CVOptions.Example)
 				comment += "\nThis value uses a generated default."
 				value = fmt.Sprintf(`{{ default "" .Values.secrets.%s | b64enc | quote }}`, cv.Name)
 				generated.Add(key, helm.NewNode(value, helm.Comment(comment)))
 			}
 			// Immutable secrets with a generator are not user-overridable and only included in the versioned secrets object
 		} else {
-			ok, value := cv.Value(settings.Defaults)
-			if !ok {
-				value = ""
-			}
+			_, value := cv.Value(settings.Defaults)
 			value = base64.StdEncoding.EncodeToString([]byte(value))
-			comment += formattedExample(cv.CVOptions.Example, value)
+			comment += formattedExample(cv.CVOptions.Example)
 			data.Add(key, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}

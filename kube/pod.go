@@ -477,12 +477,8 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				`{{%s | toJson | quote}}{{else}}{{%s | quote}}{{end}}{{else}}%s{{end}}`
 			stringifiedValue = fmt.Sprintf(tmpl, name, name, name, name, required)
 		} else {
-			var ok bool
-			ok, stringifiedValue = config.Value(settings.Defaults)
-			if !ok {
-				// Ignore config vars that don't have a default value
-				continue
-			}
+			_, stringifiedValue = config.Value(settings.Defaults)
+
 		}
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}

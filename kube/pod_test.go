@@ -365,6 +365,8 @@ func TestPodGetEnvVars(t *testing.T) {
 			expected: `---
 				-	name: ALL_VAR
 					value: placeholder
+				-	name: KUBERNETES_CLUSTER_DOMAIN
+					value: ""
 				-	name: KUBERNETES_NAMESPACE
 					valueFrom:
 						fieldRef:
@@ -383,6 +385,8 @@ func TestPodGetEnvVars(t *testing.T) {
 			expected: `---
 				-	name: ALL_VAR
 					value: placeholder
+				-	name: KUBERNETES_CLUSTER_DOMAIN
+					value: ""
 				-	name: KUBERNETES_NAMESPACE
 					valueFrom:
 						fieldRef:
@@ -966,6 +970,8 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 				valueFrom:
 					fieldRef:
 						fieldPath: "metadata.namespace"
+			-	name: "SOMETHING"
+				value: ""
 		`, actual)
 	})
 }
