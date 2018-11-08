@@ -539,7 +539,7 @@ func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.No
 			sc.Add("allowPrivilegeEscalation", allowPrivileged)
 		} else {
 			// We ned to allow privilege escalation if if want privileged mode
-			sc.Add("allowPrivilegeEscalation", fmt.Sprintf("{{ %s }} true {{ else }} false {{ end }}", hasAll))
+			sc.Add("allowPrivilegeEscalation", fmt.Sprintf("{{ %s -}} true {{- else -}} false {{- end }}", hasAll))
 		}
 	} else {
 		if len(capabilities) > 0 {
