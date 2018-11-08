@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/fissile/model"
 )
 
-func formattedExample(example string, value interface{}) string {
+func formattedExample(example string) string {
 	if len(example) > 0 {
 		if strings.ContainsRune(example, '\n') {
 			example = strings.TrimRight(example, "\n")
@@ -55,14 +55,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 			if cv.CVOptions.Immutable {
 				comment += "\n" + thisValue + " is immutable and must not be changed once set."
 			}
-			comment += formattedExample(cv.CVOptions.Example, value)
+			comment += formattedExample(cv.CVOptions.Example)
 			if cv.Type == "" {
 				secrets.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			} else {
 				generated.Add(name, helm.NewNode(value, helm.Comment(comment)))
 			}
 		} else {
-			comment += formattedExample(cv.CVOptions.Example, value)
+			comment += formattedExample(cv.CVOptions.Example)
 			env.Add(name, helm.NewNode(value, helm.Comment(comment)))
 		}
 	}
