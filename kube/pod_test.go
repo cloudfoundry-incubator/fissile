@@ -2392,7 +2392,8 @@ func TestGetSecurityContextCapList(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
+				# privileged: true implies allowPrivilegeEscalation
+				allowPrivilegeEscalation: true
 				privileged: true
 			`, actual)
 		})
@@ -2479,7 +2480,8 @@ func TestGetSecurityContextNil(t *testing.T) {
 				return
 			}
 			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
+				# privileged: true implies allowPrivilegeEscalation
+				allowPrivilegeEscalation: true
 				privileged: true
 			`, actual)
 		})
