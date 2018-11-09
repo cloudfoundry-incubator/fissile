@@ -959,6 +959,12 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 			&model.VariableDefinition{
 				Name: "SOMETHING",
 			},
+			&model.VariableDefinition{
+				Name: "HOSTNAME",
+				CVOptions: model.CVOptions{
+					Type: model.CVTypeEnv,
+				},
+			},
 		}, settings)
 
 		actual, err := RoundtripNode(ev, nil)
