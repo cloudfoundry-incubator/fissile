@@ -477,8 +477,11 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				`{{%s | toJson | quote}}{{else}}{{%s | quote}}{{end}}{{else}}%s{{end}}`
 			stringifiedValue = fmt.Sprintf(tmpl, name, name, name, name, required)
 		} else {
-			_, stringifiedValue = config.Value(settings.Defaults)
-
+			var ok bool
+			ok, stringifiedValue = config.Value(settings.Defaults)
+			if !ok && config.CVOptions.Type == model.CVTypeEnv {
+				continue
+			}
 		}
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
