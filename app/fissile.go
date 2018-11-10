@@ -21,7 +21,6 @@ import (
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
 	"github.com/fatih/color"
-	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -549,7 +548,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, nil); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
@@ -836,17 +835,9 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 
 // GenerateKube will create a set of configuration files suitable for deployment
 // on Kubernetes
-func (f *Fissile) GenerateKube(defaultFiles []string, settings kube.ExportSettings) error {
+func (f *Fissile) GenerateKube(settings kube.ExportSettings) error {
 	var err error
 	settings.RoleManifest = f.Manifest
-
-	if len(defaultFiles) > 0 {
-		f.UI.Println("Loading defaults from env files")
-		settings.Defaults, err = godotenv.Read(defaultFiles...)
-		if err != nil {
-			return err
-		}
-	}
 
 	cvs := model.MakeMapOfVariables(settings.RoleManifest)
 	for key, value := range cvs {
@@ -1236,23 +1227,14 @@ func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) er
 }
 
 // Validate runs all checks against all inputs
-func (f *Fissile) Validate(lightManifestPath, darkManifestPath string, defaultFiles []string) error {
-	var defaultsFromEnvFiles map[string]string
+func (f *Fissile) Validate(lightManifestPath, darkManifestPath string) error {
 	var err error
-
-	if len(defaultFiles) > 0 {
-		f.UI.Println("Loading defaults from env files")
-		defaultsFromEnvFiles, err = godotenv.Read(defaultFiles...)
-		if err != nil {
-			return err
-		}
-	}
 
 	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
 	if err != nil {
 		return err
 	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions, defaultsFromEnvFiles); len(errs) != 0 {
+	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 

@@ -292,5 +292,5 @@ fissile build packages
 fissile build images
 
 # Build kubernetes deployment yaml
-fissile build kube --defaults-file=defaults.txt
+fissile build kube
 ```

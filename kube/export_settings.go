@@ -8,7 +8,6 @@ import (
 type ExportSettings struct {
 	OutputDir       string
 	Repository      string
-	Defaults        map[string]string
 	Registry        string
 	Username        string
 	Password        string

@@ -12,7 +12,7 @@ import (
 // manifest and opinions, testing for consistency against each other
 // and the loaded bosh releases. The result is a (possibly empty)
 // array of any issues found.
-func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, opinions *model.Opinions, defaultsFromEnvFiles map[string]string) validation.ErrorList {
+func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, opinions *model.Opinions) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
@@ -42,9 +42,6 @@ func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, 
 	// No duplicates must exist between role manifest and light
 	// opinions
 	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, roleManifest)...)
-
-	// All vars in env files must exist in the role manifest
-	allErrs = append(allErrs, f.checkEnvFileVariables(roleManifest, defaultsFromEnvFiles)...)
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
@@ -275,30 +272,6 @@ func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefault
 			allErrs = append(allErrs, validation.Forbidden(property,
 				fmt.Sprintf("Light opinion matches default of '%v'",
 					thedefault)))
-		}
-	}
-
-	return allErrs
-}
-
-// All vars in env files must exist in the role manifest
-func (f *Fissile) checkEnvFileVariables(roleManifest *model.RoleManifest, defaults map[string]string) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	exists := func(key string) bool {
-		for _, variable := range roleManifest.Variables {
-			if variable.Name == key {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	for key := range defaults {
-		if !exists(key) {
-			allErrs = append(allErrs, validation.NotFound(key,
-				"Variable from env file not defined in the manifest."))
 		}
 	}
 
