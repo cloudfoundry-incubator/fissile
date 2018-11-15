@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/kube"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
@@ -381,10 +382,11 @@ func TestGenerateAuth(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/generate-auth.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{torReleasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
-		Grapher:      f})
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{torReleasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+		Grapher: f})
 	require.NoError(t, err)
 	require.NotNil(t, roleManifest)
 

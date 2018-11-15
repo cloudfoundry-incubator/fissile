@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,9 +20,10 @@ func statefulSetTestLoadManifest(assert *assert.Assertions, manifestName string)
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{releasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{releasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

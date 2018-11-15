@@ -225,14 +225,14 @@ func testJobLinksOk(fakeRelease *Release) func(*testing.T) {
 
 		job, err := fakeRelease.LookupJob("ntpd")
 		if assert.NoError(err, "Failed to find ntpd job") {
-			assert.Equal([]jobConsumesInfo{
-				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
-				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "ntp"}, Optional: true},
-				jobConsumesInfo{jobLinkInfo: jobLinkInfo{Type: "missing"}, Optional: true},
+			assert.Equal([]JobConsumesInfo{
+				JobConsumesInfo{JobLinkInfo: JobLinkInfo{Name: "ntp-server", Type: "ntpd"}},
+				JobConsumesInfo{JobLinkInfo: JobLinkInfo{Type: "ntp"}, Optional: true},
+				JobConsumesInfo{JobLinkInfo: JobLinkInfo{Type: "missing"}, Optional: true},
 			}, job.DesiredConsumers)
-			assert.Equal(map[string]jobProvidesInfo{
-				"ntp-server": {jobLinkInfo: jobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
-				"ntp-client": {jobLinkInfo: jobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
+			assert.Equal(map[string]JobProvidesInfo{
+				"ntp-server": {JobLinkInfo: JobLinkInfo{Name: "ntp-server", Type: "ntpd", JobName: "ntpd"}},
+				"ntp-client": {JobLinkInfo: JobLinkInfo{Name: "ntp-client", Type: "ntp", JobName: "ntpd"}},
 			}, job.AvailableProviders)
 		}
 	}

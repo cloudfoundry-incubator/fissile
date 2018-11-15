@@ -15,8 +15,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// jobLinkInfo describes a BOSH link provider or consumer
-type jobLinkInfo struct {
+// JobLinkInfo describes a BOSH link provider or consumer
+type JobLinkInfo struct {
 	Name        string `json:"-" yaml:"-"`
 	Type        string `json:"-" yaml:"-"`
 	RoleName    string `json:"role" yaml:"-"`
@@ -24,17 +24,17 @@ type jobLinkInfo struct {
 	ServiceName string `json:"service_name" yaml:"-"`
 }
 
-// jobProvidesInfo describes a BOSH link provider
-type jobProvidesInfo struct {
-	jobLinkInfo
+// JobProvidesInfo describes a BOSH link provider
+type JobProvidesInfo struct {
+	JobLinkInfo
 	Alias      string `yaml:"as"`
 	Shared     bool   `yaml:"shared"`
 	Properties []string
 }
 
-// jobConsumesInfo describes the BOSH links a job consumes
-type jobConsumesInfo struct {
-	jobLinkInfo
+// JobConsumesInfo describes the BOSH links a job consumes
+type JobConsumesInfo struct {
+	JobLinkInfo
 	Alias    string `yaml:"from"`
 	Optional bool
 }
@@ -51,8 +51,8 @@ type Job struct {
 	Properties         []*JobProperty
 	Version            string
 	Release            *Release
-	AvailableProviders map[string]jobProvidesInfo
-	DesiredConsumers   []jobConsumesInfo
+	AvailableProviders map[string]JobProvidesInfo
+	DesiredConsumers   []JobConsumesInfo
 
 	jobReleaseInfo map[interface{}]interface{}
 }
@@ -252,13 +252,13 @@ func (j *Job) loadJobSpec() (err error) {
 		j.Properties = append(j.Properties, property)
 	}
 
-	j.AvailableProviders = make(map[string]jobProvidesInfo)
+	j.AvailableProviders = make(map[string]JobProvidesInfo)
 	for _, provides := range jobSpec.Provides {
 		if provides.Type == "" {
 			return fmt.Errorf("job %s provider %s has no type", j.Name, provides.Name)
 		}
-		j.AvailableProviders[provides.Name] = jobProvidesInfo{
-			jobLinkInfo: jobLinkInfo{
+		j.AvailableProviders[provides.Name] = JobProvidesInfo{
+			JobLinkInfo: JobLinkInfo{
 				Name:    provides.Name,
 				Type:    provides.Type,
 				JobName: j.Name,
@@ -267,13 +267,13 @@ func (j *Job) loadJobSpec() (err error) {
 		}
 	}
 
-	j.DesiredConsumers = make([]jobConsumesInfo, 0, len(jobSpec.Consumes))
+	j.DesiredConsumers = make([]JobConsumesInfo, 0, len(jobSpec.Consumes))
 	for _, consumes := range jobSpec.Consumes {
 		if consumes.Type == "" {
 			return fmt.Errorf("job %s consumer %s has no type", j.Name, consumes.Name)
 		}
-		j.DesiredConsumers = append(j.DesiredConsumers, jobConsumesInfo{
-			jobLinkInfo: jobLinkInfo{
+		j.DesiredConsumers = append(j.DesiredConsumers, JobConsumesInfo{
+			JobLinkInfo: JobLinkInfo{
 				Name: consumes.Name,
 				Type: consumes.Type,
 			},

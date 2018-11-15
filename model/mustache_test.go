@@ -2,12 +2,9 @@ package model
 
 import (
 	"os"
-	"path/filepath"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -22,7 +19,7 @@ func TestParsing(t *testing.T) {
 	template := "((FISSILE_IDENTITY_SCHEME))://((#FISSILE_IDENTITY_EXTERNAL_HOST))((FISSILE_INSTANCE_ID)).((FISSILE_IDENTITY_EXTERNAL_HOST)):((FISSILE_IDENTITY_EXTERNAL_PORT))((/FISSILE_IDENTITY_EXTERNAL_HOST))((^FISSILE_IDENTITY_EXTERNAL_HOST))scf.uaa-int.uaa.svc.((FISSILE_CLUSTER_DOMAIN)):8443((/FISSILE_IDENTITY_EXTERNAL_HOST))"
 
 	// Act
-	pieces, err := parseTemplate(template)
+	pieces, err := ParseTemplate(template)
 
 	// Assert
 	assert.NoError(err)
@@ -31,34 +28,4 @@ func TestParsing(t *testing.T) {
 	assert.Contains(pieces, "FISSILE_IDENTITY_EXTERNAL_PORT")
 	assert.Contains(pieces, "FISSILE_CLUSTER_DOMAIN")
 	assert.NotContains(pieces, "FOO")
-}
-
-func TestRoleVariables(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/model/variable-expansion.yml")
-	roleManifest, err := LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleasePaths: []string{torReleasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
-		ValidationOptions: RoleManifestValidationOptions{
-			AllowMissingScripts: true,
-		}})
-	assert.NoError(t, err)
-	require.NotNil(t, roleManifest)
-
-	vars, err := roleManifest.InstanceGroups[0].GetVariablesForRole()
-
-	assert.NoError(t, err)
-	assert.NotNil(t, vars)
-
-	expected := []string{"HOME", "FOO", "BAR", "KUBERNETES_CLUSTER_DOMAIN", "PELERINUL"}
-	sort.Strings(expected)
-	var actual []string
-	for _, variable := range vars {
-		actual = append(actual, variable.Name)
-	}
-	sort.Strings(actual)
-	assert.Equal(t, expected, actual)
 }

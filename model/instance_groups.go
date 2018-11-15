@@ -69,76 +69,14 @@ const (
 	RoleTagActivePassive     = RoleTag("active-passive")
 )
 
-// Validate implements several checks for the instance group and its job references. It's run after the
-// instance groups are filtered and i.e. Run has been calculated.
-func (g *InstanceGroup) Validate(mappedReleases releaseByName) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	if g.Run.ActivePassiveProbe != "" {
-		if !g.HasTag(RoleTagActivePassive) {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("instance_groups[%s].run.active-passive-probe", g.Name),
-				g.Run.ActivePassiveProbe,
-				"Active/passive probes are only valid on instance groups with active-passive tag"))
-		}
-	}
-
-	for _, jobReference := range g.JobReferences {
-		release, ok := mappedReleases[jobReference.ReleaseName]
-
-		if !ok {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("instance_groups[%s].jobs[%s]", g.Name, jobReference.Name),
-				jobReference.ReleaseName,
-				"Referenced release is not loaded"))
-			continue
-		}
-
-		job, err := release.LookupJob(jobReference.Name)
-		if err != nil {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("instance_groups[%s].jobs[%s]", g.Name, jobReference.Name),
-				jobReference.ReleaseName, err.Error()))
-			continue
-		}
-		jobReference.Job = job
-
-		if jobReference.ResolvedConsumers == nil {
-			// No explicitly specified consumers
-			jobReference.ResolvedConsumers = make(map[string]jobConsumesInfo)
-		}
-
-		for name, info := range jobReference.ResolvedConsumers {
-			info.Name = name
-			jobReference.ResolvedConsumers[name] = info
-		}
-	}
-
-	g.calculateRoleConfigurationTemplates()
-
-	// Validate that specified colocated containers are configured and of the
-	// correct type
-	for idx, roleName := range g.ColocatedContainers() {
-		if lookupRole := g.roleManifest.LookupInstanceGroup(roleName); lookupRole == nil {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", g.Name, idx),
-				roleName,
-				"There is no such instance group defined"))
-
-		} else if lookupRole.Type != RoleTypeColocatedContainer {
-			allErrs = append(allErrs, validation.Invalid(
-				fmt.Sprintf("instance_groups[%s].colocated_containers[%d]", g.Name, idx),
-				roleName,
-				"The instance group is not of required type colocated-container"))
-		}
-	}
-
-	return allErrs
+// SetRoleManifest adds a reference to the instance groups role manifest
+func (g *InstanceGroup) SetRoleManifest(m *RoleManifest) {
+	g.roleManifest = m
 }
 
-// calculateRoleRun collects properties from the jobs run properties and puts them on the instance group
+// CalculateRoleRun collects properties from the jobs run properties and puts them on the instance group
 // It also validates where necessary and is run *before* validateRoleRun
-func (g *InstanceGroup) calculateRoleRun() validation.ErrorList {
+func (g *InstanceGroup) CalculateRoleRun() validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	g.Run = &RoleRun{}
@@ -229,7 +167,7 @@ func (g *InstanceGroup) GetScriptPaths() map[string]string {
 				// Absolute paths _inside_ the container; there is nothing to copy
 				continue
 			}
-			result[script] = filepath.Join(filepath.Dir(g.roleManifest.manifestFilePath), script)
+			result[script] = filepath.Join(filepath.Dir(g.roleManifest.ManifestFilePath), script)
 		}
 	}
 
@@ -463,7 +401,8 @@ func (g *InstanceGroup) HasTag(tag RoleTag) bool {
 	return false
 }
 
-func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
+// CalculateRoleConfigurationTemplates applies configuration variables to all templates
+func (g *InstanceGroup) CalculateRoleConfigurationTemplates() {
 	if g.Configuration == nil {
 		g.Configuration = &Configuration{}
 	}
@@ -483,7 +422,7 @@ func (g *InstanceGroup) calculateRoleConfigurationTemplates() {
 		k := templateDef.Key.(string)
 		v := templateDef.Value
 
-		if _, ok := getTemplate(roleConfigs, k); !ok {
+		if _, ok := GetTemplate(roleConfigs, k); !ok {
 
 			roleConfigs = append(roleConfigs, yaml.MapItem{Key: k, Value: v})
 		}

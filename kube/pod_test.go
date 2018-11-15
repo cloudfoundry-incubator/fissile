@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,9 +24,10 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/volumes.yml")
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{releasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{releasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -1635,9 +1637,10 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 
 	manifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube", manifestName)
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	manifest, err := model.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{releasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{releasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -2775,14 +2778,16 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/colocated-containers.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{torReleasePath, ntpReleasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{torReleasePath, ntpReleasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
+	assert.NotNil(roleManifest.InstanceGroups)
 
 	// Check non-claim volumes
 	mounts := getNonClaimVolumes(roleManifest.LookupInstanceGroup("main-role"), ExportSettings{CreateHelmChart: true})

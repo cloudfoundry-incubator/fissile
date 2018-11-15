@@ -64,14 +64,6 @@ const (
 // various places which require quick access/search/existence check.
 type CVMap map[string]*VariableDefinition
 
-type internalVariable struct {
-	CVOptions CVOptions `yaml:"options"`
-}
-
-type internalVariableDefinitions struct {
-	Variables []internalVariable `yaml:"variables"`
-}
-
 // Value fetches the value of config variable
 func (config *VariableDefinition) Value() (bool, string) {
 	var value interface{}
