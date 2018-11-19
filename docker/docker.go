@@ -691,12 +691,12 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	}
 
 	// Stream files out of the container
-	err = streamOutFiles()
-	if err != nil {
-		return exitCode, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
-
+	streamErr := streamOutFiles()
+	if streamErr != nil {
+		return exitCode, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, streamErr)
 	}
 	closeFiles()
+
 	return exitCode, container, err
 }
 
