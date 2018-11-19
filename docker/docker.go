@@ -575,8 +575,10 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	attached <- <-attached
 
 	// Stream files within the container just before starting
+	fsWithSymlinks := fs.NewFileSystem()
+	fsWithSymlinks.KeepSymlinks(true)
 	for src, dst := range opts.StreamIn {
-		tarstream := tarstream.New(fs.NewFileSystem())
+		tarstream := tarstream.New(fsWithSymlinks)
 		r, w := io.Pipe()
 
 		go func() {
@@ -596,6 +598,51 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		}
 	}
 
+	// Function for streaming files out of the container
+	streamOutFiles := func() error {
+		for src, dst := range opts.StreamOut {
+			tarstream := tarstream.New(fsWithSymlinks)
+			r, w := io.Pipe()
+
+			go func() {
+				downloadErr := d.client.DownloadFromContainer(container.ID, dockerclient.DownloadFromContainerOptions{
+					OutputStream: w,
+					Path:         src,
+				})
+
+				if downloadErr != nil {
+					w.CloseWithError(downloadErr)
+				}
+				w.Close()
+			}()
+
+			err := tarstream.ExtractTarStream(dst, r)
+			if err != nil {
+				return err
+			}
+
+			// Docker will include the directory in the output tar stream so
+			// we need to move things arround
+			sourceDirectoryName := filepath.Base(src)
+			streamedOutputDir := filepath.Join(dst, sourceDirectoryName)
+			tmpDstDir := filepath.Join(filepath.Dir(dst), fmt.Sprintf("%s-tmp", filepath.Base(dst)))
+			err = os.Rename(streamedOutputDir, tmpDstDir)
+			if err != nil {
+				return err
+			}
+			err = os.RemoveAll(dst)
+			if err != nil {
+				return err
+			}
+			err = os.Rename(tmpDstDir, dst)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	err = d.client.StartContainer(container.ID, container.HostConfig)
 	if err != nil {
 		return -1, container, err
@@ -610,29 +657,6 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		}
 	}
 
-	// Stream files out of the container
-	for src, dst := range opts.StreamOut {
-		tarstream := tarstream.New(fs.NewFileSystem())
-		r, w := io.Pipe()
-
-		go func() {
-			downloadErr := d.client.DownloadFromContainer(container.ID, dockerclient.DownloadFromContainerOptions{
-				OutputStream: w,
-				Path:         src,
-			})
-
-			if downloadErr != nil {
-				w.CloseWithError(downloadErr)
-			}
-			w.Close()
-		}()
-
-		err := tarstream.ExtractTarStream(dst, r)
-		if err != nil {
-			return -1, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
-		}
-	}
-
 	if !opts.KeepContainer {
 		exitCode, err = d.client.WaitContainer(container.ID)
 		attachCloseWaiter.Wait()
@@ -640,6 +664,13 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		if err != nil {
 			exitCode = -1
 		}
+
+		// Stream files out of the container
+		err = streamOutFiles()
+		if err != nil {
+			return exitCode, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
+		}
+
 		return exitCode, container, nil
 	}
 	// KeepContainer mode:
@@ -658,11 +689,18 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	} else {
 		exitCode = -1
 	}
+
+	// Stream files out of the container
+	err = streamOutFiles()
+	if err != nil {
+		return exitCode, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
+
+	}
 	closeFiles()
 	return exitCode, container, err
 }
 
-// RemoveVolumes removes any temporary volumes assoicated with a container
+// RemoveVolumes removes any temporary volumes associated with a container
 func (d *ImageManager) RemoveVolumes(container *dockerclient.Container) error {
 	volumes, err := d.client.ListVolumes(dockerclient.ListVolumesOptions{})
 	if err != nil {

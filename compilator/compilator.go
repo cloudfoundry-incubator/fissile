@@ -564,7 +564,7 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 		sourceMountName: ContainerSourceDir,
 	}
 
-	// If we stream the package, don't mount any volumes.
+	// If we stream the package, don't mount any local files.
 	// We assume the docker server is not local. So we stream the package to
 	// be compiled, and when done, we stream the compiled bits out.
 	volumes := map[string]map[string]string{sourceMountName: nil}
@@ -573,10 +573,9 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 	if c.streamPackages {
 		inVolume := fmt.Sprintf("in_volume-%s", uuid.New())
 		outVolume := fmt.Sprintf("out_volume-%s", uuid.New())
-		volumes = map[string]map[string]string{
-			inVolume:  nil,
-			outVolume: nil,
-		}
+		volumes[inVolume] = nil
+		volumes[outVolume] = nil
+
 		mounts = map[string]string{
 			inVolume:  docker.ContainerInPath,
 			outVolume: docker.ContainerOutPath,
