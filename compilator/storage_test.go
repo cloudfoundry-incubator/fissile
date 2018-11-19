@@ -56,7 +56,7 @@ func TestStorePackageLocallyOK(t *testing.T) {
 	p, err := NewPackageStorage(packageCacheConfig["boshPackageCacheKind"].(string), false, configMap, compilationWorkDir, fullContainerPath, imageName)
 	assert.NoError(err)
 
-	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
+	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p, false)
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
@@ -131,7 +131,7 @@ func TestStorePackageExists(t *testing.T) {
 	p, err := NewPackageStorage(packageCacheConfig["boshPackageCacheKind"].(string), false, configMap, compilationWorkDir, fullContainerPath, imageName)
 	assert.NoError(err)
 
-	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p)
+	c, err := NewDockerCompilator(dockerManager, compilationWorkDir, "", imageName, compilation.FakeBase, "3.14.15", "", false, ui, nil, p, false)
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")

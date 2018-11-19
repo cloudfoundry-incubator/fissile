@@ -17,6 +17,8 @@ import (
 
 	"github.com/fatih/color"
 	dockerclient "github.com/fsouza/go-dockerclient"
+	tarstream "github.com/openshift/source-to-image/pkg/tar"
+	"github.com/openshift/source-to-image/pkg/util/fs"
 )
 
 const (
@@ -50,6 +52,8 @@ type dockerClient interface {
 	RemoveVolume(string) error
 	StartContainer(string, *dockerclient.HostConfig) error
 	WaitContainer(string) (int, error)
+	UploadToContainer(string, dockerclient.UploadToContainerOptions) error
+	DownloadFromContainer(string, dockerclient.DownloadFromContainerOptions) error
 }
 
 // ImageManager handles Docker images
@@ -447,6 +451,9 @@ type RunInContainerOpts struct {
 	KeepContainer bool
 	StdoutWriter  io.Writer
 	StderrWriter  io.Writer
+	// Directories to stream in/out of the container.
+	StreamIn  map[string]string
+	StreamOut map[string]string
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
@@ -529,12 +536,13 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	}
 
 	for src, dest := range opts.Mounts {
-		if _, ok := opts.Volumes[src]; ok {
+		var ok bool
+		if _, ok = opts.Volumes[src]; ok {
 			// Attempt to mount a volume; use the generated name
 			src = fmt.Sprintf("volume_%s_%s", opts.ContainerName, src)
 		}
 		mountString := fmt.Sprintf("%s:%s", src, dest)
-		if dest == ContainerInPath {
+		if dest == ContainerInPath && !ok {
 			mountString += ":ro"
 		}
 		cco.HostConfig.Binds = append(cco.HostConfig.Binds, mountString)
@@ -566,6 +574,28 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	}
 	attached <- <-attached
 
+	// Stream files within the container just before starting
+	for src, dst := range opts.StreamIn {
+		tarstream := tarstream.New(fs.NewFileSystem())
+		r, w := io.Pipe()
+
+		go func() {
+			tarErr := tarstream.CreateTarStream(src, false, w)
+			if tarErr != nil {
+				w.CloseWithError(tarErr)
+			}
+			w.Close()
+		}()
+
+		err = d.client.UploadToContainer(container.ID, dockerclient.UploadToContainerOptions{
+			InputStream: r,
+			Path:        dst,
+		})
+		if err != nil {
+			return -1, container, fmt.Errorf("Error running in container: %s. Error streaming data into container: %s", container.ID, err)
+		}
+	}
+
 	err = d.client.StartContainer(container.ID, container.HostConfig)
 	if err != nil {
 		return -1, container, err
@@ -577,6 +607,29 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		}
 		if stderrCloser, ok := opts.StderrWriter.(io.Closer); ok {
 			stderrCloser.Close()
+		}
+	}
+
+	// Stream files out of the container
+	for src, dst := range opts.StreamOut {
+		tarstream := tarstream.New(fs.NewFileSystem())
+		r, w := io.Pipe()
+
+		go func() {
+			downloadErr := d.client.DownloadFromContainer(container.ID, dockerclient.DownloadFromContainerOptions{
+				OutputStream: w,
+				Path:         src,
+			})
+
+			if downloadErr != nil {
+				w.CloseWithError(downloadErr)
+			}
+			w.Close()
+		}()
+
+		err := tarstream.ExtractTarStream(dst, r)
+		if err != nil {
+			return -1, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
 		}
 	}
 

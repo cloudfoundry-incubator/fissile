@@ -191,8 +191,9 @@ func (p *PackageStorage) Download(pack *model.Package, progressEvent DownloadPro
 	}
 
 	// Unpack the compiled contents
-	err = archiver.Tar.Open(
+	err = archiver.DefaultTar.Extract(
 		path,
+		"",
 		filepath.Join(p.CompilationWorkDir, pack.Fingerprint),
 	)
 
@@ -209,7 +210,7 @@ func (p *PackageStorage) Upload(pack *model.Package) error {
 	}
 
 	// Archive (tar) the contents
-	err = archiver.Tar.Make(archiveName, []string{pack.GetPackageCompiledDir(p.CompilationWorkDir)})
+	err = archiver.DefaultTar.Archive([]string{pack.GetPackageCompiledDir(p.CompilationWorkDir)}, archiveName)
 	// Cleanup the archive when done
 	defer os.RemoveAll(archiveName)
 

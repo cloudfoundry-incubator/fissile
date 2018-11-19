@@ -39,6 +39,7 @@ compiled once.
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildCompilationCacheConfig := buildPackagesViper.GetString("compilation-cache-config")
+		flagBuildPackagesStreamPackages := buildPackagesViper.GetBool("stream-packages")
 
 		err := fissile.LoadManifest(
 			flagRoleManifest,
@@ -79,6 +80,7 @@ compiled once.
 			flagBuildPackagesWithoutDocker,
 			flagVerbose,
 			flagBuildCompilationCacheConfig,
+			flagBuildPackagesStreamPackages,
 		)
 	},
 }
@@ -131,6 +133,13 @@ func init() {
 		"",
 		filepath.Join(os.Getenv("HOME"), ".fissile", "package-cache.yaml"),
 		"Points to a file containing configuration for a compiled package cache or contains the configuration as valid yaml",
+	)
+
+	buildPackagesCmd.PersistentFlags().BoolP(
+		"stream-packages",
+		"",
+		false,
+		"If true, fissile will stream packages to the docker daemon for compilation, instead of mounting volumes",
 	)
 
 	buildPackagesViper.BindPFlags(buildPackagesCmd.PersistentFlags())
