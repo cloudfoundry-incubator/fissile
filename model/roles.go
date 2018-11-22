@@ -216,7 +216,7 @@ func (m *RoleManifest) loadReleaseReferences() ([]*Release, error) {
 				}()
 
 				// unpack
-				err = archiver.DefaultTarGz.Extract(finalReleaseTarballPath, "", finalReleaseUnpackedPath)
+				err = archiver.TarGz.Open(finalReleaseTarballPath, finalReleaseUnpackedPath)
 				if err != nil {
 					allErrs = multierror.Append(allErrs, err)
 					return

@@ -494,12 +494,12 @@
   version = "v0.0.4"
 
 [[projects]]
-  digest = "1:8da4402cd8d8993b433aa138eaed252e2013668195a2ae6d87f61837ba489399"
+  digest = "1:d6f988e7296cebe16d9c405b73bee34da871b382f7438c811279614a725239ae"
   name = "github.com/mholt/archiver"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e1ccfb528128bf4ff3bd906823ae2dcb708f79f5"
-  version = "v3.1.0"
+  revision = "de0d89e255e17c8d75a40122055763e743ab0593"
+  version = "v2.1.0"
 
 [[projects]]
   digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
@@ -754,14 +754,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0dfba983988bcd90e6dd30b9bfdb9685ff530dbf61db3706e55372e975b1d8bc"
-  name = "github.com/xi2/xz"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "48954b6210f8d154cb5f8484d3a3e1f83489309e"
-
-[[projects]]
-  branch = "master"
   digest = "1:15e78183e2b04229a20cf384c2d911812970727ba34800fbe18cd35005a529fa"
   name = "golang.org/x/crypto"
   packages = [
@@ -891,6 +883,7 @@
     "github.com/machinebox/progress",
     "github.com/mholt/archiver",
     "github.com/openshift/source-to-image/pkg/tar",
+    "github.com/openshift/source-to-image/pkg/util/fs",
     "github.com/pborman/uuid",
     "github.com/satori/go.uuid",
     "github.com/spf13/cobra",
