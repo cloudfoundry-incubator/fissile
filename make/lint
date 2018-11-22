@@ -10,9 +10,9 @@ ISSUES=$(mktemp)
 
 trap "cat ${ISSUES} ; rm -f ${ISSUES}" EXIT
 
-go list -f '{{ .Dir }}' ./... | sed '\@fissile/scripts@d ; \@fissile/mustache@d ; \@/vendor/@d ' | while read DIR; do
-    golint $(ls "${DIR}"/*.go | grep -v _generated.go) >> "${ISSUES}"
-done
+golint \
+  $(go list -f '{{ .Dir }}' ./... | sed '\@fissile/scripts@d ; \@fissile/mustache@d ')  \
+  >> "${ISSUES}"
 
 printf "%b" "${NO_COLOR}"
 
