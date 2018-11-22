@@ -577,7 +577,7 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	// Stream files within the container just before starting
 	fsWithSymlinks := fs.NewFileSystem()
 	fsWithSymlinks.KeepSymlinks(true)
-	for src, dst := range opts.StreamIn {
+	for src, dest := range opts.StreamIn {
 		tarstream := tarstream.New(fsWithSymlinks)
 		r, w := io.Pipe()
 
@@ -591,7 +591,7 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 
 		err = d.client.UploadToContainer(container.ID, dockerclient.UploadToContainerOptions{
 			InputStream: r,
-			Path:        dst,
+			Path:        dest,
 		})
 		if err != nil {
 			return -1, container, fmt.Errorf("Error running in container: %s. Error streaming data into container: %s", container.ID, err)
@@ -600,23 +600,23 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 
 	// Function for streaming files out of the container
 	streamOutFiles := func() error {
-		for src, dst := range opts.StreamOut {
-			tarstream := tarstream.New(fsWithSymlinks)
+		for src, dest := range opts.StreamOut {
+			tarStream := tarstream.New(fsWithSymlinks)
 			r, w := io.Pipe()
 
 			go func() {
-				downloadErr := d.client.DownloadFromContainer(container.ID, dockerclient.DownloadFromContainerOptions{
+				err := d.client.DownloadFromContainer(container.ID, dockerclient.DownloadFromContainerOptions{
 					OutputStream: w,
 					Path:         src,
 				})
 
-				if downloadErr != nil {
-					w.CloseWithError(downloadErr)
+				if err != nil {
+					w.CloseWithError(err)
 				}
 				w.Close()
 			}()
 
-			err := tarstream.ExtractTarStream(dst, r)
+			err := tarStream.ExtractTarStream(dest, r)
 			if err != nil {
 				return err
 			}
@@ -624,17 +624,17 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 			// Docker will include the directory in the output tar stream so
 			// we need to move things arround
 			sourceDirectoryName := filepath.Base(src)
-			streamedOutputDir := filepath.Join(dst, sourceDirectoryName)
-			tmpDstDir := filepath.Join(filepath.Dir(dst), fmt.Sprintf("%s-tmp", filepath.Base(dst)))
-			err = os.Rename(streamedOutputDir, tmpDstDir)
+			streamedOutputDir := filepath.Join(dest, sourceDirectoryName)
+			tmpDestDir := filepath.Join(filepath.Dir(dest), fmt.Sprintf("%s-tmp", filepath.Base(dest)))
+			err = os.Rename(streamedOutputDir, tmpDestDir)
 			if err != nil {
 				return err
 			}
-			err = os.RemoveAll(dst)
+			err = os.RemoveAll(dest)
 			if err != nil {
 				return err
 			}
-			err = os.Rename(tmpDstDir, dst)
+			err = os.Rename(tmpDestDir, dest)
 			if err != nil {
 				return err
 			}
@@ -686,15 +686,16 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	// No need to wait on execCmd or on attachCloseWaiter
 	if err == nil {
 		exitCode = 0
+
+		// Stream files out of the container
+		err = streamOutFiles()
+		if err != nil {
+			err = fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, err)
+		}
 	} else {
 		exitCode = -1
 	}
 
-	// Stream files out of the container
-	streamErr := streamOutFiles()
-	if streamErr != nil {
-		return exitCode, container, fmt.Errorf("Error running in container: %s. Error streaming data out of container: %s", container.ID, streamErr)
-	}
 	closeFiles()
 
 	return exitCode, container, err
