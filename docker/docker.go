@@ -578,11 +578,11 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 	fsWithSymlinks := fs.NewFileSystem()
 	fsWithSymlinks.KeepSymlinks(true)
 	for src, dest := range opts.StreamIn {
-		tarstream := tarstream.New(fsWithSymlinks)
+		tarStream := tarstream.New(fsWithSymlinks)
 		r, w := io.Pipe()
 
 		go func() {
-			tarErr := tarstream.CreateTarStream(src, false, w)
+			tarErr := tarStream.CreateTarStream(src, false, w)
 			if tarErr != nil {
 				w.CloseWithError(tarErr)
 			}
