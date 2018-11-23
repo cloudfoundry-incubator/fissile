@@ -49,6 +49,7 @@ type Compilator struct {
 	dockerNetworkMode string
 	compilePackage    func(*Compilator, *model.Package) error
 	packageStorage    *PackageStorage
+	streamPackages    bool
 
 	// signalDependencies is a map of
 	//    (package fingerprint) -> (channel to close when done)
@@ -89,6 +90,7 @@ func NewDockerCompilator(
 	ui *termui.UI,
 	grapher util.ModelGrapher,
 	packageStorage *PackageStorage,
+	streamPackages bool,
 ) (*Compilator, error) {
 
 	compilator := &Compilator{
@@ -99,6 +101,7 @@ func NewDockerCompilator(
 		baseType:           baseType,
 		fissileVersion:     fissileVersion,
 		compilePackage:     (*Compilator).compilePackageInDocker,
+		streamPackages:     streamPackages,
 		dockerNetworkMode:  dockerNetworkMode,
 		keepContainer:      keepContainer,
 		ui:                 ui,
@@ -560,6 +563,28 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 		// from, so it will be in some docker-maintained storage.
 		sourceMountName: ContainerSourceDir,
 	}
+
+	// If we stream the package, don't mount any local files.
+	// We assume the docker server is not local. So we stream the package to
+	// be compiled, and when done, we stream the compiled bits out.
+	volumes := map[string]map[string]string{sourceMountName: nil}
+	streamIn := map[string]string{}
+	streamOut := map[string]string{}
+	if c.streamPackages {
+		inVolume := fmt.Sprintf("in_volume-%s", uuid.New())
+		outVolume := fmt.Sprintf("out_volume-%s", uuid.New())
+		volumes[inVolume] = nil
+		volumes[outVolume] = nil
+
+		mounts = map[string]string{
+			inVolume:  docker.ContainerInPath,
+			outVolume: docker.ContainerOutPath,
+		}
+
+		streamIn[pkg.GetTargetPackageSourcesDir(c.hostWorkDir)] = docker.ContainerInPath
+		streamOut[docker.ContainerOutPath] = pkg.GetPackageCompiledTempDir(c.hostWorkDir)
+	}
+
 	exitCode, container, err := c.dockerManager.RunInContainer(docker.RunInContainerOpts{
 		ContainerName: containerName,
 		ImageName:     c.stemcellImageName,
@@ -567,10 +592,12 @@ func (c *Compilator) compilePackageInDocker(pkg *model.Package) (err error) {
 		Cmd:           []string{"/bin/bash", containerScriptPath, pkg.Name, pkg.Version},
 		Mounts:        mounts,
 		NetworkMode:   c.dockerNetworkMode,
-		Volumes:       map[string]map[string]string{sourceMountName: nil},
+		Volumes:       volumes,
 		KeepContainer: c.keepContainer,
 		StdoutWriter:  stdoutWriter,
 		StderrWriter:  stderrWriter,
+		StreamIn:      streamIn,
+		StreamOut:     streamOut,
 	})
 
 	if container != nil && (!c.keepContainer || err == nil || exitCode == 0) {
