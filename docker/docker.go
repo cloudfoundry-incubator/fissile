@@ -457,7 +457,10 @@ type RunInContainerOpts struct {
 }
 
 // RunInContainer will execute a set of commands within a running Docker container
-func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, container *dockerclient.Container, err error) {
+func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (int, *dockerclient.Container, error) {
+	var exitCode int
+	var err error
+	var container *dockerclient.Container
 
 	// Get current user info to map to container
 	// os/user.Current() isn't supported when cross-compiling hence this code
@@ -542,6 +545,11 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 			src = fmt.Sprintf("volume_%s_%s", opts.ContainerName, src)
 		}
 		mountString := fmt.Sprintf("%s:%s", src, dest)
+
+		// If what we're trying to mount is the "input" directory and
+		// it's not a volume (meaning we're mounting the directory from the
+		// host), we make it read-only to avoid the container writing in the
+		// host's sources
 		if dest == ContainerInPath && !ok {
 			mountString += ":ro"
 		}
@@ -663,6 +671,7 @@ func (d *ImageManager) RunInContainer(opts RunInContainerOpts) (exitCode int, co
 		closeFiles()
 		if err != nil {
 			exitCode = -1
+			return exitCode, container, err
 		}
 
 		// Stream files out of the container
