@@ -5,12 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagShowImageDockerOnly bool
-	flagShowImageWithSizes  bool
-	flagShowImageTagExtra   string
-)
-
 // showImageCmd represents the image command
 var showImageCmd = &cobra.Command{
 	Use:   "image",
@@ -22,31 +16,15 @@ your role manifest.
 This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissile show image)`" + `).
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		flagShowImageDockerOnly = showImagesViper.GetBool("docker-only")
-		flagShowImageWithSizes = showImagesViper.GetBool("with-sizes")
-		flagShowImageTagExtra = showImagesViper.GetString("tag-extra")
-
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
 		return fissile.ListRoleImages(
-			flagDockerRegistry,
-			flagDockerOrganization,
-			flagRepository,
-			flagLightOpinions,
-			flagDarkOpinions,
-			flagShowImageDockerOnly,
-			flagShowImageWithSizes,
-			flagShowImageTagExtra,
+			showImagesViper.GetBool("docker-only"),
+			showImagesViper.GetBool("with-sizes"),
+			showImagesViper.GetString("tag-extra"),
 		)
 	},
 }

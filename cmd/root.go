@@ -16,30 +16,6 @@ var (
 	cfgFile string
 	fissile *app.Fissile
 	version string
-
-	flagRoleManifest       string
-	flagRelease            []string
-	flagReleaseName        []string
-	flagReleaseVersion     []string
-	flagCacheDir           string
-	flagWorkDir            string
-	flagDockerRegistry     string
-	flagDockerOrganization string
-	flagDockerUsername     string
-	flagDockerPassword     string
-	flagRepository         string
-	flagWorkers            int
-	flagLightOpinions      string
-	flagDarkOpinions       string
-	flagOutputFormat       string
-	flagMetrics            string
-	flagVerbose            bool
-
-	// workPath* variables contain paths derived from flagWorkDir
-	workPathCompilationDir string
-	workPathConfigDir      string
-	workPathBaseDockerfile string
-	workPathDockerDir      string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -55,9 +31,7 @@ agent.
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-
-		if err = validateBasicFlags(); err != nil {
+		if err := validateBasicFlags(); err != nil {
 			return err
 		}
 
@@ -232,95 +206,68 @@ func initViper(v *viper.Viper) {
 	}
 }
 
-// extendPathsFromWorkDirectory sets some directory defaults derived from the
-// --work-dir.
-func extendPathsFromWorkDirectory() {
-	workDir := flagWorkDir
-	if workDir == "" {
-		return
-	}
-
-	// Initialize paths that are always relative to flagWorkDir
-	workPathCompilationDir = filepath.Join(workDir, "compilation")
-	workPathConfigDir = filepath.Join(workDir, "config")
-	workPathBaseDockerfile = filepath.Join(workDir, "base_dockerfile")
-	workPathDockerDir = filepath.Join(workDir, "dockerfiles")
+func validateBasicFlags() error {
+	fissile.Options.RoleManifest = viper.GetString("role-manifest")
+	fissile.Options.Releases = splitNonEmpty(viper.GetString("release"), ",")
+	fissile.Options.ReleaseNames = splitNonEmpty(viper.GetString("release-name"), ",")
+	fissile.Options.ReleaseVersions = splitNonEmpty(viper.GetString("release-version"), ",")
+	fissile.Options.CacheDir = viper.GetString("cache-dir")
+	fissile.Options.WorkDir = viper.GetString("work-dir")
+	fissile.Options.Repository = viper.GetString("repository")
+	fissile.Options.DockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
+	fissile.Options.DockerOrganization = viper.GetString("docker-organization")
+	fissile.Options.DockerUsername = viper.GetString("docker-username")
+	fissile.Options.DockerPassword = viper.GetString("docker-password")
+	fissile.Options.Workers = viper.GetInt("workers")
+	fissile.Options.LightOpinions = viper.GetString("light-opinions")
+	fissile.Options.DarkOpinions = viper.GetString("dark-opinions")
+	fissile.Options.OutputFormat = viper.GetString("output")
+	fissile.Options.Metrics = viper.GetString("metrics")
+	fissile.Options.Verbose = viper.GetBool("verbose")
 
 	// Set defaults for empty flags
-	if flagRoleManifest == "" {
-		flagRoleManifest = filepath.Join(workDir, "role-manifest.yml")
+	if fissile.Options.RoleManifest == "" {
+		fissile.Options.RoleManifest = filepath.Join(fissile.Options.WorkDir, "role-manifest.yml")
 	}
 
-	if flagLightOpinions == "" {
-		flagLightOpinions = filepath.Join(workDir, "opinions.yml")
+	if fissile.Options.LightOpinions == "" {
+		fissile.Options.LightOpinions = filepath.Join(fissile.Options.WorkDir, "opinions.yml")
 	}
 
-	if flagDarkOpinions == "" {
-		flagDarkOpinions = filepath.Join(workDir, "dark-opinions.yml")
-	}
-}
-
-func validateBasicFlags() error {
-	var err error
-
-	flagRoleManifest = viper.GetString("role-manifest")
-	flagRelease = splitNonEmpty(viper.GetString("release"), ",")
-	flagReleaseName = splitNonEmpty(viper.GetString("release-name"), ",")
-	flagReleaseVersion = splitNonEmpty(viper.GetString("release-version"), ",")
-	flagCacheDir = viper.GetString("cache-dir")
-	flagWorkDir = viper.GetString("work-dir")
-	flagRepository = viper.GetString("repository")
-	flagDockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
-	flagDockerOrganization = viper.GetString("docker-organization")
-	flagDockerUsername = viper.GetString("docker-username")
-	flagDockerPassword = viper.GetString("docker-password")
-	flagWorkers = viper.GetInt("workers")
-	flagLightOpinions = viper.GetString("light-opinions")
-	flagDarkOpinions = viper.GetString("dark-opinions")
-	flagOutputFormat = viper.GetString("output")
-	flagMetrics = viper.GetString("metrics")
-	flagVerbose = viper.GetBool("verbose")
-
-	extendPathsFromWorkDirectory()
-
-	if flagWorkers < 1 {
-		flagWorkers = runtime.NumCPU()
+	if fissile.Options.DarkOpinions == "" {
+		fissile.Options.DarkOpinions = filepath.Join(fissile.Options.WorkDir, "dark-opinions.yml")
 	}
 
-	if err = absolutePaths(
-		&flagRoleManifest,
-		&flagCacheDir,
-		&flagWorkDir,
-		&flagLightOpinions,
-		&flagDarkOpinions,
-		&flagMetrics,
-		&workPathCompilationDir,
-		&workPathConfigDir,
-		&workPathBaseDockerfile,
-		&workPathDockerDir,
-	); err != nil {
-		return err
+	if fissile.Options.Workers < 1 {
+		fissile.Options.Workers = runtime.NumCPU()
 	}
 
-	if flagRelease, err = absolutePathsForArray(flagRelease); err != nil {
-		return err
+	err := absolutePaths(
+		&fissile.Options.RoleManifest,
+		&fissile.Options.CacheDir,
+		&fissile.Options.WorkDir,
+		&fissile.Options.LightOpinions,
+		&fissile.Options.DarkOpinions,
+		&fissile.Options.Metrics,
+	)
+	if err == nil {
+		fissile.Options.Releases, err = absolutePathsForArray(fissile.Options.Releases)
 	}
-
-	return nil
+	return err
 }
 
 func validateReleaseArgs() error {
-	releasePathsCount := len(flagRelease)
-	releaseNamesCount := len(flagReleaseName)
-	releaseVersionsCount := len(flagReleaseVersion)
+	releasePathsCount := len(fissile.Options.Releases)
+	releaseNamesCount := len(fissile.Options.ReleaseNames)
+	releaseVersionsCount := len(fissile.Options.ReleaseVersions)
 
 	argList := fmt.Sprintf(
 		"validateDevReleaseArgs: paths:%s (%d), names:%s (%d), versions:%s (%d)\n",
-		flagRelease,
+		fissile.Options.Releases,
 		releasePathsCount,
-		flagReleaseName,
+		fissile.Options.ReleaseNames,
 		releaseNamesCount,
-		flagReleaseVersion,
+		fissile.Options.ReleaseVersions,
 		releaseVersionsCount,
 	)
 

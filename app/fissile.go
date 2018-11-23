@@ -42,8 +42,43 @@ type Fissile struct {
 	Version   string
 	UI        *termui.UI
 	Manifest  *model.RoleManifest
+	Options   FissileOptions
 	cmdErr    error
 	graphFile *os.File
+}
+
+// FissileOptions contains the values of all global fissile application options
+type FissileOptions struct {
+	RoleManifest       string
+	Releases           []string
+	ReleaseNames       []string
+	ReleaseVersions    []string
+	CacheDir           string
+	WorkDir            string
+	DockerRegistry     string
+	DockerOrganization string
+	DockerUsername     string
+	DockerPassword     string
+	Repository         string
+	Workers            int
+	LightOpinions      string
+	DarkOpinions       string
+	OutputFormat       string
+	Metrics            string
+	Verbose            bool
+}
+
+// BuildImagesOptions contains all option values for the `fissile build images` command.
+type BuildImagesOptions struct {
+	NoBuild                  bool
+	Force                    bool
+	Roles                    []string
+	PatchPropertiesDirective string
+	OutputDirectory          string
+	Stemcell                 string
+	StemcellID               string
+	TagExtra                 string
+	Labels                   map[string]string
 }
 
 // NewFissileApplication creates a new app.Fissile
@@ -54,16 +89,26 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
+// CompilationDir returns the path to the compilation directory
+func (f *Fissile) CompilationDir() string {
+	return filepath.Join(f.Options.WorkDir, "compilation")
+}
+
+// DockerDir returns the path to the Docker dir
+func (f *Fissile) DockerDir() string {
+	return filepath.Join(f.Options.WorkDir, "dockerfiles")
+}
+
 // LoadManifest loads the manifest in use by fissile
-func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
+func (f *Fissile) LoadManifest() error {
 	roleManifest, err := loader.LoadRoleManifest(
-		roleManifestPath,
+		f.Options.RoleManifest,
 		model.LoadRoleManifestOptions{
 			ReleaseOptions: model.ReleaseOptions{
-				ReleasePaths:    releasePaths,
-				ReleaseNames:    releaseNames,
-				ReleaseVersions: releaseVersions,
-				BOSHCacheDir:    cacheDir,
+				ReleasePaths:    f.Options.Releases,
+				ReleaseNames:    f.Options.ReleaseNames,
+				ReleaseVersions: f.Options.ReleaseVersions,
+				BOSHCacheDir:    f.Options.CacheDir,
 			},
 			Grapher: f,
 		},
@@ -77,7 +122,7 @@ func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNam
 }
 
 // ListPackages will list all BOSH packages within a list of releases
-func (f *Fissile) ListPackages(verbose bool) error {
+func (f *Fissile) ListPackages() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -85,7 +130,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 	for _, release := range f.Manifest.LoadedReleases {
 		var releasePath string
 
-		if verbose {
+		if f.Options.Verbose {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
@@ -94,7 +139,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 		for _, pkg := range release.Packages {
 			var isCached string
 
-			if verbose {
+			if f.Options.Verbose {
 				if _, err := os.Stat(pkg.Path); err == nil {
 					isCached = color.WhiteString(" (cached at %s)", pkg.Path)
 				} else {
@@ -115,7 +160,7 @@ func (f *Fissile) ListPackages(verbose bool) error {
 }
 
 // ListJobs will list all jobs within a list of releases
-func (f *Fissile) ListJobs(verbose bool) error {
+func (f *Fissile) ListJobs() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -123,7 +168,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 	for _, release := range f.Manifest.LoadedReleases {
 		var releasePath string
 
-		if verbose {
+		if f.Options.Verbose {
 			releasePath = color.WhiteString(" (%s)", release.Path)
 		}
 
@@ -132,7 +177,7 @@ func (f *Fissile) ListJobs(verbose bool) error {
 		for _, job := range release.Jobs {
 			var isCached string
 
-			if verbose {
+			if f.Options.Verbose {
 				if _, err := os.Stat(job.Path); err == nil {
 					isCached = color.WhiteString(" (cached at %s)", job.Path)
 				} else {
@@ -153,12 +198,12 @@ func (f *Fissile) ListJobs(verbose bool) error {
 }
 
 // ListProperties will list all properties in all jobs within a list of releases
-func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
+func (f *Fissile) ListProperties() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	switch outputFormat {
+	switch f.Options.OutputFormat {
 	case OutputFormatHuman:
 		f.listPropertiesForHuman()
 	case OutputFormatJSON:
@@ -180,7 +225,7 @@ func (f *Fissile) ListProperties(outputFormat OutputFormat) error {
 
 		f.UI.Printf("%s", buf)
 	default:
-		return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", outputFormat)
+		return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", f.Options.OutputFormat)
 	}
 
 	return nil
@@ -378,7 +423,8 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 
 // CleanCache inspects the compilation cache and removes all packages
 // which are not referenced (anymore).
-func (f *Fissile) CleanCache(targetPath string) error {
+func (f *Fissile) CleanCache() error {
+	targetPath := f.CompilationDir()
 	// 1. Collect list of packages referenced by the releases. A
 	//    variant of the code in ListPackages, we keep only the
 	//    hashes.
@@ -440,7 +486,8 @@ func (f *Fissile) CleanCache(targetPath string) error {
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
+func (f *Fissile) GeneratePackagesRoleImage(opt BuildImagesOptions, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder) error {
+
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
@@ -450,24 +497,24 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return fmt.Errorf("Error finding instance group's package name: %s", err.Error())
 	}
-	if !force {
+	if !opt.Force {
 		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(packagesLayerImageName))
 			return nil
 		}
 	}
 
-	if hasImage, err := dockerManager.HasImage(stemcellImageName); err != nil {
+	if hasImage, err := dockerManager.HasImage(opt.Stemcell); err != nil {
 		return fmt.Errorf("Error looking up stemcell image: %s", err)
 	} else if !hasImage {
-		return fmt.Errorf("Failed to find stemcell image %s. Did you pull it?", stemcellImageName)
+		return fmt.Errorf("Failed to find stemcell image %s. Did you pull it?", opt.Stemcell)
 	}
 
-	if noBuild {
+	if opt.NoBuild {
 		f.UI.Println("Skipping packages layer docker image build because of --no-build flag.")
 		return nil
 	}
@@ -480,7 +527,7 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 		docker.ColoredBuildStringFunc(packagesLayerImageName),
 	)
 
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, labels, force)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, opt.Labels, opt.Force)
 	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
@@ -493,18 +540,18 @@ func (f *Fissile) GeneratePackagesRoleImage(stemcellImageName string, roleManife
 
 // GeneratePackagesRoleTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
-func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *model.RoleManifest, noBuild, force bool, instanceGroups model.InstanceGroups, outputDirectory string, packagesImageBuilder *builder.PackagesImageBuilder, labels map[string]string) error {
+func (f *Fissile) GeneratePackagesRoleTarball(opt BuildImagesOptions, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder) error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(roleManifest, instanceGroups, f)
+	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return fmt.Errorf("Error finding instance group's package name: %v", err)
 	}
-	outputPath := filepath.Join(outputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
+	outputPath := filepath.Join(opt.OutputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
 
-	if !force {
+	if !opt.Force {
 		info, err := os.Stat(outputPath)
 		if err == nil && !info.IsDir() {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(outputPath))
@@ -512,7 +559,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 		}
 	}
 
-	if noBuild {
+	if opt.NoBuild {
 		f.UI.Println("Skipping packages layer tarball build because of --no-build flag.")
 		return nil
 	}
@@ -527,7 +574,7 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 
 	// We always force build all packages here to avoid needing to talk to the
 	// docker daemon to figure out what we can keep
-	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, labels, true)
+	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, opt.Labels, true)
 	err = tarPopulator(tarWriter)
 	if err != nil {
 		return fmt.Errorf("Error writing tar file: %s", err)
@@ -542,42 +589,38 @@ func (f *Fissile) GeneratePackagesRoleTarball(repository string, roleManifest *m
 }
 
 // GenerateRoleImages generates all role images using releases
-func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, repository, stemcellImageName, stemcellImageID, metricsPath string, noBuild, force bool, tagExtra string, instanceGroupNames []string, workerCount int, compiledPackagesPath, lightManifestPath, darkManifestPath, outputDirectory string, labels map[string]string) error {
+func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
 
-	if metricsPath != "" {
-		stampy.Stamp(metricsPath, "fissile", "create-images", "start")
-		defer stampy.Stamp(metricsPath, "fissile", "create-images", "done")
+	if f.Options.Metrics != "" {
+		stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "start")
+		defer stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "done")
 	}
 
-	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	if err != nil {
-		return err
-	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
+	if errs := f.Validate(); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
 
-	if outputDirectory != "" {
-		err = os.MkdirAll(outputDirectory, 0755)
+	if opt.OutputDirectory != "" {
+		err := os.MkdirAll(opt.OutputDirectory, 0755)
 		if err != nil {
 			if os.IsExist(err) {
-				return fmt.Errorf("Output directory %s exists and is not a directory", outputDirectory)
+				return fmt.Errorf("Output directory %s exists and is not a directory", opt.OutputDirectory)
 			}
 			if err != nil {
-				return fmt.Errorf("Error creating directory %s: %s", outputDirectory, err)
+				return fmt.Errorf("Error creating directory %s: %s", opt.OutputDirectory, err)
 			}
 		}
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
-		repository,
-		stemcellImageName,
-		stemcellImageID,
-		compiledPackagesPath,
-		targetPath,
+		f.Options.Repository,
+		opt.Stemcell,
+		opt.StemcellID,
+		f.CompilationDir(),
+		f.DockerDir(),
 		f.Version,
 		f.UI,
 	)
@@ -585,15 +628,15 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	instanceGroups, err := f.Manifest.SelectInstanceGroups(instanceGroupNames)
+	instanceGroups, err := f.Manifest.SelectInstanceGroups(opt.Roles)
 	if err != nil {
 		return err
 	}
 
-	if outputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(stemcellImageName, f.Manifest, noBuild, force, instanceGroups, packagesImageBuilder, labels)
+	if opt.OutputDirectory == "" {
+		err = f.GeneratePackagesRoleImage(opt, instanceGroups, packagesImageBuilder)
 	} else {
-		err = f.GeneratePackagesRoleTarball(stemcellImageName, f.Manifest, noBuild, force, instanceGroups, outputDirectory, packagesImageBuilder, labels)
+		err = f.GeneratePackagesRoleTarball(opt, instanceGroups, packagesImageBuilder)
 	}
 	if err != nil {
 		return err
@@ -605,14 +648,14 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 	}
 
 	roleBuilder, err := builder.NewRoleImageBuilder(
-		stemcellImageName,
-		compiledPackagesPath,
-		targetPath,
+		opt.Stemcell,
+		f.CompilationDir(),
+		f.DockerDir(),
 		f.Manifest.ManifestFilePath,
-		lightManifestPath,
-		darkManifestPath,
-		metricsPath,
-		tagExtra,
+		f.Options.LightOpinions,
+		f.Options.DarkOpinions,
+		f.Options.Metrics,
+		opt.TagExtra,
 		f.Version,
 		f.UI,
 		f,
@@ -621,11 +664,11 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		return err
 	}
 
-	return roleBuilder.BuildRoleImages(instanceGroups, registry, organization, repository, packagesLayerImageName, outputDirectory, force, noBuild, workerCount)
+	return roleBuilder.BuildRoleImages(instanceGroups, f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.Repository, packagesLayerImageName, opt.OutputDirectory, opt.Force, opt.NoBuild, f.Options.Workers)
 }
 
 // ListRoleImages lists all dev role images
-func (f *Fissile) ListRoleImages(registry, organization, repository, opinionsPath, darkOpinionsPath string, existingOnDocker, withVirtualSize bool, tagExtra string) error {
+func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtra string) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
 	}
@@ -644,7 +687,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, opinionsPat
 		}
 	}
 
-	opinions, err := model.NewOpinions(opinionsPath, darkOpinionsPath)
+	opinions, err := model.NewOpinions(f.Options.LightOpinions, f.Options.DarkOpinions)
 	if err != nil {
 		return fmt.Errorf("Error loading opinions: %s", err.Error())
 	}
@@ -655,7 +698,7 @@ func (f *Fissile) ListRoleImages(registry, organization, repository, opinionsPat
 			return fmt.Errorf("Error creating instance group checksum: %s", err.Error())
 		}
 
-		imageName := builder.GetRoleDevImageName(registry, organization, repository, instanceGroup, devVersion)
+		imageName := builder.GetRoleDevImageName(f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.Repository, instanceGroup, devVersion)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)
@@ -1243,20 +1286,5 @@ func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) er
 	if _, err := fmt.Fprintf(f.graphFile, "\"%s\" -> \"%s\" %s\n", fromNode, toNode, attrString); err != nil {
 		return err
 	}
-	return nil
-}
-
-// Validate runs all checks against all inputs
-func (f *Fissile) Validate(lightManifestPath, darkManifestPath string) error {
-	var err error
-
-	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	if err != nil {
-		return err
-	}
-	if errs := f.validateManifestAndOpinions(f.Manifest, opinions); len(errs) != 0 {
-		return fmt.Errorf(errs.Errors())
-	}
-
 	return nil
 }

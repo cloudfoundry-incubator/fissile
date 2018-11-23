@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 )
 
@@ -14,20 +13,12 @@ Displays a report of all properties of all the jobs in the referenced releases.
 The report lists the properties per job per release, with their default value.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Show property information
-
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
-		return fissile.ListProperties(app.OutputFormat(flagOutputFormat))
+		return fissile.ListProperties()
 	},
 }
 

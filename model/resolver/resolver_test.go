@@ -9,7 +9,6 @@ import (
 	. "code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/model/resolver"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

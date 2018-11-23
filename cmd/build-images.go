@@ -4,21 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-var (
-	flagBuildImagesNoBuild       bool
-	flagBuildImagesForce         bool
-	flagBuildImagesRoles         string
-	flagPatchPropertiesDirective string
-	flagOutputDirectory          string
-
-	flagBuildImagesStemcell   string
-	flagBuildImagesStemcellID string
-	flagBuildImagesTagExtra   string
-	flagLabels                []string
 )
 
 // buildImagesCmd represents the images command
@@ -45,32 +33,37 @@ The ` + "`--patch-properties-release`" + ` flag is used to distinguish the patch
 from other specs.  At most one is allowed.
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var opt app.BuildImagesOptions
 
-		flagBuildImagesNoBuild = buildImagesViper.GetBool("no-build")
-		flagBuildImagesForce = buildImagesViper.GetBool("force")
-		flagBuildImagesRoles = buildImagesViper.GetString("roles")
-		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
-		flagOutputDirectory = buildImagesViper.GetString("output-directory")
-		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
-		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
-		flagBuildImagesTagExtra = buildImagesViper.GetString("tag-extra")
+		opt.NoBuild = buildImagesViper.GetBool("no-build")
+		opt.Force = buildImagesViper.GetBool("force")
+		opt.PatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
+		opt.OutputDirectory = buildImagesViper.GetString("output-directory")
+		opt.Stemcell = buildImagesViper.GetString("stemcell")
+		opt.StemcellID = buildImagesViper.GetString("stemcell-id")
+		opt.TagExtra = buildImagesViper.GetString("tag-extra")
+
+		opt.Roles = strings.FieldsFunc(buildImagesViper.GetString("roles"), func(r rune) bool { return r == ',' })
+
+		for _, label := range buildImagesViper.GetStringSlice("add-label") {
+			parts := strings.Split(label, "=")
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid label format '%s'. Use: --add-label \"foo=bar\"", label)
+			}
+			opt.Labels[parts[0]] = parts[1]
+		}
+
+		// "global" fissile build option
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
-		flagLabels = buildImagesViper.GetStringSlice("add-label")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
-		if flagOutputDirectory != "" && !flagBuildImagesForce {
+		if opt.OutputDirectory != "" && !opt.Force {
 			fissile.UI.Printf("--force required when --output-directory is set\n")
-			flagBuildImagesForce = true
+			opt.Force = true
 		}
 
 		if flagBuildOutputGraph != "" {
@@ -83,34 +76,7 @@ from other specs.  At most one is allowed.
 			}()
 		}
 
-		labels := map[string]string{}
-		for _, label := range flagLabels {
-			parts := strings.Split(label, "=")
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid label format '%s'. Use: --add-label \"foo=bar\"", label)
-			}
-			labels[parts[0]] = parts[1]
-		}
-
-		return fissile.GenerateRoleImages(
-			workPathDockerDir,
-			flagDockerRegistry,
-			flagDockerOrganization,
-			flagRepository,
-			flagBuildImagesStemcell,
-			flagBuildImagesStemcellID,
-			flagMetrics,
-			flagBuildImagesNoBuild,
-			flagBuildImagesForce,
-			flagBuildImagesTagExtra,
-			strings.FieldsFunc(flagBuildImagesRoles, func(r rune) bool { return r == ',' }),
-			flagWorkers,
-			workPathCompilationDir,
-			flagLightOpinions,
-			flagDarkOpinions,
-			flagOutputDirectory,
-			labels,
-		)
+		return fissile.GenerateRoleImages(opt)
 	},
 }
 var buildImagesViper = viper.New()

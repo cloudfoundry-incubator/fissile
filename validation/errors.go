@@ -73,6 +73,9 @@ const (
 	// This is similar to ErrorTypeInvalid, but the error will not include the
 	// too-long value.  See TooLong().
 	ErrorTypeTooLong ErrorType = "FieldValueTooLong"
+	// ErrorTypeGeneral is used to report general errors without additional
+	// details.
+	ErrorTypeGeneral ErrorType = "GeneralError"
 	// ErrorTypeInternal is used to report other errors that are not related
 	// to user input.  See InternalError().
 	ErrorTypeInternal ErrorType = "InternalError"
@@ -95,6 +98,8 @@ func (t ErrorType) String() string {
 		return "Forbidden"
 	case ErrorTypeTooLong:
 		return "Too long"
+	case ErrorTypeGeneral:
+		return "Error"
 	case ErrorTypeInternal:
 		return "Internal error"
 	default:
@@ -152,6 +157,13 @@ func Forbidden(field string, detail string) *Error {
 // value.
 func TooLong(field string, value interface{}, maxLength int) *Error {
 	return &Error{ErrorTypeTooLong, field, value, fmt.Sprintf("must have at most %d characters", maxLength)}
+}
+
+// GeneralError returns a *Error for a general failure.  This is used
+// to signal that an error was found that has no structured details.  The
+// err argument must be non-nil.
+func GeneralError(field string, err error) *Error {
+	return &Error{ErrorTypeGeneral, field, nil, err.Error()}
 }
 
 // InternalError returns a *Error indicating "internal error".  This is used

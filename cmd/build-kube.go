@@ -27,20 +27,14 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
 		opinions, err := model.NewOpinions(
-			flagLightOpinions,
-			flagDarkOpinions,
+			fissile.Options.LightOpinions,
+			fissile.Options.DarkOpinions,
 		)
 		if err != nil {
 			return err
@@ -48,11 +42,11 @@ var buildKubeCmd = &cobra.Command{
 
 		settings := kube.ExportSettings{
 			OutputDir:       flagBuildKubeOutputDir,
-			Registry:        flagDockerRegistry,
-			Username:        flagDockerUsername,
-			Password:        flagDockerPassword,
-			Organization:    flagDockerOrganization,
-			Repository:      flagRepository,
+			Registry:        fissile.Options.DockerRegistry,
+			Username:        fissile.Options.DockerUsername,
+			Password:        fissile.Options.DockerPassword,
+			Organization:    fissile.Options.DockerOrganization,
+			Repository:      fissile.Options.Repository,
 			UseMemoryLimits: flagBuildKubeUseMemoryLimits,
 			UseCPULimits:    flagBuildKubeUseCPULimits,
 			FissileVersion:  fissile.Version,

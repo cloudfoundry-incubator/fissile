@@ -41,13 +41,7 @@ compiled once.
 		flagBuildCompilationCacheConfig := buildPackagesViper.GetString("compilation-cache-config")
 		flagBuildPackagesStreamPackages := buildPackagesViper.GetBool("stream-packages")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
@@ -66,19 +60,19 @@ compiled once.
 		if _, err := hasher.Write([]byte(flagBuildPackagesStemcell)); err != nil {
 			return err
 		}
-		compilationDir := filepath.Join(workPathCompilationDir, hex.EncodeToString(hasher.Sum(nil)))
+		compilationDir := filepath.Join(fissile.CompilationDir(), hex.EncodeToString(hasher.Sum(nil)))
 
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
 			compilationDir,
-			flagRoleManifest,
-			flagMetrics,
+			fissile.Options.RoleManifest,
+			fissile.Options.Metrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),
 			strings.FieldsFunc(flagBuildPackagesOnlyReleases, func(r rune) bool { return r == ',' }),
-			flagWorkers,
+			fissile.Options.Workers,
 			flagBuildPackagesDockerNetworkMode,
 			flagBuildPackagesWithoutDocker,
-			flagVerbose,
+			fissile.Options.Verbose,
 			flagBuildCompilationCacheConfig,
 			flagBuildPackagesStreamPackages,
 		)

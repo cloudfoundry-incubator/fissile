@@ -29,20 +29,14 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
 		opinions, err := model.NewOpinions(
-			flagLightOpinions,
-			flagDarkOpinions,
+			fissile.Options.LightOpinions,
+			fissile.Options.DarkOpinions,
 		)
 		if err != nil {
 			return err
@@ -50,11 +44,11 @@ var buildHelmCmd = &cobra.Command{
 
 		settings := kube.ExportSettings{
 			OutputDir:       flagBuildHelmOutputDir,
-			Registry:        flagDockerRegistry,
-			Username:        flagDockerUsername,
-			Password:        flagDockerPassword,
-			Organization:    flagDockerOrganization,
-			Repository:      flagRepository,
+			Registry:        fissile.Options.DockerRegistry,
+			Username:        fissile.Options.DockerUsername,
+			Password:        fissile.Options.DockerPassword,
+			Organization:    fissile.Options.DockerOrganization,
+			Repository:      fissile.Options.Repository,
 			UseMemoryLimits: flagBuildHelmUseMemoryLimits,
 			UseCPULimits:    flagBuildHelmUseCPULimits,
 			FissileVersion:  fissile.Version,
