@@ -74,6 +74,11 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
+// Cleanup is a destructor
+func (f *Fissile) Cleanup() {
+	f.GraphEnd()
+}
+
 // CompilationDir returns the path to the compilation directory
 func (f *Fissile) CompilationDir() string {
 	return filepath.Join(f.Options.WorkDir, "compilation")
@@ -1030,6 +1035,9 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 
 // GraphBegin will start logging hash information to the given file
 func (f *Fissile) GraphBegin(outputPath string) error {
+	if outputPath == "" {
+		return nil
+	}
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return err

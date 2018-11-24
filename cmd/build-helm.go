@@ -21,15 +21,18 @@ var buildHelmCmd = &cobra.Command{
 	Short: "Creates Helm chart.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		flagBuildHelmOutputDir = buildHelmViper.GetString("output-dir")
 		flagBuildHelmUseMemoryLimits = buildHelmViper.GetBool("use-memory-limits")
 		flagBuildHelmUseCPULimits = buildHelmViper.GetBool("use-cpu-limits")
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
 
-		err := fissile.LoadManifest()
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
+		if err != nil {
+			return err
+		}
+
+		err = fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
@@ -56,16 +59,6 @@ var buildHelmCmd = &cobra.Command{
 			CreateHelmChart: true,
 			TagExtra:        flagBuildHelmTagExtra,
 			AuthType:        flagBuildHelmAuthType,
-		}
-
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
 		}
 
 		return fissile.GenerateKube(settings)

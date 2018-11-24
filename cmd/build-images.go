@@ -53,10 +53,12 @@ from other specs.  At most one is allowed.
 			opt.Labels[parts[0]] = parts[1]
 		}
 
-		// "global" fissile build option
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
+		if err != nil {
+			return err
+		}
 
-		err := fissile.LoadManifest()
+		err = fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
@@ -64,16 +66,6 @@ from other specs.  At most one is allowed.
 		if opt.OutputDirectory != "" && !opt.Force {
 			fissile.UI.Printf("--force required when --output-directory is set\n")
 			opt.Force = true
-		}
-
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
 		}
 
 		return fissile.GenerateRoleImages(opt)

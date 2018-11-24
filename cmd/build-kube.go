@@ -20,14 +20,17 @@ var buildKubeCmd = &cobra.Command{
 	Short: "Creates Kubernetes configuration files.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
 		flagBuildKubeUseCPULimits = buildKubeViper.GetBool("use-cpu-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
-		err := fissile.LoadManifest()
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
+		if err != nil {
+			return err
+		}
+
+		err = fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
@@ -53,16 +56,6 @@ var buildKubeCmd = &cobra.Command{
 			Opinions:        opinions,
 			CreateHelmChart: false,
 			TagExtra:        flagBuildKubeTagExtra,
-		}
-
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
 		}
 
 		return fissile.GenerateKube(settings)

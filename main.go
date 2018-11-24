@@ -40,6 +40,7 @@ func main() {
 	}
 
 	f := app.NewFissileApplication(version, ui)
+	defer f.Cleanup()
 
 	if err := cmd.Execute(f, version); err != nil {
 		ui.Println(color.RedString("%v", err))

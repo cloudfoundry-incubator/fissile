@@ -5,10 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagBuildOutputGraph string
-)
-
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
 	Use:   "build",

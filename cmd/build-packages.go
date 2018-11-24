@@ -31,29 +31,22 @@ same package (with the same version) is used by multiple releases, it will only 
 compiled once.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		flagBuildPackagesRoles := buildPackagesViper.GetString("roles")
 		flagBuildPackagesOnlyReleases := buildPackagesViper.GetString("only-releases")
 		flagBuildPackagesWithoutDocker := buildPackagesViper.GetBool("without-docker")
 		flagBuildPackagesDockerNetworkMode := buildPackagesViper.GetString("docker-network-mode")
 		flagBuildPackagesStemcell := buildPackagesViper.GetString("stemcell")
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildCompilationCacheConfig := buildPackagesViper.GetString("compilation-cache-config")
 		flagBuildPackagesStreamPackages := buildPackagesViper.GetBool("stream-packages")
 
-		err := fissile.LoadManifest()
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
 		if err != nil {
 			return err
 		}
 
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
+		err = fissile.LoadManifest()
+		if err != nil {
+			return err
 		}
 
 		hasher := sha1.New()
