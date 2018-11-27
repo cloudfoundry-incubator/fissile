@@ -57,7 +57,7 @@ type FissileOptions struct {
 	DockerOrganization string
 	DockerUsername     string
 	DockerPassword     string
-	Repository         string
+	RepositoryPrefix   string
 	Workers            int
 	LightOpinions      string
 	DarkOpinions       string
@@ -505,7 +505,7 @@ func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtr
 			return fmt.Errorf("Error creating instance group checksum: %s", err.Error())
 		}
 
-		imageName := builder.GetRoleDevImageName(f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.Repository, instanceGroup, devVersion)
+		imageName := builder.GetRoleDevImageName(f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.RepositoryPrefix, instanceGroup, devVersion)
 
 		if !existingOnDocker {
 			f.UI.Println(imageName)

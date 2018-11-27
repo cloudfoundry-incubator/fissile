@@ -213,7 +213,7 @@ func validateBasicFlags() error {
 	fissile.Options.ReleaseVersions = splitNonEmpty(viper.GetString("release-version"), ",")
 	fissile.Options.CacheDir = viper.GetString("cache-dir")
 	fissile.Options.WorkDir = viper.GetString("work-dir")
-	fissile.Options.Repository = viper.GetString("repository")
+	fissile.Options.RepositoryPrefix = viper.GetString("repository")
 	fissile.Options.DockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")
 	fissile.Options.DockerOrganization = viper.GetString("docker-organization")
 	fissile.Options.DockerUsername = viper.GetString("docker-username")

@@ -55,7 +55,7 @@ func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
-		f.Options.Repository,
+		f.Options.RepositoryPrefix,
 		opt.Stemcell,
 		opt.StemcellID,
 		f.CompilationDir(),
@@ -103,7 +103,7 @@ func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 		return err
 	}
 
-	return roleBuilder.BuildRoleImages(instanceGroups, f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.Repository, packagesLayerImageName, opt.OutputDirectory, opt.Force, opt.NoBuild, f.Options.Workers)
+	return roleBuilder.BuildRoleImages(instanceGroups, f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.RepositoryPrefix, packagesLayerImageName, opt.OutputDirectory, opt.Force, opt.NoBuild, f.Options.Workers)
 }
 
 // GeneratePackagesRoleImage builds the docker image for the packages layer

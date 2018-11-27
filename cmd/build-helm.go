@@ -51,7 +51,7 @@ var buildHelmCmd = &cobra.Command{
 			Username:        fissile.Options.DockerUsername,
 			Password:        fissile.Options.DockerPassword,
 			Organization:    fissile.Options.DockerOrganization,
-			Repository:      fissile.Options.Repository,
+			Repository:      fissile.Options.RepositoryPrefix,
 			UseMemoryLimits: flagBuildHelmUseMemoryLimits,
 			UseCPULimits:    flagBuildHelmUseCPULimits,
 			FissileVersion:  fissile.Version,

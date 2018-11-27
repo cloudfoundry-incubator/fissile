@@ -49,7 +49,7 @@ var buildKubeCmd = &cobra.Command{
 			Username:        fissile.Options.DockerUsername,
 			Password:        fissile.Options.DockerPassword,
 			Organization:    fissile.Options.DockerOrganization,
-			Repository:      fissile.Options.Repository,
+			Repository:      fissile.Options.RepositoryPrefix,
 			UseMemoryLimits: flagBuildKubeUseMemoryLimits,
 			UseCPULimits:    flagBuildKubeUseCPULimits,
 			FissileVersion:  fissile.Version,
