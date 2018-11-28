@@ -58,17 +58,12 @@ from other specs.  At most one is allowed.
 			return err
 		}
 
-		err = fissile.LoadManifest()
-		if err != nil {
-			return err
-		}
-
 		if opt.OutputDirectory != "" && !opt.Force {
 			fissile.UI.Printf("--force required when --output-directory is set\n")
 			opt.Force = true
 		}
 
-		return fissile.GenerateRoleImages(opt)
+		return fissile.BuildImages(opt)
 	},
 }
 var buildImagesViper = viper.New()

@@ -41,7 +41,7 @@ type dockerImageBuilder interface {
 
 // RoleImageBuilder represents a builder of docker role images
 type RoleImageBuilder struct {
-	repository           string
+	repositoryPrefix     string
 	compiledPackagesPath string
 	targetPath           string
 	metricsPath          string
@@ -55,13 +55,13 @@ type RoleImageBuilder struct {
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, manifestPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repositoryPrefix, compiledPackagesPath, targetPath, manifestPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
 
 	return &RoleImageBuilder{
-		repository:           repository,
+		repositoryPrefix:     repositoryPrefix,
 		compiledPackagesPath: compiledPackagesPath,
 		targetPath:           targetPath,
 		metricsPath:          metricsPath,
@@ -361,20 +361,20 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 }
 
 type roleBuildJob struct {
-	instanceGroup   *model.InstanceGroup
-	builder         *RoleImageBuilder
-	ui              *termui.UI
-	grapher         util.ModelGrapher
-	force           bool
-	noBuild         bool
-	dockerManager   dockerImageBuilder
-	outputDirectory string
-	resultsCh       chan<- error
-	abort           <-chan struct{}
-	registry        string
-	organization    string
-	repository      string
-	baseImageName   string
+	instanceGroup    *model.InstanceGroup
+	builder          *RoleImageBuilder
+	ui               *termui.UI
+	grapher          util.ModelGrapher
+	force            bool
+	noBuild          bool
+	dockerManager    dockerImageBuilder
+	outputDirectory  string
+	resultsCh        chan<- error
+	abort            <-chan struct{}
+	registry         string
+	organization     string
+	repositoryPrefix string
+	baseImageName    string
 }
 
 func (j roleBuildJob) Run() {
@@ -404,10 +404,10 @@ func (j roleBuildJob) Run() {
 		var outputPath string
 
 		if j.outputDirectory == "" {
-			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repository, j.instanceGroup, devVersion)
+			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repositoryPrefix, j.instanceGroup, devVersion)
 			outputPath = fmt.Sprintf("%s.tar", roleImageName)
 		} else {
-			roleImageName = GetRoleDevImageName("", "", j.repository, j.instanceGroup, devVersion)
+			roleImageName = GetRoleDevImageName("", "", j.repositoryPrefix, j.instanceGroup, devVersion)
 			outputPath = filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		}
 
@@ -486,8 +486,8 @@ func (j roleBuildJob) Run() {
 	}()
 }
 
-// BuildRoleImages triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) BuildRoleImages(instanceGroups model.InstanceGroups, registry, organization, repository, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
+// Build triggers the building of the role docker images in parallel
+func (r *RoleImageBuilder) Build(instanceGroups model.InstanceGroups, registry, organization, repositoryPrefix, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
 	if workerCount < 1 {
 		return fmt.Errorf("Invalid worker count %d", workerCount)
 	}
@@ -510,20 +510,20 @@ func (r *RoleImageBuilder) BuildRoleImages(instanceGroups model.InstanceGroups, 
 	abort := make(chan struct{})
 	for _, instanceGroup := range instanceGroups {
 		worker.Add(roleBuildJob{
-			instanceGroup:   instanceGroup,
-			builder:         r,
-			ui:              r.ui,
-			grapher:         r.grapher,
-			force:           force,
-			noBuild:         noBuild,
-			dockerManager:   dockerManager,
-			outputDirectory: outputDirectory,
-			resultsCh:       resultsCh,
-			abort:           abort,
-			registry:        registry,
-			organization:    organization,
-			repository:      repository,
-			baseImageName:   baseImageName,
+			instanceGroup:    instanceGroup,
+			builder:          r,
+			ui:               r.ui,
+			grapher:          r.grapher,
+			force:            force,
+			noBuild:          noBuild,
+			dockerManager:    dockerManager,
+			outputDirectory:  outputDirectory,
+			resultsCh:        resultsCh,
+			abort:            abort,
+			registry:         registry,
+			organization:     organization,
+			repositoryPrefix: repositoryPrefix,
+			baseImageName:    baseImageName,
 		})
 	}
 
@@ -545,7 +545,7 @@ func (r *RoleImageBuilder) BuildRoleImages(instanceGroups model.InstanceGroups, 
 }
 
 // GetRoleDevImageName generates a docker image name to be used as a dev role image
-func GetRoleDevImageName(registry, organization, repository string, instanceGroup *model.InstanceGroup, version string) string {
+func GetRoleDevImageName(registry, organization, repositoryPrefix string, instanceGroup *model.InstanceGroup, version string) string {
 	var imageName string
 	if registry != "" {
 		imageName = registry + "/"
@@ -555,7 +555,7 @@ func GetRoleDevImageName(registry, organization, repository string, instanceGrou
 		imageName += util.SanitizeDockerName(organization) + "/"
 	}
 
-	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repository, instanceGroup.Name))
+	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repositoryPrefix, instanceGroup.Name))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(version))
 }

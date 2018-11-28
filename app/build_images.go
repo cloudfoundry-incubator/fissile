@@ -27,17 +27,15 @@ type BuildImagesOptions struct {
 	Labels                   map[string]string
 }
 
-// GenerateRoleImages generates all role images using releases
-func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
+// BuildImages builds all role images using releases
+func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
+	err := f.LoadManifest()
+	if err != nil {
+		return err
+	}
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
 	}
-
-	if f.Options.Metrics != "" {
-		stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "start")
-		defer stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "done")
-	}
-
 	if errs := f.Validate(); len(errs) != 0 {
 		return fmt.Errorf(errs.Errors())
 	}
@@ -52,6 +50,11 @@ func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 				return fmt.Errorf("Error creating directory %s: %s", opt.OutputDirectory, err)
 			}
 		}
+	}
+
+	if f.Options.Metrics != "" {
+		stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "start")
+		defer stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "done")
 	}
 
 	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
@@ -73,20 +76,20 @@ func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 	}
 
 	if opt.OutputDirectory == "" {
-		err = f.GeneratePackagesRoleImage(opt, instanceGroups, packagesImageBuilder)
+		err = f.buildPackagesImage(opt, instanceGroups, packagesImageBuilder)
 	} else {
-		err = f.GeneratePackagesRoleTarball(opt, instanceGroups, packagesImageBuilder)
+		err = f.buildPackagesTarball(opt, instanceGroups, packagesImageBuilder)
 	}
 	if err != nil {
 		return err
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
+	imageName, err := packagesImageBuilder.GetImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return err
 	}
 
-	roleBuilder, err := builder.NewRoleImageBuilder(
+	roleImageBuilder, err := builder.NewRoleImageBuilder(
 		opt.Stemcell,
 		f.CompilationDir(),
 		f.DockerDir(),
@@ -103,29 +106,38 @@ func (f *Fissile) GenerateRoleImages(opt BuildImagesOptions) error {
 		return err
 	}
 
-	return roleBuilder.BuildRoleImages(instanceGroups, f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.RepositoryPrefix, packagesLayerImageName, opt.OutputDirectory, opt.Force, opt.NoBuild, f.Options.Workers)
+	return roleImageBuilder.Build(
+		instanceGroups,
+		f.Options.DockerRegistry,
+		f.Options.DockerOrganization,
+		f.Options.RepositoryPrefix,
+		imageName,
+		opt.OutputDirectory,
+		opt.Force,
+		opt.NoBuild,
+		f.Options.Workers,
+	)
 }
 
-// GeneratePackagesRoleImage builds the docker image for the packages layer
+// buildPackagesImage builds the docker image for the packages layer
 // where all packages are included
-func (f *Fissile) GeneratePackagesRoleImage(opt BuildImagesOptions, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder) error {
-
-	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
-		return fmt.Errorf("Releases not loaded")
-	}
+func (f *Fissile) buildPackagesImage(
+	opt BuildImagesOptions,
+	instanceGroups model.InstanceGroups,
+	packagesImageBuilder *builder.PackagesImageBuilder) error {
 
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
+	imageName, err := packagesImageBuilder.GetImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return fmt.Errorf("Error finding instance group's package name: %s", err.Error())
 	}
 	if !opt.Force {
-		if hasImage, err := dockerManager.HasImage(packagesLayerImageName); err == nil && hasImage {
-			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(packagesLayerImageName))
+		if hasImage, err := dockerManager.HasImage(imageName); err == nil && hasImage {
+			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(imageName))
 			return nil
 		}
 	}
@@ -141,16 +153,12 @@ func (f *Fissile) GeneratePackagesRoleImage(opt BuildImagesOptions, instanceGrou
 		return nil
 	}
 
-	f.UI.Printf("Building packages layer docker image %s ...\n",
-		color.YellowString(packagesLayerImageName))
+	f.UI.Printf("Building packages layer docker image %s ...\n", color.YellowString(imageName))
 	log := new(bytes.Buffer)
-	stdoutWriter := docker.NewFormattingWriter(
-		log,
-		docker.ColoredBuildStringFunc(packagesLayerImageName),
-	)
+	stdoutWriter := docker.NewFormattingWriter(log, docker.ColoredBuildStringFunc(imageName))
 
 	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, opt.Labels, opt.Force)
-	err = dockerManager.BuildImageFromCallback(packagesLayerImageName, stdoutWriter, tarPopulator)
+	err = dockerManager.BuildImageFromCallback(imageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
 		return fmt.Errorf("Error building packages layer docker image: %s", err.Error())
@@ -160,18 +168,18 @@ func (f *Fissile) GeneratePackagesRoleImage(opt BuildImagesOptions, instanceGrou
 	return nil
 }
 
-// GeneratePackagesRoleTarball builds a tarball snapshot of the build context
+// buildPackagesTarball builds a tarball snapshot of the build context
 // for the docker image for the packages layer where all packages are included
-func (f *Fissile) GeneratePackagesRoleTarball(opt BuildImagesOptions, instanceGroups model.InstanceGroups, packagesImageBuilder *builder.PackagesImageBuilder) error {
-	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
-		return fmt.Errorf("Releases not loaded")
-	}
+func (f *Fissile) buildPackagesTarball(
+	opt BuildImagesOptions,
+	instanceGroups model.InstanceGroups,
+	packagesImageBuilder *builder.PackagesImageBuilder) error {
 
-	packagesLayerImageName, err := packagesImageBuilder.GetPackagesLayerImageName(f.Manifest, instanceGroups, f)
+	imageName, err := packagesImageBuilder.GetImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
 		return fmt.Errorf("Error finding instance group's package name: %v", err)
 	}
-	outputPath := filepath.Join(opt.OutputDirectory, fmt.Sprintf("%s.tar", packagesLayerImageName))
+	outputPath := filepath.Join(opt.OutputDirectory, fmt.Sprintf("%s.tar", imageName))
 
 	if !opt.Force {
 		info, err := os.Stat(outputPath)

@@ -55,7 +55,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
-	baseImage := roleImageBuilder.repository
+	baseImage := roleImageBuilder.repositoryPrefix
 	err = roleImageBuilder.generateDockerfile(roleManifest.InstanceGroups[0], baseImage, &dockerfileContents)
 	assert.NoError(err)
 
@@ -481,7 +481,7 @@ func TestBuildRoleImages(t *testing.T) {
 		return fmt.Errorf("Unknown docker image name %s", name)
 	}
 
-	err = roleImageBuilder.BuildRoleImages(
+	err = roleImageBuilder.Build(
 		roleManifest.InstanceGroups,
 		"test-registry.com:9000",
 		"test-organization",
@@ -503,7 +503,7 @@ func TestBuildRoleImages(t *testing.T) {
 	roleImageBuilder.targetPath = targetPath
 
 	// Should not allow invalid worker counts
-	err = roleImageBuilder.BuildRoleImages(
+	err = roleImageBuilder.Build(
 		roleManifest.InstanceGroups,
 		"test-registry.com:9000",
 		"test-organization",
@@ -531,7 +531,7 @@ func TestBuildRoleImages(t *testing.T) {
 		return fmt.Errorf("Unknown docker image name %s", name)
 	}
 
-	err = roleImageBuilder.BuildRoleImages(
+	err = roleImageBuilder.Build(
 		roleManifest.InstanceGroups,
 		"test-registry.com:9000",
 		"test-organization",
@@ -557,7 +557,7 @@ func TestBuildRoleImages(t *testing.T) {
 		buildersRan = append(buildersRan, name)
 		return nil
 	}
-	err = roleImageBuilder.BuildRoleImages(
+	err = roleImageBuilder.Build(
 		roleManifest.InstanceGroups,
 		"test-registry.com:9000",
 		"test-organization",
@@ -591,7 +591,7 @@ func TestBuildRoleImages(t *testing.T) {
 	mockBuilder.callback = func(name string) error {
 		return nil
 	}
-	err = roleImageBuilder.BuildRoleImages(
+	err = roleImageBuilder.Build(
 		roleManifest.InstanceGroups,
 		"test-registry.com:9000",
 		"test-organization",

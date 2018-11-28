@@ -22,7 +22,7 @@ import (
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image
 type PackagesImageBuilder struct {
-	repository           string
+	repositoryPrefix     string
 	stemcellImageID      string
 	stemcellImageName    string
 	compiledPackagesPath string
@@ -35,7 +35,7 @@ type PackagesImageBuilder struct {
 var baseImageOverride string
 
 // NewPackagesImageBuilder creates a new PackagesImageBuilder
-func NewPackagesImageBuilder(repository, stemcellImageName, stemcellImageID, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
+func NewPackagesImageBuilder(repositoryPrefix, stemcellImageName, stemcellImageID, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func NewPackagesImageBuilder(repository, stemcellImageName, stemcellImageID, com
 	}
 
 	return &PackagesImageBuilder{
-		repository:           repository,
+		repositoryPrefix:     repositoryPrefix,
 		stemcellImageID:      stemcellImageID,
 		stemcellImageName:    stemcellImageName,
 		compiledPackagesPath: filepath.Join(compiledPackagesPath, hex.EncodeToString(hasher.Sum(nil))),
@@ -127,10 +127,10 @@ func (p *PackagesImageBuilder) fissileVersionLabel() string {
 		strings.Replace(p.fissileVersion, "+", "_", -1))
 }
 
-// determinePackagesLayerBaseImage finds the best base image to use for the
+// determineBaseImage finds the best base image to use for the
 // packages layer image.  Given a list of packages, it returns the base image
 // name to use, as well as the set of packages that still need to be inserted.
-func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Packages) (string, model.Packages, error) {
+func (p *PackagesImageBuilder) determineBaseImage(packages model.Packages) (string, model.Packages, error) {
 	baseImageName := p.stemcellImageName
 	if baseImageOverride != "" {
 		baseImageName = baseImageOverride
@@ -203,7 +203,7 @@ func (p *PackagesImageBuilder) NewDockerPopulator(instanceGroups model.InstanceG
 		dockerfile := bytes.Buffer{}
 		baseImageName := p.stemcellImageName
 		if !forceBuildAll {
-			baseImageName, packages, err = p.determinePackagesLayerBaseImage(packages)
+			baseImageName, packages, err = p.determineBaseImage(packages)
 			if err != nil {
 				return err
 			}
@@ -266,8 +266,8 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 	return dockerfileTemplate.Execute(outputFile, context)
 }
 
-// GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified instance group
-func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, instanceGroups model.InstanceGroups, grapher util.ModelGrapher) (string, error) {
+// GetImageName generates a docker image name for the amalgamation holding all packages used in the specified instance group
+func (p *PackagesImageBuilder) GetImageName(roleManifest *model.RoleManifest, instanceGroups model.InstanceGroups, grapher util.ModelGrapher) (string, error) {
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
 	for _, r := range instanceGroups {
@@ -292,7 +292,7 @@ func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.Rol
 		hasher.Write([]byte(strings.Join([]string{"", pkg.Fingerprint, pkg.Name, pkg.SHA1}, "\000")))
 	}
 
-	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repository))
+	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repositoryPrefix))
 	imageTag := util.SanitizeDockerName(hex.EncodeToString(hasher.Sum(nil)))
 	result := fmt.Sprintf("%s:%s", imageName, imageTag)
 
