@@ -20,17 +20,17 @@ func TestWriteConfigs(t *testing.T) {
 				Default: "bar",
 			},
 		},
-		AvailableProviders: map[string]jobProvidesInfo{
-			"<not used>": jobProvidesInfo{
-				jobLinkInfo: jobLinkInfo{
+		AvailableProviders: map[string]JobProvidesInfo{
+			"<not used>": JobProvidesInfo{
+				JobLinkInfo: JobLinkInfo{
 					Name: "<not used>",
 				},
 				Properties: []string{"exported-prop"},
 			},
 		},
-		DesiredConsumers: []jobConsumesInfo{
-			jobConsumesInfo{
-				jobLinkInfo: jobLinkInfo{
+		DesiredConsumers: []JobConsumesInfo{
+			JobConsumesInfo{
+				JobLinkInfo: JobLinkInfo{
 					Name: "serious",
 					Type: "serious-type",
 				},
@@ -44,9 +44,9 @@ func TestWriteConfigs(t *testing.T) {
 			{
 				Job:  job,
 				Name: "silly job",
-				ResolvedConsumers: map[string]jobConsumesInfo{
-					"serious": jobConsumesInfo{
-						jobLinkInfo: jobLinkInfo{
+				ResolvedConsumers: map[string]JobConsumesInfo{
+					"serious": JobConsumesInfo{
+						JobLinkInfo: JobLinkInfo{
 							Name:     "serious",
 							Type:     "serious-type",
 							RoleName: "dummy role",

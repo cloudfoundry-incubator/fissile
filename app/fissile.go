@@ -16,6 +16,8 @@ import (
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/kube"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model/loader"
+	"code.cloudfoundry.org/fissile/model/releaseresolver"
 	"code.cloudfoundry.org/fissile/scripts/compilation"
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/stampy"
@@ -54,12 +56,18 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 
 // LoadManifest loads the manifest in use by fissile
 func (f *Fissile) LoadManifest(roleManifestPath string, releasePaths, releaseNames, releaseVersions []string, cacheDir string) error {
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths:    releasePaths,
-		ReleaseNames:    releaseNames,
-		ReleaseVersions: releaseVersions,
-		BOSHCacheDir:    cacheDir,
-		Grapher:         f})
+	roleManifest, err := loader.LoadRoleManifest(
+		roleManifestPath,
+		model.LoadRoleManifestOptions{
+			ReleaseOptions: model.ReleaseOptions{
+				ReleasePaths:    releasePaths,
+				ReleaseNames:    releaseNames,
+				ReleaseVersions: releaseVersions,
+				BOSHCacheDir:    cacheDir,
+			},
+			Grapher: f,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
 	}
@@ -716,7 +724,11 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
 	defaultValues := []string{}
-	releases, err := model.LoadReleases(releasePaths, defaultValues, defaultValues, cacheDir)
+	releases, err := releaseresolver.LoadReleasesFromDisk(model.ReleaseOptions{
+		ReleasePaths:    releasePaths,
+		ReleaseNames:    defaultValues,
+		ReleaseVersions: defaultValues,
+		BOSHCacheDir:    cacheDir})
 	if err != nil {
 		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
 	}

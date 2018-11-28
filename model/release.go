@@ -19,6 +19,9 @@ type ReleaseRef struct {
 	Version string `yaml:"version"`
 }
 
+// Releases represent a list of releases
+type Releases []*Release
+
 // Release represents a BOSH release
 type Release struct {
 	Jobs               Jobs
@@ -81,11 +84,11 @@ func (r *Release) GetUniqueConfigs() map[string]*ReleaseConfig {
 func (r *Release) loadMetadata() (err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("Error trying to load release %s metadata from YAML manifest %s: %s", r.Name, r.manifestFilePath(), p)
+			err = fmt.Errorf("Error trying to load release %s metadata from YAML manifest %s: %s", r.Name, r.ManifestFilePath(), p)
 		}
 	}()
 
-	manifestContents, err := ioutil.ReadFile(r.manifestFilePath())
+	manifestContents, err := ioutil.ReadFile(r.ManifestFilePath())
 	if err != nil {
 		return err
 	}
@@ -213,7 +216,7 @@ func (r *Release) validatePathStructure() error {
 		return err
 	}
 
-	if err := util.ValidatePath(r.manifestFilePath(), false, "release manifest file"); err != nil {
+	if err := util.ValidatePath(r.ManifestFilePath(), false, "release manifest file"); err != nil {
 		return err
 	}
 
@@ -236,7 +239,8 @@ func (r *Release) jobsDirPath() string {
 	return filepath.Join(r.Path, jobsDir)
 }
 
-func (r *Release) manifestFilePath() string {
+// ManifestFilePath returns the path to the releases manifest
+func (r *Release) ManifestFilePath() string {
 	if r.FinalRelease {
 		return filepath.Join(r.Path, r.getFinalReleaseManifestFilename())
 	}

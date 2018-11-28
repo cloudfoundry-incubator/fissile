@@ -5,13 +5,13 @@ import (
 	"errors"
 )
 
-// JobReference represents a job in the context of a role
+// JobReference from the deployment manifest, references a job spec from a release by ReleaseName
 type JobReference struct {
 	*Job                `yaml:"-"`                 // The resolved job
 	Name                string                     `yaml:"name"`    // The name of the job
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
-	ExportedProviders   map[string]jobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers   map[string]jobConsumesInfo `yaml:"consumes"`
+	ExportedProviders   map[string]JobProvidesInfo `yaml:"provides"`
+	ResolvedConsumers   map[string]JobConsumesInfo `yaml:"consumes"`
 	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
 
@@ -183,19 +183,19 @@ func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsP
 			Default map[string]string `json:"default"`
 		} `json:"networks"`
 		ExportedProperties []string               `json:"exported_properties"`
-		Consumes           map[string]jobLinkInfo `json:"consumes"`
+		Consumes           map[string]JobLinkInfo `json:"consumes"`
 	}
 
 	config.Parameters = make(map[string]string)
 	config.Properties = make(map[string]interface{})
 	config.Networks.Default = make(map[string]string)
 	config.ExportedProperties = make([]string, 0)
-	config.Consumes = make(map[string]jobLinkInfo)
+	config.Consumes = make(map[string]JobLinkInfo)
 
 	config.Job.Name = instanceGroup.Name
 
 	for _, consumer := range j.ResolvedConsumers {
-		config.Consumes[consumer.Name] = consumer.jobLinkInfo
+		config.Consumes[consumer.Name] = consumer.JobLinkInfo
 	}
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)

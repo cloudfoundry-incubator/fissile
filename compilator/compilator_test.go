@@ -13,6 +13,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/docker"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/scripts/compilation"
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/SUSE/termui"
@@ -191,9 +192,10 @@ func TestCompilationRoleManifest(t *testing.T) {
 	// `libevent` is a dependency of `tor`, and will be included even though it's not in the role manifest
 	// `boguspackage` is neither, and will not be included
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/compilator/tor-good.yml")
-	roleManifest, err := model.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleasePaths: []string{releasePath},
-		BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache"),
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths: []string{releasePath},
+			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

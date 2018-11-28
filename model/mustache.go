@@ -51,7 +51,7 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 					continue
 				}
 
-				varsInTemplate, err := parseTemplate(template)
+				varsInTemplate, err := ParseTemplate(template)
 				if err != nil {
 					return nil, err
 				}
@@ -92,7 +92,8 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 	return result, nil
 }
 
-func parseTemplate(template string) ([]string, error) {
+// ParseTemplate parses a mustache template and returns the template variables
+func ParseTemplate(template string) ([]string, error) {
 
 	parsed, err := mustache.ParseString(fmt.Sprintf("{{=(( ))=}}%s", template))
 
