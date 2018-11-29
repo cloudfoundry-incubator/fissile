@@ -165,7 +165,9 @@ func (r *Resolver) ResolveRoleManifest() error {
 
 		if grapher != nil {
 			for _, jobReference := range instanceGroup.JobReferences {
-				grapher.GraphNode(jobReference.Job.Fingerprint, map[string]string{"label": "job/" + jobReference.Job.Name})
+				if jobReference.Job != nil {
+					grapher.GraphNode(jobReference.Job.Fingerprint, map[string]string{"label": "job/" + jobReference.Job.Name})
+				}
 			}
 		}
 	}
