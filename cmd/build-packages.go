@@ -97,7 +97,7 @@ func init() {
 		"roles",
 		"",
 		"",
-		"Build only packages for the given role names; comma separated.",
+		"Build only packages for the given instance group names; comma separated.",
 	)
 
 	buildPackagesCmd.PersistentFlags().StringP(

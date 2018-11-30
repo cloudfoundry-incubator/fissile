@@ -16,7 +16,7 @@ for x in docs/generated/*.md ; do
     sed -i 's@'${HOME}'@~@g' $x
 done
 # Then check for date changes only, and revert if that's all we have.
-for x in $(git status --porcelain=1 docs/generated/ | cut -b 4-) ; do
+for x in $(git status --porcelain=1 --untracked-files=no docs/generated/ | cut -b 4-) ; do
     if ! test -e "$x" ; then
         continue # File was deleted, no need to look at diff
     fi
