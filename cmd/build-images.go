@@ -26,18 +26,18 @@ var buildImagesCmd = &cobra.Command{
 	Use:   "images",
 	Short: "Builds Docker images from your BOSH releases.",
 	Long: `
-This command goes through all the role definitions in the role manifest creating a
+This command goes through all the instance group definitions in the role manifest creating a
 Dockerfile for each of them and building it.
 
-Each role gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find
+Each instance group gets a directory ` + "`<work-dir>/dockerfiles`" + `. In each directory one can find
 a Dockerfile and a directory structure that gets ADDed to the docker image. The
 directory structure contains jobs, packages and all other necessary scripts and
 templates.
 
-The images will have a 'role' label useful for filtering.
+The images will have a 'instance_group' label useful for filtering.
 The entrypoint for each image is ` + "`/opt/fissile/run.sh`" + `.
 
-The images will be tagged: ` + "`<repository>-<role_name>:<SIGNATURE>`" + `.
+The images will be tagged: ` + "`<repository>-<instance_group_name>:<SIGNATURE>`" + `.
 The SIGNATURE is based on the hashes of all jobs and packages that are included in
 the image.
 
@@ -146,7 +146,7 @@ func init() {
 		"roles",
 		"",
 		"",
-		"Build only images with the given role name; comma separated.",
+		"Build only images with the given instance group name; comma separated.",
 	)
 
 	buildImagesCmd.PersistentFlags().StringP(

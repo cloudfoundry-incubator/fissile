@@ -14,9 +14,9 @@ var (
 // showImageCmd represents the image command
 var showImageCmd = &cobra.Command{
 	Use:   "image",
-	Short: "Displays information about role images.",
+	Short: "Displays information about instance group images.",
 	Long: `
-This command lists all the final docker image names for all the roles defined in 
+This command lists all the final docker image names for all the instance groups defined in
 your role manifest.
 
 This command is useful in conjunction with docker (e.g. ` + "`docker rmi $(fissile show image)`" + `).

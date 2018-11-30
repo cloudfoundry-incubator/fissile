@@ -87,7 +87,7 @@ func init() {
 		"role-manifest",
 		"m",
 		"",
-		"Path to a yaml file that details which jobs are used for each role.",
+		"Path to a yaml file that details which jobs are used for each instance group.",
 	)
 
 	// We can't use slices here because of https://github.com/spf13/viper/issues/112
