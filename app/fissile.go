@@ -779,6 +779,13 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 
 // stringifyValue returns a string representation of a value
 func stringifyValue(value reflect.Value) string {
+	if value.Kind() == reflect.Interface && !value.IsNil() {
+		// If the spec doesn't have a good idea of the type of the value (mostly
+		// means children of hashes), we don't get a proper type here.  Look for
+		// the underlying value instead.
+		value = value.Elem()
+	}
+
 	switch value.Kind() {
 	case reflect.Invalid:
 		return "<nil>"

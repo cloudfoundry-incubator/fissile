@@ -86,14 +86,14 @@ jobs:
     ZDIxODJkODIxNTI3ZjliNTlhNjViODZlZWJkYWFlZDQzNjJkMWVjNA==
   fingerprint: !binary |-
     ZDIxODJkODIxNTI3ZjliNTlhNjViODZlZWJkYWFlZDQzNjJkMWVjNA==
-  sha1: 003ae39d789042b2996e98cef234d383fdefcebb
+  sha1: cf-release-224-acceptance-tests.tgz
 
 - name: cloud_controller_ng
   version: !binary |-
     NmE3OWY3Yjk1MzBkMWRlZmEwNDIyM2Q0MjcwYWQ2YzdkOTA3YzVhMg==
   fingerprint: !binary |-
     NmE3OWY3Yjk1MzBkMWRlZmEwNDIyM2Q0MjcwYWQ2YzdkOTA3YzVhMg==
-  sha1: f29061732ee95c91481620dcea400080535a67ab
+  sha1: cf-release-224-cloud_controller_ng.tgz
 
 license:
   version: !binary |-
