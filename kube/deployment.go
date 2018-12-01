@@ -21,7 +21,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 		return nil, nil, err
 	}
 	spec := helm.NewMapping()
-	spec.Add("selector", newSelector(instanceGroup.Name))
+	spec.Add("selector", newSelector(instanceGroup, settings))
 	spec.Add("template", podTemplate)
 
 	deployment := newKubeConfig(settings, "extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))

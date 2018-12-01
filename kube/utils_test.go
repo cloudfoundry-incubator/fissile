@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -28,8 +29,16 @@ func TestNewTypeMeta(t *testing.T) {
 func TestNewSelector(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-
-	selector := newSelector("thename")
+	makeTemplateRole := func() *model.InstanceGroup {
+		return &model.InstanceGroup{
+			Name: "thename",
+		}
+	}
+	role := makeTemplateRole()
+	settings := ExportSettings{
+		IstioComplied: false,
+	}
+	selector := newSelector(role, settings)
 
 	actual, err := RoundtripKube(selector)
 	if !assert.NoError(err) {
@@ -38,6 +47,34 @@ func TestNewSelector(t *testing.T) {
 	testhelpers.IsYAMLEqualString(assert, `---
 		matchLabels:
 			skiff-role-name: "thename"
+	`, actual)
+}
+
+func TestNewSelectorIstioManaged(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	makeTemplateRole := func() *model.InstanceGroup {
+		return &model.InstanceGroup{
+			Name: "thename",
+			Tags: []model.RoleTag{model.RoleTagIstioManaged},
+		}
+	}
+	role := makeTemplateRole()
+	settings := ExportSettings{
+		IstioComplied: true,
+		CreateHelmChart: true,
+	}
+	selector := newSelector(role, settings)
+
+	actual, err := RoundtripNode(selector, nil)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		matchLabels:
+			skiff-role-name: "thename"
+			app: "thename"
+			version: 1.22.333.4444
 	`, actual)
 }
 

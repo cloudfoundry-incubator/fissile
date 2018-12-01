@@ -164,6 +164,9 @@ func newClusteringService(role *model.InstanceGroup, settings ExportSettings) (h
 	if role.HasTag(model.RoleTagActivePassive) {
 		selector.Add("skiff-role-active", "true")
 	}
+	if settings.IstioComplied && role.HasTag(model.RoleTagIstioManaged) {
+		selector.Add(AppNameLabel, role.Name)
+	}
 	spec.Add("selector", selector)
 
 	spec.Add("clusterIP", "None")
@@ -198,6 +201,10 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	selector := helm.NewMapping(RoleNameLabel, role.Name)
 	if role.HasTag(model.RoleTagActivePassive) {
 		selector.Add("skiff-role-active", "true")
+	}
+
+	if settings.IstioComplied && role.HasTag(model.RoleTagIstioManaged) {
+		selector.Add(AppNameLabel, role.Name)
 	}
 	spec.Add("selector", selector)
 

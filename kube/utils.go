@@ -11,6 +11,11 @@ import (
 const (
 	// RoleNameLabel is the recommended kube label to specify the rolename
 	RoleNameLabel = "app.kubernetes.io/component"
+	// AppNameLabel is to add contextual information in distributed tracing for Istio
+	AppNameLabel = "app"
+	// AppVersionLable is to indicate the version of app. It is used to add contextual information in
+	// distributed tracing and the metric telemetry collected by Istio
+	AppVersionLable = "version"
 	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
@@ -21,26 +26,40 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 	return mapping
 }
 
-func newSelector(name string) *helm.Mapping {
-	meta := helm.NewMapping()
-	// meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mapping {
 	// XXX We need to match on legacy RoleNameLabel to maintain upgradability of stateful sets
-	meta.Add("matchLabels", helm.NewMapping("skiff-role-name", name))
+	matchLabels := helm.NewMapping("skiff-role-name", role.Name)
+	if settings.IstioComplied && role.HasTag(model.RoleTagIstioManaged) {
+		matchLabels.Add(AppNameLabel, role.Name)
+		if settings.CreateHelmChart {
+			matchLabels.Add(AppVersionLable, `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
+		}
+	}
+	meta := helm.NewMapping("matchLabels", matchLabels)
+
 	return meta
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
 func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
+	if settings.IstioComplied {
+		labels.Add(AppNameLabel, name)
+	}
+
 	if settings.CreateHelmChart {
 		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
 		labels.Add("skiff-role-name", name)
+		// app: XXX is used by Istio
 		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name | quote }}`)
 		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service | quote }}`)
 		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" | quote }}`)
 		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
+		if settings.IstioComplied && kind == "StatefulSet" {
+			labels.Add(AppVersionLable, `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
+		}
 	}
 
 	config := newTypeMeta(apiVersion, kind, modifiers...)

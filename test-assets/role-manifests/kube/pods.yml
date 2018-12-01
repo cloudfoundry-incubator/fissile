@@ -27,3 +27,14 @@ instance_groups:
         run:
           flight-stage: post-flight
           memory: 256
+- name: istio-managed-role
+  tags: [istio-managed]
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          flight-stage: post-flight
+          memory: 256
+

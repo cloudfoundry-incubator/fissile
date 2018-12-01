@@ -60,6 +60,8 @@ func TestServiceKube(t *testing.T) {
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-tor
+			labels:
+			        app.kubernetes.io/component: "myrole-tor"
 		spec:
 			ports:
 			-
@@ -159,6 +161,150 @@ func TestServiceHelm(t *testing.T) {
 					protocol: "TCP"
 					targetPort: 443
 				selector:
+					app.kubernetes.io/component: "myrole"
+		`, actual)
+	})
+}
+
+func TestIstioManagedServiceKube(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
+	if !assert.NotNil(portDef) {
+		return
+	}
+
+	role.Tags = []model.RoleTag{model.RoleTagIstioManaged}
+
+	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{
+		IstioComplied: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, service)
+
+	actual, err := RoundtripKube(service)
+	require.NoError(t, err)
+	testhelpers.IsYAMLSubsetString(assert, `---
+		metadata:
+			name: myrole-tor
+			labels:
+				app: myrole-tor
+		spec:
+			ports:
+			-
+				name: http
+				port: 80
+				targetPort: 8080
+			-
+				name: https
+				port: 443
+				targetPort: 443
+			selector:
+				app: myrole
+				app.kubernetes.io/component: myrole
+	`, actual)
+}
+
+func TestIstioManagedServiceHelm(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
+	if manifest == nil || role == nil {
+		return
+	}
+
+	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
+	require.NotNil(t, portDef)
+
+	role.Tags = []model.RoleTag{model.RoleTagIstioManaged}
+
+	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{
+		CreateHelmChart: true,
+		IstioComplied: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, service)
+
+
+
+	t.Run("ClusterIP", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": nil,
+		}
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-tor"
+				labels:
+					app: myrole-tor
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 8080
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 443
+				selector:
+					app: myrole
+					app.kubernetes.io/component: "myrole"
+		`, actual)
+	})
+
+	t.Run("LoadBalancer", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.services.loadbalanced": "true",
+		}
+
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-tor"
+				labels:
+					app: myrole-tor
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 8080
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 443
+				selector:
+					app: myrole
 					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
@@ -645,6 +791,7 @@ func TestActivePassiveService(t *testing.T) {
 		}(variant)
 	}
 }
+
 
 func expectedYAML(settings ExportSettings, expected string) string {
 	if !settings.CreateHelmChart {

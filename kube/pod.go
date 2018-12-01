@@ -60,7 +60,12 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	pod := newKubeConfig(settings, "v1", "Pod", role.Name)
 	meta := pod.Get("metadata").(*helm.Mapping)
 	if settings.CreateHelmChart {
-		meta.Add("annotations", helm.NewMapping("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`))
+		annotations := helm.NewMapping()
+		annotations.Add("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`)
+		if settings.IstioComplied && !role.HasTag(model.RoleTagIstioManaged) {
+			annotations.Add("sidecar.istio.io/inject", "false")
+		}
+		meta.Add("annotations", annotations)
 	}
 	podTemplate.Add("metadata", meta)
 	podTemplate.Add("spec", spec)

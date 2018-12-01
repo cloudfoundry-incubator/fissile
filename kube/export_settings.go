@@ -20,4 +20,5 @@ type ExportSettings struct {
 	Opinions        *model.Opinions
 	CreateHelmChart bool
 	AuthType        string
+	IstioComplied   bool
 }

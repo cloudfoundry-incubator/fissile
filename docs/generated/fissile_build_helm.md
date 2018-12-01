@@ -15,6 +15,7 @@ fissile build helm [flags]
 ```
       --auth-type string        Sets the Kubernetes auth type
   -h, --help                    help for helm
+      --istio-complied          Comply with Istio requirements when generating helm chart (default false)  
       --output-dir string       Helm chart files will be written to this directory (default ".")
       --tag-extra string        Additional information to use in computing the image tags
       --use-cpu-limits          Include cpu limits when generating helm chart (default true)
