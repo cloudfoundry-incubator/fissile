@@ -51,7 +51,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	var dockerfileContents bytes.Buffer
@@ -106,7 +106,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.InstanceGroups[0], "run.sh")
@@ -179,7 +179,7 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(roleManifest.InstanceGroups[0])
@@ -231,7 +231,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
+	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
 	assert.NoError(err)
 
 	torPkg := getPackage(roleManifest.InstanceGroups, "myrole", "tor", "tor")
@@ -246,6 +246,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		"Dockerfile":                                              {desc: "Dockerfile"},
 		"root/opt/fissile/share/doc/tor/LICENSE":                  {desc: "release license file"},
 		"root/opt/fissile/run.sh":                                 {desc: "run script", mode: 0755},
+		"root/opt/fissile/manifest.yaml":                          {desc: "manifest file", mode: 0644},
 		"root/opt/fissile/pre-stop.sh":                            {desc: "pre-stop script", mode: 0755},
 		"root/opt/fissile/readiness-probe.sh":                     {desc: "readiness probe script", mode: 0755},
 		"root/opt/fissile/startup/scripts/myrole.sh":              {desc: "instance group specific startup script"},
@@ -454,6 +455,7 @@ func TestBuildRoleImages(t *testing.T) {
 		"test-repository",
 		compiledPackagesDir,
 		targetPath,
+		roleManifestPath,
 		lightOpinionsPath,
 		darkOpinionsPath,
 		"",
