@@ -49,12 +49,13 @@ type RoleImageBuilder struct {
 	fissileVersion       string
 	lightOpinionsPath    string
 	darkOpinionsPath     string
+	manifestPath         string
 	ui                   *termui.UI
 	grapher              util.ModelGrapher
 }
 
 // NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
+func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, manifestPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
 	if err := os.MkdirAll(targetPath, 0755); err != nil {
 		return nil, err
 	}
@@ -68,6 +69,7 @@ func NewRoleImageBuilder(repository, compiledPackagesPath, targetPath, lightOpin
 		tagExtra:             tagExtra,
 		lightOpinionsPath:    lightOpinionsPath,
 		darkOpinionsPath:     darkOpinionsPath,
+		manifestPath:         manifestPath,
 		ui:                   ui,
 		grapher:              grapher,
 	}, nil
@@ -178,6 +180,14 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 			if err != nil {
 				return fmt.Errorf("Error writing script %s: %s", script, err)
 			}
+		}
+
+		// Copy manifest
+		err := util.CopyFileToTarStream(tarWriter, r.manifestPath, &tar.Header{
+			Name: "root/opt/fissile/manifest.yaml",
+		})
+		if err != nil {
+			return fmt.Errorf("Error writing manifest.yaml: %s", err)
 		}
 
 		// Generate run script

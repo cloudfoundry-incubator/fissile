@@ -608,6 +608,7 @@ func (f *Fissile) GenerateRoleImages(targetPath, registry, organization, reposit
 		stemcellImageName,
 		compiledPackagesPath,
 		targetPath,
+		f.Manifest.ManifestFilePath,
 		lightManifestPath,
 		darkManifestPath,
 		metricsPath,
