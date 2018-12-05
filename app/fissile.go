@@ -724,14 +724,16 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 	if len(releasePaths) != 2 {
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
 	}
-	defaultValues := []string{}
-	releases, err := releaseresolver.LoadReleasesFromDisk(model.ReleaseOptions{
-		ReleasePaths:    releasePaths,
-		ReleaseNames:    defaultValues,
-		ReleaseVersions: defaultValues,
-		BOSHCacheDir:    cacheDir})
+	resolver := releaseresolver.NewReleaseResolver(cacheDir)
+	releases, err := resolver.Load(
+		model.ReleaseOptions{
+			ReleasePaths:    releasePaths,
+			ReleaseNames:    []string{},
+			ReleaseVersions: []string{},
+			BOSHCacheDir:    cacheDir},
+		nil)
 	if err != nil {
-		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
+		return nil, fmt.Errorf("config diff: error loading release information: %s", err)
 	}
 	return getDiffsFromReleases(releases)
 }

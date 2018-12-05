@@ -4,6 +4,8 @@ package loader
 // resolvers we want to keep `dep ensure` small
 
 import (
+	"path/filepath"
+
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/model/releaseresolver"
 	"code.cloudfoundry.org/fissile/model/resolver"
@@ -17,6 +19,6 @@ func LoadRoleManifest(manifestFilePath string, options model.LoadRoleManifestOpt
 		return nil, err
 	}
 
-	r := releaseresolver.NewReleaseResolver(manifestFilePath)
+	r := releaseresolver.NewReleaseResolver(filepath.Dir(manifestFilePath))
 	return resolver.NewResolver(roleManifest, r, options).Resolve()
 }

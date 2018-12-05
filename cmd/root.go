@@ -363,6 +363,10 @@ func absolutePaths(paths ...*string) error {
 }
 
 func absolutePath(path string) (string, error) {
+	if strings.Contains(path, "://") {
+		// Special case URLs
+		return path, nil
+	}
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("Error getting absolute path for path %s: %v", path, err)

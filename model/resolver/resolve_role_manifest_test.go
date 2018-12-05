@@ -38,7 +38,7 @@ func setRoleManifest(roleManifestPath string, manifestContent []byte, releases R
 func resolveRoleManifest(roleManifest *RoleManifest, roleManifestPath string, allowMissingScripts bool) error {
 	r := resolver.NewResolver(
 		roleManifest,
-		releaseresolver.NewReleaseResolver(roleManifestPath),
+		releaseresolver.NewReleaseResolver(filepath.Dir(roleManifestPath)),
 		LoadRoleManifestOptions{
 			Grapher:           nil,
 			ValidationOptions: RoleManifestValidationOptions{AllowMissingScripts: allowMissingScripts},
@@ -53,13 +53,15 @@ func TestRoleManifestTagList(t *testing.T) {
 	require.NoError(t, err)
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	releases, err := releaseresolver.LoadReleasesFromDisk(
+	resolver := releaseresolver.NewReleaseResolver(filepath.Join(workDir, "../../test-assets/bosh-cache"))
+	releases, err := resolver.Load(
 		ReleaseOptions{
 			ReleasePaths:    []string{torReleasePath},
 			ReleaseNames:    []string{},
 			ReleaseVersions: []string{},
 			BOSHCacheDir:    filepath.Join(workDir, "../../test-assets/bosh-cache"),
-		})
+		},
+		nil)
 	require.NoError(t, err, "Error reading BOSH release")
 
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/tor-good.yml")
