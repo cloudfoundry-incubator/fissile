@@ -9,29 +9,35 @@ import (
 // ReleaseResolver state
 type ReleaseResolver struct {
 	releaseByName releaseByName
-	manifestPath  string
+	cacheDir      string
 }
 
 type releaseByName map[string]*model.Release
 
 // NewReleaseResolver returns a new ReleaseResolver
-func NewReleaseResolver(path string) *ReleaseResolver {
-	return &ReleaseResolver{manifestPath: path}
+func NewReleaseResolver(cacheDir string) *ReleaseResolver {
+	return &ReleaseResolver{cacheDir: cacheDir}
 }
 
 // Load loads all releases from either disk or URL
 func (r *ReleaseResolver) Load(options model.ReleaseOptions, releaseRefs []*model.ReleaseRef) (model.Releases, error) {
-	releases, err := LoadReleasesFromDisk(options)
+	// Temporary conversion; this will be unified later
+	for idx := range options.ReleasePaths {
+		ref := model.ReleaseRef{URL: options.ReleasePaths[idx]}
+		if len(options.ReleaseNames) > idx {
+			ref.Name = options.ReleaseNames[idx]
+		}
+		if len(options.ReleaseVersions) > idx {
+			ref.Version = options.ReleaseVersions[idx]
+		}
+		releaseRefs = append(releaseRefs, &ref)
+	}
+
+	releases, err := loadReleases(releaseRefs, options.BOSHCacheDir)
 	if err != nil {
 		return nil, err
 	}
-
-	embeddedReleases, err := downloadReleaseReferences(releaseRefs, r.manifestPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(releases, embeddedReleases...), nil
+	return releases, nil
 }
 
 // CanValidate returns false because this resolver produces validatable results
