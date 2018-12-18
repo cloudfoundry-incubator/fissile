@@ -1,0 +1,3 @@
+FROM {{ index . "base_image" }}
+
+ADD root /

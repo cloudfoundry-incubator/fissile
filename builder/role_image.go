@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	"code.cloudfoundry.org/fissile/docker"
@@ -41,42 +40,27 @@ type dockerImageBuilder interface {
 
 // RoleImageBuilder represents a builder of docker role images
 type RoleImageBuilder struct {
-	repositoryPrefix     string
-	compiledPackagesPath string
-	targetPath           string
-	metricsPath          string
-	tagExtra             string
-	fissileVersion       string
-	lightOpinionsPath    string
-	darkOpinionsPath     string
-	manifestPath         string
-	ui                   *termui.UI
-	grapher              util.ModelGrapher
-}
-
-// NewRoleImageBuilder creates a new RoleImageBuilder
-func NewRoleImageBuilder(repositoryPrefix, compiledPackagesPath, targetPath, manifestPath, lightOpinionsPath, darkOpinionsPath, metricsPath, tagExtra, fissileVersion string, ui *termui.UI, grapher util.ModelGrapher) (*RoleImageBuilder, error) {
-	if err := os.MkdirAll(targetPath, 0755); err != nil {
-		return nil, err
-	}
-
-	return &RoleImageBuilder{
-		repositoryPrefix:     repositoryPrefix,
-		compiledPackagesPath: compiledPackagesPath,
-		targetPath:           targetPath,
-		metricsPath:          metricsPath,
-		fissileVersion:       fissileVersion,
-		tagExtra:             tagExtra,
-		lightOpinionsPath:    lightOpinionsPath,
-		darkOpinionsPath:     darkOpinionsPath,
-		manifestPath:         manifestPath,
-		ui:                   ui,
-		grapher:              grapher,
-	}, nil
+	BaseImageName      string
+	DarkOpinionsPath   string
+	DockerOrganization string
+	DockerRegistry     string
+	FissileVersion     string
+	Force              bool
+	Grapher            util.ModelGrapher
+	LightOpinionsPath  string
+	ManifestPath       string
+	MetricsPath        string
+	NoBuild            bool
+	OutputDirectory    string
+	RepositoryPrefix   string
+	TagExtra           string
+	UI                 *termui.UI
+	Verbose            bool
+	WorkerCount        int
 }
 
 // NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
-func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup, baseImageName string) func(*tar.Writer) error {
+func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		if len(instanceGroup.JobReferences) == 0 {
 			return fmt.Errorf("Error - instance group %s has 0 jobs", instanceGroup.Name)
@@ -120,7 +104,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 					packageSet[pkg.Name] = pkg.Fingerprint
 				} else {
 					if pkg.Fingerprint != packageSet[pkg.Name] {
-						r.ui.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
+						r.UI.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
 							color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
 					}
 				}
@@ -129,41 +113,13 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 
 		// Copy jobs templates, spec configs and monit
 		for _, jobReference := range instanceGroup.JobReferences {
-			templates := make(map[string]*model.JobTemplate)
-			for _, template := range jobReference.Templates {
-				sourcePath := filepath.Clean(filepath.Join("templates", template.SourcePath))
-				templates[filepath.ToSlash(sourcePath)] = template
-			}
-
-			sourceTgz, err := os.Open(jobReference.Path)
+			err := addJobTemplates(jobReference.Job, "root/var/vcap/jobs-src", tarWriter)
 			if err != nil {
-				return fmt.Errorf("Error reading archive for job %s (%s): %s", jobReference.Name, jobReference.Path, err)
+				return err
 			}
-			defer sourceTgz.Close()
-			err = util.TargzIterate(jobReference.Path, sourceTgz, func(reader *tar.Reader, header *tar.Header) error {
-				filePath := filepath.ToSlash(filepath.Clean(header.Name))
-				if filePath == "job.MF" {
-					return nil
-				}
-				header.Name = filepath.Join("root/var/vcap/jobs-src", jobReference.Name, header.Name)
-				if template, ok := templates[filePath]; ok {
-					if strings.HasPrefix(template.DestinationPath, fmt.Sprintf("%s%c", binPrefix, os.PathSeparator)) {
-						header.Mode = 0755
-					} else {
-						header.Mode = 0644
-					}
-				}
-				if err = tarWriter.WriteHeader(header); err != nil {
-					return fmt.Errorf("Error writing header %s for job %s: %s", filePath, jobReference.Name, err)
-				}
-				if _, err = io.Copy(tarWriter, reader); err != nil {
-					return fmt.Errorf("Error writing %s for job %s: %s", filePath, jobReference.Name, err)
-				}
-				return nil
-			})
 
 			// Write spec into <ROOT_DIR>/var/vcap/job-src/<JOB>/config_spec.json
-			configJSON, err := jobReference.WriteConfigs(instanceGroup, r.lightOpinionsPath, r.darkOpinionsPath)
+			configJSON, err := jobReference.WriteConfigs(instanceGroup, r.LightOpinionsPath, r.DarkOpinionsPath)
 			if err != nil {
 				return err
 			}
@@ -183,7 +139,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 		}
 
 		// Copy manifest
-		err := util.CopyFileToTarStream(tarWriter, r.manifestPath, &tar.Header{
+		err := util.CopyFileToTarStream(tarWriter, r.ManifestPath, &tar.Header{
 			Name: "root/opt/fissile/manifest.yaml",
 		})
 		if err != nil {
@@ -253,7 +209,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 
 		// Generate Dockerfile
 		buf := &bytes.Buffer{}
-		if err := r.generateDockerfile(instanceGroup, baseImageName, buf); err != nil {
+		if err := r.generateDockerfile(instanceGroup, buf); err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, buf.Bytes(), tar.Header{
@@ -338,7 +294,7 @@ func (r *RoleImageBuilder) generateJobsConfig(instanceGroup *model.InstanceGroup
 }
 
 // generateDockerfile builds a docker file for a given role.
-func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup, baseImageName string, outputFile io.Writer) error {
+func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup, outputFile io.Writer) error {
 	asset, err := dockerfiles.Asset("Dockerfile-role")
 	if err != nil {
 		return err
@@ -347,7 +303,7 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 	dockerfileTemplate := template.New("Dockerfile-role")
 
 	context := map[string]interface{}{
-		"base_image":     baseImageName,
+		"base_image":     r.BaseImageName,
 		"instance_group": instanceGroup,
 		"licenses":       instanceGroup.JobReferences[0].Release.License.Files,
 	}
@@ -361,20 +317,11 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 }
 
 type roleBuildJob struct {
-	instanceGroup    *model.InstanceGroup
-	builder          *RoleImageBuilder
-	ui               *termui.UI
-	grapher          util.ModelGrapher
-	force            bool
-	noBuild          bool
-	dockerManager    dockerImageBuilder
-	outputDirectory  string
-	resultsCh        chan<- error
-	abort            <-chan struct{}
-	registry         string
-	organization     string
-	repositoryPrefix string
-	baseImageName    string
+	instanceGroup *model.InstanceGroup
+	builder       *RoleImageBuilder
+	dockerManager dockerImageBuilder
+	resultsCh     chan<- error
+	abort         <-chan struct{}
 }
 
 func (j roleBuildJob) Run() {
@@ -386,37 +333,37 @@ func (j roleBuildJob) Run() {
 	}
 
 	j.resultsCh <- func() error {
-		opinions, err := model.NewOpinions(j.builder.lightOpinionsPath, j.builder.darkOpinionsPath)
+		opinions, err := model.NewOpinions(j.builder.LightOpinionsPath, j.builder.DarkOpinionsPath)
 		if err != nil {
 			return err
 		}
 
-		devVersion, err := j.instanceGroup.GetRoleDevVersion(opinions, j.builder.tagExtra, j.builder.fissileVersion, j.grapher)
+		devVersion, err := j.instanceGroup.GetRoleDevVersion(opinions, j.builder.TagExtra, j.builder.FissileVersion, j.builder.Grapher)
 		if err != nil {
 			return err
 		}
 
-		if j.grapher != nil {
-			_ = j.grapher.GraphEdge(j.baseImageName, devVersion, nil)
+		if j.builder.Grapher != nil {
+			_ = j.builder.Grapher.GraphEdge(j.builder.BaseImageName, devVersion, nil)
 		}
 
 		var roleImageName string
 		var outputPath string
 
-		if j.outputDirectory == "" {
-			roleImageName = GetRoleDevImageName(j.registry, j.organization, j.repositoryPrefix, j.instanceGroup, devVersion)
+		if j.builder.OutputDirectory == "" {
+			roleImageName = GetRoleDevImageName(j.builder.DockerRegistry, j.builder.DockerOrganization, j.builder.RepositoryPrefix, j.instanceGroup, devVersion)
 			outputPath = fmt.Sprintf("%s.tar", roleImageName)
 		} else {
-			roleImageName = GetRoleDevImageName("", "", j.repositoryPrefix, j.instanceGroup, devVersion)
-			outputPath = filepath.Join(j.outputDirectory, fmt.Sprintf("%s.tar", roleImageName))
+			roleImageName = GetRoleDevImageName("", "", j.builder.RepositoryPrefix, j.instanceGroup, devVersion)
+			outputPath = filepath.Join(j.builder.OutputDirectory, fmt.Sprintf("%s.tar", roleImageName))
 		}
 
-		if !j.force {
-			if j.outputDirectory == "" {
+		if !j.builder.Force {
+			if j.builder.OutputDirectory == "" {
 				if hasImage, err := j.dockerManager.HasImage(roleImageName); err != nil {
 					return err
 				} else if hasImage {
-					j.ui.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.instanceGroup.Name))
+					j.builder.UI.Printf("Skipping build of role image %s because it exists\n", color.YellowString(j.instanceGroup.Name))
 					return nil
 				}
 			} else {
@@ -425,7 +372,7 @@ func (j roleBuildJob) Run() {
 					if info.IsDir() {
 						return fmt.Errorf("Output path %s exists but is a directory", outputPath)
 					}
-					j.ui.Printf("Skipping build of role tarball %s because it exists\n", color.YellowString(outputPath))
+					j.builder.UI.Printf("Skipping build of role tarball %s because it exists\n", color.YellowString(outputPath))
 					return nil
 				}
 				if !os.IsNotExist(err) {
@@ -434,23 +381,23 @@ func (j roleBuildJob) Run() {
 			}
 		}
 
-		if j.builder.metricsPath != "" {
+		if j.builder.MetricsPath != "" {
 			seriesName := fmt.Sprintf("create-images::%s", roleImageName)
 
-			stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "start")
-			defer stampy.Stamp(j.builder.metricsPath, "fissile", seriesName, "done")
+			stampy.Stamp(j.builder.MetricsPath, "fissile", seriesName, "start")
+			defer stampy.Stamp(j.builder.MetricsPath, "fissile", seriesName, "done")
 		}
 
-		j.ui.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.instanceGroup.Name))
-		dockerPopulator := j.builder.NewDockerPopulator(j.instanceGroup, j.baseImageName)
+		j.builder.UI.Printf("Creating Dockerfile for role %s ...\n", color.YellowString(j.instanceGroup.Name))
+		dockerPopulator := j.builder.NewDockerPopulator(j.instanceGroup)
 
-		if j.noBuild {
-			j.ui.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.instanceGroup.Name))
+		if j.builder.NoBuild {
+			j.builder.UI.Printf("Skipping build of role image %s because of flag\n", color.YellowString(j.instanceGroup.Name))
 			return nil
 		}
 
-		if j.outputDirectory == "" {
-			j.ui.Printf("Building docker image of %s...\n", color.YellowString(j.instanceGroup.Name))
+		if j.builder.OutputDirectory == "" {
+			j.builder.UI.Printf("Building docker image of %s...\n", color.YellowString(j.instanceGroup.Name))
 
 			log := new(bytes.Buffer)
 			stdoutWriter := docker.NewFormattingWriter(
@@ -460,11 +407,11 @@ func (j roleBuildJob) Run() {
 
 			err := j.dockerManager.BuildImageFromCallback(roleImageName, stdoutWriter, dockerPopulator)
 			if err != nil {
-				log.WriteTo(j.ui)
+				log.WriteTo(j.builder.UI)
 				return fmt.Errorf("Error building image: %s", err.Error())
 			}
 		} else {
-			j.ui.Printf("Building tarball of %s...\n", color.YellowString(j.instanceGroup.Name))
+			j.builder.UI.Printf("Building tarball of %s...\n", color.YellowString(j.instanceGroup.Name))
 
 			tarFile, err := os.Create(outputPath)
 			if err != nil {
@@ -487,9 +434,9 @@ func (j roleBuildJob) Run() {
 }
 
 // Build triggers the building of the role docker images in parallel
-func (r *RoleImageBuilder) Build(instanceGroups model.InstanceGroups, registry, organization, repositoryPrefix, baseImageName, outputDirectory string, force, noBuild bool, workerCount int) error {
-	if workerCount < 1 {
-		return fmt.Errorf("Invalid worker count %d", workerCount)
+func (r *RoleImageBuilder) Build(instanceGroups model.InstanceGroups) error {
+	if r.WorkerCount < 1 {
+		return fmt.Errorf("Invalid worker count %d", r.WorkerCount)
 	}
 
 	dockerManager, err := newDockerImageBuilder()
@@ -497,33 +444,24 @@ func (r *RoleImageBuilder) Build(instanceGroups model.InstanceGroups, registry, 
 		return fmt.Errorf("Error connecting to docker: %s", err.Error())
 	}
 
-	if outputDirectory != "" {
-		if err = os.MkdirAll(outputDirectory, 0755); err != nil {
+	if r.OutputDirectory != "" {
+		if err = os.MkdirAll(r.OutputDirectory, 0755); err != nil {
 			return fmt.Errorf("Error creating output directory: %s", err)
 		}
 	}
 
-	workerLib.MaxJobs = workerCount
+	workerLib.MaxJobs = r.WorkerCount
 	worker := workerLib.NewWorker()
 
 	resultsCh := make(chan error)
 	abort := make(chan struct{})
 	for _, instanceGroup := range instanceGroups {
 		worker.Add(roleBuildJob{
-			instanceGroup:    instanceGroup,
-			builder:          r,
-			ui:               r.ui,
-			grapher:          r.grapher,
-			force:            force,
-			noBuild:          noBuild,
-			dockerManager:    dockerManager,
-			outputDirectory:  outputDirectory,
-			resultsCh:        resultsCh,
-			abort:            abort,
-			registry:         registry,
-			organization:     organization,
-			repositoryPrefix: repositoryPrefix,
-			baseImageName:    baseImageName,
+			instanceGroup: instanceGroup,
+			builder:       r,
+			dockerManager: dockerManager,
+			resultsCh:     resultsCh,
+			abort:         abort,
 		})
 	}
 

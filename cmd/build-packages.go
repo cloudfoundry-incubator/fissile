@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,15 +47,9 @@ compiled once.
 			return err
 		}
 
-		hasher := sha1.New()
-		if _, err := hasher.Write([]byte(flagBuildPackagesStemcell)); err != nil {
-			return err
-		}
-		compilationDir := filepath.Join(fissile.CompilationDir(), hex.EncodeToString(hasher.Sum(nil)))
-
 		return fissile.Compile(
 			flagBuildPackagesStemcell,
-			compilationDir,
+			fissile.StemcellCompilationDir(flagBuildPackagesStemcell),
 			fissile.Options.RoleManifest,
 			fissile.Options.Metrics,
 			strings.FieldsFunc(flagBuildPackagesRoles, func(r rune) bool { return r == ',' }),

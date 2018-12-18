@@ -96,6 +96,13 @@ func init() {
 	)
 
 	RootCmd.PersistentFlags().StringP(
+		"final-releases-dir",
+		"",
+		filepath.Join(os.Getenv("HOME"), ".final-releases"),
+		"Local final releases directory.",
+	)
+
+	RootCmd.PersistentFlags().StringP(
 		"work-dir",
 		"w",
 		"/var/fissile",
@@ -212,6 +219,7 @@ func validateBasicFlags() error {
 	fissile.Options.ReleaseNames = splitNonEmpty(viper.GetString("release-name"), ",")
 	fissile.Options.ReleaseVersions = splitNonEmpty(viper.GetString("release-version"), ",")
 	fissile.Options.CacheDir = viper.GetString("cache-dir")
+	fissile.Options.FinalReleasesDir = viper.GetString("final-releases-dir")
 	fissile.Options.WorkDir = viper.GetString("work-dir")
 	fissile.Options.RepositoryPrefix = viper.GetString("repository")
 	fissile.Options.DockerRegistry = strings.TrimSuffix(viper.GetString("docker-registry"), "/")

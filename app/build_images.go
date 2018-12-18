@@ -16,15 +16,15 @@ import (
 
 // BuildImagesOptions contains all option values for the `fissile build images` command.
 type BuildImagesOptions struct {
-	NoBuild                  bool
 	Force                    bool
-	Roles                    []string
-	PatchPropertiesDirective string
+	Labels                   map[string]string
+	NoBuild                  bool
 	OutputDirectory          string
+	PatchPropertiesDirective string
+	Roles                    []string
 	Stemcell                 string
 	StemcellID               string
 	TagExtra                 string
-	Labels                   map[string]string
 }
 
 // BuildImages builds all role images using releases
@@ -57,17 +57,29 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 		defer stampy.Stamp(f.Options.Metrics, "fissile", "create-images", "done")
 	}
 
-	packagesImageBuilder, err := builder.NewPackagesImageBuilder(
-		f.Options.RepositoryPrefix,
-		opt.Stemcell,
-		opt.StemcellID,
-		f.CompilationDir(),
-		f.DockerDir(),
-		f.Version,
-		f.UI,
-	)
-	if err != nil {
-		return err
+	if opt.StemcellID == "" {
+		imageManager, err := docker.NewImageManager()
+		if err != nil {
+			return err
+		}
+
+		stemcellImage, err := imageManager.FindImage(opt.Stemcell)
+		if err != nil {
+			if _, ok := err.(docker.ErrImageNotFound); ok {
+				return fmt.Errorf("Stemcell %s", err.Error())
+			}
+			return err
+		}
+
+		opt.StemcellID = stemcellImage.ID
+	}
+
+	packagesImageBuilder := &builder.PackagesImageBuilder{
+		RepositoryPrefix:     f.Options.RepositoryPrefix,
+		StemcellImageName:    opt.Stemcell,
+		StemcellImageID:      opt.StemcellID,
+		CompiledPackagesPath: f.StemcellCompilationDir(opt.Stemcell),
+		FissileVersion:       f.Version,
 	}
 
 	instanceGroups, err := f.Manifest.SelectInstanceGroups(opt.Roles)
@@ -89,34 +101,26 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 		return err
 	}
 
-	roleImageBuilder, err := builder.NewRoleImageBuilder(
-		opt.Stemcell,
-		f.CompilationDir(),
-		f.DockerDir(),
-		f.Manifest.ManifestFilePath,
-		f.Options.LightOpinions,
-		f.Options.DarkOpinions,
-		f.Options.Metrics,
-		opt.TagExtra,
-		f.Version,
-		f.UI,
-		f,
-	)
-	if err != nil {
-		return err
+	roleImageBuilder := &builder.RoleImageBuilder{
+		BaseImageName:      imageName,
+		DarkOpinionsPath:   f.Options.DarkOpinions,
+		DockerOrganization: f.Options.DockerOrganization,
+		DockerRegistry:     f.Options.DockerRegistry,
+		FissileVersion:     f.Version,
+		Force:              opt.Force,
+		Grapher:            f,
+		LightOpinionsPath:  f.Options.LightOpinions,
+		ManifestPath:       f.Manifest.ManifestFilePath,
+		MetricsPath:        f.Options.Metrics,
+		NoBuild:            opt.NoBuild,
+		OutputDirectory:    opt.OutputDirectory,
+		RepositoryPrefix:   f.Options.RepositoryPrefix,
+		TagExtra:           opt.TagExtra,
+		UI:                 f.UI,
+		WorkerCount:        f.Options.Workers,
 	}
 
-	return roleImageBuilder.Build(
-		instanceGroups,
-		f.Options.DockerRegistry,
-		f.Options.DockerOrganization,
-		f.Options.RepositoryPrefix,
-		imageName,
-		opt.OutputDirectory,
-		opt.Force,
-		opt.NoBuild,
-		f.Options.Workers,
-	)
+	return roleImageBuilder.Build(instanceGroups)
 }
 
 // buildPackagesImage builds the docker image for the packages layer
@@ -124,7 +128,8 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 func (f *Fissile) buildPackagesImage(
 	opt BuildImagesOptions,
 	instanceGroups model.InstanceGroups,
-	packagesImageBuilder *builder.PackagesImageBuilder) error {
+	packagesImageBuilder *builder.PackagesImageBuilder,
+) error {
 
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
@@ -173,7 +178,8 @@ func (f *Fissile) buildPackagesImage(
 func (f *Fissile) buildPackagesTarball(
 	opt BuildImagesOptions,
 	instanceGroups model.InstanceGroups,
-	packagesImageBuilder *builder.PackagesImageBuilder) error {
+	packagesImageBuilder *builder.PackagesImageBuilder,
+) error {
 
 	imageName, err := packagesImageBuilder.GetImageName(f.Manifest, instanceGroups, f)
 	if err != nil {

@@ -51,6 +51,7 @@ type FissileOptions struct {
 	Releases           []string
 	ReleaseNames       []string
 	ReleaseVersions    []string
+	FinalReleasesDir   string
 	CacheDir           string
 	WorkDir            string
 	DockerRegistry     string
@@ -84,9 +85,9 @@ func (f *Fissile) CompilationDir() string {
 	return filepath.Join(f.Options.WorkDir, "compilation")
 }
 
-// DockerDir returns the path to the Docker dir
-func (f *Fissile) DockerDir() string {
-	return filepath.Join(f.Options.WorkDir, "dockerfiles")
+// StemcellCompilationDir returns the path to the compilation directory for a particular stemcell
+func (f *Fissile) StemcellCompilationDir(stemcell string) string {
+	return filepath.Join(f.CompilationDir(), util.Hash(stemcell))
 }
 
 // LoadManifest loads the manifest in use by fissile

@@ -45,6 +45,7 @@ from other specs.  At most one is allowed.
 
 		opt.Roles = strings.FieldsFunc(buildImagesViper.GetString("roles"), func(r rune) bool { return r == ',' })
 
+		opt.Labels = make(map[string]string)
 		for _, label := range buildImagesViper.GetStringSlice("add-label") {
 			parts := strings.Split(label, "=")
 			if len(parts) != 2 {
@@ -91,7 +92,7 @@ func init() {
 		"patch-properties-release",
 		"P",
 		"",
-		"Used to designate a \"patch-properties\" psuedo-job in a particular release.  Format: RELEASE/JOB.",
+		"Used to designate a \"patch-properties\" pseudo-job in a particular release.  Format: RELEASE/JOB.",
 	)
 
 	// viper is busted w/ string slice, https://github.com/spf13/viper/issues/200
