@@ -27,7 +27,7 @@ type BuildImagesOptions struct {
 	TagExtra                 string
 }
 
-// BuildImages builds all role images using releases
+// BuildImages builds all role images using releases.
 func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 	err := f.LoadManifest()
 	if err != nil {
@@ -47,7 +47,7 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 				return fmt.Errorf("Output directory %s exists and is not a directory", opt.OutputDirectory)
 			}
 			if err != nil {
-				return fmt.Errorf("Error creating directory %s: %s", opt.OutputDirectory, err)
+				return fmt.Errorf("Error creating directory %s: %v", opt.OutputDirectory, err)
 			}
 		}
 	}
@@ -66,7 +66,7 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 		stemcellImage, err := imageManager.FindImage(opt.Stemcell)
 		if err != nil {
 			if _, ok := err.(docker.ErrImageNotFound); ok {
-				return fmt.Errorf("Stemcell %s", err.Error())
+				return fmt.Errorf("Stemcell %v", err)
 			}
 			return err
 		}
@@ -124,7 +124,7 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 }
 
 // buildPackagesImage builds the docker image for the packages layer
-// where all packages are included
+// where all packages are included.
 func (f *Fissile) buildPackagesImage(
 	opt BuildImagesOptions,
 	instanceGroups model.InstanceGroups,
@@ -133,23 +133,29 @@ func (f *Fissile) buildPackagesImage(
 
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
+		return fmt.Errorf("Error connecting to docker: %v", err)
 	}
 
 	imageName, err := packagesImageBuilder.GetImageName(f.Manifest, instanceGroups, f)
 	if err != nil {
-		return fmt.Errorf("Error finding instance group's package name: %s", err.Error())
+		return fmt.Errorf("Error finding instance group's package name: %v", err)
 	}
 	if !opt.Force {
-		if hasImage, err := dockerManager.HasImage(imageName); err == nil && hasImage {
+		hasImage, err := dockerManager.HasImage(imageName)
+		if err != nil {
+			return fmt.Errorf("Error looking for packages layer %s: %v", imageName, err)
+		}
+		if hasImage {
 			f.UI.Printf("Packages layer %s already exists. Skipping ...\n", color.YellowString(imageName))
 			return nil
 		}
 	}
 
-	if hasImage, err := dockerManager.HasImage(opt.Stemcell); err != nil {
-		return fmt.Errorf("Error looking up stemcell image: %s", err)
-	} else if !hasImage {
+	hasImage, err := dockerManager.HasImage(opt.Stemcell)
+	if err != nil {
+		return fmt.Errorf("Error looking up stemcell image %s: %v", imageName, err)
+	}
+	if !hasImage {
 		return fmt.Errorf("Failed to find stemcell image %s. Did you pull it?", opt.Stemcell)
 	}
 
@@ -166,7 +172,7 @@ func (f *Fissile) buildPackagesImage(
 	err = dockerManager.BuildImageFromCallback(imageName, stdoutWriter, tarPopulator)
 	if err != nil {
 		log.WriteTo(f.UI)
-		return fmt.Errorf("Error building packages layer docker image: %s", err.Error())
+		return fmt.Errorf("Error building packages layer docker image: %v", err)
 	}
 	f.UI.Println(color.GreenString("Done."))
 
@@ -174,7 +180,7 @@ func (f *Fissile) buildPackagesImage(
 }
 
 // buildPackagesTarball builds a tarball snapshot of the build context
-// for the docker image for the packages layer where all packages are included
+// for the docker image for the packages layer where all packages are included.
 func (f *Fissile) buildPackagesTarball(
 	opt BuildImagesOptions,
 	instanceGroups model.InstanceGroups,
@@ -204,20 +210,21 @@ func (f *Fissile) buildPackagesTarball(
 
 	tarFile, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("Failed to create tar file %s: %s", outputPath, err)
+		return fmt.Errorf("Failed to create tar file %s: %v", outputPath, err)
 	}
+	defer tarFile.Close()
 	tarWriter := tar.NewWriter(tarFile)
 
 	// We always force build all packages here to avoid needing to talk to the
-	// docker daemon to figure out what we can keep
+	// docker daemon to figure out what we can keep.
 	tarPopulator := packagesImageBuilder.NewDockerPopulator(instanceGroups, opt.Labels, true)
 	err = tarPopulator(tarWriter)
 	if err != nil {
-		return fmt.Errorf("Error writing tar file: %s", err)
+		return fmt.Errorf("Error writing tar file: %v", err)
 	}
 	err = tarWriter.Close()
 	if err != nil {
-		return fmt.Errorf("Error closing tar file: %s", err)
+		return fmt.Errorf("Error closing tar file: %v", err)
 	}
 	f.UI.Println(color.GreenString("Done."))
 

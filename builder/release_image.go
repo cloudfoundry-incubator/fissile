@@ -22,7 +22,7 @@ import (
 	workerLib "github.com/jimmysawczuk/worker"
 )
 
-// ReleasesImageBuilder represents a builder of docker release images
+// ReleasesImageBuilder represents a builder of docker release images.
 type ReleasesImageBuilder struct {
 	CompilationCacheConfig string
 	CompilationDir         string
@@ -84,12 +84,11 @@ func addJobTemplates(job *model.Job, path string, tarWriter *tar.Writer) error {
 	})
 }
 
-// NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with
+// NewDockerPopulator returns a function which can populate a tar stream with the docker context to build the packages layer image with.
 func (r *ReleasesImageBuilder) NewDockerPopulator(release *model.Release) func(*tar.Writer) error {
 	return func(tarWriter *tar.Writer) error {
 		// Generate dockerfile
-		dockerfile := bytes.Buffer{}
-		//if err = r.generateDockerfile(packages, labels, &dockerfile); err != nil {
+		var dockerfile bytes.Buffer
 		err := r.generateDockerfile(&dockerfile)
 		if err != nil {
 			return err
@@ -144,7 +143,7 @@ func (r *ReleasesImageBuilder) generateDockerfile(outputFile io.Writer) error {
 	return dockerfileTemplate.Execute(outputFile, context)
 }
 
-func (j releaseBuildJob) getImageName() string {
+func (j releaseBuildJob) imageName() string {
 	var imageName string
 	if j.builder.DockerRegistry != "" {
 		imageName = j.builder.DockerRegistry + "/"
@@ -228,7 +227,7 @@ func (j releaseBuildJob) Run() {
 			_ = r.Grapher.GraphEdge(r.StemcellName, j.release.Version, nil)
 		}
 
-		imageName := j.getImageName()
+		imageName := j.imageName()
 		outputPath := fmt.Sprintf("%s.tar", imageName)
 
 		if r.OutputDirectory != "" {
@@ -281,9 +280,9 @@ func (j releaseBuildJob) Run() {
 		if r.OutputDirectory == "" {
 			r.UI.Printf("Building docker image of %s...\n", color.YellowString(j.release.Name))
 
-			log := new(bytes.Buffer)
+			var log bytes.Buffer
 			stdoutWriter := docker.NewFormattingWriter(
-				log,
+				&log,
 				docker.ColoredBuildStringFunc(imageName),
 			)
 
@@ -315,7 +314,7 @@ func (j releaseBuildJob) Run() {
 	}()
 }
 
-// Build triggers the building of the release docker images in parallel
+// Build triggers the building of the release docker images in parallel.
 func (r *ReleasesImageBuilder) Build(releases model.Releases) error {
 
 	if r.WorkerCount < 1 {

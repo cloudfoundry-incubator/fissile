@@ -25,7 +25,7 @@ import (
 )
 
 // OutputFormat is one of the known output formats for commands showing loaded
-// information
+// information.
 type OutputFormat string
 
 // Valid output formats
@@ -35,7 +35,7 @@ const (
 	OutputFormatYAML  = "yaml"  // output as YAML
 )
 
-// Fissile represents a fissile application
+// Fissile represents a fissile application.
 type Fissile struct {
 	Version   string
 	UI        *termui.UI
@@ -45,7 +45,7 @@ type Fissile struct {
 	graphFile *os.File
 }
 
-// FissileOptions contains the values of all global fissile application options
+// FissileOptions contains the values of all global fissile application options.
 type FissileOptions struct {
 	RoleManifest       string
 	Releases           []string
@@ -67,7 +67,7 @@ type FissileOptions struct {
 	Verbose            bool
 }
 
-// NewFissileApplication creates a new app.Fissile
+// NewFissileApplication creates a new app.Fissile.
 func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	return &Fissile{
 		Version: version,
@@ -75,22 +75,22 @@ func NewFissileApplication(version string, ui *termui.UI) *Fissile {
 	}
 }
 
-// Cleanup is a destructor
+// Cleanup is a destructor.
 func (f *Fissile) Cleanup() {
 	f.GraphEnd()
 }
 
-// CompilationDir returns the path to the compilation directory
+// CompilationDir returns the path to the compilation directory.
 func (f *Fissile) CompilationDir() string {
 	return filepath.Join(f.Options.WorkDir, "compilation")
 }
 
-// StemcellCompilationDir returns the path to the compilation directory for a particular stemcell
+// StemcellCompilationDir returns the path to the compilation directory for a particular stemcell.
 func (f *Fissile) StemcellCompilationDir(stemcell string) string {
 	return filepath.Join(f.CompilationDir(), util.Hash(stemcell))
 }
 
-// LoadManifest loads the manifest in use by fissile
+// LoadManifest loads the manifest in use by fissile.
 func (f *Fissile) LoadManifest() error {
 	roleManifest, err := loader.LoadRoleManifest(
 		f.Options.RoleManifest,
@@ -105,14 +105,14 @@ func (f *Fissile) LoadManifest() error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("Error loading roles manifest: %s", err.Error())
+		return fmt.Errorf("Error loading role manifest: %v", err)
 	}
 
 	f.Manifest = roleManifest
 	return nil
 }
 
-// ListPackages will list all BOSH packages within a list of releases
+// ListPackages will list all BOSH packages within a list of releases.
 func (f *Fissile) ListPackages() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -150,7 +150,7 @@ func (f *Fissile) ListPackages() error {
 	return nil
 }
 
-// ListJobs will list all jobs within a list of releases
+// ListJobs will list all jobs within a list of releases.
 func (f *Fissile) ListJobs() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -188,7 +188,7 @@ func (f *Fissile) ListJobs() error {
 	return nil
 }
 
-// ListProperties will list all properties in all jobs within a list of releases
+// ListProperties will list all properties in all jobs within a list of releases.
 func (f *Fissile) ListProperties() error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -222,7 +222,7 @@ func (f *Fissile) ListProperties() error {
 	return nil
 }
 
-// SerializePackages returns all packages in loaded releases, keyed by fingerprint
+// SerializePackages returns all packages in loaded releases, keyed by fingerprint.
 func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
@@ -237,7 +237,7 @@ func (f *Fissile) SerializePackages() (map[string]interface{}, error) {
 	return pkgs, nil
 }
 
-// SerializeReleases will return all of the loaded releases
+// SerializeReleases will return all of the loaded releases.
 func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
@@ -250,7 +250,7 @@ func (f *Fissile) SerializeReleases() (map[string]interface{}, error) {
 	return releases, nil
 }
 
-// SerializeJobs will return all of the jobs within the releases, keyed by fingerprint
+// SerializeJobs will return all of the jobs within the releases, keyed by fingerprint.
 func (f *Fissile) SerializeJobs() (map[string]interface{}, error) {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return nil, fmt.Errorf("Releases not loaded")
@@ -309,7 +309,7 @@ type propertyDefaults map[string]*propertyInfo
 
 // propertyInfo is a structure listing the (stringified) defaults and
 // the associated jobs for a property, plus other aggregated
-// information (whether it is a hash, or not)
+// information (whether it is a hash, or not).
 
 type propertyInfo struct {
 	maybeHash bool
@@ -322,7 +322,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	for _, release := range f.Manifest.LoadedReleases {
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
-				// Extend map for newly seen properties
+				// Extend map for newly seen properties.
 				if _, ok := result[property.Name]; !ok {
 					result[property.Name] = newPropertyInfo(false)
 				}
@@ -336,7 +336,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 				// it. Note that if the default is <nil> we assume that it can be a
 				// hash. This works arounds problems in the CF spec files where the two
 				// hash-valued properties we are interested in do not have defaults.
-				// (uaa.clients, cc.quota_definitions)
+				// (uaa.clients, cc.quota_definitions).
 
 				if property.Default == nil ||
 					reflect.TypeOf(property.Default).Kind() == reflect.Map {
@@ -357,7 +357,7 @@ func newPropertyInfo(maybeHash bool) *propertyInfo {
 	}
 }
 
-// Compile will compile a list of dev BOSH releases
+// Compile will compile a list of dev BOSH releases.
 func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath, metricsPath string, instanceGroupNames, releaseNames []string, workerCount int, dockerNetworkMode string, withoutDocker, verbose bool, packageCacheConfigFilename string, streamPackages bool) error {
 	if f.Manifest == nil || len(f.Manifest.LoadedReleases) == 0 {
 		return fmt.Errorf("Releases not loaded")
@@ -370,7 +370,7 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 
 	dockerManager, err := docker.NewImageManager()
 	if err != nil {
-		return fmt.Errorf("Error connecting to docker: %s", err.Error())
+		return fmt.Errorf("Error connecting to docker: %v", err)
 	}
 
 	releases, err := f.getReleasesByName(releaseNames)
@@ -391,22 +391,22 @@ func (f *Fissile) Compile(stemcellImageName string, targetPath, roleManifestPath
 	if withoutDocker {
 		comp, err = compilator.NewMountNSCompilator(targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, f.UI, f, packageStorage)
 		if err != nil {
-			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+			return fmt.Errorf("Error creating a new compilator: %v", err)
 		}
 	} else {
 		comp, err = compilator.NewDockerCompilator(dockerManager, targetPath, metricsPath, stemcellImageName, compilation.LinuxBase, f.Version, dockerNetworkMode, false, f.UI, f, packageStorage, streamPackages)
 		if err != nil {
-			return fmt.Errorf("Error creating a new compilator: %s", err.Error())
+			return fmt.Errorf("Error creating a new compilator: %v", err)
 		}
 	}
 
 	instanceGroups, err := f.Manifest.SelectInstanceGroups(instanceGroupNames)
 	if err != nil {
-		return fmt.Errorf("Error selecting packages to build: %s", err.Error())
+		return fmt.Errorf("Error selecting packages to build: %v", err)
 	}
 
 	if err := comp.Compile(workerCount, releases, instanceGroups, verbose); err != nil {
-		return fmt.Errorf("Error compiling packages: %s", err.Error())
+		return fmt.Errorf("Error compiling packages: %v", err)
 	}
 
 	return nil
@@ -475,7 +475,7 @@ func (f *Fissile) CleanCache() error {
 	return nil
 }
 
-// ListRoleImages lists all dev role images
+// ListRoleImages lists all dev role images.
 func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtra string) error {
 	if withVirtualSize && !existingOnDocker {
 		return fmt.Errorf("Cannot list image virtual sizes if not matching image names with docker")
@@ -491,19 +491,19 @@ func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtr
 	if existingOnDocker {
 		dockerManager, err = docker.NewImageManager()
 		if err != nil {
-			return fmt.Errorf("Error connecting to docker: %s", err.Error())
+			return fmt.Errorf("Error connecting to docker: %v", err)
 		}
 	}
 
 	opinions, err := model.NewOpinions(f.Options.LightOpinions, f.Options.DarkOpinions)
 	if err != nil {
-		return fmt.Errorf("Error loading opinions: %s", err.Error())
+		return fmt.Errorf("Error loading opinions: %v", err)
 	}
 
 	for _, instanceGroup := range f.Manifest.InstanceGroups {
 		devVersion, err := instanceGroup.GetRoleDevVersion(opinions, tagExtra, f.Version, f)
 		if err != nil {
-			return fmt.Errorf("Error creating instance group checksum: %s", err.Error())
+			return fmt.Errorf("Error creating instance group checksum: %v", err)
 		}
 
 		imageName := builder.GetRoleDevImageName(f.Options.DockerRegistry, f.Options.DockerOrganization, f.Options.RepositoryPrefix, instanceGroup, devVersion)
@@ -518,7 +518,7 @@ func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtr
 		if _, ok := err.(docker.ErrImageNotFound); ok {
 			continue
 		} else if err != nil {
-			return fmt.Errorf("Error looking up image: %s", err.Error())
+			return fmt.Errorf("Error looking up image: %v", err)
 		}
 
 		if withVirtualSize {
@@ -535,7 +535,7 @@ func (f *Fissile) ListRoleImages(existingOnDocker, withVirtualSize bool, tagExtr
 	return nil
 }
 
-// getReleasesByName returns all named releases, or all releases if no names are given
+// getReleasesByName returns all named releases, or all releases if no names are given.
 func (f *Fissile) getReleasesByName(releaseNames []string) ([]*model.Release, error) {
 	if len(releaseNames) == 0 {
 		return f.Manifest.LoadedReleases, nil
@@ -560,7 +560,7 @@ releaseNameLoop:
 
 }
 
-// DiffConfigurationBases generates a diff comparing the specs for two different BOSH releases
+// DiffConfigurationBases generates a diff comparing the specs for two different BOSH releases.
 func (f *Fissile) DiffConfigurationBases(releasePaths []string, cacheDir string) error {
 	hashDiffs, err := f.GetDiffConfigurationBases(releasePaths, cacheDir)
 	if err != nil {
@@ -570,7 +570,7 @@ func (f *Fissile) DiffConfigurationBases(releasePaths []string, cacheDir string)
 	return nil
 }
 
-// GetDiffConfigurationBases calculates the difference in configs and returns a hash
+// GetDiffConfigurationBases calculates the difference in configs and returns a hash.
 func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir string) (*HashDiffs, error) {
 	if len(releasePaths) != 2 {
 		return nil, fmt.Errorf("expected two release paths, got %d", len(releasePaths))
@@ -582,14 +582,14 @@ func (f *Fissile) GetDiffConfigurationBases(releasePaths []string, cacheDir stri
 		ReleaseVersions: defaultValues,
 		BOSHCacheDir:    cacheDir})
 	if err != nil {
-		return nil, fmt.Errorf("dev config diff: error loading release information: %s", err)
+		return nil, fmt.Errorf("dev config diff: error loading release information: %v", err)
 	}
 	return getDiffsFromReleases(releases)
 }
 
 type keyHash map[string]string
 
-// HashDiffs summarizes the diffs between the two configs
+// HashDiffs summarizes the diffs between the two configs.
 type HashDiffs struct {
 	AddedKeys     []string
 	DeletedKeys   []string
@@ -629,7 +629,7 @@ func (f *Fissile) reportHashDiffs(hashDiffs *HashDiffs) {
 	}
 }
 
-// stringifyValue returns a string representation of a value
+// stringifyValue returns a string representation of a value.
 func stringifyValue(value reflect.Value) string {
 	if value.Kind() == reflect.Interface && !value.IsNil() {
 		// If the spec doesn't have a good idea of the type of the value (mostly
@@ -671,7 +671,7 @@ func getDiffsFromReleases(releases []*model.Release) (*HashDiffs, error) {
 		for _, config := range configs {
 			hashes[idx][config.Name] = config.Description
 		}
-		// Get the spec configs
+		// Get the spec configs.
 		for _, job := range release.Jobs {
 			for _, property := range job.Properties {
 				key := fmt.Sprintf("%s:%s:%s", release.Name, job.Name, property.Name)
@@ -705,7 +705,7 @@ func compareHashes(v1Hash, v2Hash keyHash) *HashDiffs {
 }
 
 // GenerateKube will create a set of configuration files suitable for deployment
-// on Kubernetes
+// on Kubernetes.
 func (f *Fissile) GenerateKube(settings kube.ExportSettings) error {
 	var err error
 	settings.RoleManifest = f.Manifest
@@ -1034,7 +1034,7 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 	return nil
 }
 
-// GraphBegin will start logging hash information to the given file
+// GraphBegin will start logging hash information to the given file.
 func (f *Fissile) GraphBegin(outputPath string) error {
 	if outputPath == "" {
 		return nil
@@ -1055,7 +1055,7 @@ func (f *Fissile) GraphBegin(outputPath string) error {
 	return nil
 }
 
-// GraphEnd will stop logging hash information
+// GraphEnd will stop logging hash information.
 func (f *Fissile) GraphEnd() error {
 	if f.graphFile == nil {
 		return nil
@@ -1070,7 +1070,7 @@ func (f *Fissile) GraphEnd() error {
 	return nil
 }
 
-// GraphNode adds a node to the hash debugging graph; this implements model.ModelGrapher
+// GraphNode adds a node to the hash debugging graph; this implements model.ModelGrapher.
 func (f *Fissile) GraphNode(nodeName string, attrs map[string]string) error {
 	if f.graphFile == nil {
 		return nil
@@ -1085,7 +1085,7 @@ func (f *Fissile) GraphNode(nodeName string, attrs map[string]string) error {
 	return nil
 }
 
-// GraphEdge adds an edge to the hash debugging graph; this implements model.ModelGrapher
+// GraphEdge adds an edge to the hash debugging graph; this implements model.ModelGrapher.
 func (f *Fissile) GraphEdge(fromNode, toNode string, attrs map[string]string) error {
 	if f.graphFile == nil {
 		return nil

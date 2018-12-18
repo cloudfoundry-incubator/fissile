@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// buildImagesCmd represents the images command
+// buildImagesCmd represents the images command.
 var buildReleaseImagesCmd = &cobra.Command{
 	Use:   "release-images",
 	Short: "Builds Docker images from your BOSH releases.",
@@ -81,7 +81,7 @@ This command goes through builds a Docker image for each specified release.
 		resolver := releaseresolver.NewReleaseResolver(fissile.Options.FinalReleasesDir)
 		releases, err := resolver.Load(model.ReleaseOptions{}, releaseRefs)
 		if err != nil {
-			return fmt.Errorf("Error loading release information: %s", err)
+			return fmt.Errorf("Error loading release information: %v", err)
 		}
 
 		err = fissile.GraphBegin(buildViper.GetString("output-graph"))
