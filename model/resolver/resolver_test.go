@@ -376,6 +376,7 @@ func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 }
 
 func TestLoadRoleManifestPSPMerge(t *testing.T) {
+	t.Parallel()
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
@@ -397,18 +398,19 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 	// with the union of the two, the higher. This is the account
 	// referenced by the role
 
-	assert.NotNil(t, roleManifest)
-	assert.NotNil(t, roleManifest.Configuration)
+	require.NotNil(t, roleManifest)
+	require.NotNil(t, roleManifest.Configuration)
 
 	assert.Len(t, roleManifest.InstanceGroups, 1)
-	assert.NotNil(t, roleManifest.InstanceGroups[0])
+	require.NotNil(t, roleManifest.InstanceGroups[0])
 
 	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 2)
-	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
-	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[1])
+	require.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	require.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[1])
 
-	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
-	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+	require.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	// Because a job needs privileges, we cloned the account
+	assert.Equal(t, "default-privileged", roleManifest.InstanceGroups[0].Run.ServiceAccount)
 
 	// manifest value
 	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
@@ -416,13 +418,44 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 	// default
 	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[0].JobReferences[1].ContainerProperties.BoshContainerization.PodSecurityPolicy)
 
-	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
-	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 1)
-	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
-	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
+	auth := roleManifest.Configuration.Authorization
+	require.NotNil(t, auth.Accounts)
+	assert.Len(t, auth.Accounts, 2)
+	assert.Contains(t, auth.Accounts, "default")
+	assert.Contains(t, auth.Accounts, "default-privileged")
+
+	privilegedAccount := auth.Accounts["default-privileged"]
+	assert.Contains(t, privilegedAccount.ClusterRoles, "default-privileged", "privileged account should bind to privileged cluster role")
+	assert.Contains(t, auth.ClusterRoles, "default-privileged", "privileged cluster role should be defined")
+
+	assert.True(t, clusterRoleHasPrivilegedPSP("default-privileged", &auth.ClusterRoles), "Failed to find privileged PSP")
+}
+
+func clusterRoleHasPrivilegedPSP(clusterRoleName string, clusterRoles *map[string]AuthRole) bool {
+	for _, rule := range (*clusterRoles)[clusterRoleName] {
+		if !rule.IsPodSecurityPolicyRule() {
+			continue
+		}
+		for _, resourceName := range rule.ResourceNames {
+			if resourceName == "privileged" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func accountHasPrivilegedPSP(account AuthAccount, clusterRoles *map[string]AuthRole) bool {
+	for _, clusterRoleName := range account.ClusterRoles {
+		if clusterRoleHasPrivilegedPSP(clusterRoleName, clusterRoles) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
+	t.Parallel()
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
@@ -445,41 +478,43 @@ func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
 	// Note how the third role (re)uses the account created by the
 	// second which did the cloning.
 
-	assert.NotNil(t, roleManifest)
-	assert.NotNil(t, roleManifest.Configuration)
+	require.NotNil(t, roleManifest)
+	require.NotNil(t, roleManifest.Configuration)
 
 	assert.Len(t, roleManifest.InstanceGroups, 3)
-	assert.NotNil(t, roleManifest.InstanceGroups[0])
-	assert.NotNil(t, roleManifest.InstanceGroups[1])
-	assert.NotNil(t, roleManifest.InstanceGroups[2])
+	require.NotNil(t, roleManifest.InstanceGroups[0])
+	require.NotNil(t, roleManifest.InstanceGroups[1])
+	require.NotNil(t, roleManifest.InstanceGroups[2])
 
 	assert.Len(t, roleManifest.InstanceGroups[0].JobReferences, 1)
 	assert.Len(t, roleManifest.InstanceGroups[1].JobReferences, 1)
 	assert.Len(t, roleManifest.InstanceGroups[2].JobReferences, 1)
 
-	assert.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
-	assert.NotNil(t, roleManifest.InstanceGroups[1].JobReferences[0])
-	assert.NotNil(t, roleManifest.InstanceGroups[2].JobReferences[0])
+	require.NotNil(t, roleManifest.InstanceGroups[0].JobReferences[0])
+	require.NotNil(t, roleManifest.InstanceGroups[1].JobReferences[0])
+	require.NotNil(t, roleManifest.InstanceGroups[2].JobReferences[0])
 
 	assert.Equal(t, "privileged", roleManifest.InstanceGroups[0].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
 	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[1].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
 	assert.Equal(t, "nonprivileged", roleManifest.InstanceGroups[2].JobReferences[0].ContainerProperties.BoshContainerization.PodSecurityPolicy)
 
-	assert.NotNil(t, roleManifest.InstanceGroups[0].Run)
-	assert.NotNil(t, roleManifest.InstanceGroups[1].Run)
-	assert.NotNil(t, roleManifest.InstanceGroups[2].Run)
+	require.NotNil(t, roleManifest.InstanceGroups[0].Run)
+	require.NotNil(t, roleManifest.InstanceGroups[1].Run)
+	require.NotNil(t, roleManifest.InstanceGroups[2].Run)
 
-	assert.Equal(t, "default", roleManifest.InstanceGroups[0].Run.ServiceAccount)
-	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[1].Run.ServiceAccount)
-	assert.Equal(t, "default-nonprivileged", roleManifest.InstanceGroups[2].Run.ServiceAccount)
+	assert.Equal(t, "default-privileged", roleManifest.InstanceGroups[0].Run.ServiceAccount)
+	assert.Equal(t, "default", roleManifest.InstanceGroups[1].Run.ServiceAccount)
+	assert.Equal(t, "default", roleManifest.InstanceGroups[2].Run.ServiceAccount)
 
-	assert.NotNil(t, roleManifest.Configuration.Authorization.Accounts)
-	assert.Len(t, roleManifest.Configuration.Authorization.Accounts, 2)
+	auth := &roleManifest.Configuration.Authorization
+	assert.NotNil(t, auth.Accounts)
+	assert.Len(t, auth.Accounts, 2)
 
-	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default")
-	assert.Contains(t, roleManifest.Configuration.Authorization.Accounts, "default-nonprivileged")
-	assert.Equal(t, "privileged", roleManifest.Configuration.Authorization.Accounts["default"].PodSecurityPolicy)
-	assert.Equal(t, "nonprivileged", roleManifest.Configuration.Authorization.Accounts["default-nonprivileged"].PodSecurityPolicy)
+	assert.Contains(t, auth.Accounts, "default-privileged")
+	assert.Contains(t, auth.Accounts, "default")
+
+	assert.True(t, accountHasPrivilegedPSP(auth.Accounts["default-privileged"], &auth.ClusterRoles), "privileged account does not have privileged PSP")
+	assert.False(t, accountHasPrivilegedPSP(auth.Accounts["default"], &auth.ClusterRoles), "unprivileged account should not have privileged PSP")
 }
 
 func TestLoadRoleManifestRunGeneral(t *testing.T) {

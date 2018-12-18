@@ -95,17 +95,12 @@ func minKubeVersion(major, minor int) string {
 // access them.
 func MakeBasicValues() *helm.Mapping {
 
-	psp := helm.NewMapping()
-	for _, pspName := range model.PodSecurityPolicies() {
-		psp.Add(pspName, nil)
-	}
-
 	return helm.NewMapping(
 		"kube", helm.NewMapping(
 			"external_ips", helm.NewList(),
 			"secrets_generation_counter", helm.NewNode(1, helm.Comment("Increment this counter to rotate all generated secrets")),
 			"storage_class", helm.NewMapping("persistent", "persistent", "shared", "shared"),
-			"psp", psp,
+			"psp", helm.NewMapping(),
 			"hostpath_available", helm.NewNode(false, helm.Comment("Whether HostPath volume mounts are available")),
 			"registry", helm.NewMapping(
 				"hostname", "docker.io",

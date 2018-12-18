@@ -466,19 +466,92 @@ func (g *InstanceGroup) IsPrivileged() bool {
 	return false
 }
 
-// PodSecurityPolicy determines the name of the pod security policy
-// governing the specified instance group.
-func (g *InstanceGroup) PodSecurityPolicy() string {
-	result := LeastPodSecurityPolicy()
-
-	// Note: validateRoleRun ensured non-nil of job.ContainerProperties.BoshContainerization.PodSecurityPolicy
-
-	for _, job := range g.JobReferences {
-		result = MergePodSecurityPolicies(result,
-			job.ContainerProperties.BoshContainerization.PodSecurityPolicy)
+// IsPrivilegedPodSecurityPolicy tests if this instance group requires a
+// privileged pod security policy
+func (g *InstanceGroup) IsPrivilegedPodSecurityPolicy() bool {
+	if g.IsPrivileged() {
+		return true
 	}
+	for _, job := range g.JobReferences {
+		if job.ContainerProperties.BoshContainerization.PodSecurityPolicy == PodSecurityPolicyPrivileged {
+			return true
+		}
+	}
+	return false
+}
 
-	return result
+// InvalidPodSecurityPolicyPrivilegeError is returned from
+// EnsureValidPodSecurityPolicyPrivilege to describe an invalid value
+type InvalidPodSecurityPolicyPrivilegeError struct {
+	JobName string
+	Value   string
+}
+
+func (e *InvalidPodSecurityPolicyPrivilegeError) Error() string {
+	return fmt.Sprintf(`Invalid value "%s": Expected one of: %s, %s`,
+		e.Value,
+		PodSecurityPolicyNonPrivileged,
+		PodSecurityPolicyPrivileged)
+}
+
+// EnsureValidPodSecurityPolicyPrivilege checks that this instance group either
+// requires a privileged pod security policy, or does not (it does not have
+// invalid values).  It returns nil on success, and an
+// InvalidPodSecurityPolicyPrivilegeError describing the problem on failure.
+func (g *InstanceGroup) EnsureValidPodSecurityPolicyPrivilege() error {
+	for _, job := range g.JobReferences {
+		switch job.ContainerProperties.BoshContainerization.PodSecurityPolicy {
+		case PodSecurityPolicyNonPrivileged:
+			// Nothing to do
+		case PodSecurityPolicyPrivileged:
+			// Nothing to do
+		case "":
+			// Default to nonprivileged
+			job.ContainerProperties.BoshContainerization.PodSecurityPolicy = PodSecurityPolicyNonPrivileged
+		default:
+			return &InvalidPodSecurityPolicyPrivilegeError{
+				JobName: job.Name,
+				Value:   job.ContainerProperties.BoshContainerization.PodSecurityPolicy,
+			}
+		}
+	}
+	return nil
+}
+
+// AllowPrivilegeEscalation checks whether the role will require more privileges
+// than a default pod
+func (g *InstanceGroup) AllowPrivilegeEscalation() bool {
+	// An instance group allows privilege escalation if any of its pod security
+	// policies allows privilege escalation
+	serviceAccountName := g.Run.ServiceAccount
+	account, ok := g.roleManifest.Configuration.Authorization.Accounts[serviceAccountName]
+	if !ok {
+		// Failed to find the service account; this should have failed validation
+		return false
+	}
+	for _, clusterRoleName := range account.ClusterRoles {
+		clusterRole, ok := g.roleManifest.Configuration.Authorization.ClusterRoles[clusterRoleName]
+		if !ok {
+			// Failed to find cluster role; this should have failed validation
+			continue
+		}
+		for _, authRule := range clusterRole {
+			if !authRule.IsPodSecurityPolicyRule() {
+				continue
+			}
+			for _, resourceName := range authRule.ResourceNames {
+				psp := g.roleManifest.Configuration.Authorization.PodSecurityPolicies[resourceName]
+				if psp == nil {
+					// Failed to find PSP; this should have failed validation
+					continue
+				}
+				if psp.PrivilegeEscalationAllowed() {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // IsColocated tests if the role is of type ColocatedContainer, or

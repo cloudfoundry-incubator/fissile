@@ -4,40 +4,40 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
-func TestPodSecurityPolicies(t *testing.T) {
+func TestPodSecurityPolicyPrivilegeEscalationAllowed(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
-
-	policies := PodSecurityPolicies()
-
-	assert.Len(policies, 2)
-	assert.Contains(policies, "privileged")
-	assert.Contains(policies, "nonprivileged")
-}
-
-func TestValidPodSecurityPolicy(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	assert.True(ValidPodSecurityPolicy("privileged"))
-	assert.True(ValidPodSecurityPolicy("nonprivileged"))
-	assert.False(ValidPodSecurityPolicy("bogus"))
-}
-
-func TestMergePodSecurityPolicies(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	assert.Equal(MergePodSecurityPolicies("privileged", "privileged"), "privileged")
-	assert.Equal(MergePodSecurityPolicies("privileged", "nonprivileged"), "privileged")
-	assert.Equal(MergePodSecurityPolicies("nonprivileged", "privileged"), "privileged")
-	assert.Equal(MergePodSecurityPolicies("nonprivileged", "nonprivileged"), "nonprivileged")
-}
-
-func TestLeastPodSecurityPolicy(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	assert.Equal(LeastPodSecurityPolicy(), "nonprivileged")
+	samples := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "explicit true",
+			input:    `{allowPrivilegeEscalation: true}`,
+			expected: true,
+		},
+		{
+			name:     "explicit false",
+			input:    `{allowPrivilegeEscalation: false}`,
+			expected: false,
+		},
+		{
+			name:     "not set",
+			input:    `{default: false}`,
+			expected: false,
+		},
+	}
+	for _, sample := range samples {
+		t.Run(sample.name, func(t *testing.T) {
+			t.Parallel()
+			var policy PodSecurityPolicy
+			err := yaml.Unmarshal([]byte(sample.input), &policy)
+			require.NoError(t, err, "Failed to unmarshal input")
+			assert.Equal(t, sample.expected, policy.PrivilegeEscalationAllowed())
+		})
+	}
 }

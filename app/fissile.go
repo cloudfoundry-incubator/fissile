@@ -791,77 +791,95 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 		return err
 	}
 
-	// Check the accounts for the pod security policies they
-	// reference, and create their cluster roles. The necessary
-	// cluster role bindings will be created by NewRBACAccount.
-
-	for _, pspName := range model.PodSecurityPolicies() {
-		for _, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
-			if accountSpec.PodSecurityPolicy == pspName {
-				node, err := kube.NewRBACClusterRolePSP(pspName, settings)
-				if err != nil {
-					return err
-				}
-				err = f.writeHelmNode(authDir, fmt.Sprintf("auth-clusterrole-%s.yaml", pspName), node)
-				if err != nil {
-					return err
-				}
-				break
-			}
-		}
-	}
-
-	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
-		// Ignore roles referenced by a single instance
-		// group. These are not written as their own files,
-		// but as part of the instance group.
-		if settings.RoleManifest.Configuration.Authorization.RoleUse[roleName] < 2 {
+	// Generate accounts (and any associated role bindings / cluster role bindings)
+	for accountName, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
+		// Ignore accounts referenced by a single instance group. These are not
+		// written as their own files, but as part of the instance group.
+		if len(accountSpec.UsedBy) < 2 {
 			continue
 		}
 
-		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
+		nodes, err := kube.NewRBACAccount(accountName, settings.RoleManifest.Configuration, settings)
 		if err != nil {
 			return err
 		}
+		err = f.writeHelmNode(authDir, fmt.Sprintf("account-%s.yaml", accountName), nodes...)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Generate roles
+	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.Roles {
+		var accountNames []string
+		for accountName := range settings.RoleManifest.Configuration.Authorization.RoleUsedBy[roleName] {
+			accountNames = append(accountNames, fmt.Sprintf("- %s", accountName))
+		}
+		if len(accountNames) < 1 {
+			panic(fmt.Sprintf("Role %s used by no accounts", roleName))
+		}
+		if len(accountNames) < 2 {
+			// Ignore roles referenced by a single account. These are not written as their own files,
+			// but as part of the account.
+			continue
+		}
+		sort.Strings(accountNames)
+
+		node, err := kube.NewRBACRole(roleName, kube.RBACRoleKindRole, roleSpec, settings)
+		if err != nil {
+			return err
+		}
+		node.Set(helm.Comment(fmt.Sprintf(`Role %s used by accounts:\n%s`, roleName, strings.Join(accountNames, "\n"))))
 		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-role-%s.yaml", roleName), node)
 		if err != nil {
 			return err
 		}
 	}
-	for accountName, accountSpec := range settings.RoleManifest.Configuration.Authorization.Accounts {
-		// Ignore accounts referenced by a single instance
-		// group. These are not written as their own files,
-		// but as part of the instance group.
-		if accountSpec.NumGroups < 2 {
+
+	// Generate cluster roles
+	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.ClusterRoles {
+		var accountNames []string
+		for accountName := range settings.RoleManifest.Configuration.Authorization.ClusterRoleUsedBy[roleName] {
+			accountNames = append(accountNames, accountName)
+		}
+		if len(accountNames) < 1 {
+			panic(fmt.Sprintf("Cluster role %s used by no accounts", roleName))
+		}
+		if len(accountNames) < 2 {
+			// Ignore cluster roles referenced by a single account. These are not written as their own files,
+			// but as part of the account.
 			continue
 		}
+		sort.Strings(accountNames)
 
-		nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
+		node, err := kube.NewRBACRole(roleName, kube.RBACRoleKindClusterRole, roleSpec, settings)
 		if err != nil {
 			return err
 		}
-		outputPath := filepath.Join(authDir, fmt.Sprintf("account-%s.yaml", accountName))
-		outputFile, err := os.Create(outputPath)
-		if err != nil {
-			return err
-		}
-		defer outputFile.Close()
-		encoder := helm.NewEncoder(outputFile, helm.EmptyLines(true))
-		for _, n := range nodes {
-			err = encoder.Encode(n)
-			if err != nil {
-				return err
-			}
-		}
-		err = outputFile.Close()
+		node.Set(helm.Comment(fmt.Sprintf(`Cluster role %s used by accounts %s`, roleName, strings.Join(accountNames, "\n"))))
+		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-cluster-role-%s.yaml", roleName), node)
 		if err != nil {
 			return err
 		}
 	}
+
+	// Generate pod security policies
+	for pspName, psp := range settings.RoleManifest.Configuration.Authorization.PodSecurityPolicies {
+		// TODO: embed PSPs into instance group definitions as appropriate
+		node, err := kube.NewRBACPSP(pspName, psp, settings)
+		if err != nil {
+			return err
+		}
+		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-psp-%s.yaml", pspName), node)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error {
+func (f *Fissile) writeHelmNode(dirName, fileName string, nodes ...helm.Node) error {
 	outputPath := filepath.Join(dirName, fileName)
 	f.UI.Printf("Writing config %s\n", color.CyanString(outputPath))
 
@@ -870,15 +888,18 @@ func (f *Fissile) writeHelmNode(dirName, fileName string, node helm.Node) error 
 		return err
 	}
 
-	err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(node)
-	if err == nil {
-		return outputFile.Close()
+	for _, node := range nodes {
+		err = helm.NewEncoder(outputFile, helm.EmptyLines(true)).Encode(node)
+		if err != nil {
+			_ = outputFile.Close()
+			return err
+		}
 	}
-	_ = outputFile.Close()
+	err = outputFile.Close()
 	return err
 }
 
-func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model.InstanceGroup, settings kube.ExportSettings) error {
+func (f *Fissile) generateBoshTaskRole(instanceGroup *model.InstanceGroup, settings kube.ExportSettings) ([]helm.Node, error) {
 
 	var node helm.Node
 	var err error
@@ -890,67 +911,36 @@ func (f *Fissile) generateBoshTaskRole(outputFile *os.File, instanceGroup *model
 	}
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	enc := helm.NewEncoder(outputFile)
-
-	err = f.generateAuthCoupledToRole(enc,
-		instanceGroup.Run.ServiceAccount,
-		settings)
+	authNodes, err := f.generateAuthCoupledToRole(instanceGroup, settings)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = enc.Encode(node)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// We must generate the dependencies before the actual task, otherwise
+	// `helm create -f` will get confused
+	return append(authNodes, node), err
 }
 
-func (f *Fissile) generateAuthCoupledToRole(enc *helm.Encoder, accountName string, settings kube.ExportSettings) error {
+func (f *Fissile) generateAuthCoupledToRole(instanceGroup *model.InstanceGroup, settings kube.ExportSettings) ([]helm.Node, error) {
+	accountName := instanceGroup.Run.ServiceAccount
 
-	accountSpec := settings.RoleManifest.Configuration.Authorization.Accounts[accountName]
-
-	// The instance group references a service account which is
-	// used by multiple roles, i.e. is not tightly coupled to
-	// it. The auth for this was written by `generateAuth`. Here
-	// we ignore it.
-
-	if accountSpec.NumGroups > 1 {
-		return nil
+	account := settings.RoleManifest.Configuration.Authorization.Accounts[accountName]
+	if len(account.UsedBy) != 1 {
+		// Account is used in multiple instance groups, don't embed it
+		return nil, nil
+	}
+	if _, ok := account.UsedBy[instanceGroup.Name]; !ok {
+		panic(fmt.Sprintf("Account %s is not used by instance group %s", accountName, instanceGroup.Name))
 	}
 
-	nodes, err := kube.NewRBACAccount(accountName, accountSpec, settings)
+	nodes, err := kube.NewRBACAccount(accountName, settings.RoleManifest.Configuration, settings)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	for _, roleName := range accountSpec.Roles {
-		role := settings.RoleManifest.Configuration.Authorization.RoleUse[roleName]
-		if role > 1 {
-			continue
-		}
-
-		roleSpec := settings.RoleManifest.Configuration.Authorization.Roles[roleName]
-		node, err := kube.NewRBACRole(roleName, roleSpec, settings)
-		if err != nil {
-			return err
-		}
-
-		nodes = append(nodes, node)
-	}
-
-	for _, n := range nodes {
-		err = enc.Encode(n)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return nodes, nil
 }
 
 // instanceGroupHasStorage returns true if a given group uses shared or
@@ -983,50 +973,39 @@ func (f *Fissile) generateKubeRoles(settings kube.ExportSettings) error {
 		if err != nil {
 			return err
 		}
-		outputPath := filepath.Join(roleTypeDir, fmt.Sprintf("%s.yaml", instanceGroup.Name))
-
-		f.UI.Printf("Writing config %s for role %s\n",
-			color.CyanString(outputPath),
-			color.CyanString(instanceGroup.Name),
-		)
-
-		outputFile, err := os.Create(outputPath)
-		if err != nil {
-			return err
-		}
-		defer outputFile.Close()
 
 		switch instanceGroup.Type {
 		case model.RoleTypeBoshTask:
-			err := f.generateBoshTaskRole(outputFile, instanceGroup, settings)
+			nodes, err := f.generateBoshTaskRole(instanceGroup, settings)
+			if err != nil {
+				return err
+			}
+
+			err = f.writeHelmNode(roleTypeDir, fmt.Sprintf("%s.yaml", instanceGroup.Name), nodes...)
 			if err != nil {
 				return err
 			}
 
 		case model.RoleTypeBosh:
-			enc := helm.NewEncoder(outputFile)
-
 			statefulSet, deps, err := kube.NewStatefulSet(instanceGroup, settings, f)
 			if err != nil {
 				return err
 			}
 
-			err = f.generateAuthCoupledToRole(enc,
-				instanceGroup.Run.ServiceAccount,
-				settings)
+			authNodes, err := f.generateAuthCoupledToRole(instanceGroup, settings)
 			if err != nil {
 				return err
 			}
 
-			err = enc.Encode(statefulSet)
+			nodes := authNodes
+			if deps != nil {
+				nodes = append(nodes, deps)
+			}
+			nodes = append(nodes, statefulSet)
+
+			err = f.writeHelmNode(roleTypeDir, fmt.Sprintf("%s.yaml", instanceGroup.Name), nodes...)
 			if err != nil {
 				return err
-			}
-			if deps != nil {
-				err = enc.Encode(deps)
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}

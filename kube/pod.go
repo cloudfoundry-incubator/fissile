@@ -504,24 +504,25 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 	return helm.NewNode(env), nil
 }
 
-func getSecurityContext(role *model.InstanceGroup, createHelmChart bool) helm.Node {
+func getSecurityContext(instanceGroup *model.InstanceGroup, createHelmChart bool) helm.Node {
 	var hasAll string
 	var notAll string
 	var config string
 	if createHelmChart {
-		config = fmt.Sprintf(".Values.sizing.%s.capabilities", makeVarName(role.Name))
+		config = fmt.Sprintf(".Values.sizing.%s.capabilities", makeVarName(instanceGroup.Name))
 		hasAll = fmt.Sprintf(`if has "ALL" %s`, config)
 		notAll = fmt.Sprintf(`if not (has "ALL" %s)`, config)
 	}
 
-	if role.IsPrivileged() {
+	if instanceGroup.IsPrivileged() {
+		// If instance group is privileged, there's nothing else we need to specify
 		return helm.NewMapping("privileged", true)
 	}
 
 	sc := helm.NewMapping()
-	allowPrivileged := role.PodSecurityPolicy() == model.PodSecurityPolicyPrivileged
+	allowPrivileged := instanceGroup.AllowPrivilegeEscalation()
 
-	capabilities := role.Run.Capabilities
+	capabilities := instanceGroup.Run.Capabilities
 	if createHelmChart {
 		// This code handles manifest modes `caplist` and `nil` (empty caplist).
 		//

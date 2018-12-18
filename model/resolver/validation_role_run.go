@@ -3,7 +3,6 @@ package resolver
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/validation"
@@ -55,19 +54,6 @@ func validateJobReferences(instanceGroup *model.InstanceGroup) validation.ErrorL
 	for _, job := range instanceGroup.JobReferences {
 		for idx := range job.ContainerProperties.BoshContainerization.Ports {
 			allErrs = append(allErrs, validateExposedPorts(instanceGroup.Name, job.Name, &job.ContainerProperties.BoshContainerization.Ports[idx])...)
-		}
-
-		// Validate pod security policy, or default to least
-		if job.ContainerProperties.BoshContainerization.PodSecurityPolicy == "" {
-			job.ContainerProperties.BoshContainerization.PodSecurityPolicy = model.LeastPodSecurityPolicy()
-		} else {
-			if !model.ValidPodSecurityPolicy(job.ContainerProperties.BoshContainerization.PodSecurityPolicy) {
-				msg := fmt.Sprintf("Expected one of: %s", strings.Join(model.PodSecurityPolicies(), ", "))
-				ref := fmt.Sprintf("instance_groups[%s].jobs[%s].properties.bosh_containerization.pod-security-policy",
-					instanceGroup.Name, job.Name)
-				allErrs = append(allErrs, validation.Invalid(
-					ref, job.ContainerProperties.BoshContainerization.PodSecurityPolicy, msg))
-			}
 		}
 	}
 

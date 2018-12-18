@@ -57,6 +57,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 
 	var helmConfig, yamlConfig bytes.Buffer
 
+	if node == nil {
+		node = helm.NewNode(nil)
+	}
 	if err := helm.NewEncoder(&helmConfig).Encode(node); err != nil {
 		return nil, err
 	}
@@ -228,4 +231,15 @@ func getBasicConfig() (map[string]interface{}, error) {
 		return nil, err
 	}
 	return converted.(map[string]interface{}), nil
+}
+
+// matchNodeInList iterates through a list of nodes and returns the first one
+// where node.Match(target) succeeds
+func matchNodeInList(list []helm.Node, target helm.Node) helm.Node {
+	for _, node := range list {
+		if node.Match(target) {
+			return node
+		}
+	}
+	return nil
 }
