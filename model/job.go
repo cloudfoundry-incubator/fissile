@@ -12,7 +12,7 @@ import (
 
 	"code.cloudfoundry.org/archiver/extractor"
 	"code.cloudfoundry.org/fissile/util"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // JobLinkInfo describes a BOSH link provider or consumer

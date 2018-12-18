@@ -21,7 +21,7 @@ import (
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
-	"github.com/termie/go-shutil"
+	shutil "github.com/termie/go-shutil"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 
 	"code.cloudfoundry.org/fissile/util"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // RoleManifest represents a collection of roles

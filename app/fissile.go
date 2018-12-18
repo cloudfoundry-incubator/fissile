@@ -21,7 +21,7 @@ import (
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
 	"github.com/fatih/color"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // OutputFormat is one of the known output formats for commands showing loaded

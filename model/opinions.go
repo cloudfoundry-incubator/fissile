@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"reflect"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Opinions holds the light and dark opinions given to fissile

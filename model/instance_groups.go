@@ -12,7 +12,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/util"
 	"code.cloudfoundry.org/fissile/validation"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // InstanceGroups is an array of Role*

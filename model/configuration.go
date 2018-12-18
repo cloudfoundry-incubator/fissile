@@ -1,7 +1,7 @@
 package model
 
 import (
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Configuration contains information about how to configure the

@@ -18,7 +18,7 @@ import (
 	"github.com/SUSE/termui"
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
