@@ -235,6 +235,7 @@ func TestStatefulSetServices(t *testing.T) {
 								name: myrole-tor-set
 								labels:
 									app.kubernetes.io/component: myrole-tor-set
+									app: myrole-tor-set
 							spec:
 								clusterIP: None
 								ports:
@@ -271,6 +272,7 @@ func TestStatefulSetServices(t *testing.T) {
 								name: myrole-set
 								labels:
 									app.kubernetes.io/component: myrole-set
+									app: myrole-set
 							spec:
 								clusterIP: None
 								ports:
@@ -307,6 +309,7 @@ func TestStatefulSetServices(t *testing.T) {
 								name: myrole-tor-public
 								labels:
 									app.kubernetes.io/component: myrole-tor-public
+									app: myrole-tor-public
 							spec:
 								externalIPs: [ 192.168.77.77 ]
 								ports:
@@ -338,6 +341,7 @@ func TestStatefulSetServices(t *testing.T) {
 								name: myrole-tor
 								labels:
 									app.kubernetes.io/component: myrole-tor
+									app: myrole-tor
 							spec:
 								ports:
 								-
@@ -449,6 +453,7 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 				metadata:
 					labels:
 						app.kubernetes.io/component: myrole
+						app: myrole
 					name: myrole
 				spec:
 					containers:
@@ -536,6 +541,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 				metadata:
 					labels:
 						app.kubernetes.io/component: myrole
+						app: myrole
 					name: myrole
 				spec:
 					containers:
@@ -747,6 +753,7 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 				metadata:
 					labels:
 						app.kubernetes.io/component: myrole
+						app: myrole
 					name: myrole
 				spec:
 					containers:

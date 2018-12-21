@@ -12,7 +12,6 @@ var (
 	flagBuildKubeUseMemoryLimits bool
 	flagBuildKubeUseCPULimits    bool
 	flagBuildKubeTagExtra        string
-	flagBuildKubeIstioComplied   bool
 )
 
 // buildKubeCmd represents the kube command
@@ -27,7 +26,6 @@ var buildKubeCmd = &cobra.Command{
 		flagBuildKubeUseCPULimits = buildKubeViper.GetBool("use-cpu-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
-		flagBuildKubeIstioComplied = buildViper.GetBool("istio-complied")
 
 		err := fissile.LoadManifest(
 			flagRoleManifest,
@@ -61,7 +59,6 @@ var buildKubeCmd = &cobra.Command{
 			Opinions:        opinions,
 			CreateHelmChart: false,
 			TagExtra:        flagBuildKubeTagExtra,
-			IstioComplied:   flagBuildKubeIstioComplied,
 		}
 
 		if flagBuildOutputGraph != "" {
@@ -110,13 +107,6 @@ func init() {
 		"",
 		"",
 		"Additional information to use in computing the image tags",
-	)
-
-	buildKubeCmd.PersistentFlags().BoolP(
-		"istio-complied",
-		"",
-		false,
-		"Comply with Istio requirements when generating kube yaml",
 	)
 
 	buildKubeViper.BindPFlags(buildKubeCmd.PersistentFlags())

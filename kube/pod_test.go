@@ -1733,6 +1733,8 @@ func TestPodPreFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				app: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1851,6 +1853,8 @@ func TestPodPostFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "post-role"
+				app: "post-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1979,6 +1983,8 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				app: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2070,6 +2076,8 @@ func TestPodMemoryHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				app: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2200,6 +2208,8 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				app: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2291,6 +2301,8 @@ func TestPodCPUHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				app: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2835,8 +2847,7 @@ func TestPodIstioManagedKube(t *testing.T) {
 		return
 	}
 	pod, err := NewPod(role, ExportSettings{
-		Opinions:        model.NewEmptyOpinions(),
-		IstioComplied: true,
+		Opinions: model.NewEmptyOpinions(),
 	}, nil)
 
 	if !assert.NoError(err, "Failed to create pod from role istio-managed-role") {
@@ -2854,7 +2865,7 @@ func TestPodIstioManagedKube(t *testing.T) {
 		metadata:
 			name: istio-managed-role
 			labels:
-			        app: istio-managed-role
+					app: istio-managed-role
 	`, actual)
 
 }
@@ -2868,7 +2879,6 @@ func TestPodIstioManagedHelm(t *testing.T) {
 	}
 	pod, err := NewPod(role, ExportSettings{
 		CreateHelmChart: true,
-		IstioComplied:   true,
 		Repository:      "theRepo",
 		Opinions:        model.NewEmptyOpinions(),
 	}, nil)
@@ -2878,9 +2888,9 @@ func TestPodIstioManagedHelm(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
-		"Values.kube.registry.hostname":        "R",
-		"Values.kube.organization":             "O",
-		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
+		"Values.kube.registry.hostname":                 "R",
+		"Values.kube.organization":                      "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":          "cluster.local",
 		"Values.sizing.istio_managed_role.capabilities": []interface{}{},
 	}
 
@@ -2902,6 +2912,7 @@ func TestPodIstioManagedHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "istio-managed-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:

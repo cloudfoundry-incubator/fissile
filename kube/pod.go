@@ -62,7 +62,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	if settings.CreateHelmChart {
 		annotations := helm.NewMapping()
 		annotations.Add("checksum/config", `{{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}`)
-		if settings.IstioComplied && !role.HasTag(model.RoleTagIstioManaged) {
+		if role.Type == model.RoleTypeBosh && !role.HasTag(model.RoleTagIstioManaged) {
 			annotations.Add("sidecar.istio.io/inject", "false")
 		}
 		meta.Add("annotations", annotations)

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/helm"
+	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,9 +35,7 @@ func TestNewSelector(t *testing.T) {
 		}
 	}
 	role := makeTemplateRole()
-	settings := ExportSettings{
-		IstioComplied: false,
-	}
+	settings := ExportSettings{}
 	selector := newSelector(role, settings)
 
 	actual, err := RoundtripKube(selector)
@@ -60,10 +58,7 @@ func TestNewSelectorIstioManaged(t *testing.T) {
 		}
 	}
 	role := makeTemplateRole()
-	settings := ExportSettings{
-		IstioComplied: true,
-		CreateHelmChart: true,
-	}
+	settings := ExportSettings{CreateHelmChart: true}
 	selector := newSelector(role, settings)
 
 	actual, err := RoundtripNode(selector, nil)

@@ -218,6 +218,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "some-group"
+					app: "some-group"
+					version: 1.22.333.4444
 			spec:
 				replicas: 1
 				selector:
@@ -234,8 +236,11 @@ func TestNewDeploymentHelm(t *testing.T) {
 							app.kubernetes.io/version: 1.22.333.4444
 							helm.sh/chart: MyChart-42.1_foo
 							skiff-role-name: "some-group"
+							app: "some-group"
+							version: 1.22.333.4444
 						annotations:
 							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+							sidecar.istio.io/inject: "false"
 					spec:
 						affinity:
 							podAntiAffinity:

@@ -61,7 +61,8 @@ func TestServiceKube(t *testing.T) {
 		metadata:
 			name: myrole-tor
 			labels:
-			        app.kubernetes.io/component: "myrole-tor"
+					app.kubernetes.io/component: "myrole-tor"
+					app: "myrole-tor"
 		spec:
 			ports:
 			-
@@ -114,6 +115,7 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor"
+					app: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -150,6 +152,7 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor"
+					app: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -182,9 +185,7 @@ func TestIstioManagedServiceKube(t *testing.T) {
 
 	role.Tags = []model.RoleTag{model.RoleTagIstioManaged}
 
-	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{
-		IstioComplied: true,
-	})
+	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{})
 	require.NoError(t, err)
 	require.NotNil(t, service)
 
@@ -227,12 +228,9 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 
 	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{
 		CreateHelmChart: true,
-		IstioComplied: true,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, service)
-
-
 
 	t.Run("ClusterIP", func(t *testing.T) {
 		t.Parallel()
@@ -387,6 +385,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myservice-set"
+					app: "myservice-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -424,6 +423,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myservice-set"
+					app: "myservice-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -514,6 +514,7 @@ func TestPublicServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor-public"
+					app: "myrole-tor-public"
 			spec:
 				externalIPs: "[127.0.0.1,127.0.0.2]"
 				ports:
@@ -548,6 +549,7 @@ func TestPublicServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor-public"
+					app: "myrole-tor-public"
 			spec:
 				ports:
 				-	name: "https"
@@ -649,6 +651,7 @@ func TestActivePassiveService(t *testing.T) {
 													app.kubernetes.io/version: 1.22.333.4444
 													helm.sh/chart: MyChart-42.1_foo
 													skiff-role-name: "myrole-set"
+													app: "myrole-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -685,6 +688,7 @@ func TestActivePassiveService(t *testing.T) {
 													app.kubernetes.io/version: 1.22.333.4444
 													helm.sh/chart: MyChart-42.1_foo
 													skiff-role-name: "myrole-tor-set"
+													app: "myrole-tor-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -726,6 +730,7 @@ func TestActivePassiveService(t *testing.T) {
 												app.kubernetes.io/version: 1.22.333.4444
 												helm.sh/chart: MyChart-42.1_foo
 												skiff-role-name: "myrole-tor"
+												app: "myrole-tor"
 										spec:
 											ports:
 											-
@@ -762,6 +767,7 @@ func TestActivePassiveService(t *testing.T) {
 												app.kubernetes.io/version: 1.22.333.4444
 												helm.sh/chart: MyChart-42.1_foo
 												skiff-role-name: "myrole-tor-public"
+												app: "myrole-tor-public"
 										spec:
 											externalIPs: [ 192.0.2.42 ]
 											ports:
@@ -791,7 +797,6 @@ func TestActivePassiveService(t *testing.T) {
 		}(variant)
 	}
 }
-
 
 func expectedYAML(settings ExportSettings, expected string) string {
 	if !settings.CreateHelmChart {

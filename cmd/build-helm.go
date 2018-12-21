@@ -13,7 +13,6 @@ var (
 	flagBuildHelmUseCPULimits    bool
 	flagBuildHelmTagExtra        string
 	flagBuildHelmAuthType        string
-	flagBuildHelmIstioComplied   bool
 )
 
 // buildHelmCmd represents the helm command
@@ -29,7 +28,6 @@ var buildHelmCmd = &cobra.Command{
 		flagBuildHelmTagExtra = buildHelmViper.GetString("tag-extra")
 		flagBuildOutputGraph = buildViper.GetString("output-graph")
 		flagBuildHelmAuthType = buildHelmViper.GetString("auth-type")
-		flagBuildHelmIstioComplied = buildHelmViper.GetBool("istio-complied")
 
 		err := fissile.LoadManifest(
 			flagRoleManifest,
@@ -64,7 +62,6 @@ var buildHelmCmd = &cobra.Command{
 			CreateHelmChart: true,
 			TagExtra:        flagBuildHelmTagExtra,
 			AuthType:        flagBuildHelmAuthType,
-			IstioComplied:   flagBuildHelmIstioComplied,
 		}
 
 		if flagBuildOutputGraph != "" {
@@ -127,13 +124,6 @@ func init() {
 		"",
 		"",
 		"Sets the Kubernetes auth type",
-	)
-
-	buildHelmCmd.PersistentFlags().BoolP(
-		"istio-complied",
-		"",
-		false,
-		"Comply with Istio requirements when generating helm chart",
 	)
 
 	buildHelmViper.BindPFlags(buildHelmCmd.PersistentFlags())
