@@ -129,5 +129,6 @@ func MakeBasicValues() *helm.Mapping {
 		"sizing", helm.NewMapping(),
 		"secrets", helm.NewMapping(),
 		"services", helm.NewMapping(
-			"loadbalanced", false))
+			"loadbalanced", false,
+			"ingress", nil))
 }
