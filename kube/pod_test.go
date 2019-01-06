@@ -1726,6 +1726,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1733,7 +1734,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				app: "pre-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -1846,6 +1846,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 		metadata:
 			name: "post-role"
 			labels:
+				app: "post-role"
 				app.kubernetes.io/component: post-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1853,7 +1854,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "post-role"
-				app: "post-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -1976,6 +1976,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1983,7 +1984,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				app: "pre-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -2069,6 +2069,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2076,7 +2077,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				app: "pre-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -2201,6 +2201,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2208,7 +2209,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				app: "pre-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -2294,6 +2294,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2301,7 +2302,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				app: "pre-role"
 				version: 1.22.333.4444
 		spec:
 			containers:
@@ -2839,37 +2839,6 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	}
 }
 
-func TestPodIstioManagedKube(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	role := podTestLoadRole(assert, "istio-managed-role")
-	if role == nil {
-		return
-	}
-	pod, err := NewPod(role, ExportSettings{
-		Opinions: model.NewEmptyOpinions(),
-	}, nil)
-
-	if !assert.NoError(err, "Failed to create pod from role istio-managed-role") {
-		return
-	}
-	assert.NotNil(pod)
-
-	actual, err := RoundtripNode(pod, nil)
-	if !assert.NoError(err) {
-		return
-	}
-	testhelpers.IsYAMLSubsetString(assert, `---
-		apiVersion: v1
-		kind: Pod
-		metadata:
-			name: istio-managed-role
-			labels:
-					app: istio-managed-role
-	`, actual)
-
-}
-
 func TestPodIstioManagedHelm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -2888,6 +2857,7 @@ func TestPodIstioManagedHelm(t *testing.T) {
 	assert.NotNil(pod)
 
 	config := map[string]interface{}{
+		"Values.config.use_istio":                       "true",
 		"Values.kube.registry.hostname":                 "R",
 		"Values.kube.organization":                      "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":          "cluster.local",

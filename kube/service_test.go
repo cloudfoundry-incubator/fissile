@@ -60,9 +60,6 @@ func TestServiceKube(t *testing.T) {
 	testhelpers.IsYAMLSubsetString(assert, `---
 		metadata:
 			name: myrole-tor
-			labels:
-					app.kubernetes.io/component: "myrole-tor"
-					app: "myrole-tor"
 		spec:
 			ports:
 			-
@@ -108,6 +105,7 @@ func TestServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor"
 				labels:
+					app: "myrole-tor"
 					app.kubernetes.io/component: myrole-tor
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -115,7 +113,6 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor"
-					app: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -145,6 +142,7 @@ func TestServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor"
 				labels:
+					app: "myrole-tor"
 					app.kubernetes.io/component: myrole-tor
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -152,7 +150,6 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor"
-					app: "myrole-tor"
 			spec:
 				ports:
 				-	name: "http"
@@ -167,49 +164,6 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
-}
-
-func TestIstioManagedServiceKube(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	manifest, role := serviceTestLoadRole(assert, "exposed-ports.yml")
-	if manifest == nil || role == nil {
-		return
-	}
-
-	portDef := role.JobReferences[0].ContainerProperties.BoshContainerization.Ports[0]
-	if !assert.NotNil(portDef) {
-		return
-	}
-
-	role.Tags = []model.RoleTag{model.RoleTagIstioManaged}
-
-	service, err := newService(role, role.JobReferences[0], newServiceTypePrivate, ExportSettings{})
-	require.NoError(t, err)
-	require.NotNil(t, service)
-
-	actual, err := RoundtripKube(service)
-	require.NoError(t, err)
-	testhelpers.IsYAMLSubsetString(assert, `---
-		metadata:
-			name: myrole-tor
-			labels:
-				app: myrole-tor
-		spec:
-			ports:
-			-
-				name: http
-				port: 80
-				targetPort: 8080
-			-
-				name: https
-				port: 443
-				targetPort: 443
-			selector:
-				app: myrole
-				app.kubernetes.io/component: myrole
-	`, actual)
 }
 
 func TestIstioManagedServiceHelm(t *testing.T) {
@@ -236,6 +190,7 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": nil,
+			"Values.config.use_istio":      true,
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -273,6 +228,7 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.services.loadbalanced": "true",
+			"Values.config.use_istio":      true,
 		}
 
 		actual, err := RoundtripNode(service, config)
@@ -378,6 +334,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myservice-set"
 				labels:
+					app: "myservice-set"
 					app.kubernetes.io/component: myservice-set
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -385,7 +342,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myservice-set"
-					app: "myservice-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -416,6 +372,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myservice-set"
 				labels:
+					app: "myservice-set"
 					app.kubernetes.io/component: myservice-set
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -423,7 +380,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myservice-set"
-					app: "myservice-set"
 			spec:
 				clusterIP: "None"
 				ports:
@@ -507,6 +463,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor-public"
 				labels:
+					app: "myrole-tor-public"
 					app.kubernetes.io/component: myrole-tor-public
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -514,7 +471,6 @@ func TestPublicServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor-public"
-					app: "myrole-tor-public"
 			spec:
 				externalIPs: "[127.0.0.1,127.0.0.2]"
 				ports:
@@ -542,6 +498,7 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor-public"
 				labels:
+					app: "myrole-tor-public"
 					app.kubernetes.io/component: myrole-tor-public
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -549,7 +506,6 @@ func TestPublicServiceHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor-public"
-					app: "myrole-tor-public"
 			spec:
 				ports:
 				-	name: "https"
@@ -644,6 +600,7 @@ func TestActivePassiveService(t *testing.T) {
 											metadata:
 												name: myrole-set
 												labels:
+													app: "myrole-set"
 													app.kubernetes.io/component: myrole-set
 													app.kubernetes.io/instance: MyRelease
 													app.kubernetes.io/managed-by: Tiller
@@ -651,7 +608,6 @@ func TestActivePassiveService(t *testing.T) {
 													app.kubernetes.io/version: 1.22.333.4444
 													helm.sh/chart: MyChart-42.1_foo
 													skiff-role-name: "myrole-set"
-													app: "myrole-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -681,6 +637,7 @@ func TestActivePassiveService(t *testing.T) {
 											metadata:
 												name: myrole-tor-set
 												labels:
+													app: "myrole-tor-set"
 													app.kubernetes.io/component: myrole-tor-set
 													app.kubernetes.io/instance: MyRelease
 													app.kubernetes.io/managed-by: Tiller
@@ -688,7 +645,6 @@ func TestActivePassiveService(t *testing.T) {
 													app.kubernetes.io/version: 1.22.333.4444
 													helm.sh/chart: MyChart-42.1_foo
 													skiff-role-name: "myrole-tor-set"
-													app: "myrole-tor-set"
 											spec:
 												clusterIP: None
 												ports:
@@ -723,6 +679,7 @@ func TestActivePassiveService(t *testing.T) {
 										metadata:
 											name: myrole-tor
 											labels:
+												app: "myrole-tor"
 												app.kubernetes.io/component: myrole-tor
 												app.kubernetes.io/instance: MyRelease
 												app.kubernetes.io/managed-by: Tiller
@@ -730,7 +687,6 @@ func TestActivePassiveService(t *testing.T) {
 												app.kubernetes.io/version: 1.22.333.4444
 												helm.sh/chart: MyChart-42.1_foo
 												skiff-role-name: "myrole-tor"
-												app: "myrole-tor"
 										spec:
 											ports:
 											-
@@ -760,6 +716,7 @@ func TestActivePassiveService(t *testing.T) {
 										metadata:
 											name: myrole-tor-public
 											labels:
+												app: "myrole-tor-public"
 												app.kubernetes.io/component: myrole-tor-public
 												app.kubernetes.io/instance: MyRelease
 												app.kubernetes.io/managed-by: Tiller
@@ -767,7 +724,6 @@ func TestActivePassiveService(t *testing.T) {
 												app.kubernetes.io/version: 1.22.333.4444
 												helm.sh/chart: MyChart-42.1_foo
 												skiff-role-name: "myrole-tor-public"
-												app: "myrole-tor-public"
 										spec:
 											externalIPs: [ 192.0.2.42 ]
 											ports:
@@ -800,6 +756,7 @@ func TestActivePassiveService(t *testing.T) {
 
 func expectedYAML(settings ExportSettings, expected string) string {
 	if !settings.CreateHelmChart {
+		expected = regexp.MustCompile("app: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/instance: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/managed-by: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/name: .*").ReplaceAllLiteralString(expected, "")

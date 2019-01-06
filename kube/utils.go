@@ -29,12 +29,11 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mapping {
 	// XXX We need to match on legacy RoleNameLabel to maintain upgradability of stateful sets
 	matchLabels := helm.NewMapping("skiff-role-name", role.Name)
-	if role.HasTag(model.RoleTagIstioManaged) {
-		matchLabels.Add(AppNameLabel, role.Name)
-		if settings.CreateHelmChart {
-			matchLabels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
-		}
+	if role.HasTag(model.RoleTagIstioManaged) && settings.CreateHelmChart {
+		matchLabels.Add(AppNameLabel, role.Name, helm.Block("if .Values.config.use_istio"))
+		matchLabels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`, helm.Block("if .Values.config.use_istio"))
 	}
+
 	meta := helm.NewMapping("matchLabels", matchLabels)
 
 	return meta
@@ -43,20 +42,16 @@ func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mappi
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
 func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
-	istioVersionLabel := map[string]bool{
-		"StatefulSet": true,
-		"Deployment":  true,
-		"Pod":         true,
-	}
 	istioAppLabel := map[string]bool{
 		"StatefulSet": true,
 		"Deployment":  true,
 		"Service":     true,
 		"Pod":         true,
 	}
-
-	if istioAppLabel[kind] {
-		labels.Add(AppNameLabel, name)
+	istioVersionLabel := map[string]bool{
+		"StatefulSet": true,
+		"Deployment":  true,
+		"Pod":         true,
 	}
 
 	if settings.CreateHelmChart {
@@ -68,8 +63,11 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modif
 		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
+		if istioAppLabel[kind] {
+			labels.Add(AppNameLabel, name, helm.Block("if .Values.config.use_istio"))
+		}
 		if istioVersionLabel[kind] {
-			labels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
+			labels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`, helm.Block("if .Values.config.use_istio"))
 		}
 	}
 
@@ -124,7 +122,8 @@ func MakeBasicValues() *helm.Mapping {
 			"cpu", helm.NewNode(helm.NewMapping(
 				"requests", helm.NewNode(false, helm.Comment("Flag to activate cpu requests")),
 				"limits", helm.NewNode(false, helm.Comment("Flag to activate cpu limits")),
-			), helm.Comment("Global CPU configuration"))),
+			), helm.Comment("Global CPU configuration")),
+			"use_istio", helm.NewNode(true, helm.Comment("Flag to specify whether to add Istio related annotations and labels"))),
 		"bosh", helm.NewMapping("instance_groups", helm.NewList()),
 		"env", helm.NewMapping(),
 		"sizing", helm.NewMapping(),
