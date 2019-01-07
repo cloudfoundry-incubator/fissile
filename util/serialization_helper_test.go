@@ -7,7 +7,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type jsonHelpInputTestData struct {

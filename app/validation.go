@@ -8,17 +8,22 @@ import (
 	"code.cloudfoundry.org/fissile/validation"
 )
 
-// validateManifestAndOpinions applies a series of checks to the role
+// Validate applies a series of checks to the role
 // manifest and opinions, testing for consistency against each other
 // and the loaded bosh releases. The result is a (possibly empty)
 // array of any issues found.
-func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, opinions *model.Opinions) validation.ErrorList {
+func (f *Fissile) Validate() validation.ErrorList {
 	allErrs := validation.ErrorList{}
+
+	opinions, err := model.NewOpinions(f.Options.LightOpinions, f.Options.DarkOpinions)
+	if err != nil {
+		return append(allErrs, validation.GeneralError("Light are dark opinions could not be read", err))
+	}
 
 	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
 	darkOpinions := model.FlattenOpinions(opinions.Dark, false)
 	lightOpinions := model.FlattenOpinions(opinions.Light, false)
-	manifestProperties := collectManifestProperties(roleManifest)
+	manifestProperties := collectManifestProperties(f.Manifest)
 
 	// All properties must be defined in a BOSH release
 	allErrs = append(allErrs, checkForUndefinedBOSHProperties("role-manifest",
@@ -41,7 +46,7 @@ func (f *Fissile) validateManifestAndOpinions(roleManifest *model.RoleManifest, 
 
 	// No duplicates must exist between role manifest and light
 	// opinions
-	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, roleManifest)...)
+	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, f.Manifest)...)
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases

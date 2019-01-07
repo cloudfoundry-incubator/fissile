@@ -4,21 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"code.cloudfoundry.org/fissile/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-var (
-	flagBuildImagesNoBuild       bool
-	flagBuildImagesForce         bool
-	flagBuildImagesRoles         string
-	flagPatchPropertiesDirective string
-	flagOutputDirectory          string
-
-	flagBuildImagesStemcell   string
-	flagBuildImagesStemcellID string
-	flagBuildImagesTagExtra   string
-	flagLabels                []string
 )
 
 // buildImagesCmd represents the images command
@@ -45,72 +33,38 @@ The ` + "`--patch-properties-release`" + ` flag is used to distinguish the patch
 from other specs.  At most one is allowed.
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var opt app.BuildImagesOptions
 
-		flagBuildImagesNoBuild = buildImagesViper.GetBool("no-build")
-		flagBuildImagesForce = buildImagesViper.GetBool("force")
-		flagBuildImagesRoles = buildImagesViper.GetString("roles")
-		flagPatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
-		flagOutputDirectory = buildImagesViper.GetString("output-directory")
-		flagBuildImagesStemcell = buildImagesViper.GetString("stemcell")
-		flagBuildImagesStemcellID = buildImagesViper.GetString("stemcell-id")
-		flagBuildImagesTagExtra = buildImagesViper.GetString("tag-extra")
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
-		flagLabels = buildImagesViper.GetStringSlice("add-label")
+		opt.NoBuild = buildImagesViper.GetBool("no-build")
+		opt.Force = buildImagesViper.GetBool("force")
+		opt.PatchPropertiesDirective = buildImagesViper.GetString("patch-properties-release")
+		opt.OutputDirectory = buildImagesViper.GetString("output-directory")
+		opt.Stemcell = buildImagesViper.GetString("stemcell")
+		opt.StemcellID = buildImagesViper.GetString("stemcell-id")
+		opt.TagExtra = buildImagesViper.GetString("tag-extra")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
-		if err != nil {
-			return err
-		}
+		opt.Roles = strings.FieldsFunc(buildImagesViper.GetString("roles"), func(r rune) bool { return r == ',' })
 
-		if flagOutputDirectory != "" && !flagBuildImagesForce {
-			fissile.UI.Printf("--force required when --output-directory is set\n")
-			flagBuildImagesForce = true
-		}
-
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
-		}
-
-		labels := map[string]string{}
-		for _, label := range flagLabels {
+		opt.Labels = make(map[string]string)
+		for _, label := range buildImagesViper.GetStringSlice("add-label") {
 			parts := strings.Split(label, "=")
 			if len(parts) != 2 {
 				return fmt.Errorf("invalid label format '%s'. Use: --add-label \"foo=bar\"", label)
 			}
-			labels[parts[0]] = parts[1]
+			opt.Labels[parts[0]] = parts[1]
 		}
 
-		return fissile.GenerateRoleImages(
-			workPathDockerDir,
-			flagDockerRegistry,
-			flagDockerOrganization,
-			flagRepository,
-			flagBuildImagesStemcell,
-			flagBuildImagesStemcellID,
-			flagMetrics,
-			flagBuildImagesNoBuild,
-			flagBuildImagesForce,
-			flagBuildImagesTagExtra,
-			strings.FieldsFunc(flagBuildImagesRoles, func(r rune) bool { return r == ',' }),
-			flagWorkers,
-			workPathCompilationDir,
-			flagLightOpinions,
-			flagDarkOpinions,
-			flagOutputDirectory,
-			labels,
-		)
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
+		if err != nil {
+			return err
+		}
+
+		if opt.OutputDirectory != "" && !opt.Force {
+			fissile.UI.Printf("--force required when --output-directory is set\n")
+			opt.Force = true
+		}
+
+		return fissile.BuildImages(opt)
 	},
 }
 var buildImagesViper = viper.New()
@@ -138,7 +92,7 @@ func init() {
 		"patch-properties-release",
 		"P",
 		"",
-		"Used to designate a \"patch-properties\" psuedo-job in a particular release.  Format: RELEASE/JOB.",
+		"Used to designate a \"patch-properties\" pseudo-job in a particular release.  Format: RELEASE/JOB.",
 	)
 
 	// viper is busted w/ string slice, https://github.com/spf13/viper/issues/200

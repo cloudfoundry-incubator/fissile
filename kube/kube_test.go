@@ -10,7 +10,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/helm"
 	"github.com/Masterminds/sprig"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // RenderNode renders a helm node given the configuration.

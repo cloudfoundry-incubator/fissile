@@ -21,8 +21,8 @@ import (
 	_ "github.com/graymeta/stow/swift"  // support swift storage
 	"github.com/machinebox/progress"
 	"github.com/mholt/archiver"
-	"github.com/satori/go.uuid"
-	"gopkg.in/yaml.v2" // support Azure storage
+	uuid "github.com/satori/go.uuid"
+	yaml "gopkg.in/yaml.v2" // support Azure storage
 )
 
 // DownloadProgressEvent represents a delegate for updating progress when downloading

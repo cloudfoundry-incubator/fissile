@@ -11,10 +11,9 @@ import (
 	. "code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/model/releaseresolver"
 	"code.cloudfoundry.org/fissile/model/resolver"
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // setRoleManifest parses a string instead of reading a file like LoadRoleManifest

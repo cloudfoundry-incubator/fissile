@@ -15,8 +15,8 @@ which added, and which had their default values changed).
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return fissile.DiffConfigurationBases(
-			flagRelease,
-			flagCacheDir,
+			fissile.Options.Releases,
+			fissile.Options.CacheDir,
 		)
 	},
 }

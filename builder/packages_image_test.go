@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/fissile/docker"
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/model/loader"
-	"github.com/SUSE/termui"
+	"code.cloudfoundry.org/fissile/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
@@ -54,22 +54,17 @@ func getDockerfileLines(text string) []string {
 func TestGenerateDockerfile(t *testing.T) {
 	assert := assert.New(t)
 
-	ui := termui.New(
-		&bytes.Buffer{},
-		ioutil.Discard,
-		nil,
-	)
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
+	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled", util.Hash(dockerImageName))
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
-	assert.NoError(err)
+	packagesImageBuilder := PackagesImageBuilder{
+		RepositoryPrefix:     "foo",
+		StemcellImageName:    dockerImageName,
+		FissileVersion:       "3.14.15",
+		CompiledPackagesPath: compiledPackagesDir,
+	}
 
 	dockerfile := bytes.Buffer{}
 	labels := map[string]string{"version.cap": "1.2.3", "publisher": "SUSE Linux Products GmbH"}
@@ -90,12 +85,6 @@ func TestGenerateDockerfile(t *testing.T) {
 func TestNewDockerPopulator(t *testing.T) {
 	assert := assert.New(t)
 
-	ui := termui.New(
-		&bytes.Buffer{},
-		ioutil.Discard,
-		nil,
-	)
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
@@ -103,10 +92,7 @@ func TestNewDockerPopulator(t *testing.T) {
 	defer func() { baseImageOverride = "" }()
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
+	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled", util.Hash(dockerImageName))
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -118,8 +104,12 @@ func TestNewDockerPopulator(t *testing.T) {
 		}})
 	assert.NoError(err)
 
-	packagesImageBuilder, err := NewPackagesImageBuilder("foo", dockerImageName, "", compiledPackagesDir, targetPath, "3.14.15", ui)
-	assert.NoError(err)
+	packagesImageBuilder := PackagesImageBuilder{
+		RepositoryPrefix:     "foo",
+		StemcellImageName:    dockerImageName,
+		FissileVersion:       "3.14.15",
+		CompiledPackagesPath: compiledPackagesDir,
+	}
 
 	labels := map[string]string{"version.cap": "1.2.3", "publisher": "SUSE Linux Products GmbH"}
 
@@ -241,16 +231,16 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("FissileVersionShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
-		builder.fissileVersion += ".4.5.6"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		builder.FissileVersion += ".4.5.6"
+		newImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing fissile version should change package layer hash")
@@ -259,16 +249,16 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("StemcellImageIDShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
-		builder.stemcellImageID = "stemcell:newer"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		builder.StemcellImageID = "stemcell:newer"
+		newImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing stemcell image ID should change package layer hash")
@@ -276,36 +266,36 @@ func TestGetRolePackageImageName(t *testing.T) {
 
 	t.Run("RepositoryShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
-		// The repository is only relevant because it changes the part before
+		// The RepositoryPrefix is only relevant because it changes the part before
 		// the colon; it doesn't actually change the hash
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
-		builder.repository = "repository"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		builder.RepositoryPrefix = "repository"
+		newImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
-		assert.NotEqual(t, oldImageName, newImageName, "Changing repository should change package layer hash")
+		assert.NotEqual(t, oldImageName, newImageName, "Changing RepositoryPrefix should change package layer hash")
 
 		oldImageTag := strings.Split(oldImageName, ":")[1]
 		newImageTag := strings.Split(newImageName, ":")[1]
-		assert.Equal(t, oldImageTag, newImageTag, "Changing the repository should not change tag")
+		assert.Equal(t, oldImageTag, newImageTag, "Changing the RepositoryPrefix should not change tag")
 	})
 
 	t.Run("TemplatesShouldBeIrrelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
 		yamlRaw, err := ioutil.ReadFile(roleManifestPath)
@@ -333,7 +323,7 @@ func TestGetRolePackageImageName(t *testing.T) {
 		assert.NoError(t, err, "Error loading modified role manifest")
 		require.NotNil(t, modifiedRoleManifest, "Failed to load modified role manifest")
 
-		newImageName, err := builder.GetPackagesLayerImageName(modifiedRoleManifest, modifiedRoleManifest.InstanceGroups, nil)
+		newImageName, err := builder.GetImageName(modifiedRoleManifest, modifiedRoleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, oldImageName, newImageName, "Changing templates should not change image hash")
 	})
@@ -341,14 +331,14 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("RolesShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, nil, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, nil, nil)
 		assert.NoError(t, err)
 
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, roleManifest.InstanceGroups, nil)
+		newImageName, err := builder.GetImageName(roleManifest, roleManifest.InstanceGroups, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing roles should change package layer hash")
@@ -382,16 +372,16 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("PackageSHA1ShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		role.JobReferences[0].Packages[0].SHA1 = "different sha1"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		newImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package SHA1 should change package layer hash")
@@ -400,16 +390,16 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("PackageFingerprintShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		role.JobReferences[0].Packages[0].Fingerprint = "different fingerprint"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		newImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package fingerprint should change package layer hash")
@@ -418,16 +408,16 @@ func TestGetRolePackageImageName(t *testing.T) {
 	t.Run("PackageNameShouldBeRelevant", func(t *testing.T) {
 		t.Parallel()
 		builder := PackagesImageBuilder{
-			repository:      "test",
-			fissileVersion:  "0.1.2",
-			stemcellImageID: "stemcell:latest",
+			RepositoryPrefix: "test",
+			FissileVersion:   "0.1.2",
+			StemcellImageID:  "stemcell:latest",
 		}
 		role := makeTemplateRole()
-		oldImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		oldImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		role.JobReferences[0].Packages[0].Name = "different name"
-		newImageName, err := builder.GetPackagesLayerImageName(roleManifest, model.InstanceGroups{role}, nil)
+		newImageName, err := builder.GetImageName(roleManifest, model.InstanceGroups{role}, nil)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, oldImageName, newImageName, "Changing package name should change package layer hash")

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -12,18 +14,16 @@ var validateCmd = &cobra.Command{
 Displays a report of all validation checks.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
-		return fissile.Validate(flagLightOpinions, flagDarkOpinions)
+		errs := fissile.Validate()
+		if len(errs) > 0 {
+			return fmt.Errorf(errs.Errors())
+		}
+		return nil
 	},
 }
 

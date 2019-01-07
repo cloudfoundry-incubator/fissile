@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"code.cloudfoundry.org/fissile/model"
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,28 +18,18 @@ func TestValidation(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-issues.yml")
-	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
-	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-issues.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
+	f.Options.DarkOpinions = filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	err = f.LoadManifest()
 	assert.NoError(t, err)
+	require.NotNil(t, f.Manifest, "error loading role manifest")
 
-	roleManifest := f.Manifest
-	require.NotNil(t, roleManifest, "error loading role manifest")
-
-	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	assert.NoError(t, err)
-
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
-
+	errs := f.Validate()
 	actual := errs.Errors()
 	allExpected := []string{
 		// checkForUndefinedBOSHProperties light
@@ -79,29 +68,18 @@ func TestValidationOk(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
-	lightManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
-	darkManifestPath := filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
-
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
+	f.Options.DarkOpinions = filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	err = f.LoadManifest()
 	assert.NoError(t, err)
+	require.NotNil(t, f.Manifest, "error loading role manifest")
 
-	roleManifest := f.Manifest
-	require.NotNil(t, roleManifest, "error loading role manifest")
-
-	opinions, err := model.NewOpinions(lightManifestPath, darkManifestPath)
-	assert.NoError(t, err)
-
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
-
+	errs := f.Validate()
 	assert.Empty(t, errs)
 }
 
@@ -111,26 +89,18 @@ func TestValidationHash(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/hashmat.yml")
-	emptyManifestPath := filepath.Join(workDir, "../test-assets/misc/empty.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/hashmat.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	err = f.LoadManifest()
 	assert.NoError(t, err)
+	require.NotNil(t, f.Manifest, "error loading role manifest")
 
-	roleManifest := f.Manifest
-	require.NotNil(t, roleManifest, "error loading role manifest")
-
-	opinions, err := model.NewOpinions(emptyManifestPath, emptyManifestPath)
-	assert.NoError(t, err)
-
-	errs := f.validateManifestAndOpinions(roleManifest, opinions)
+	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/misc/empty.yml")
+	f.Options.DarkOpinions = f.Options.LightOpinions
+	errs := f.Validate()
 
 	actual := errs.Errors()
 	allExpected := []string{
@@ -149,17 +119,12 @@ func TestMandatoryDescriptions(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-missing-description.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-missing-description.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `PELERINUL: Required value: Description is required`)
 }
@@ -170,17 +135,12 @@ func TestTemplateSorting(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-unsorted-templates.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-unsorted-templates.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `properties.tor.hostname: Forbidden: Template key does not sort before 'properties.tor.hashed_control_password'`)
 }
@@ -191,17 +151,12 @@ func TestInvalidTemplateKeys(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-template-keys.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-template-keys.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `template key for instance group myrole: Invalid value: true: Template key must be a string`)
 	assert.Contains(t, err.Error(), `global template key: Invalid value: 1: Template key must be a string`)
@@ -213,17 +168,12 @@ func TestBadScriptReferences(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-script-reference.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-script-reference.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole script: Invalid value: "foobar.sh"`)
 }
@@ -234,17 +184,12 @@ func TestBadEnvScriptReferences(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-environ-script-reference.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-environ-script-reference.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole environment script: Invalid value: "foobar.sh"`)
 }
@@ -255,17 +200,12 @@ func TestBadPostConfigScriptReferences(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-post-config-script-reference.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-post-config-script-reference.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `myrole post config script: Invalid value: "foobar.sh"`)
 }
@@ -276,17 +216,12 @@ func TestNonStringGlobalTemplate(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-global-template-type.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-invalid-global-template-type.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hashed_control_password": Template value must be a string`)
 	assert.Contains(t, err.Error(), `global template value: Invalid value: "properties.tor.hostname": Template value must be a string`)
@@ -298,16 +233,11 @@ func TestNonStringInstanceGroupTemplate(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	torReleasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/tor-valid-instance-group-template-type.yml")
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-valid-instance-group-template-type.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{torReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-
+	err = f.LoadManifest()
 	assert.NoError(t, err)
 }

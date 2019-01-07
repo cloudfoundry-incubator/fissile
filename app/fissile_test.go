@@ -29,18 +29,14 @@ func TestCleanCacheEmpty(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
-	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-
 	f := NewFissileApplication(".", ui)
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/ntp-release"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+
+	err = f.LoadManifest()
 	if assert.NoError(err) {
-		err = f.CleanCache(workDir + "compilation")
+		err = f.CleanCache()
 		assert.Nil(err, "Expected CleanCache to find the release")
 	}
 }
@@ -52,27 +48,18 @@ func TestListPackages(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
-	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
 	f := NewFissileApplication(".", ui)
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{badReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/bad-release"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
+	err = f.LoadManifest()
 	assert.Error(err, "Expected ListPackages to not find the release")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.Releases[0] = filepath.Join(workDir, "../test-assets/ntp-release")
+	err = f.LoadManifest()
 	if assert.NoError(err) {
-		err = f.ListPackages(false)
+		err = f.ListPackages()
 		assert.Nil(err, "Expected ListPackages to find the release")
 	}
 }
@@ -84,28 +71,18 @@ func TestListJobs(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
-	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/bad-release"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{badReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	err = f.LoadManifest()
 	assert.Error(err, "Expected ListJobs to not find the release")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.Releases[0] = filepath.Join(workDir, "../test-assets/ntp-release")
+	err = f.LoadManifest()
 	if assert.NoError(err) {
-		err = f.ListJobs(false)
+		err = f.ListJobs()
 		assert.Nil(err, "Expected ListJobs to find the release")
 	}
 }
@@ -117,34 +94,27 @@ func TestListProperties(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
-	badReleasePath := filepath.Join(workDir, "../test-assets/bad-release")
-	releasePath := filepath.Join(workDir, "../test-assets/ntp-release")
-
 	f := NewFissileApplication(".", ui)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/bad-release"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{badReleasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	err = f.LoadManifest()
 	assert.Error(err, "Expected ListProperties to not find the release")
 
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.Releases[0] = filepath.Join(workDir, "../test-assets/ntp-release")
+	err = f.LoadManifest()
 	if assert.NoError(err) {
-		err = f.ListProperties("human")
+		f.Options.OutputFormat = "human"
+		err = f.ListProperties()
 		assert.NoError(err, "Expected ListProperties to list release properties for human consumption")
 
-		err = f.ListProperties("json")
+		f.Options.OutputFormat = "json"
+		err = f.ListProperties()
 		assert.NoError(err, "Expected ListProperties to list release properties in JSON")
 
-		err = f.ListProperties("yaml")
+		f.Options.OutputFormat = "yaml"
+		err = f.ListProperties()
 		assert.NoError(err, "Expected ListProperties to list release properties in YAML")
 	}
 }
@@ -654,15 +624,12 @@ func TestFissileSelectRolesToBuild(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up the test params
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/roles-to-build.yml")
 	f := NewFissileApplication(",", ui)
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/roles-to-build.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+
+	err = f.LoadManifest()
 	require.NoError(t, err)
 
 	roleManifest := f.Manifest
@@ -710,20 +677,14 @@ func TestFissileGetReleasesByName(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
-	releasePaths := []string{
-		filepath.Join(workDir, "../test-assets/extracted-license"),
-		filepath.Join(workDir, "../test-assets/extracted-license"),
-	}
-	cacheDir := filepath.Join(workDir, "../test-assets/bosh-cache")
-
 	f := NewFissileApplication(",", ui)
-	err = f.LoadManifest(
-		roleManifestPath,
-		releasePaths,
-		[]string{"test-dev", "test2"},
-		[]string{},
-		cacheDir)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/no-instance-groups/no-instance-groups.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/extracted-license"))
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/extracted-license"))
+	f.Options.ReleaseNames = append(f.Options.ReleaseNames, "test-dev", "test2")
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+
+	err = f.LoadManifest()
 	require.NoError(t, err, "failed to load role manifest")
 
 	releases, err := f.getReleasesByName([]string{"test-dev"})
@@ -759,17 +720,13 @@ func TestFissileGenerateKubeRoles(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set up the test params
-	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/app/two-roles.yml")
-
 	f := NewFissileApplication(".", ui)
-	err = f.LoadManifest(
-		roleManifestPath,
-		[]string{releasePath},
-		[]string{""},
-		[]string{""},
-		filepath.Join(workDir, "../test-assets/bosh-cache"))
-	require.NoError(t, err, "Failed to load release from %s", releasePath)
+	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/two-roles.yml")
+	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+
+	err = f.LoadManifest()
+	require.NoError(t, err, "Failed to load release from %s", f.Options.Releases[0])
 
 	roleManifest := f.Manifest
 

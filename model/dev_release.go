@@ -7,7 +7,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/util"
 	"github.com/cppforlife/go-semi-semantic/version"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // NewDevRelease will create an instance of a BOSH development release

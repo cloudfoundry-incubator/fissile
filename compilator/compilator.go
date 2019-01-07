@@ -21,7 +21,7 @@ import (
 	"github.com/fatih/color"
 	workerLib "github.com/jimmysawczuk/worker"
 	"github.com/pborman/uuid"
-	"github.com/termie/go-shutil"
+	shutil "github.com/termie/go-shutil"
 )
 
 const (
@@ -257,7 +257,7 @@ func (c *Compilator) gatherPackages(releases []*model.Release, instanceGroups mo
 		var releasePackages []*model.Package
 
 		// Get the packages of the release ...
-		if instanceGroups != nil { // Conditional for easier testing
+		if instanceGroups != nil { // Conditional for building release images (and easier testing)
 			releasePackages = c.gatherPackagesFromInstanceGroups(release, instanceGroups)
 		} else {
 			releasePackages = release.Packages

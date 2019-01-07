@@ -20,23 +20,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateRoleImageDockerfile(t *testing.T) {
-	assert := assert.New(t)
-
+func newRoleImageBuilder(manifestPath, lightOpinionsPath, darkOpinionsPath string) *RoleImageBuilder {
 	ui := termui.New(
 		&bytes.Buffer{},
 		ioutil.Discard,
 		nil,
 	)
+	return &RoleImageBuilder{
+		RepositoryPrefix:  "foo",
+		MetricsPath:       "",
+		FissileVersion:    "6.28.30",
+		TagExtra:          "",
+		LightOpinionsPath: lightOpinionsPath,
+		DarkOpinionsPath:  darkOpinionsPath,
+		ManifestPath:      manifestPath,
+		UI:                ui,
+		Grapher:           nil,
+	}
+}
+
+func TestGenerateRoleImageDockerfile(t *testing.T) {
+	assert := assert.New(t)
 
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -51,12 +60,11 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
-	assert.NoError(err)
+	roleImageBuilder := newRoleImageBuilder(roleManifestPath, lightOpinionsPath, darkOpinionsPath)
 
 	var dockerfileContents bytes.Buffer
-	baseImage := roleImageBuilder.repository
-	err = roleImageBuilder.generateDockerfile(roleManifest.InstanceGroups[0], baseImage, &dockerfileContents)
+	roleImageBuilder.BaseImageName = roleImageBuilder.RepositoryPrefix
+	err = roleImageBuilder.generateDockerfile(roleManifest.InstanceGroups[0], &dockerfileContents)
 	assert.NoError(err)
 
 	dockerfileString := dockerfileContents.String()
@@ -69,7 +77,7 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 	)
 
 	dockerfileContents.Reset()
-	err = roleImageBuilder.generateDockerfile(roleManifest.InstanceGroups[0], baseImage, &dockerfileContents)
+	err = roleImageBuilder.generateDockerfile(roleManifest.InstanceGroups[0], &dockerfileContents)
 	assert.NoError(err)
 	dockerfileString = dockerfileContents.String()
 	assert.Contains(dockerfileString, "MAINTAINER", "dev mode should generate a maintainer layer")
@@ -78,20 +86,10 @@ func TestGenerateRoleImageDockerfile(t *testing.T) {
 func TestGenerateRoleImageRunScript(t *testing.T) {
 	assert := assert.New(t)
 
-	ui := termui.New(
-		&bytes.Buffer{},
-		ioutil.Discard,
-		nil,
-	)
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -106,7 +104,7 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
+	roleImageBuilder := newRoleImageBuilder(roleManifestPath, lightOpinionsPath, darkOpinionsPath)
 	assert.NoError(err)
 
 	runScriptContents, err := roleImageBuilder.generateRunScript(roleManifest.InstanceGroups[0], "run.sh")
@@ -151,20 +149,10 @@ func TestGenerateRoleImageRunScript(t *testing.T) {
 func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	assert := assert.New(t)
 
-	ui := termui.New(
-		&bytes.Buffer{},
-		ioutil.Discard,
-		nil,
-	)
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -179,8 +167,7 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 	torOpinionsDir := filepath.Join(workDir, "../test-assets/tor-opinions")
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
-	assert.NoError(err)
+	roleImageBuilder := newRoleImageBuilder(roleManifestPath, lightOpinionsPath, darkOpinionsPath)
 
 	jobsConfigContents, err := roleImageBuilder.generateJobsConfig(roleManifest.InstanceGroups[0])
 	assert.NoError(err)
@@ -200,22 +187,11 @@ func TestGenerateRoleImageJobsConfig(t *testing.T) {
 func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	assert := assert.New(t)
 
-	ui := termui.New(
-		&bytes.Buffer{},
-		ioutil.Discard,
-		nil,
-	)
-
 	workDir, err := os.Getwd()
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	releasePathConfigSpec := filepath.Join(releasePath, "config_spec")
-
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -231,8 +207,8 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder("foo", compiledPackagesDir, targetPath, roleManifestPath, lightOpinionsPath, darkOpinionsPath, "", "deadbeef", "6.28.30", ui, nil)
-	assert.NoError(err)
+	roleImageBuilder := newRoleImageBuilder(roleManifestPath, lightOpinionsPath, darkOpinionsPath)
+	roleImageBuilder.BaseImageName = releasePathConfigSpec
 
 	torPkg := getPackage(roleManifest.InstanceGroups, "myrole", "tor", "tor")
 
@@ -255,11 +231,10 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true, mode: 0644},
 		"root/var/vcap/jobs-src/new_hostname/config_spec.json":    {desc: "new_hostname config spec", keep: true},
 		"root/var/vcap/packages/tor":                              {desc: "package symlink", typeflag: tar.TypeSymlink, keep: true},
-		"root/var/vcap/jobs-src/tor/job.MF":                       {desc: "job manifest file", typeflag: TypeMissing},
 	}
 	actual := make(map[string][]byte)
 
-	populator := roleImageBuilder.NewDockerPopulator(roleManifest.InstanceGroups[0], releasePathConfigSpec)
+	populator := roleImageBuilder.NewDockerPopulator(roleManifest.InstanceGroups[0])
 
 	pipeR, pipeW, err := os.Pipe()
 	assert.NoError(err, "Failed to create a pipe")
@@ -436,10 +411,6 @@ func TestBuildRoleImages(t *testing.T) {
 	assert.NoError(err)
 
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
-	compiledPackagesDir := filepath.Join(workDir, "../test-assets/tor-boshrelease-fake-compiled")
-	targetPath, err := ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
 
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
@@ -451,19 +422,23 @@ func TestBuildRoleImages(t *testing.T) {
 	lightOpinionsPath := filepath.Join(torOpinionsDir, "opinions.yml")
 	darkOpinionsPath := filepath.Join(torOpinionsDir, "dark-opinions.yml")
 
-	roleImageBuilder, err := NewRoleImageBuilder(
-		"test-repository",
-		compiledPackagesDir,
-		targetPath,
-		roleManifestPath,
-		lightOpinionsPath,
-		darkOpinionsPath,
-		"",
-		"deadbeef",
-		"6.28.30",
-		ui,
-		nil,
-	)
+	roleImageBuilder := &RoleImageBuilder{
+		RepositoryPrefix:   "test-repository",
+		ManifestPath:       roleManifestPath,
+		LightOpinionsPath:  lightOpinionsPath,
+		DarkOpinionsPath:   darkOpinionsPath,
+		MetricsPath:        "",
+		TagExtra:           "deadbeef",
+		FissileVersion:     "6.28.30",
+		UI:                 ui,
+		Grapher:            nil,
+		DockerRegistry:     "test-registry.com:9000",
+		DockerOrganization: "test-organization",
+		Force:              false,
+		NoBuild:            false,
+		WorkerCount:        2,
+		OutputDirectory:    "",
+	}
 	assert.NoError(err)
 
 	// Check that making the first wait for the second job works
@@ -481,39 +456,12 @@ func TestBuildRoleImages(t *testing.T) {
 		return fmt.Errorf("Unknown docker image name %s", name)
 	}
 
-	err = roleImageBuilder.BuildRoleImages(
-		roleManifest.InstanceGroups,
-		"test-registry.com:9000",
-		"test-organization",
-		"test-repository",
-		"",
-		"",
-		false,
-		false,
-		2,
-	)
+	err = roleImageBuilder.Build(roleManifest.InstanceGroups)
 	assert.NoError(err)
-
-	err = os.RemoveAll(targetPath)
-	assert.NoError(err, "Failed to remove target")
-
-	targetPath, err = ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
-	roleImageBuilder.targetPath = targetPath
 
 	// Should not allow invalid worker counts
-	err = roleImageBuilder.BuildRoleImages(
-		roleManifest.InstanceGroups,
-		"test-registry.com:9000",
-		"test-organization",
-		"test-repository",
-		"",
-		"",
-		false,
-		false,
-		0,
-	)
+	roleImageBuilder.WorkerCount = 0
+	err = roleImageBuilder.Build(roleManifest.InstanceGroups)
 	assert.Error(err, "Invalid worker count should result in an error")
 	assert.Contains(err.Error(), "count", "Building the image should have failed due to invalid worker count")
 
@@ -531,17 +479,8 @@ func TestBuildRoleImages(t *testing.T) {
 		return fmt.Errorf("Unknown docker image name %s", name)
 	}
 
-	err = roleImageBuilder.BuildRoleImages(
-		roleManifest.InstanceGroups,
-		"test-registry.com:9000",
-		"test-organization",
-		"test-repository",
-		"",
-		"",
-		false,
-		false,
-		1,
-	)
+	roleImageBuilder.WorkerCount = 1
+	err = roleImageBuilder.Build(roleManifest.InstanceGroups)
 	if assert.Error(err) {
 		assert.Contains(err.Error(), "Deliberate failure", "Returned error should be from first job failing")
 	}
@@ -557,17 +496,8 @@ func TestBuildRoleImages(t *testing.T) {
 		buildersRan = append(buildersRan, name)
 		return nil
 	}
-	err = roleImageBuilder.BuildRoleImages(
-		roleManifest.InstanceGroups,
-		"test-registry.com:9000",
-		"test-organization",
-		"test-repository",
-		"",
-		"",
-		false,
-		false,
-		len(roleManifest.InstanceGroups),
-	)
+	roleImageBuilder.WorkerCount = len(roleManifest.InstanceGroups)
+	err = roleImageBuilder.Build(roleManifest.InstanceGroups)
 	assert.NoError(err)
 	assert.Empty(buildersRan, "should not have ran any builders")
 
@@ -577,31 +507,14 @@ func TestBuildRoleImages(t *testing.T) {
 
 	metrics := file.Name()
 	defer os.Remove(metrics)
-	roleImageBuilder.metricsPath = metrics
-
-	err = os.RemoveAll(targetPath)
-	assert.NoError(err, "Failed to remove target")
-
-	targetPath, err = ioutil.TempDir("", "fissile-test")
-	assert.NoError(err)
-	defer os.RemoveAll(targetPath)
-	roleImageBuilder.targetPath = targetPath
+	roleImageBuilder.MetricsPath = metrics
 
 	mockBuilder.hasImage = false
 	mockBuilder.callback = func(name string) error {
 		return nil
 	}
-	err = roleImageBuilder.BuildRoleImages(
-		roleManifest.InstanceGroups,
-		"test-registry.com:9000",
-		"test-organization",
-		"test-repository",
-		"",
-		"",
-		false,
-		false,
-		1,
-	)
+	roleImageBuilder.WorkerCount = 1
+	err = roleImageBuilder.Build(roleManifest.InstanceGroups)
 	assert.NoError(err)
 
 	expected := `.*,fissile,create-images::test-registry.com:9000/test-organization/test-repository-myrole:[a-z0-9]{40},start

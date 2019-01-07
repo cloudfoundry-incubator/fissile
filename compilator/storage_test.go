@@ -15,7 +15,7 @@ import (
 	"github.com/gosuri/uiprogress/util/strutil"
 	"github.com/graymeta/stow"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestStorePackageLocallyOK(t *testing.T) {

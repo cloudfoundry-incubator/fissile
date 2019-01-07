@@ -17,61 +17,19 @@ import (
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/scripts/dockerfiles"
 	"code.cloudfoundry.org/fissile/util"
-	"github.com/SUSE/termui"
 )
 
 // PackagesImageBuilder represents a builder of the shared packages layer docker image
 type PackagesImageBuilder struct {
-	repository           string
-	stemcellImageID      string
-	stemcellImageName    string
-	compiledPackagesPath string
-	targetPath           string
-	fissileVersion       string
-	ui                   *termui.UI
+	RepositoryPrefix     string
+	StemcellImageID      string
+	StemcellImageName    string
+	CompiledPackagesPath string
+	FissileVersion       string
 }
 
 // baseImageOverride is used for tests; if not set, we use the correct one
 var baseImageOverride string
-
-// NewPackagesImageBuilder creates a new PackagesImageBuilder
-func NewPackagesImageBuilder(repository, stemcellImageName, stemcellImageID, compiledPackagesPath, targetPath, fissileVersion string, ui *termui.UI) (*PackagesImageBuilder, error) {
-	if err := os.MkdirAll(targetPath, 0755); err != nil {
-		return nil, err
-	}
-
-	if stemcellImageID == "" {
-		imageManager, err := docker.NewImageManager()
-		if err != nil {
-			return nil, err
-		}
-
-		stemcellImage, err := imageManager.FindImage(stemcellImageName)
-		if err != nil {
-			if _, ok := err.(docker.ErrImageNotFound); ok {
-				return nil, fmt.Errorf("Stemcell %s", err.Error())
-			}
-			return nil, err
-		}
-
-		stemcellImageID = stemcellImage.ID
-	}
-
-	hasher := sha1.New()
-	if _, err := hasher.Write([]byte(stemcellImageName)); err != nil {
-		return nil, err
-	}
-
-	return &PackagesImageBuilder{
-		repository:           repository,
-		stemcellImageID:      stemcellImageID,
-		stemcellImageName:    stemcellImageName,
-		compiledPackagesPath: filepath.Join(compiledPackagesPath, hex.EncodeToString(hasher.Sum(nil))),
-		targetPath:           targetPath,
-		fissileVersion:       fissileVersion,
-		ui:                   ui,
-	}, nil
-}
 
 // tarWalker is a helper to copy files into a tar stream
 type tarWalker struct {
@@ -124,14 +82,14 @@ func (w *tarWalker) walk(path string, info os.FileInfo, err error) error {
 
 func (p *PackagesImageBuilder) fissileVersionLabel() string {
 	return fmt.Sprintf("version.generator.fissile=%s",
-		strings.Replace(p.fissileVersion, "+", "_", -1))
+		strings.Replace(p.FissileVersion, "+", "_", -1))
 }
 
-// determinePackagesLayerBaseImage finds the best base image to use for the
+// determineBaseImage finds the best base image to use for the
 // packages layer image.  Given a list of packages, it returns the base image
 // name to use, as well as the set of packages that still need to be inserted.
-func (p *PackagesImageBuilder) determinePackagesLayerBaseImage(packages model.Packages) (string, model.Packages, error) {
-	baseImageName := p.stemcellImageName
+func (p *PackagesImageBuilder) determineBaseImage(packages model.Packages) (string, model.Packages, error) {
+	baseImageName := p.StemcellImageName
 	if baseImageOverride != "" {
 		baseImageName = baseImageOverride
 	}
@@ -201,9 +159,9 @@ func (p *PackagesImageBuilder) NewDockerPopulator(instanceGroups model.InstanceG
 
 		// Generate dockerfile
 		dockerfile := bytes.Buffer{}
-		baseImageName := p.stemcellImageName
+		baseImageName := p.StemcellImageName
 		if !forceBuildAll {
-			baseImageName, packages, err = p.determinePackagesLayerBaseImage(packages)
+			baseImageName, packages, err = p.determineBaseImage(packages)
 			if err != nil {
 				return err
 			}
@@ -232,7 +190,7 @@ func (p *PackagesImageBuilder) NewDockerPopulator(instanceGroups model.InstanceG
 		for _, pkg := range packages {
 			walker := &tarWalker{
 				stream: tarWriter,
-				root:   pkg.GetPackageCompiledDir(p.compiledPackagesPath),
+				root:   pkg.GetPackageCompiledDir(p.CompiledPackagesPath),
 				prefix: filepath.Join("packages-src", pkg.Fingerprint),
 			}
 			if err = filepath.Walk(walker.root, walker.walk); err != nil {
@@ -266,8 +224,8 @@ func (p *PackagesImageBuilder) generateDockerfile(baseImage string, packages mod
 	return dockerfileTemplate.Execute(outputFile, context)
 }
 
-// GetPackagesLayerImageName generates a docker image name for the amalgamation holding all packages used in the specified instance group
-func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.RoleManifest, instanceGroups model.InstanceGroups, grapher util.ModelGrapher) (string, error) {
+// GetImageName generates a docker image name for the amalgamation holding all packages used in the specified instance group
+func (p *PackagesImageBuilder) GetImageName(roleManifest *model.RoleManifest, instanceGroups model.InstanceGroups, grapher util.ModelGrapher) (string, error) {
 	// Get the list of packages; use the fingerprint to ensure we have no repeats
 	pkgMap := make(map[string]*model.Package)
 	for _, r := range instanceGroups {
@@ -287,12 +245,12 @@ func (p *PackagesImageBuilder) GetPackagesLayerImageName(roleManifest *model.Rol
 
 	// Get the hash
 	hasher := sha1.New()
-	hasher.Write([]byte(fmt.Sprintf("%s:%s", p.fissileVersion, p.stemcellImageID)))
+	hasher.Write([]byte(fmt.Sprintf("%s:%s", p.FissileVersion, p.StemcellImageID)))
 	for _, pkg := range pkgs {
 		hasher.Write([]byte(strings.Join([]string{"", pkg.Fingerprint, pkg.Name, pkg.SHA1}, "\000")))
 	}
 
-	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.repository))
+	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.RepositoryPrefix))
 	imageTag := util.SanitizeDockerName(hex.EncodeToString(hasher.Sum(nil)))
 	result := fmt.Sprintf("%s:%s", imageName, imageTag)
 

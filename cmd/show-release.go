@@ -18,28 +18,18 @@ Displays a report of all jobs and packages in all referenced releases.
 The report contains the name, version, description and counts of jobs and packages.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Show job information
-
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
-		outputFormat := app.OutputFormat(flagOutputFormat)
-
-		switch outputFormat {
+		switch fissile.Options.OutputFormat {
 		case app.OutputFormatHuman:
-			if err := fissile.ListJobs(flagVerbose); err != nil {
+			err := fissile.ListJobs()
+			if err != nil {
 				return err
 			}
-
-			return fissile.ListPackages(flagVerbose)
+			return fissile.ListPackages()
 
 		case app.OutputFormatJSON, app.OutputFormatYAML:
 			releases, err := fissile.SerializeReleases()
@@ -64,12 +54,11 @@ The report contains the name, version, description and counts of jobs and packag
 			}
 
 			var buf []byte
-			if outputFormat == app.OutputFormatJSON {
+			if fissile.Options.OutputFormat == app.OutputFormatJSON {
 				buf, err = json.Marshal(data)
 			} else {
 				buf, err = yaml.Marshal(data)
 			}
-
 			if err != nil {
 				return err
 			}
@@ -77,7 +66,7 @@ The report contains the name, version, description and counts of jobs and packag
 			return nil
 
 		default:
-			return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", outputFormat)
+			return fmt.Errorf("Invalid output format '%s', expected one of human, json, or yaml", fissile.Options.OutputFormat)
 		}
 	},
 }

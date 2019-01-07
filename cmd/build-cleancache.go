@@ -12,19 +12,11 @@ var buildCleanCacheCmd = &cobra.Command{
 This command will inspect the compilation cache populated by its sibling "packages"
 and remove all which are not required anymore.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
-
-		return fissile.CleanCache(workPathCompilationDir)
+		return fissile.CleanCache()
 	},
 }
 

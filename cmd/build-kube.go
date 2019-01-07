@@ -20,27 +20,24 @@ var buildKubeCmd = &cobra.Command{
 	Short: "Creates Kubernetes configuration files.",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		flagBuildKubeOutputDir = buildKubeViper.GetString("output-dir")
 		flagBuildKubeUseMemoryLimits = buildKubeViper.GetBool("use-memory-limits")
 		flagBuildKubeUseCPULimits = buildKubeViper.GetBool("use-cpu-limits")
 		flagBuildKubeTagExtra = buildKubeViper.GetString("tag-extra")
-		flagBuildOutputGraph = buildViper.GetString("output-graph")
 
-		err := fissile.LoadManifest(
-			flagRoleManifest,
-			flagRelease,
-			flagReleaseName,
-			flagReleaseVersion,
-			flagCacheDir,
-		)
+		err := fissile.GraphBegin(buildViper.GetString("output-graph"))
+		if err != nil {
+			return err
+		}
+
+		err = fissile.LoadManifest()
 		if err != nil {
 			return err
 		}
 
 		opinions, err := model.NewOpinions(
-			flagLightOpinions,
-			flagDarkOpinions,
+			fissile.Options.LightOpinions,
+			fissile.Options.DarkOpinions,
 		)
 		if err != nil {
 			return err
@@ -48,27 +45,17 @@ var buildKubeCmd = &cobra.Command{
 
 		settings := kube.ExportSettings{
 			OutputDir:       flagBuildKubeOutputDir,
-			Registry:        flagDockerRegistry,
-			Username:        flagDockerUsername,
-			Password:        flagDockerPassword,
-			Organization:    flagDockerOrganization,
-			Repository:      flagRepository,
+			Registry:        fissile.Options.DockerRegistry,
+			Username:        fissile.Options.DockerUsername,
+			Password:        fissile.Options.DockerPassword,
+			Organization:    fissile.Options.DockerOrganization,
+			Repository:      fissile.Options.RepositoryPrefix,
 			UseMemoryLimits: flagBuildKubeUseMemoryLimits,
 			UseCPULimits:    flagBuildKubeUseCPULimits,
 			FissileVersion:  fissile.Version,
 			Opinions:        opinions,
 			CreateHelmChart: false,
 			TagExtra:        flagBuildKubeTagExtra,
-		}
-
-		if flagBuildOutputGraph != "" {
-			err = fissile.GraphBegin(flagBuildOutputGraph)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				fissile.GraphEnd()
-			}()
 		}
 
 		return fissile.GenerateKube(settings)

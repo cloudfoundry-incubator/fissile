@@ -8,7 +8,7 @@ import (
 	"regexp"
 
 	"code.cloudfoundry.org/fissile/util"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // ReleaseRef represents a reference to a BOSH release from a manifest
