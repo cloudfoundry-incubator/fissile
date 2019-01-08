@@ -657,7 +657,6 @@ func TestPublicServiceHelm(t *testing.T) {
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "myrole-tor-public"
 			spec:
-				externalIPs: "[127.0.0.1,127.0.0.2]"
 				ports:
 				-	name: "https"
 					port: 443

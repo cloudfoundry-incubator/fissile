@@ -213,7 +213,7 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	}
 	if serviceType == newServiceTypePublic {
 		if settings.CreateHelmChart {
-			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}", helm.Block("if or (not .Values.services.loadbalanced) .Values.services.ingress"))
+			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}", helm.Block("if not (or .Values.services.loadbalanced .Values.services.ingress)"))
 			spec.Add("type", "LoadBalancer", helm.Block("if and .Values.services.loadbalanced (not .Values.services.ingress)"))
 		} else {
 			spec.Add("externalIPs", []string{"192.168.77.77"})
