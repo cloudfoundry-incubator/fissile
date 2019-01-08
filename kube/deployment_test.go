@@ -193,6 +193,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
+			"Values.config.use_istio":                        true,
 			"Values.sizing.some_group.count":                 "1",
 			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
 			"Values.sizing.some_group.capabilities":          []interface{}{},
@@ -211,6 +212,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			metadata:
 				name: "some-group"
 				labels:
+					app: "some-group"
 					app.kubernetes.io/component: some-group
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -218,6 +220,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 					app.kubernetes.io/version: 1.22.333.4444
 					helm.sh/chart: MyChart-42.1_foo
 					skiff-role-name: "some-group"
+					version: 1.22.333.4444
 			spec:
 				replicas: 1
 				selector:
@@ -227,6 +230,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 					metadata:
 						name: "some-group"
 						labels:
+							app: "some-group"
 							app.kubernetes.io/component: some-group
 							app.kubernetes.io/instance: MyRelease
 							app.kubernetes.io/managed-by: Tiller
@@ -234,8 +238,10 @@ func TestNewDeploymentHelm(t *testing.T) {
 							app.kubernetes.io/version: 1.22.333.4444
 							helm.sh/chart: MyChart-42.1_foo
 							skiff-role-name: "some-group"
+							version: 1.22.333.4444
 						annotations:
 							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+							sidecar.istio.io/inject: "false"
 					spec:
 						affinity:
 							podAntiAffinity:
@@ -266,6 +272,142 @@ func TestNewDeploymentHelm(t *testing.T) {
 										-	"/opt/fissile/pre-stop.sh"
 							livenessProbe: ~
 							name: "some-group"
+							ports: ~
+							readinessProbe:
+								exec:
+									command: [ /opt/fissile/readiness-probe.sh ]
+							resources: ~
+							securityContext:
+								allowPrivilegeEscalation: false
+								capabilities:
+									add:	~
+							volumeMounts:
+							-	mountPath: /opt/fissile/config
+								name: deployment-manifest
+								readOnly: true
+						dnsPolicy: "ClusterFirst"
+						imagePullSecrets:
+						- name: "registry-credentials"
+						restartPolicy: "Always"
+						terminationGracePeriodSeconds: 600
+						volumes:
+						-	name: deployment-manifest
+							secret:
+								items:
+								-	key: deployment-manifest
+									path: deployment-manifest.yml
+								secretName: deployment-manifest
+		`, actual)
+	})
+}
+
+func TestNewDeploymentIstioManagedHelm(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	instanceGroup := deploymentTestLoad(assert, "istio-managed-group", "pod-with-valid-pod-anti-affinity.yml")
+	if instanceGroup == nil {
+		return
+	}
+
+	settings := ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "the_repos",
+	}
+
+	grapher := FakeGrapher{}
+
+	deployment, svc, err := NewDeployment(instanceGroup, settings, grapher)
+
+	assert.NoError(err)
+	assert.Nil(svc)
+	assert.NotNil(deployment)
+	assert.Equal(deployment.Get("kind").String(), "Deployment")
+	assert.Equal(deployment.Get("metadata", "name").String(), "istio-managed-group")
+
+	t.Run("Configured", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.config.use_istio":                                 "true",
+			"Values.sizing.istio_managed_group.count":                 "1",
+			"Values.sizing.istio_managed_group.affinity.nodeAffinity": "snafu",
+			"Values.sizing.istio_managed_group.capabilities":          []interface{}{},
+			"Values.kube.registry.hostname":                           "docker.suse.fake",
+			"Values.kube.organization":                                "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN":                    "cluster.local",
+		}
+
+		actual, err := RoundtripNode(deployment, config)
+		if !assert.NoError(err) {
+			return
+		}
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "extensions/v1beta1"
+			kind: "Deployment"
+			metadata:
+				name: "istio-managed-group"
+				labels:
+					app: "istio-managed-group"
+					app.kubernetes.io/component: istio-managed-group
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "istio-managed-group"
+					version: 1.22.333.4444
+			spec:
+				replicas: 1
+				selector:
+					matchLabels:
+						app: "istio-managed-group"
+						skiff-role-name: "istio-managed-group"
+						version: 1.22.333.4444
+				template:
+					metadata:
+						name: "istio-managed-group"
+						labels:
+							app: "istio-managed-group"
+							app.kubernetes.io/component: istio-managed-group
+							app.kubernetes.io/instance: MyRelease
+							app.kubernetes.io/managed-by: Tiller
+							app.kubernetes.io/name: MyChart
+							app.kubernetes.io/version: 1.22.333.4444
+							helm.sh/chart: MyChart-42.1_foo
+							skiff-role-name: "istio-managed-group"
+							version: 1.22.333.4444
+						annotations:
+							checksum/config: 08c80ed11902eefef09739d41c91408238bb8b5e7be7cc1e5db933b7c8de65c3
+					spec:
+						affinity:
+							podAntiAffinity:
+								preferredDuringSchedulingIgnoredDuringExecution:
+								-	podAffinityTerm:
+										labelSelector:
+											matchExpressions:
+											-	key: "app.kubernetes.io/component"
+												operator: "In"
+												values:
+												-	"istio-managed-group"
+										topologyKey: "beta.kubernetes.io/os"
+									weight: 100
+							nodeAffinity: "snafu"
+						containers:
+						-	env:
+							-	name: "KUBERNETES_CLUSTER_DOMAIN"
+								value: "cluster.local"
+							-	name: "KUBERNETES_NAMESPACE"
+								valueFrom:
+									fieldRef:
+										fieldPath: "metadata.namespace"
+							image: "docker.suse.fake/splat/the_repos-istio-managed-group:3b960ef56f837ae186cdd546d03750cca62676bc"
+							lifecycle:
+								preStop:
+									exec:
+										command:
+										-	"/opt/fissile/pre-stop.sh"
+							livenessProbe: ~
+							name: "istio-managed-group"
 							ports: ~
 							readinessProbe:
 								exec:

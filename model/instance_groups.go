@@ -67,6 +67,7 @@ const (
 	RoleTagStopOnFailure     = RoleTag("stop-on-failure")
 	RoleTagSequentialStartup = RoleTag("sequential-startup")
 	RoleTagActivePassive     = RoleTag("active-passive")
+	RoleTagIstioManaged      = RoleTag("istio-managed")
 )
 
 // SetRoleManifest adds a reference to the instance groups role manifest

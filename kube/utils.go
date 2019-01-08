@@ -11,6 +11,11 @@ import (
 const (
 	// RoleNameLabel is the recommended kube label to specify the rolename
 	RoleNameLabel = "app.kubernetes.io/component"
+	// AppNameLabel is to add contextual information in distributed tracing for Istio
+	AppNameLabel = "app"
+	// AppVersionLabel is to indicate the version of app. It is used to add contextual information in
+	// distributed tracing and the metric telemetry collected by Istio
+	AppVersionLabel = "version"
 	// VolumeStorageClassAnnotation is the annotation label for storage/v1beta1/StorageClass
 	VolumeStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
@@ -21,17 +26,34 @@ func newTypeMeta(apiVersion, kind string, modifiers ...helm.NodeModifier) *helm.
 	return mapping
 }
 
-func newSelector(name string) *helm.Mapping {
-	meta := helm.NewMapping()
-	// meta.Add("matchLabels", helm.NewMapping(RoleNameLabel, name))
+func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mapping {
 	// XXX We need to match on legacy RoleNameLabel to maintain upgradability of stateful sets
-	meta.Add("matchLabels", helm.NewMapping("skiff-role-name", name))
+	matchLabels := helm.NewMapping("skiff-role-name", role.Name)
+	if role.HasTag(model.RoleTagIstioManaged) && settings.CreateHelmChart {
+		matchLabels.Add(AppNameLabel, role.Name, helm.Block("if .Values.config.use_istio"))
+		matchLabels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`, helm.Block("if .Values.config.use_istio"))
+	}
+
+	meta := helm.NewMapping("matchLabels", matchLabels)
+
 	return meta
 }
 
 // newKubeConfig sets up generic a Kube config structure with minimal metadata
 func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
 	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
+	istioAppLabel := map[string]bool{
+		"StatefulSet": true,
+		"Deployment":  true,
+		"Service":     true,
+		"Pod":         true,
+	}
+	istioVersionLabel := map[string]bool{
+		"StatefulSet": true,
+		"Deployment":  true,
+		"Pod":         true,
+	}
+
 	if settings.CreateHelmChart {
 		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
 		labels.Add("skiff-role-name", name)
@@ -41,6 +63,12 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modif
 		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
+		if istioAppLabel[kind] {
+			labels.Add(AppNameLabel, name, helm.Block("if .Values.config.use_istio"))
+		}
+		if istioVersionLabel[kind] {
+			labels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`, helm.Block("if .Values.config.use_istio"))
+		}
 	}
 
 	config := newTypeMeta(apiVersion, kind, modifiers...)
@@ -94,7 +122,8 @@ func MakeBasicValues() *helm.Mapping {
 			"cpu", helm.NewNode(helm.NewMapping(
 				"requests", helm.NewNode(false, helm.Comment("Flag to activate cpu requests")),
 				"limits", helm.NewNode(false, helm.Comment("Flag to activate cpu limits")),
-			), helm.Comment("Global CPU configuration"))),
+			), helm.Comment("Global CPU configuration")),
+			"use_istio", helm.NewNode(true, helm.Comment("Flag to specify whether to add Istio related annotations and labels"))),
 		"bosh", helm.NewMapping("instance_groups", helm.NewList()),
 		"env", helm.NewMapping(),
 		"sizing", helm.NewMapping(),

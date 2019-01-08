@@ -30,7 +30,7 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 
 	spec := helm.NewMapping()
 	spec.Add("serviceName", fmt.Sprintf("%s-set", role.Name))
-	spec.Add("selector", newSelector(role.Name))
+	spec.Add("selector", newSelector(role, settings))
 	spec.Add("template", podTemplate)
 	// "updateStrategy" is new in kube 1.7, so we don't add anything to non-helm configs
 	// The default behaviour is "OnDelete"

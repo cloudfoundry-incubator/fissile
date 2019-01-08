@@ -1726,6 +1726,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1733,6 +1734,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1844,6 +1846,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 		metadata:
 			name: "post-role"
 			labels:
+				app: "post-role"
 				app.kubernetes.io/component: post-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1851,6 +1854,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "post-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1972,6 +1976,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1979,6 +1984,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2063,6 +2069,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2070,6 +2077,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2193,6 +2201,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2200,6 +2209,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2284,6 +2294,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
+				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2291,6 +2302,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
+				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2825,4 +2837,94 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 				readOnly: true
 		`, actual)
 	}
+}
+
+func TestPodIstioManagedHelm(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	role := podTestLoadRole(assert, "istio-managed-role")
+	if role == nil {
+		return
+	}
+	pod, err := NewPod(role, ExportSettings{
+		CreateHelmChart: true,
+		Repository:      "theRepo",
+		Opinions:        model.NewEmptyOpinions(),
+	}, nil)
+	if !assert.NoError(err, "Failed to create pod from role istio-managed-role") {
+		return
+	}
+	assert.NotNil(pod)
+
+	config := map[string]interface{}{
+		"Values.config.use_istio":                       "true",
+		"Values.kube.registry.hostname":                 "R",
+		"Values.kube.organization":                      "O",
+		"Values.env.KUBERNETES_CLUSTER_DOMAIN":          "cluster.local",
+		"Values.sizing.istio_managed_role.capabilities": []interface{}{},
+	}
+
+	actual, err := RoundtripNode(pod, config)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		apiVersion: "v1"
+		kind: "Pod"
+		metadata:
+			name: "istio-managed-role"
+			labels:
+				app: istio-managed-role
+				app.kubernetes.io/component: istio-managed-role
+				app.kubernetes.io/instance: MyRelease
+				app.kubernetes.io/managed-by: Tiller
+				app.kubernetes.io/name: MyChart
+				app.kubernetes.io/version: 1.22.333.4444
+				helm.sh/chart: MyChart-42.1_foo
+				skiff-role-name: "istio-managed-role"
+				version: 1.22.333.4444
+		spec:
+			containers:
+			-	env:
+				-	name: "KUBERNETES_CLUSTER_DOMAIN"
+					value: "cluster.local"
+				-	name: "KUBERNETES_NAMESPACE"
+					valueFrom:
+						fieldRef:
+							fieldPath: "metadata.namespace"
+				image: "R/O/theRepo-istio-managed-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
+				lifecycle:
+					preStop:
+						exec:
+							command:
+							-	"/opt/fissile/pre-stop.sh"
+				livenessProbe: ~
+				name: "istio-managed-role"
+				ports: ~
+				readinessProbe:
+					exec:
+						command:
+						- /opt/fissile/readiness-probe.sh
+				resources: ~
+				securityContext:
+					allowPrivilegeEscalation: false
+					capabilities:
+						add:	~
+				volumeMounts:
+				-	mountPath: /opt/fissile/config
+					name: deployment-manifest
+					readOnly: true
+			dnsPolicy: "ClusterFirst"
+			imagePullSecrets:
+			-	name: "registry-credentials"
+			restartPolicy: "OnFailure"
+			terminationGracePeriodSeconds: 600
+			volumes:
+			-	name: deployment-manifest
+				secret:
+					items:
+					-	key: deployment-manifest
+						path: deployment-manifest.yml
+					secretName: deployment-manifest
+	`, actual)
 }
