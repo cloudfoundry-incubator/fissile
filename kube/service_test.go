@@ -168,8 +168,7 @@ func TestServiceHelm(t *testing.T) {
 	t.Run("Ingress", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.services.loadbalanced": "true",
-			"Values.services.ingress":      "nic",
+			"Values.services.ingress": "nic",
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -303,9 +302,8 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 	t.Run("Ingress", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.services.loadbalanced": "true",
-			"Values.services.ingress":      "nic",
-			"Values.config.use_istio":      true,
+			"Values.services.ingress": "nic",
+			"Values.config.use_istio": true,
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -475,8 +473,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	t.Run("Ingress", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.services.loadbalanced": "true",
-			"Values.services.ingress":      "nic",
+			"Values.services.ingress": "nic",
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -632,12 +629,23 @@ func TestPublicServiceHelm(t *testing.T) {
 		`, actual)
 	})
 
-	t.Run("Ingress", func(t *testing.T) {
+	t.Run("LoadBalancer and Ingress mismatch", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
 			"Values.services.loadbalanced": "true",
 			"Values.services.ingress":      "nic",
+		}
+
+		_, err := RoundtripNode(service, config)
+		require.Error(t, err)
+	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
+			"Values.services.ingress":  "nic",
 		}
 
 		actual, err := RoundtripNode(service, config)
