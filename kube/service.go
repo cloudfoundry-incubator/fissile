@@ -213,7 +213,7 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	}
 	if serviceType == newServiceTypePublic {
 		if settings.CreateHelmChart {
-			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}", helm.Block("if not .Values.services.loadbalanced"))
+			spec.Add("externalIPs", "{{ .Values.kube.external_ips | toJson }}", helm.Block("if not (or .Values.services.loadbalanced .Values.services.ingress)"))
 			spec.Add("type", "LoadBalancer", helm.Block("if .Values.services.loadbalanced"))
 		} else {
 			spec.Add("externalIPs", []string{"192.168.77.77"})
@@ -239,6 +239,12 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 
 	service := newKubeConfig(settings, "v1", "Service", serviceName)
 	service.Add("spec", spec.Sort())
+
+	if settings.CreateHelmChart && serviceType == newServiceTypePublic {
+		block := `if and .Values.services.loadbalanced .Values.services.ingress`
+		fail := `{{ fail "services.loadbalanced and services.ingress cannot both be set" }}`
+		service.Add("_incompatible", fail, helm.Block(block))
+	}
 
 	return service, nil
 }

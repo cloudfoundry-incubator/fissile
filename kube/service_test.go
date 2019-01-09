@@ -164,6 +164,42 @@ func TestServiceHelm(t *testing.T) {
 					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.services.ingress": "nic",
+		}
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-tor"
+				labels:
+					app: "myrole-tor"
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 8080
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 443
+				selector:
+					app.kubernetes.io/component: "myrole"
+		`, actual)
+	})
 }
 
 func TestIstioManagedServiceHelm(t *testing.T) {
@@ -231,6 +267,44 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 			"Values.config.use_istio":      true,
 		}
 
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-tor"
+				labels:
+					app: myrole-tor
+					app.kubernetes.io/component: myrole-tor
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor"
+			spec:
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 8080
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 443
+				selector:
+					app: myrole
+					app.kubernetes.io/component: "myrole"
+		`, actual)
+	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.services.ingress": "nic",
+			"Values.config.use_istio": true,
+		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
 		testhelpers.IsYAMLEqualString(assert, `---
@@ -395,6 +469,43 @@ func TestHeadlessServiceHelm(t *testing.T) {
 					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.services.ingress": "nic",
+		}
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myservice-set"
+				labels:
+					app: "myservice-set"
+					app.kubernetes.io/component: myservice-set
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myservice-set"
+			spec:
+				clusterIP: "None"
+				ports:
+				-	name: "http"
+					port: 80
+					protocol: "TCP"
+					targetPort: 0
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 0
+				selector:
+					app.kubernetes.io/component: "myrole"
+		`, actual)
+	})
 }
 
 func TestPublicServiceKube(t *testing.T) {
@@ -515,6 +626,52 @@ func TestPublicServiceHelm(t *testing.T) {
 				selector:
 					app.kubernetes.io/component: "myrole"
 				type:	LoadBalancer
+		`, actual)
+	})
+
+	t.Run("LoadBalancer and Ingress mismatch", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
+			"Values.services.loadbalanced": "true",
+			"Values.services.ingress":      "nic",
+		}
+
+		_, err := RoundtripNode(service, config)
+		require.Error(t, err)
+	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
+			"Values.services.ingress":  "nic",
+		}
+
+		actual, err := RoundtripNode(service, config)
+		require.NoError(t, err)
+		testhelpers.IsYAMLEqualString(assert, `---
+			apiVersion: "v1"
+			kind: "Service"
+			metadata:
+				name: "myrole-tor-public"
+				labels:
+					app: "myrole-tor-public"
+					app.kubernetes.io/component: myrole-tor-public
+					app.kubernetes.io/instance: MyRelease
+					app.kubernetes.io/managed-by: Tiller
+					app.kubernetes.io/name: MyChart
+					app.kubernetes.io/version: 1.22.333.4444
+					helm.sh/chart: MyChart-42.1_foo
+					skiff-role-name: "myrole-tor-public"
+			spec:
+				ports:
+				-	name: "https"
+					port: 443
+					protocol: "TCP"
+					targetPort: 443
+				selector:
+					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
 }
