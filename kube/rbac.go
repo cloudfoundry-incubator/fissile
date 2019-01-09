@@ -201,7 +201,10 @@ func NewRBACPSP(name string, psp *model.PodSecurityPolicy, settings ExportSettin
 // authModeRBAC returns a block condition checking for RBAC
 func authModeRBAC(settings ExportSettings) helm.NodeModifier {
 	if settings.CreateHelmChart {
-		return helm.Block(`if eq (printf "%s" .Values.kube.auth) "rbac"`)
+		return helm.Block(fmt.Sprintf(
+			`if and (%s) (%s)`,
+			`eq (printf "%s" .Values.kube.auth) "rbac"`,
+			`.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1"`))
 	}
 	return nil
 }

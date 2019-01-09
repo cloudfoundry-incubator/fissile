@@ -13,6 +13,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// fakeAPIVersions exists to hang the `.Capabilities.APIVersions.Has` method off
+// our fake Helm context
+type fakeAPIVersions map[string]interface{}
+
+// Has indicates whether a version ("batch/v1") is enabled on the cluster.
+func (v *fakeAPIVersions) Has(name string) bool {
+	_, ok := (*v)[name]
+	return ok
+}
+
 // RenderNode renders a helm node given the configuration.
 // The configuration may be nil, or map[string]interface{}
 // If it is nil, default values are used.
@@ -32,6 +42,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 			"KubeVersion": map[string]interface{}{
 				"Major": "1",
 				"Minor": "8",
+			},
+			"APIVersions": &fakeAPIVersions{
+				"rbac.authorization.k8s.io/v1": true,
 			},
 		},
 		"Template": map[string]interface{}{
