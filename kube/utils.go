@@ -123,7 +123,7 @@ func MakeBasicValues() *helm.Mapping {
 				"requests", helm.NewNode(false, helm.Comment("Flag to activate cpu requests")),
 				"limits", helm.NewNode(false, helm.Comment("Flag to activate cpu limits")),
 			), helm.Comment("Global CPU configuration")),
-			"use_istio", helm.NewNode(true, helm.Comment("Flag to specify whether to add Istio related annotations and labels"))),
+			"use_istio", helm.NewNode(false, helm.Comment("Flag to specify whether to add Istio related annotations and labels"))),
 		"bosh", helm.NewMapping("instance_groups", helm.NewList()),
 		"env", helm.NewMapping(),
 		"sizing", helm.NewMapping(),

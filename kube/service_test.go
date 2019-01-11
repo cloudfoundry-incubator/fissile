@@ -105,7 +105,6 @@ func TestServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor"
 				labels:
-					app: "myrole-tor"
 					app.kubernetes.io/component: myrole-tor
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -142,7 +141,6 @@ func TestServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor"
 				labels:
-					app: "myrole-tor"
 					app.kubernetes.io/component: myrole-tor
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -178,7 +176,6 @@ func TestServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor"
 				labels:
-					app: "myrole-tor"
 					app.kubernetes.io/component: myrole-tor
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -408,7 +405,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myservice-set"
 				labels:
-					app: "myservice-set"
 					app.kubernetes.io/component: myservice-set
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -446,7 +442,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myservice-set"
 				labels:
-					app: "myservice-set"
 					app.kubernetes.io/component: myservice-set
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -483,7 +478,6 @@ func TestHeadlessServiceHelm(t *testing.T) {
 			metadata:
 				name: "myservice-set"
 				labels:
-					app: "myservice-set"
 					app.kubernetes.io/component: myservice-set
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -574,7 +568,6 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor-public"
 				labels:
-					app: "myrole-tor-public"
 					app.kubernetes.io/component: myrole-tor-public
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -609,7 +602,6 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor-public"
 				labels:
-					app: "myrole-tor-public"
 					app.kubernetes.io/component: myrole-tor-public
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -656,7 +648,6 @@ func TestPublicServiceHelm(t *testing.T) {
 			metadata:
 				name: "myrole-tor-public"
 				labels:
-					app: "myrole-tor-public"
 					app.kubernetes.io/component: myrole-tor-public
 					app.kubernetes.io/instance: MyRelease
 					app.kubernetes.io/managed-by: Tiller
@@ -757,7 +748,6 @@ func TestActivePassiveService(t *testing.T) {
 											metadata:
 												name: myrole-set
 												labels:
-													app: "myrole-set"
 													app.kubernetes.io/component: myrole-set
 													app.kubernetes.io/instance: MyRelease
 													app.kubernetes.io/managed-by: Tiller
@@ -794,7 +784,6 @@ func TestActivePassiveService(t *testing.T) {
 											metadata:
 												name: myrole-tor-set
 												labels:
-													app: "myrole-tor-set"
 													app.kubernetes.io/component: myrole-tor-set
 													app.kubernetes.io/instance: MyRelease
 													app.kubernetes.io/managed-by: Tiller
@@ -836,7 +825,6 @@ func TestActivePassiveService(t *testing.T) {
 										metadata:
 											name: myrole-tor
 											labels:
-												app: "myrole-tor"
 												app.kubernetes.io/component: myrole-tor
 												app.kubernetes.io/instance: MyRelease
 												app.kubernetes.io/managed-by: Tiller
@@ -873,7 +861,6 @@ func TestActivePassiveService(t *testing.T) {
 										metadata:
 											name: myrole-tor-public
 											labels:
-												app: "myrole-tor-public"
 												app.kubernetes.io/component: myrole-tor-public
 												app.kubernetes.io/instance: MyRelease
 												app.kubernetes.io/managed-by: Tiller
@@ -913,7 +900,6 @@ func TestActivePassiveService(t *testing.T) {
 
 func expectedYAML(settings ExportSettings, expected string) string {
 	if !settings.CreateHelmChart {
-		expected = regexp.MustCompile("app: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/instance: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/managed-by: .*").ReplaceAllLiteralString(expected, "")
 		expected = regexp.MustCompile("app.kubernetes.io/name: .*").ReplaceAllLiteralString(expected, "")
