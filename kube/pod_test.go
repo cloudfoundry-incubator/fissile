@@ -1726,7 +1726,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
-				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1734,7 +1733,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1846,7 +1844,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 		metadata:
 			name: "post-role"
 			labels:
-				app: "post-role"
 				app.kubernetes.io/component: post-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1854,7 +1851,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "post-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -1976,7 +1972,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
-				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -1984,7 +1979,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2069,7 +2063,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
-				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2077,7 +2070,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2201,7 +2193,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
-				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2209,7 +2200,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:
@@ -2294,7 +2284,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 		metadata:
 			name: "pre-role"
 			labels:
-				app: "pre-role"
 				app.kubernetes.io/component: pre-role
 				app.kubernetes.io/instance: MyRelease
 				app.kubernetes.io/managed-by: Tiller
@@ -2302,7 +2291,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 				app.kubernetes.io/version: 1.22.333.4444
 				helm.sh/chart: MyChart-42.1_foo
 				skiff-role-name: "pre-role"
-				version: 1.22.333.4444
 		spec:
 			containers:
 			-	env:

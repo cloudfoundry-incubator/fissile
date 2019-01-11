@@ -60,8 +60,10 @@ func TestNewSelectorIstioManaged(t *testing.T) {
 	role := makeTemplateRole()
 	settings := ExportSettings{CreateHelmChart: true}
 	selector := newSelector(role, settings)
-
-	actual, err := RoundtripNode(selector, nil)
+	config := map[string]interface{}{
+		"Values.config.use_istio": true,
+	}
+	actual, err := RoundtripNode(selector, config)
 	if !assert.NoError(err) {
 		return
 	}
