@@ -2,6 +2,8 @@ package kube
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
@@ -37,10 +39,15 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 	// If we want to modify the default account, there's no need to create it
 	// first -- it already exists
 	if accountName != "default" {
-		description := fmt.Sprintf("Service account %s is used by the following instance groups:", accountName)
+		var instanceGroupNames []string
 		for instanceGroupName := range account.UsedBy {
-			description += fmt.Sprintf("\n - %s", instanceGroupName)
+			instanceGroupNames = append(instanceGroupNames, fmt.Sprintf("- %s", instanceGroupName))
 		}
+		sort.Strings(instanceGroupNames)
+		description := fmt.Sprintf(
+			"Service account \"%s\" is used by the following instance groups:\n%s",
+			accountName,
+			strings.Join(instanceGroupNames, "\n"))
 		resources = append(resources, newKubeConfig(settings,
 			"v1",
 			"ServiceAccount",
@@ -65,7 +72,7 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			if err != nil {
 				return nil, err
 			}
-			role.Set(helm.Comment(fmt.Sprintf(`Role %s only used by account %s`, roleName, usedByAccounts)))
+			role.Set(helm.Comment(fmt.Sprintf(`Role "%s" only used by account "%s"`, roleName, usedByAccounts)))
 			resources = append(resources, role)
 		}
 
@@ -74,7 +81,9 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			"RoleBinding",
 			fmt.Sprintf("%s-%s-binding", accountName, roleName),
 			block,
-			helm.Comment(fmt.Sprintf("Role binding for service account %s and role %s", accountName, roleName)))
+			helm.Comment(fmt.Sprintf(`Role binding for service account "%s" and role "%s"`,
+				accountName,
+				roleName)))
 		subjects := helm.NewList(helm.NewMapping(
 			"kind", "ServiceAccount",
 			"name", accountName))
@@ -109,7 +118,7 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			if err != nil {
 				return nil, err
 			}
-			role.Set(helm.Comment(fmt.Sprintf(`Cluster role %s only used by account %s`, clusterRoleName, accountNames)))
+			role.Set(helm.Comment(fmt.Sprintf(`Cluster role "%s" only used by account "%s"`, clusterRoleName, accountNames)))
 			resources = append(resources, role)
 		}
 
@@ -118,7 +127,9 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			"ClusterRoleBinding",
 			authCRBindingName(accountName, clusterRoleName, settings),
 			block,
-			helm.Comment(fmt.Sprintf("Cluster role binding for service account %s and cluster role %s", accountName, clusterRoleName)))
+			helm.Comment(fmt.Sprintf(`Cluster role binding for service account "%s" and cluster role "%s"`,
+				accountName,
+				clusterRoleName)))
 		subjects := helm.NewList(helm.NewMapping(
 			"kind", "ServiceAccount",
 			"name", accountName,
@@ -184,16 +195,18 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 // NewRBACPSP creates a (Kubernetes RBAC) pod security policy
 func NewRBACPSP(name string, psp *model.PodSecurityPolicy, settings ExportSettings) (helm.Node, error) {
 	var condition helm.NodeModifier
+	resourceName := name
 	if settings.CreateHelmChart {
 		condition = helm.Block(fmt.Sprintf(`if and (%s) (not .Values.kube.psp.%s)`,
 			`eq (printf "%s" .Values.kube.auth) "rbac"`, name))
-		name = fmt.Sprintf(`{{ printf "%%s-psp-%s" .Release.Namespace }}`, name)
+		resourceName = fmt.Sprintf(`{{ printf "%%s-psp-%s" .Release.Namespace }}`, name)
 	}
 	node := newKubeConfig(settings,
 		"extensions/v1beta1",
 		"PodSecurityPolicy",
-		name,
-		condition)
+		resourceName,
+		condition,
+		helm.Comment(fmt.Sprintf(`Pod security policy "%s"`, name)))
 	node.Add("spec", helm.NewNode(psp.Definition))
 	return node, nil
 }

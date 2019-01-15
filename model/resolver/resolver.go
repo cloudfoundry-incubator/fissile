@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"sort"
 
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/util"
@@ -473,6 +474,7 @@ func resolvePodSecurityPolicies(m *model.RoleManifest) validation.ErrorList {
 	for i := range instanceGroupsNeedingEscalation {
 		instanceGroupNames = append(instanceGroupNames, m.InstanceGroups[i].Name)
 	}
+	sort.Strings(instanceGroupNames)
 	fmt.Printf("Found %d instance groups requiring escalation: %s\n", len(instanceGroupsNeedingEscalation), instanceGroupNames)
 
 	// Find a PSP to use as the privileged PSP

@@ -816,7 +816,7 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 			accountNames = append(accountNames, fmt.Sprintf("- %s", accountName))
 		}
 		if len(accountNames) < 1 {
-			panic(fmt.Sprintf("Role %s used by no accounts", roleName))
+			panic(fmt.Sprintf("Role \"%s\" used by no accounts", roleName))
 		}
 		if len(accountNames) < 2 {
 			// Ignore roles referenced by a single account. These are not written as their own files,
@@ -829,7 +829,7 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 		if err != nil {
 			return err
 		}
-		node.Set(helm.Comment(fmt.Sprintf(`Role %s used by accounts:\n%s`, roleName, strings.Join(accountNames, "\n"))))
+		node.Set(helm.Comment(fmt.Sprintf("Role \"%s\" used by accounts:\n%s", roleName, strings.Join(accountNames, "\n"))))
 		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-role-%s.yaml", roleName), node)
 		if err != nil {
 			return err
@@ -840,10 +840,10 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 	for roleName, roleSpec := range settings.RoleManifest.Configuration.Authorization.ClusterRoles {
 		var accountNames []string
 		for accountName := range settings.RoleManifest.Configuration.Authorization.ClusterRoleUsedBy[roleName] {
-			accountNames = append(accountNames, accountName)
+			accountNames = append(accountNames, fmt.Sprintf("- %s", accountName))
 		}
 		if len(accountNames) < 1 {
-			panic(fmt.Sprintf("Cluster role %s used by no accounts", roleName))
+			panic(fmt.Sprintf("Cluster role \"%s\" used by no accounts", roleName))
 		}
 		if len(accountNames) < 2 {
 			// Ignore cluster roles referenced by a single account. These are not written as their own files,
@@ -856,7 +856,7 @@ func (f *Fissile) generateAuth(settings kube.ExportSettings) error {
 		if err != nil {
 			return err
 		}
-		node.Set(helm.Comment(fmt.Sprintf(`Cluster role %s used by accounts %s`, roleName, strings.Join(accountNames, "\n"))))
+		node.Set(helm.Comment(fmt.Sprintf("Cluster role \"%s\" used by accounts:\n%s", roleName, strings.Join(accountNames, "\n"))))
 		err = f.writeHelmNode(authDir, fmt.Sprintf("auth-cluster-role-%s.yaml", roleName), node)
 		if err != nil {
 			return err
