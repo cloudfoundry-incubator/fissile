@@ -196,6 +196,12 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	if settings.AuthType != "" {
 		kube.Add("auth", settings.AuthType)
 	}
+	psps := helm.NewMapping()
+	for pspName := range settings.RoleManifest.Configuration.Authorization.PodSecurityPolicies {
+		psps.Add(pspName, nil)
+	}
+	kube.Add("psp", psps.Sort())
+	kube.Sort()
 
 	return values, nil
 }

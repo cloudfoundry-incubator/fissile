@@ -8,43 +8,49 @@ package model
 // manifest is then responsible for mapping the abstract names/levels
 // to concrete policies implementing them.
 
-// Pod security policy constants
-const (
-	PodSecurityPolicyNonPrivileged = "nonprivileged"
-	PodSecurityPolicyPrivileged    = "privileged"
+import (
+	"fmt"
 )
 
-// PodSecurityPolicies returns the names of the pod security policies
-// usable in fissile manifests
-func PodSecurityPolicies() []string {
-	return []string{
-		PodSecurityPolicyNonPrivileged,
-		PodSecurityPolicyPrivileged,
-	}
+const (
+	// PodSecurityPolicyNonPrivileged is a backwards compatibility marker to
+	// indicate an instance group does not require a privileged PSP
+	PodSecurityPolicyNonPrivileged = "nonprivileged"
+	// PodSecurityPolicyPrivileged marks an instance group as requiring a
+	// privileged PSP
+	PodSecurityPolicyPrivileged = "privileged"
+)
+
+// PodSecurityPolicy defines a pod security policy
+type PodSecurityPolicy struct {
+	Definition                 interface{}
+	privilegeEscalationAllowed *bool
 }
 
-// ValidPodSecurityPolicy checks if the argument is the name of a
-// fissile pod security policy
-func ValidPodSecurityPolicy(name string) bool {
-	for _, legal := range PodSecurityPolicies() {
-		if name == legal {
-			return true
+// PrivilegeEscalationAllowed checks if this policy is set to allow privilege escalation
+func (policy *PodSecurityPolicy) PrivilegeEscalationAllowed() bool {
+	if policy.privilegeEscalationAllowed == nil {
+		allowed := false
+
+		if m, ok := policy.Definition.(map[interface{}]interface{}); ok {
+			if v, ok := m["allowPrivilegeEscalation"]; ok {
+				if b, ok := v.(bool); ok {
+					allowed = b
+				}
+			}
 		}
+		policy.privilegeEscalationAllowed = &allowed
 	}
-	return false
+	return *policy.privilegeEscalationAllowed
 }
 
-// MergePodSecurityPolicies takes two policies (names) and returns the
-// policy (name) representing the union of their privileges.
-func MergePodSecurityPolicies(policyA, policyB string) string {
-	if policyA == PodSecurityPolicyPrivileged || policyB == PodSecurityPolicyPrivileged {
-		return PodSecurityPolicyPrivileged
+// UnmarshalYAML implements the yaml.v2/Unmarshaler interface.
+// We don't want to describe the whole PodSecurityPolicySpec, so just hold all
+// of it in an interface{} instead
+func (policy *PodSecurityPolicy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	err := unmarshal(&policy.Definition)
+	if err != nil {
+		return fmt.Errorf("Error unmarshalling PSP spec: %v", err)
 	}
-	return PodSecurityPolicyNonPrivileged
-}
-
-// LeastPodSecurityPolicy returns the name of the bottom-level pod
-// security policy (least-privileged)
-func LeastPodSecurityPolicy() string {
-	return PodSecurityPolicyNonPrivileged
+	return nil
 }

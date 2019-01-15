@@ -13,6 +13,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// fakeAPIVersions exists to hang the `.Capabilities.APIVersions.Has` method off
+// our fake Helm context
+type fakeAPIVersions map[string]interface{}
+
+// Has indicates whether a version ("batch/v1") is enabled on the cluster.
+func (v *fakeAPIVersions) Has(name string) bool {
+	_, ok := (*v)[name]
+	return ok
+}
+
 // RenderNode renders a helm node given the configuration.
 // The configuration may be nil, or map[string]interface{}
 // If it is nil, default values are used.
@@ -32,6 +42,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 			"KubeVersion": map[string]interface{}{
 				"Major": "1",
 				"Minor": "8",
+			},
+			"APIVersions": &fakeAPIVersions{
+				"rbac.authorization.k8s.io/v1": true,
 			},
 		},
 		"Template": map[string]interface{}{
@@ -57,6 +70,9 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 
 	var helmConfig, yamlConfig bytes.Buffer
 
+	if node == nil {
+		node = helm.NewNode(nil)
+	}
 	if err := helm.NewEncoder(&helmConfig).Encode(node); err != nil {
 		return nil, err
 	}
@@ -228,4 +244,15 @@ func getBasicConfig() (map[string]interface{}, error) {
 		return nil, err
 	}
 	return converted.(map[string]interface{}), nil
+}
+
+// matchNodeInList iterates through a list of nodes and returns the first one
+// where node.Match(target) succeeds
+func matchNodeInList(list []helm.Node, target helm.Node) helm.Node {
+	for _, node := range list {
+		if node.Match(target) {
+			return node
+		}
+	}
+	return nil
 }

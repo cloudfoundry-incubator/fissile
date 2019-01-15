@@ -24,9 +24,19 @@ configuration:
       non-default:
         roles:
         - extra-permissions
+        cluster-roles:
+        - nonprivileged
       default:
         roles:
         - pointless
+    cluster-roles:
+      nonprivileged:
+      - apiGroups: [extensions]
+        resourceNames: [nonprivileged]
+        resources: [podsecuritypolicies]
+        verbs: [use]
+    pod-security-policies:
+      nonprivileged: {}
     roles:
       extra-permissions:
       - apiGroups: ['']

@@ -363,11 +363,17 @@ func TestGenerateAuth(t *testing.T) {
 	// Force the usage counters for accounts and roles to values
 	// which causes generateAuth to write the proper files.
 	for accountName, accountSpec := range roleManifest.Configuration.Authorization.Accounts {
-		accountSpec.NumGroups = 2
+		accountSpec.UsedBy = map[string]struct{}{
+			"foo": struct{}{},
+			"bar": struct{}{},
+		}
 		roleManifest.Configuration.Authorization.Accounts[accountName] = accountSpec
 	}
 	for roleName := range roleManifest.Configuration.Authorization.Roles {
-		roleManifest.Configuration.Authorization.RoleUse[roleName] = 2
+		roleManifest.Configuration.Authorization.RoleUsedBy[roleName] = map[string]struct{}{
+			"account-1": struct{}{},
+			"account-2": struct{}{},
+		}
 	}
 
 	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
@@ -382,26 +388,9 @@ func TestGenerateAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	samples := map[string][]string{
-		`auth/auth-clusterrole-nonprivileged.yaml`: []string{
-			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1",
-				"kind": "ClusterRole",
-				"metadata": {
-					"name": "psp-role-nonprivileged"
-				},
-				"rules": [
-					{
-						"apiGroups": ["extensions"],
-						"resourceNames": ["nonprivileged"],
-						"resources": ["podsecuritypolicies"],
-						"verbs": ["use"]
-					}
-				]
-			}`,
-		},
 		`auth/auth-role-extra-permissions.yaml`: []string{
 			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind": "Role",
 				"metadata": {
 					"name": "extra-permissions"
@@ -417,7 +406,7 @@ func TestGenerateAuth(t *testing.T) {
 		},
 		`auth/auth-role-pointless.yaml`: []string{
 			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind": "Role",
 				"metadata": {
 					"name": "pointless"
@@ -440,7 +429,7 @@ func TestGenerateAuth(t *testing.T) {
 				}
 			}`,
 			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind": "RoleBinding",
 				"metadata": {
 					"name": "non-default-extra-permissions-binding"
@@ -459,9 +448,24 @@ func TestGenerateAuth(t *testing.T) {
 			}`,
 			`{
 				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "ClusterRole",
+				"metadata": {
+					"name": "nonprivileged"
+				},
+				"rules": [
+					{
+						"apiGroups": ["extensions"],
+						"resourceNames": ["nonprivileged"],
+						"resources": ["podsecuritypolicies"],
+						"verbs": ["use"]
+					}
+				]
+			}`,
+			`{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind": "ClusterRoleBinding",
 				"metadata": {
-					"name": "non-default-binding-psp"
+					"name": "non-default-nonprivileged-cluster-binding"
 				},
 				"subjects": [
 					{
@@ -472,7 +476,7 @@ func TestGenerateAuth(t *testing.T) {
 				],
 				"roleRef": {
 					"kind": "ClusterRole",
-					"name": "psp-role-nonprivileged",
+					"name": "nonprivileged",
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,
@@ -480,7 +484,7 @@ func TestGenerateAuth(t *testing.T) {
 		`auth/account-default.yaml`: []string{
 			// Service accounts named "default" should not get created
 			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1beta1",
+				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind": "RoleBinding",
 				"metadata": {
 					"name": "default-pointless-binding"
@@ -497,27 +501,47 @@ func TestGenerateAuth(t *testing.T) {
 					"apiGroup": "rbac.authorization.k8s.io"
 				}
 			}`,
+			// No cluster role binding is specified for this account
+		},
+		`auth/auth-psp-nonprivileged.yaml`: []string{
 			`{
-				"apiVersion": "rbac.authorization.k8s.io/v1",
-				"kind": "ClusterRoleBinding",
+				"apiVersion": "extensions/v1beta1",
+				"kind": "PodSecurityPolicy",
 				"metadata": {
-					"name": "default-binding-psp"
-				},
-				"subjects": [
-					{
-						"kind": "ServiceAccount",
-						"name": "default",
-						"namespace": "~"
+					"name": "nonprivileged",
+					"labels": {
+						"app.kubernetes.io/component": "nonprivileged"
 					}
-				],
-				"roleRef": {
-					"kind": "ClusterRole",
-					"name": "psp-role-nonprivileged",
-					"apiGroup": "rbac.authorization.k8s.io"
-				}
+				},
+				"spec": {}
 			}`,
 		},
 	}
+
+	var sampleNames []string
+	for sampleName := range samples {
+		sampleNames = append(sampleNames, sampleName)
+	}
+	err = filepath.Walk(outDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(outDir, path)
+		if err != nil {
+			return err
+		}
+		contents, err := ioutil.ReadFile(path)
+		if assert.NoError(t, err, fmt.Sprintf("Error reading unexpected file %s", relPath)) {
+			assert.Contains(t, sampleNames, relPath,
+				"Unexpected file %s with contents: \n%s\n",
+				relPath, contents)
+		}
+		return nil
+	})
+	assert.NoError(t, err, "Unexpected error looking for extra files")
 
 	for name, expectedText := range samples {
 		t.Run(name, func(t *testing.T) {
