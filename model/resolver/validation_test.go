@@ -20,8 +20,9 @@ func TestGetScriptPaths(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{torReleasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../../test-assets/bosh-cache")},
+			ReleasePaths:     []string{torReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -43,8 +44,9 @@ func TestRoleVariables(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variable-expansion.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{torReleasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../../test-assets/bosh-cache")},
+			ReleasePaths:     []string{torReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

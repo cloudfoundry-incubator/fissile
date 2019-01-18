@@ -20,8 +20,9 @@ func TestLoadDeploymentManifestVariables(t *testing.T) {
 
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{torReleasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../../test-assets/bosh-cache")},
+			ReleasePaths:     []string{torReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

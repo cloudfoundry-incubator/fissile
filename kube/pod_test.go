@@ -26,8 +26,9 @@ func podTemplateTestLoadRole(assert *assert.Assertions) *model.InstanceGroup {
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -1639,8 +1640,9 @@ func podTestLoadRoleFrom(assert *assert.Assertions, roleName, manifestName strin
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -2780,8 +2782,9 @@ func TestPodVolumeTypeEmptyDir(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/kube/colocated-containers.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{torReleasePath, ntpReleasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

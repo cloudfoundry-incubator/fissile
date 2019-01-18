@@ -194,8 +194,9 @@ func TestCompilationRoleManifest(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/compilator/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

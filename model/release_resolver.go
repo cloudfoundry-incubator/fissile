@@ -2,10 +2,11 @@ package model
 
 // ReleaseOptions for releases
 type ReleaseOptions struct {
-	ReleasePaths    []string
-	ReleaseNames    []string
-	ReleaseVersions []string
-	BOSHCacheDir    string
+	ReleasePaths     []string
+	ReleaseNames     []string
+	ReleaseVersions  []string
+	BOSHCacheDir     string
+	FinalReleasesDir string
 }
 
 // ReleaseResolver loads job specs from releases and acts as a registry for
