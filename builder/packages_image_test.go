@@ -97,8 +97,9 @@ func TestNewDockerPopulator(t *testing.T) {
 	roleManifestPath := filepath.Join(workDir, "../test-assets/role-manifests/builder/tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -220,8 +221,9 @@ func TestGetRolePackageImageName(t *testing.T) {
 	roleManifestPath := filepath.Join(roleManifestDir, "tor-good.yml")
 	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
@@ -315,8 +317,9 @@ func TestGetRolePackageImageName(t *testing.T) {
 		assert.NoError(t, ioutil.WriteFile(tempManifestFile.Name(), yamlBytes, 0644), "Error writing modified role manifest")
 		modifiedRoleManifest, err := loader.LoadRoleManifest(tempManifestFile.Name(), model.LoadRoleManifestOptions{
 			ReleaseOptions: model.ReleaseOptions{
-				ReleasePaths: []string{releasePath},
-				BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+				ReleasePaths:     []string{releasePath},
+				BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+				FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 			ValidationOptions: model.RoleManifestValidationOptions{
 				AllowMissingScripts: true,
 			}})

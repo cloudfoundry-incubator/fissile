@@ -96,10 +96,11 @@ func (f *Fissile) LoadManifest() error {
 		f.Options.RoleManifest,
 		model.LoadRoleManifestOptions{
 			ReleaseOptions: model.ReleaseOptions{
-				ReleasePaths:    f.Options.Releases,
-				ReleaseNames:    f.Options.ReleaseNames,
-				ReleaseVersions: f.Options.ReleaseVersions,
-				BOSHCacheDir:    f.Options.CacheDir,
+				ReleasePaths:     f.Options.Releases,
+				ReleaseNames:     f.Options.ReleaseNames,
+				ReleaseVersions:  f.Options.ReleaseVersions,
+				BOSHCacheDir:     f.Options.CacheDir,
+				FinalReleasesDir: f.Options.FinalReleasesDir,
 			},
 			Grapher: f,
 		},

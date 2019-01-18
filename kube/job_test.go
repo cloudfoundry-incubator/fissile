@@ -19,8 +19,9 @@ func jobTestLoadRole(assert *assert.Assertions, roleName, manifestName string) *
 	releasePath := filepath.Join(workDir, "../test-assets/tor-boshrelease")
 	manifest, err := loader.LoadRoleManifest(manifestPath, model.LoadRoleManifestOptions{
 		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths: []string{releasePath},
-			BOSHCacheDir: filepath.Join(workDir, "../test-assets/bosh-cache")},
+			ReleasePaths:     []string{releasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../test-assets/.final_releases")},
 		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})

@@ -54,10 +54,11 @@ func TestRoleManifestTagList(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	releases, err := releaseresolver.LoadReleasesFromDisk(
 		ReleaseOptions{
-			ReleasePaths:    []string{torReleasePath},
-			ReleaseNames:    []string{},
-			ReleaseVersions: []string{},
-			BOSHCacheDir:    filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			ReleasePaths:     []string{torReleasePath},
+			ReleaseNames:     []string{},
+			ReleaseVersions:  []string{},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases"),
 		})
 	require.NoError(t, err, "Error reading BOSH release")
 

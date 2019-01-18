@@ -66,7 +66,7 @@ func isFinalReleasePath(releasePath string) (bool, error) {
 
 // downloadReleaseReferences downloads/builds and loads releases referenced in the
 // manifest
-func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, manifestPath string) ([]*model.Release, error) {
+func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, finalReleasesDir string) ([]*model.Release, error) {
 	releases := []*model.Release{}
 
 	var allErrs error
@@ -87,13 +87,11 @@ func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, manifestPath str
 				return
 			}
 			// this is a final release that we need to download
-			manifestDir := filepath.Dir(manifestPath)
-			finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
 			finalReleaseTarballPath := filepath.Join(
-				finalReleasesWorkDir,
+				finalReleasesDir,
 				fmt.Sprintf("%s-%s-%s.tgz", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 			finalReleaseUnpackedPath := filepath.Join(
-				finalReleasesWorkDir,
+				finalReleasesDir,
 				fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 
 			if _, err := os.Stat(filepath.Join(finalReleaseUnpackedPath, "release.MF")); err != nil && os.IsNotExist(err) {
@@ -141,10 +139,8 @@ func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, manifestPath str
 	// Now that all releases have been downloaded and unpacked,
 	// add them to the collection
 	for _, releaseRef := range releaseRefs {
-		manifestDir := filepath.Dir(manifestPath)
-		finalReleasesWorkDir := filepath.Join(manifestDir, ".final_releases")
 		finalReleaseUnpackedPath := filepath.Join(
-			finalReleasesWorkDir,
+			finalReleasesDir,
 			fmt.Sprintf("%s-%s-%s", releaseRef.Name, releaseRef.Version, releaseRef.SHA1))
 
 		// create a release object and add it to the collection

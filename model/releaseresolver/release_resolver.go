@@ -26,7 +26,7 @@ func (r *ReleaseResolver) Load(options model.ReleaseOptions, releaseRefs []*mode
 		return nil, err
 	}
 
-	embeddedReleases, err := downloadReleaseReferences(releaseRefs, r.manifestPath)
+	embeddedReleases, err := downloadReleaseReferences(releaseRefs, options.FinalReleasesDir)
 	if err != nil {
 		return nil, err
 	}
