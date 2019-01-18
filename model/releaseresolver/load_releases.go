@@ -13,6 +13,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 //LoadReleasesFromDisk loads information about BOSH releases
@@ -73,6 +74,8 @@ func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, manifestPath str
 	var wg sync.WaitGroup
 	progress := mpb.New(mpb.WithWaitGroup(&wg))
 
+	isaTTY := terminal.IsTerminal(int(os.Stdout.Fd()))
+
 	// go through each referenced release
 	for _, releaseRef := range releaseRefs {
 		wg.Add(1)
@@ -104,18 +107,23 @@ func downloadReleaseReferences(releaseRefs []*model.ReleaseRef, manifestPath str
 				}
 
 				// Show download progress
-				bar := progress.AddBar(
-					100,
-					mpb.BarRemoveOnComplete(),
-					mpb.PrependDecorators(
-						decor.Name(releaseRef.Name, decor.WCSyncSpaceR),
-						decor.Percentage(decor.WCSyncWidth),
-					))
+				var bar *mpb.Bar
+				if isaTTY {
+					bar = progress.AddBar(
+						100,
+						mpb.BarRemoveOnComplete(),
+						mpb.PrependDecorators(
+							decor.Name(releaseRef.Name, decor.WCSyncSpaceR),
+							decor.Percentage(decor.WCSyncWidth),
+						))
+				}
 				lastPercentage := 0
 
 				// download the release in a directory next to the role manifest
 				err = util.DownloadFile(finalReleaseTarballPath, releaseRef.URL, func(percentage int) {
-					bar.IncrBy(percentage - lastPercentage)
+					if isaTTY {
+						bar.IncrBy(percentage - lastPercentage)
+					}
 					lastPercentage = percentage
 				})
 				if err != nil {
