@@ -763,9 +763,23 @@ func (f *Fissile) GenerateKube(settings kube.ExportSettings) error {
 		if err != nil {
 			return err
 		}
+
+		err = f.generateHelmHelpers("_fissileHelpers.yaml", settings)
+		if err != nil {
+			return err
+		}
 	}
 
 	return f.generateKubeRoles(settings)
+}
+
+// generateHelmHelpers will write out helm helper files.
+func (f *Fissile) generateHelmHelpers(fileName string, settings kube.ExportSettings) error {
+	if !settings.CreateHelmChart {
+		panic("generateHelmHelpers called when not generating helm chart")
+	}
+	outputDir := filepath.Join(settings.OutputDir, "templates")
+	return f.writeHelmNode(outputDir, fileName, kube.GetHelmTemplateHelpers()...)
 }
 
 func (f *Fissile) generateSecrets(fileName string, secrets helm.Node, settings kube.ExportSettings) error {

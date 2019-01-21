@@ -172,7 +172,15 @@ func newClusteringService(role *model.InstanceGroup, settings ExportSettings) (h
 	spec.Add("clusterIP", "None")
 	spec.Add("ports", helm.NewNode(ports))
 
-	service := newKubeConfig(settings, "v1", "Service", role.Name+"-set")
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Service").
+		SetName(fmt.Sprintf("%s-set", role.Name))
+	service, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	service.Add("spec", spec.Sort())
 
 	return service, nil
@@ -237,7 +245,15 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 		panic(fmt.Sprintf("Unexpected service type %d", serviceType))
 	}
 
-	service := newKubeConfig(settings, "v1", "Service", serviceName)
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Service").
+		SetName(serviceName)
+	service, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	service.Add("spec", spec.Sort())
 
 	if settings.CreateHelmChart && serviceType == newServiceTypePublic {

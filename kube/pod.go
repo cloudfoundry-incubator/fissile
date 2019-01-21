@@ -56,8 +56,16 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 
 	podTemplate := helm.NewMapping()
 
-	// Only calling newKubeConfig() to get the metadata with all the recommended labels; pod itself will not be used
-	pod := newKubeConfig(settings, "v1", "Pod", role.Name)
+	// Only calling NewConfigBuilder() to get the metadata with all the recommended labels; pod itself will not be used.
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Pod").
+		SetName(role.Name)
+	pod, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	meta := pod.Get("metadata").(*helm.Mapping)
 	if settings.CreateHelmChart {
 		annotations := helm.NewMapping()
@@ -90,7 +98,16 @@ func NewPod(role *model.InstanceGroup, settings ExportSettings, grapher util.Mod
 		return nil, fmt.Errorf("Role %s has unexpected flight stage %s", role.Name, role.Run.FlightStage)
 	}
 
-	pod := newKubeConfig(settings, "v1", "Pod", role.Name, helm.Comment(role.GetLongDescription()))
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Pod").
+		SetName(role.Name).
+		AddModifier(helm.Comment(role.GetLongDescription()))
+	pod, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	pod.Add("spec", podTemplate.Get("spec"))
 
 	return pod.Sort(), nil

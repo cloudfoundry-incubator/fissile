@@ -48,12 +48,19 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			"Service account \"%s\" is used by the following instance groups:\n%s",
 			accountName,
 			strings.Join(instanceGroupNames, "\n"))
-		resources = append(resources, newKubeConfig(settings,
-			"v1",
-			"ServiceAccount",
-			accountName,
-			block,
-			helm.Comment(description)))
+
+		cb := NewConfigBuilder().
+			SetSettings(&settings).
+			SetAPIVersion("v1").
+			SetKind("ServiceAccount").
+			SetName(accountName).
+			AddModifier(block).
+			AddModifier(helm.Comment(description))
+		resource, err := cb.Build()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+		}
+		resources = append(resources, resource)
 	}
 
 	// For each role, create a role binding
@@ -76,14 +83,19 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			resources = append(resources, role)
 		}
 
-		binding := newKubeConfig(settings,
-			"rbac.authorization.k8s.io/v1",
-			"RoleBinding",
-			fmt.Sprintf("%s-%s-binding", accountName, roleName),
-			block,
-			helm.Comment(fmt.Sprintf(`Role binding for service account "%s" and role "%s"`,
+		cb := NewConfigBuilder().
+			SetSettings(&settings).
+			SetAPIVersion("rbac.authorization.k8s.io/v1").
+			SetKind("RoleBinding").
+			SetName(fmt.Sprintf("%s-%s-binding", accountName, roleName)).
+			AddModifier(block).
+			AddModifier(helm.Comment(fmt.Sprintf(`Role binding for service account "%s" and role "%s"`,
 				accountName,
 				roleName)))
+		binding, err := cb.Build()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+		}
 		subjects := helm.NewList(helm.NewMapping(
 			"kind", "ServiceAccount",
 			"name", accountName))
@@ -122,23 +134,39 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			resources = append(resources, role)
 		}
 
-		binding := newKubeConfig(settings,
-			"rbac.authorization.k8s.io/v1",
-			"ClusterRoleBinding",
-			authCRBindingName(accountName, clusterRoleName, settings),
-			block,
-			helm.Comment(fmt.Sprintf(`Cluster role binding for service account "%s" and cluster role "%s"`,
+		cb := NewConfigBuilder().
+			SetSettings(&settings).
+			SetAPIVersion("rbac.authorization.k8s.io/v1").
+			SetKind("ClusterRoleBinding").
+			SetName(fmt.Sprintf("%s-%s-cluster-binding", accountName, clusterRoleName)).
+			AddModifier(block).
+			AddModifier(helm.Comment(fmt.Sprintf(`Cluster role binding for service account "%s" and cluster role "%s"`,
 				accountName,
 				clusterRoleName)))
+		if settings.CreateHelmChart {
+			cb.SetNameHelmExpression(
+				fmt.Sprintf(`{{ template "fissile.SanitizeName" (printf "%%s-%s-%s-cluster-binding" .Release.Namespace) }}`,
+					accountName,
+					clusterRoleName))
+		}
+		binding, err := cb.Build()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+		}
 		subjects := helm.NewList(helm.NewMapping(
 			"kind", "ServiceAccount",
 			"name", accountName,
 			"namespace", namespace))
 		binding.Add("subjects", subjects)
-		binding.Add("roleRef", helm.NewMapping(
+		roleRef := helm.NewMapping(
 			"kind", "ClusterRole",
-			"name", authCRName(clusterRoleName, settings),
-			"apiGroup", "rbac.authorization.k8s.io"))
+			"apiGroup", "rbac.authorization.k8s.io")
+		if settings.CreateHelmChart {
+			roleRef.Add("name", fmt.Sprintf(`{{ template "fissile.SanitizeName" (printf "%%s-cluster-role-%s" .Release.Namespace) }}`, clusterRoleName))
+		} else {
+			roleRef.Add("name", clusterRoleName)
+		}
+		binding.Add("roleRef", roleRef)
 		resources = append(resources, binding)
 	}
 
@@ -171,8 +199,7 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 				if settings.CreateHelmChart && ruleSpec.IsPodSecurityPolicyRule() {
 					// When creating helm charts for PSPs, let the user override it
 					resourceNames.Add(fmt.Sprintf(
-						`{{ default (printf "%%s-psp-%s" .Release.Namespace) .Values.kube.psp.%s }}`,
-						resourceName,
+						`{{ if .Values.kube.psp.%[1]s }}{{ .Values.kube.psp.%[1]s }}{{ else }}{{ template "fissile.SanitizeName" (printf "%%s-psp-%[1]s" .Release.Namespace) }}{{ end }}`,
 						resourceName))
 				} else {
 					resourceNames.Add(resourceName)
@@ -183,10 +210,20 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 		rules.Add(rule.Sort())
 	}
 
-	if kind == RBACRoleKindClusterRole {
-		name = authCRName(name, settings)
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("rbac.authorization.k8s.io/v1").
+		SetKind(string(kind)).
+		AddModifier(authModeRBAC(settings))
+	if kind == RBACRoleKindClusterRole && settings.CreateHelmChart {
+		cb.SetNameHelmExpression(fmt.Sprintf(`{{ template "fissile.SanitizeName" (printf "%%s-cluster-role-%s" .Release.Namespace) }}`, name))
+	} else {
+		cb.SetName(name)
 	}
-	role := newKubeConfig(settings, "rbac.authorization.k8s.io/v1", string(kind), name, authModeRBAC(settings))
+	role, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	role.Add("rules", rules)
 
 	return role.Sort(), nil
@@ -194,19 +231,22 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 
 // NewRBACPSP creates a (Kubernetes RBAC) pod security policy
 func NewRBACPSP(name string, psp *model.PodSecurityPolicy, settings ExportSettings) (helm.Node, error) {
-	var condition helm.NodeModifier
-	resourceName := name
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("extensions/v1beta1").
+		SetKind("PodSecurityPolicy").
+		AddModifier(helm.Comment(fmt.Sprintf(`Pod security policy "%s"`, name)))
 	if settings.CreateHelmChart {
-		condition = helm.Block(fmt.Sprintf(`if and (%s) (not .Values.kube.psp.%s)`,
-			`eq (printf "%s" .Values.kube.auth) "rbac"`, name))
-		resourceName = fmt.Sprintf(`{{ printf "%%s-psp-%s" .Release.Namespace }}`, name)
+		cb.AddModifier(helm.Block(fmt.Sprintf(`if and (%s) (not .Values.kube.psp.%s)`,
+			`eq (printf "%s" .Values.kube.auth) "rbac"`, name)))
+		cb.SetNameHelmExpression(fmt.Sprintf(`{{ template "fissile.SanitizeName" (printf "%%s-psp-%s" .Release.Namespace) }}`, name))
+	} else {
+		cb.SetName(name)
 	}
-	node := newKubeConfig(settings,
-		"extensions/v1beta1",
-		"PodSecurityPolicy",
-		resourceName,
-		condition,
-		helm.Comment(fmt.Sprintf(`Pod security policy "%s"`, name)))
+	node, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	node.Add("spec", helm.NewNode(psp.Definition))
 	return node, nil
 }
@@ -220,28 +260,4 @@ func authModeRBAC(settings ExportSettings) helm.NodeModifier {
 			`.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1"`))
 	}
 	return nil
-}
-
-// authPSPRoleName derives the name of the cluster role for a PSP
-func authPSPRoleName(psp string, settings ExportSettings) string {
-	if settings.CreateHelmChart {
-		return fmt.Sprintf("{{ .Release.Namespace }}-psp-role-%s", psp)
-	}
-	return fmt.Sprintf("psp-role-%s", psp)
-}
-
-// authCRBindingName derives the name of the cluster role for a PSP
-func authCRBindingName(name, clusterRoleName string, settings ExportSettings) string {
-	if settings.CreateHelmChart {
-		return fmt.Sprintf("{{ .Release.Namespace }}-%s-%s-cluster-binding", name, clusterRoleName)
-	}
-	return fmt.Sprintf("%s-%s-cluster-binding", name, clusterRoleName)
-}
-
-// authCRName derives the cluster role name from the name space
-func authCRName(name string, settings ExportSettings) string {
-	if settings.CreateHelmChart {
-		return fmt.Sprintf(`{{ .Release.Namespace }}-cluster-role-%s`, name)
-	}
-	return name
 }

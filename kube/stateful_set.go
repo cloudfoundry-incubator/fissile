@@ -47,7 +47,16 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 	}
 	spec.Add("podManagementPolicy", podManagementPolicy)
 
-	statefulSet := newKubeConfig(settings, "apps/v1beta1", "StatefulSet", role.Name, helm.Comment(role.GetLongDescription()))
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("apps/v1beta1").
+		SetKind("StatefulSet").
+		SetName(role.Name).
+		AddModifier(helm.Comment(role.GetLongDescription()))
+	statefulSet, err := cb.Build()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	statefulSet.Add("spec", spec)
 	err = replicaCheck(role, statefulSet, svcList, settings)
 	if err != nil {

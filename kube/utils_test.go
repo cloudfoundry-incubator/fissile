@@ -79,7 +79,15 @@ func TestNewKubeConfig(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	kubeConfig := newKubeConfig(ExportSettings{}, "theApiVersion", "thekind", "thename")
+	cb := NewConfigBuilder().
+		SetSettings(&ExportSettings{}).
+		SetAPIVersion("theApiVersion").
+		SetKind("thekind").
+		SetName("thename")
+	kubeConfig, err := cb.Build()
+	if !assert.NoError(err) {
+		return
+	}
 
 	actual, err := RoundtripKube(kubeConfig)
 	if !assert.NoError(err) {

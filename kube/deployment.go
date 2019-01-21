@@ -24,7 +24,16 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 	spec.Add("selector", newSelector(instanceGroup, settings))
 	spec.Add("template", podTemplate)
 
-	deployment := newKubeConfig(settings, "extensions/v1beta1", "Deployment", instanceGroup.Name, helm.Comment(instanceGroup.GetLongDescription()))
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("extensions/v1beta1").
+		SetKind("Deployment").
+		SetName(instanceGroup.Name).
+		AddModifier(helm.Comment(instanceGroup.GetLongDescription()))
+	deployment, err := cb.Build()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	deployment.Add("spec", spec)
 	err = replicaCheck(instanceGroup, deployment, svc, settings)
 	if err != nil {

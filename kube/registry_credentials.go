@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"fmt"
+
 	"code.cloudfoundry.org/fissile/helm"
 )
 
@@ -30,7 +32,15 @@ func MakeRegistryCredentials(settings ExportSettings) (helm.Node, error) {
 
 	data := helm.NewMapping(".dockercfg", value)
 
-	secret := newKubeConfig(settings, "v1", "Secret", "registry-credentials")
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Secret").
+		SetName("registry-credentials")
+	secret, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	secret.Add("data", data)
 	secret.Add("type", "kubernetes.io/dockercfg")
 
