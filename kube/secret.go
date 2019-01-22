@@ -54,7 +54,15 @@ func MakeSecrets(secrets model.CVMap, settings ExportSettings) (helm.Node, error
 	data.Sort()
 	data.Merge(generated.Sort())
 
-	secret := newKubeConfig(settings, "v1", "Secret", userSecretsName)
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("v1").
+		SetKind("Secret").
+		SetName(userSecretsName)
+	secret, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	secret.Add("data", data)
 
 	return secret.Sort(), nil

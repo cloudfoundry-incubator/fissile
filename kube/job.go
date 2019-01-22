@@ -30,7 +30,16 @@ func NewJob(instanceGroup *model.InstanceGroup, settings ExportSettings, grapher
 		name += "-{{ .Release.Revision }}"
 	}
 
-	job := newKubeConfig(settings, "batch/v1", "Job", name, helm.Comment(instanceGroup.GetLongDescription()))
+	cb := NewConfigBuilder().
+		SetSettings(&settings).
+		SetAPIVersion("batch/v1").
+		SetKind("Job").
+		SetName(name).
+		AddModifier(helm.Comment(instanceGroup.GetLongDescription()))
+	job, err := cb.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
+	}
 	job.Add("spec", helm.NewMapping("template", podTemplate))
 
 	return job.Sort(), nil

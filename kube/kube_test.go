@@ -68,13 +68,19 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("Invalid config %+v", config)
 	}
 
-	var helmConfig, yamlConfig bytes.Buffer
+	var helmConfig, yamlConfig, helmHelpers bytes.Buffer
 
 	if node == nil {
 		node = helm.NewNode(nil)
 	}
 	if err := helm.NewEncoder(&helmConfig).Encode(node); err != nil {
 		return nil, err
+	}
+
+	for _, helper := range GetHelmTemplateHelpers() {
+		if err := helm.NewEncoder(&helmHelpers).Encode(helper); err != nil {
+			return nil, err
+		}
 	}
 
 	// The functions added here are implementations of the helm
@@ -88,12 +94,20 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 	functions["toYaml"] = renderToYaml
 
 	// Note: Replicate helm's behaviour on missing keys.
-	tmpl, err := template.New("").Option("missingkey=zero").Funcs(functions).Parse(string(helmConfig.Bytes()))
+	tmpl := template.New("").Option("missingkey=zero").Funcs(functions)
 
+	tmpl, err = tmpl.Parse(string(helmHelpers.Bytes()))
+	if err != nil {
+		//fmt.Printf("HELPER PARSE FAIL: %s\n%s\nPARSE END\n", err, string(helmHelpers.Bytes()))
+		return nil, err
+	}
+
+	tmpl, err = tmpl.Parse(string(helmConfig.Bytes()))
 	if err != nil {
 		//fmt.Printf("TEMPLATE PARSE FAIL: %s\n%s\nPARSE END\n", err, string(helmConfig.Bytes()))
 		return nil, err
 	}
+
 	if err = tmpl.Execute(&yamlConfig, actualConfig); err != nil {
 		//fmt.Printf("TEMPLATE EXEC FAIL\n%s\n%s\nEXEC END\n", string(helmConfig.Bytes()), err)
 		return nil, err
@@ -111,6 +125,7 @@ func RoundtripNode(node helm.Node, config interface{}) (interface{}, error) {
 
 	var actual interface{}
 	if err := yaml.Unmarshal(actualBytes, &actual); err != nil {
+		//fmt.Printf("YAML UNMARSHAL ERROR\n%s\n", string(actualBytes))
 		return nil, err
 	}
 	return actual, nil

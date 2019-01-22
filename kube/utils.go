@@ -39,9 +39,93 @@ func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mappi
 	return meta
 }
 
-// newKubeConfig sets up generic a Kube config structure with minimal metadata
-func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modifiers ...helm.NodeModifier) *helm.Mapping {
-	labels := helm.NewMapping(RoleNameLabel, name) // "app.kubernetes.io/component"
+// ConfigBuilder sets up a generic Kube resource structure with minimal metadata.
+type ConfigBuilder struct {
+	settings   *ExportSettings
+	apiVersion string
+	kind       string
+	name       string
+	modifiers  []helm.NodeModifier
+
+	err error
+}
+
+// NewConfigBuilder constructs a new ConfigBuilder.
+func NewConfigBuilder() *ConfigBuilder {
+	return &ConfigBuilder{}
+}
+
+func (b *ConfigBuilder) setError(err error) {
+	if b.err == nil {
+		b.err = err
+	} else {
+		b.err = fmt.Errorf("%v, %v", b.err, err)
+	}
+}
+
+// SetSettings sets the export settings to be used by the builder.
+func (b *ConfigBuilder) SetSettings(settings *ExportSettings) *ConfigBuilder {
+	b.settings = settings
+	return b
+}
+
+// SetAPIVersion sets the kube API version of the resource to build.
+func (b *ConfigBuilder) SetAPIVersion(apiVersion string) *ConfigBuilder {
+	b.apiVersion = apiVersion
+	return b
+}
+
+// SetKind sets the kubernetes resource kind of the resource to build.
+func (b *ConfigBuilder) SetKind(kind string) *ConfigBuilder {
+	b.kind = kind
+	return b
+}
+
+// SetName sets the name of the resource to build.
+func (b *ConfigBuilder) SetName(name string) *ConfigBuilder {
+	if len(name) > 63 {
+		b.setError(fmt.Errorf("kube name exceeds 63 characters"))
+	}
+	b.name = name
+	return b
+}
+
+// SetNameHelmExpression sets the name of the resource to build as a Helm template expression.
+func (b *ConfigBuilder) SetNameHelmExpression(name string) *ConfigBuilder {
+	if b.settings == nil {
+		b.setError(fmt.Errorf("name was set as a Helm expression before settings was set"))
+	} else if !b.settings.CreateHelmChart {
+		b.setError(fmt.Errorf("name is a Helm expression, but not creating a helm chart"))
+	}
+	if !strings.HasPrefix(name, "{{") {
+		b.setError(fmt.Errorf(`name "%s" does not start with "{{"`, name))
+	}
+	if !strings.HasSuffix(name, "}}") {
+		b.setError(fmt.Errorf(`name "%s" does not end with "}}"`, name))
+	}
+	if strings.ContainsRune(name, '\n') {
+		b.setError(fmt.Errorf(`name "%q" contains new line characters`, name))
+	}
+	b.name = name
+	return b
+}
+
+// AddModifier adds a modifier to be used by the builder.
+func (b *ConfigBuilder) AddModifier(modifier helm.NodeModifier) *ConfigBuilder {
+	b.modifiers = append(b.modifiers, modifier)
+	return b
+}
+
+// Build the final kube resource.
+func (b *ConfigBuilder) Build() (*helm.Mapping, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+	if b.settings == nil {
+		return nil, fmt.Errorf("settings was not set")
+	}
+
+	labels := helm.NewMapping(RoleNameLabel, b.name) // "app.kubernetes.io/component"
 	istioAppLabel := map[string]bool{
 		"StatefulSet": true,
 		"Deployment":  true,
@@ -54,27 +138,27 @@ func newKubeConfig(settings ExportSettings, apiVersion, kind, name string, modif
 		"Pod":         true,
 	}
 
-	if settings.CreateHelmChart {
+	if b.settings.CreateHelmChart {
 		// XXX skiff-role-name is the legacy RoleNameLabel and will be removed in a future release
-		labels.Add("skiff-role-name", name)
+		labels.Add("skiff-role-name", b.name)
 		labels.Add("app.kubernetes.io/instance", `{{ .Release.Name | quote }}`)
 		labels.Add("app.kubernetes.io/managed-by", `{{ .Release.Service | quote }}`)
 		labels.Add("app.kubernetes.io/name", `{{ default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" | quote }}`)
 		labels.Add("app.kubernetes.io/version", `{{ default .Chart.Version .Chart.AppVersion | quote }}`)
 		// labels.Add("app.kubernetes.io/part-of", `???`)
 		labels.Add("helm.sh/chart", `{{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}`)
-		if istioAppLabel[kind] {
-			labels.Add(AppNameLabel, name, helm.Block("if .Values.config.use_istio"))
+		if istioAppLabel[b.kind] {
+			labels.Add(AppNameLabel, b.name, helm.Block("if .Values.config.use_istio"))
 		}
-		if istioVersionLabel[kind] {
+		if istioVersionLabel[b.kind] {
 			labels.Add(AppVersionLabel, `{{ default .Chart.Version .Chart.AppVersion | quote }}`, helm.Block("if .Values.config.use_istio"))
 		}
 	}
 
-	config := newTypeMeta(apiVersion, kind, modifiers...)
-	config.Add("metadata", helm.NewMapping("name", name, "labels", labels))
+	config := newTypeMeta(b.apiVersion, b.kind, b.modifiers...)
+	config.Add("metadata", helm.NewMapping("name", b.name, "labels", labels))
 
-	return config
+	return config, nil
 }
 
 func makeVarName(name string) string {
