@@ -39,7 +39,7 @@ func newSelector(role *model.InstanceGroup, settings ExportSettings) *helm.Mappi
 	return meta
 }
 
-// ConfigBuilder sets up generic a Kube resource structure with minimal metadata.
+// ConfigBuilder sets up a generic Kube resource structure with minimal metadata.
 type ConfigBuilder struct {
 	settings   *ExportSettings
 	apiVersion string
@@ -59,7 +59,7 @@ func (b *ConfigBuilder) setError(err error) {
 	if b.err == nil {
 		b.err = err
 	} else {
-		b.err = fmt.Errorf("%v: %v", b.err, err)
+		b.err = fmt.Errorf("%v, %v", b.err, err)
 	}
 }
 
@@ -96,6 +96,15 @@ func (b *ConfigBuilder) SetNameHelmExpression(name string) *ConfigBuilder {
 		b.setError(fmt.Errorf("name was set as a Helm expression before settings was set"))
 	} else if !b.settings.CreateHelmChart {
 		b.setError(fmt.Errorf("name is a Helm expression, but not creating a helm chart"))
+	}
+	if !strings.HasPrefix(name, "{{") {
+		b.setError(fmt.Errorf(`name "%s" does not start with "{{"`, name))
+	}
+	if !strings.HasSuffix(name, "}}") {
+		b.setError(fmt.Errorf(`name "%s" does not end with "}}"`, name))
+	}
+	if strings.ContainsRune(name, '\n') {
+		b.setError(fmt.Errorf(`name "%q" contains new line characters`, name))
 	}
 	b.name = name
 	return b

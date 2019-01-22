@@ -56,11 +56,11 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			SetName(accountName).
 			AddModifier(block).
 			AddModifier(helm.Comment(description))
-		resource, err := cb.Build()
+		serviceAccount, err := cb.Build()
 		if err != nil {
 			return nil, fmt.Errorf("failed to build a new kube config: %v", err)
 		}
-		resources = append(resources, resource)
+		resources = append(resources, serviceAccount)
 	}
 
 	// For each role, create a role binding
@@ -138,7 +138,6 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 			SetSettings(&settings).
 			SetAPIVersion("rbac.authorization.k8s.io/v1").
 			SetKind("ClusterRoleBinding").
-			SetName(fmt.Sprintf("%s-%s-cluster-binding", accountName, clusterRoleName)).
 			AddModifier(block).
 			AddModifier(helm.Comment(fmt.Sprintf(`Cluster role binding for service account "%s" and cluster role "%s"`,
 				accountName,
@@ -148,6 +147,8 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 				fmt.Sprintf(`{{ template "fissile.SanitizeName" (printf "%%s-%s-%s-cluster-binding" .Release.Namespace) }}`,
 					accountName,
 					clusterRoleName))
+		} else {
+			cb.SetName(fmt.Sprintf("%s-%s-cluster-binding", accountName, clusterRoleName))
 		}
 		binding, err := cb.Build()
 		if err != nil {

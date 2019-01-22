@@ -95,10 +95,6 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 
 	// Note: Replicate helm's behaviour on missing keys.
 	tmpl := template.New("").Option("missingkey=zero").Funcs(functions)
-	if err != nil {
-		//fmt.Printf("TEMPLATE SETUP FAIL: %s", err)
-		return nil, err
-	}
 
 	tmpl, err = tmpl.Parse(string(helmHelpers.Bytes()))
 	if err != nil {
