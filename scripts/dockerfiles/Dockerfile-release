@@ -1,3 +1,10 @@
 FROM {{ index . "base_image" }}
 
+{{ range $label, $value := .labels }}
+LABEL "{{$label}}"="{{$value}}"
+{{ end }}
+
+ENV RELEASE_NAME {{ .name }}
+ENV RELEASE_VERSION {{ .version }}
+
 ADD root /

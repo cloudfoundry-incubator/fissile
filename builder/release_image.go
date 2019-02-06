@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,12 +90,24 @@ func (r *ReleasesImageBuilder) NewDockerPopulator(release *model.Release) func(*
 	return func(tarWriter *tar.Writer) error {
 		// Generate dockerfile
 		var dockerfile bytes.Buffer
-		err := r.generateDockerfile(&dockerfile)
+		err := r.generateDockerfile(&dockerfile, release, map[string]string{})
 		if err != nil {
 			return err
 		}
 		err = util.WriteToTarStream(tarWriter, dockerfile.Bytes(), tar.Header{
 			Name: "Dockerfile",
+		})
+		if err != nil {
+			return err
+		}
+
+		// Write release.MF to tar stream
+		manifest, err := ioutil.ReadFile(filepath.Join(release.Path, "release.MF"))
+		if err != nil {
+			return err
+		}
+		err = util.WriteToTarStream(tarWriter, manifest, tar.Header{
+			Name: "root/var/vcap/release.MF",
 		})
 		if err != nil {
 			return err
@@ -125,9 +138,13 @@ func (r *ReleasesImageBuilder) NewDockerPopulator(release *model.Release) func(*
 }
 
 // generateDockerfile builds a docker file for the shared packages layer.
-func (r *ReleasesImageBuilder) generateDockerfile(outputFile io.Writer) error {
+func (r *ReleasesImageBuilder) generateDockerfile(outputFile io.Writer, release *model.Release, labels map[string]string) error {
+	labels["version.generator.fissile"] = strings.Replace(r.FissileVersion, "+", "_", -1)
 	context := map[string]interface{}{
 		"base_image": r.StemcellName,
+		"labels":     labels,
+		"name":       release.Name,
+		"version":    release.Version,
 	}
 	asset, err := dockerfiles.Asset("Dockerfile-release")
 	if err != nil {
