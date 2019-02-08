@@ -16,6 +16,30 @@
 
 set -o errexit -o nounset -o pipefail
 
+# Set up the readiness flag ahead of time, so if we error out we mark this pod
+# as not ready
+readiness=false
+update_readiness() {
+    local svcacct=/var/run/secrets/kubernetes.io/serviceaccount
+    curl --silent \
+        --cacert "${svcacct}/ca.crt" \
+        -H "Authorization: bearer $(cat "${svcacct}/token")" \
+        -H 'Content-Type: application/merge-patch+json' \
+        -X 'PATCH' \
+        "https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/api/v1/namespaces/$(cat "${svcacct}/namespace")/pods/${HOSTNAME}" \
+        --data '{
+            "metadata": {
+                "labels": {
+                    "skiff-role-active": "'"${readiness}"'"
+                }
+            }
+        }'
+    return $?
+}
+if test -n "${FISSILE_ACTIVE_PASSIVE_PROBE:-}" ; then
+    trap update_readiness EXIT
+fi
+
 # Grab monit port
 monit_port=$(awk '/httpd port/ { print $4 }' /etc/monitrc)
 
@@ -33,28 +57,7 @@ done
 
 # If this is an active/passive role, do that check
 if test -n "${FISSILE_ACTIVE_PASSIVE_PROBE:-}" ; then
-
-    update_readiness() {
-        local svcacct=/var/run/secrets/kubernetes.io/serviceaccount
-        curl --silent \
-            --cacert "${svcacct}/ca.crt" \
-            -H "Authorization: bearer $(cat "${svcacct}/token")" \
-            -H 'Content-Type: application/merge-patch+json' \
-            -X 'PATCH' \
-            "https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/api/v1/namespaces/$(cat "${svcacct}/namespace")/pods/${HOSTNAME}" \
-            --data '{
-                "metadata": {
-                    "labels": {
-                        "skiff-role-active": "'"${1}"'"
-                    }
-                }
-            }'
-        return $?
-    }
-
     if eval "${FISSILE_ACTIVE_PASSIVE_PROBE}" ; then
-        update_readiness true
-    else
-        update_readiness false
+        readiness=true
     fi
 fi
