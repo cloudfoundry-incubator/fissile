@@ -79,7 +79,11 @@ This command goes through builds a Docker image for each specified release.
 			}
 		}
 		resolver := releaseresolver.NewReleaseResolver(fissile.Options.FinalReleasesDir)
-		releases, err := resolver.Load(model.ReleaseOptions{}, releaseRefs)
+		releaseOptions := model.ReleaseOptions{
+			BOSHCacheDir:     fissile.Options.CacheDir,
+			FinalReleasesDir: fissile.Options.FinalReleasesDir,
+		}
+		releases, err := resolver.Load(releaseOptions, releaseRefs)
 		if err != nil {
 			return fmt.Errorf("Error loading release information: %v", err)
 		}
