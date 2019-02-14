@@ -54,6 +54,10 @@ func validateInstanceGroup(roleManifest *model.RoleManifest, g *model.InstanceGr
 			info.Name = name
 			jobReference.ResolvedConsumers[name] = info
 		}
+
+		if jobReference.ResolvedConsumedBy == nil {
+			jobReference.ResolvedConsumedBy = make(map[string][]model.JobLinkInfo)
+		}
 	}
 
 	g.CalculateRoleConfigurationTemplates()

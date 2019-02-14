@@ -359,6 +359,43 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 		}
 	}
 
+	// Record in each job what roles consume it
+	for _, consumerInstanceGroup := range m.InstanceGroups {
+		for _, consumerJob := range consumerInstanceGroup.JobReferences {
+			for linkName, consumer := range consumerJob.ResolvedConsumers {
+				providerInstanceGroup := m.LookupInstanceGroup(consumer.RoleName)
+				if providerInstanceGroup == nil {
+					// This should not happen: we resolved a link, but can no
+					// longer find the instance group that provides it
+					errors = append(errors, validation.InternalError(
+						fmt.Sprintf(`instance_group[%s].job[%s].consumes[%s]`, consumerInstanceGroup.Name, consumerJob.Name, linkName),
+						fmt.Errorf(`Could not find resolved instance group %s`, consumer.RoleName)))
+					continue
+				}
+				providerJob := providerInstanceGroup.LookupJob(consumer.JobName)
+				if providerJob == nil {
+					// This should not happen: we resolved a link, but can no
+					// longer find the job that provides it
+					errors = append(errors, validation.InternalError(
+						fmt.Sprintf(`instance_group[%s].job[%s].consumes[%s]`, consumerInstanceGroup.Name, consumerJob.Name, linkName),
+						fmt.Errorf(`Could not find resolved job %s in instance group %s`, consumer.JobName, consumer.RoleName)))
+					continue
+				}
+				if providerJob.ResolvedConsumedBy == nil {
+					providerJob.ResolvedConsumedBy = make(map[string][]model.JobLinkInfo)
+				}
+				linkInfo := model.JobLinkInfo{
+					Name:        consumer.Name,
+					Type:        consumer.Type,
+					RoleName:    consumerInstanceGroup.Name,
+					JobName:     consumerJob.Name,
+					ServiceName: consumer.ServiceName, // unused
+				}
+				providerJob.ResolvedConsumedBy[linkName] = append(providerJob.ResolvedConsumedBy[linkName], linkInfo)
+			}
+		}
+	}
+
 	return errors
 }
 
