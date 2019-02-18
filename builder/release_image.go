@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -174,6 +175,14 @@ func (j releaseBuildJob) imageName() (string, error) {
 		return "", errors.Wrap(err, fmt.Sprintf("Retrieving stemcell image '%s'", j.builder.StemcellName))
 	}
 	stemcellImage := matches[0]
+	stemcellFlavor := stemcellImage.Labels["stemcell-flavor"]
+	stemcellVersion := stemcellImage.Labels["stemcell-version"]
+	if stemcellFlavor == "" || stemcellVersion == "" {
+		j.builder.UI.Printf("Warning: Stemcell '%s' does not include required labels 'stemcell-flavor' and 'stemcell-version'\n", j.builder.StemcellName)
+		stemcellFlavor = "unknown"
+		idRegexp := regexp.MustCompile(".*:([a-z0-9]{12})")
+		stemcellVersion = idRegexp.FindStringSubmatch(stemcellImage.ID)[1]
+	}
 
 	var imageName string
 	if j.builder.DockerRegistry != "" {
@@ -186,7 +195,7 @@ func (j releaseBuildJob) imageName() (string, error) {
 
 	fissileVersion := strings.Replace(j.builder.FissileVersion, "fissile-", "", -1)
 	fissileVersion = strings.Replace(fissileVersion, "+", "_", -1)
-	tag := fmt.Sprintf("%s-%s", stemcellImage.Labels["stemcell-flavor"], stemcellImage.Labels["stemcell-version"])
+	tag := fmt.Sprintf("%s-%s", stemcellFlavor, stemcellVersion)
 	tag = tag + fmt.Sprintf("-%s-%s", fissileVersion, j.release.Version)
 
 	return fmt.Sprintf("%s:%s", imageName, tag), nil
