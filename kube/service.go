@@ -25,17 +25,6 @@ func NewServiceList(role *model.InstanceGroup, clustering bool, settings ExportS
 	}
 
 	for _, job := range role.JobReferences {
-		if clustering {
-			// Create headless, private service
-			svc, err := newService(role, job, newServiceTypeHeadless, settings)
-			if err != nil {
-				return nil, err
-			}
-			if svc != nil {
-				items = append(items, svc)
-			}
-		}
-
 		// Create private service
 		svc, err := newService(role, job, newServiceTypePrivate, settings)
 		if err != nil {
