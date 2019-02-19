@@ -776,42 +776,6 @@ func TestActivePassiveService(t *testing.T) {
 										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
 									}
 								}
-								if assert.NotNil(t, headlessService, "headless service not found") {
-									actual, err := roundTrip(headlessService)
-									if assert.NoError(t, err) {
-										expected := expectedYAML(exportSettings, `---
-											apiVersion: v1
-											kind: Service
-											metadata:
-												name: myrole-tor-set
-												labels:
-													app.kubernetes.io/component: myrole-tor-set
-													app.kubernetes.io/instance: MyRelease
-													app.kubernetes.io/managed-by: Tiller
-													app.kubernetes.io/name: MyChart
-													app.kubernetes.io/version: 1.22.333.4444
-													helm.sh/chart: MyChart-42.1_foo
-													skiff-role-name: "myrole-tor-set"
-											spec:
-												clusterIP: None
-												ports:
-												-
-													name: http
-													port: 80
-													protocol: TCP
-													targetPort: 0
-												-
-													name: https
-													port: 443
-													protocol: TCP
-													targetPort: 0
-												selector:
-													app.kubernetes.io/component: myrole
-													skiff-role-active: "true"
-										`)
-										testhelpers.IsYAMLEqualString(assert.New(t), expected, actual)
-									}
-								}
 							} else {
 								assert.Nil(t, headlessService, "Headless service should not be created when not clustering")
 							}
