@@ -420,6 +420,11 @@ func (d *ImageManager) RemoveImage(imageName string) error {
 	return d.client.RemoveImage(imageName)
 }
 
+// ListImages will return a list of images matching the options
+func (d *ImageManager) ListImages(options dockerclient.ListImagesOptions) ([]dockerclient.APIImages, error) {
+	return d.client.ListImages(options)
+}
+
 // CreateImage will create a Docker image
 func (d *ImageManager) CreateImage(containerID string, repository string, tag string, message string, cmd []string) (*dockerclient.Image, error) {
 	cco := dockerclient.CommitContainerOptions{

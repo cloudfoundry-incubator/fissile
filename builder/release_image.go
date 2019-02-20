@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -20,7 +21,9 @@ import (
 	"github.com/SUSE/stampy"
 	"github.com/SUSE/termui"
 	"github.com/fatih/color"
+	dockerclient "github.com/fsouza/go-dockerclient"
 	workerLib "github.com/jimmysawczuk/worker"
+	"github.com/pkg/errors"
 )
 
 // ReleasesImageBuilder represents a builder of docker release images.
@@ -160,7 +163,27 @@ func (r *ReleasesImageBuilder) generateDockerfile(outputFile io.Writer, release 
 	return dockerfileTemplate.Execute(outputFile, context)
 }
 
-func (j releaseBuildJob) imageName() string {
+func (j releaseBuildJob) imageName() (string, error) {
+	imageManager, err := docker.NewImageManager()
+	if err != nil {
+		return "", errors.Wrap(err, "Connecting to docker daemon")
+	}
+
+	listOptions := dockerclient.ListImagesOptions{Filter: j.builder.StemcellName}
+	matches, err := imageManager.ListImages(listOptions)
+	if err != nil || len(matches) == 0 {
+		return "", errors.Wrap(err, fmt.Sprintf("Retrieving stemcell image '%s'", j.builder.StemcellName))
+	}
+	stemcellImage := matches[0]
+	stemcellFlavor := stemcellImage.Labels["stemcell-flavor"]
+	stemcellVersion := stemcellImage.Labels["stemcell-version"]
+	if stemcellFlavor == "" || stemcellVersion == "" {
+		j.builder.UI.Printf("Warning: Stemcell '%s' does not include required labels 'stemcell-flavor' and 'stemcell-version'\n", j.builder.StemcellName)
+		stemcellFlavor = "unknown"
+		idRegexp := regexp.MustCompile(".*:([a-z0-9]{12})")
+		stemcellVersion = idRegexp.FindStringSubmatch(stemcellImage.ID)[1]
+	}
+
 	var imageName string
 	if j.builder.DockerRegistry != "" {
 		imageName = j.builder.DockerRegistry + "/"
@@ -168,10 +191,14 @@ func (j releaseBuildJob) imageName() string {
 	if j.builder.DockerOrganization != "" {
 		imageName += util.SanitizeDockerName(j.builder.DockerOrganization) + "/"
 	}
-
 	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", j.builder.RepositoryPrefix, j.release.Name))
 
-	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(j.release.Version))
+	fissileVersion := strings.Replace(j.builder.FissileVersion, "fissile-", "", -1)
+	fissileVersion = strings.Replace(fissileVersion, "+", "_", -1)
+	tag := fmt.Sprintf("%s-%s", stemcellFlavor, stemcellVersion)
+	tag = tag + fmt.Sprintf("-%s-%s", fissileVersion, j.release.Version)
+
+	return fmt.Sprintf("%s:%s", imageName, tag), nil
 }
 
 func (j releaseBuildJob) CompileRelease() error {
@@ -244,7 +271,10 @@ func (j releaseBuildJob) Run() {
 			_ = r.Grapher.GraphEdge(r.StemcellName, j.release.Version, nil)
 		}
 
-		imageName := j.imageName()
+		imageName, err := j.imageName()
+		if err != nil {
+			return err
+		}
 		outputPath := fmt.Sprintf("%s.tar", imageName)
 
 		if r.OutputDirectory != "" {
@@ -274,7 +304,7 @@ func (j releaseBuildJob) Run() {
 			}
 		}
 
-		err := j.CompileRelease()
+		err = j.CompileRelease()
 		if err != nil {
 			return err
 		}
