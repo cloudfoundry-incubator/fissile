@@ -215,7 +215,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		_, err := RenderNode(secret, nil)
 		assert.EqualError(err,
-			`template: :6:237: executing "" at <fail "secrets.const ...>: error calling fail: secrets.const has not been set`)
+			`template: :6:237: executing "" at <fail "secrets.const has not been set">: error calling fail: secrets.const has not been set`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestMakeSecretsHelm(t *testing.T) {
 
 		_, err := RenderNode(secret, config)
 		assert.EqualError(err,
-			`template: :6:237: executing "" at <fail "secrets.const ...>: error calling fail: secrets.const has not been set`)
+			`template: :6:237: executing "" at <fail "secrets.const has not been set">: error calling fail: secrets.const has not been set`)
 	})
 
 	t.Run("Present", func(t *testing.T) {

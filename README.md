@@ -13,9 +13,9 @@ agent.
 ## Getting fissile
 
 ### Prerequisites
-Building fissile needs [Go 1.9] or higher and [Docker].
+Building fissile needs [Go 1.12] or higher and [Docker].
 
-[Go 1.9]: https://golang.org/doc/install
+[Go 1.12]: https://golang.org/doc/install
 [Docker]: https://www.docker.com
 
 ### Build procedure
