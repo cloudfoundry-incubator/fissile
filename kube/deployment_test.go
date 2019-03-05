@@ -103,7 +103,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group must have at least 1 instances">: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, not enough replicas", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group must have at least 1 instances">: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured, too many replicas", func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :7:17: executing "" at <fail "some_group can...>: error calling fail: some_group cannot have more than 1 instances`)
+			`template: :7:17: executing "" at <fail "some_group cannot have more than 1 instances">: error calling fail: some_group cannot have more than 1 instances`)
 	})
 
 	t.Run("Configured, bad key sizing.HA", func(t *testing.T) {
@@ -144,7 +144,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :15:21: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.HA. The new name to use is config.HA`)
+			`template: :15:21: executing "" at <fail "Bad use of moved variable sizing.HA. The new name to use is config.HA">: error calling fail: Bad use of moved variable sizing.HA. The new name to use is config.HA`)
 	})
 
 	t.Run("Configured, bad key sizing.memory.limits", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :27:70: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
+			`template: :27:70: executing "" at <fail "Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits">: error calling fail: Bad use of moved variable sizing.memory.limits. The new name to use is config.memory.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.memory.requests", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :31:74: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
+			`template: :31:74: executing "" at <fail "Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests">: error calling fail: Bad use of moved variable sizing.memory.requests. The new name to use is config.memory.requests`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.limits", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :19:64: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
+			`template: :19:64: executing "" at <fail "Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits">: error calling fail: Bad use of moved variable sizing.cpu.limits. The new name to use is config.cpu.limits`)
 	})
 
 	t.Run("Configured, bad key sizing.cpu.requests", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :23:68: executing "" at <fail "Bad use of mov...>: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
+			`template: :23:68: executing "" at <fail "Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests">: error calling fail: Bad use of moved variable sizing.cpu.requests. The new name to use is config.cpu.requests`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {
@@ -600,7 +600,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 		}
 		_, err := RenderNode(deployment, config)
 		assert.EqualError(err,
-			`template: :11:17: executing "" at <fail "some_group mus...>: error calling fail: some_group must have at least 1 instances`)
+			`template: :11:17: executing "" at <fail "some_group must have at least 1 instances">: error calling fail: some_group must have at least 1 instances`)
 	})
 
 	t.Run("Configured", func(t *testing.T) {

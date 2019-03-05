@@ -1000,7 +1000,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		t.Parallel()
 		_, err := RenderNode(ev, nil)
 		assert.EqualError(err,
-			`template: :7:219: executing "" at <fail "env.SOMETHING ...>: error calling fail: env.SOMETHING has not been set`)
+			`template: :7:219: executing "" at <fail "env.SOMETHING has not been set">: error calling fail: env.SOMETHING has not been set`)
 	})
 
 	t.Run("Undefined", func(t *testing.T) {
@@ -1010,7 +1010,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		}
 		_, err := RenderNode(ev, config)
 		assert.EqualError(err,
-			`template: :7:219: executing "" at <fail "env.SOMETHING ...>: error calling fail: env.SOMETHING has not been set`)
+			`template: :7:219: executing "" at <fail "env.SOMETHING has not been set">: error calling fail: env.SOMETHING has not been set`)
 	})
 
 	t.Run("Present", func(t *testing.T) {
