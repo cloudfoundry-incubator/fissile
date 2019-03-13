@@ -191,7 +191,7 @@ func (j releaseBuildJob) imageName() (string, error) {
 	if j.builder.DockerOrganization != "" {
 		imageName += util.SanitizeDockerName(j.builder.DockerOrganization) + "/"
 	}
-	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", j.builder.RepositoryPrefix, j.release.Name))
+	imageName += util.SanitizeDockerName(util.PrefixString(j.release.Name, j.builder.RepositoryPrefix, "-"))
 
 	fissileVersion := strings.Replace(j.builder.FissileVersion, "fissile-", "", -1)
 	fissileVersion = strings.Replace(fissileVersion, "+", "_", -1)

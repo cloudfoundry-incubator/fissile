@@ -25,7 +25,7 @@ var RootCmd = &cobra.Command{
 	Long: `
 Fissile converts existing BOSH final or dev releases into docker images.
 
-It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH 
+It does this using just the releases, without a BOSH deployment, CPIs, or a BOSH
 agent.
 `,
 	SilenceErrors: true,
@@ -112,7 +112,7 @@ func init() {
 	RootCmd.PersistentFlags().StringP(
 		"repository",
 		"p",
-		"fissile",
+		"",
 		"Repository name prefix used to create image names.",
 	)
 

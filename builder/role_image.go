@@ -493,7 +493,7 @@ func GetRoleDevImageName(registry, organization, repositoryPrefix string, instan
 		imageName += util.SanitizeDockerName(organization) + "/"
 	}
 
-	imageName += util.SanitizeDockerName(fmt.Sprintf("%s-%s", repositoryPrefix, instanceGroup.Name))
+	imageName += util.SanitizeDockerName(util.PrefixString(instanceGroup.Name, repositoryPrefix, "-"))
 
 	return fmt.Sprintf("%s:%s", imageName, util.SanitizeDockerName(version))
 }
