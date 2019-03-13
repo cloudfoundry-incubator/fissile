@@ -250,7 +250,7 @@ func (p *PackagesImageBuilder) GetImageName(roleManifest *model.RoleManifest, in
 		hasher.Write([]byte(strings.Join([]string{"", pkg.Fingerprint, pkg.Name, pkg.SHA1}, "\000")))
 	}
 
-	imageName := util.SanitizeDockerName(fmt.Sprintf("%s-role-packages", p.RepositoryPrefix))
+	imageName := util.SanitizeDockerName(util.PrefixString("role-packages", p.RepositoryPrefix, "-"))
 	imageTag := util.SanitizeDockerName(hex.EncodeToString(hasher.Sum(nil)))
 	result := fmt.Sprintf("%s:%s", imageName, imageTag)
 
