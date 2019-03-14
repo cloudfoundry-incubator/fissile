@@ -108,18 +108,6 @@ ln -s /var/vcap/jobs /var/vcap/data/jobs
 ln -s /var/vcap/packages /var/vcap/data/packages
 ln -s /var/vcap/sys /var/vcap/data/sys
 
-# Move packages from /var/vcap/packages-src to /var/vcap/packages
-# This is necessary because the ../packages-src symlink does not resolve inside bpm containers
-if test -d /var/vcap/packages/bpm ; then
-    # In a BPM world, /var/vcap/packages isn't mapped into the chroot
-    for pkg in /var/vcap/packages/*; do
-        target=$(readlink -f "${pkg}")
-        rm "${pkg}"
-        mv "${target}" "${pkg}"
-        chown -R vcap:vcap "${pkg}" # Work around strange permission issues
-    done
-fi
-
 # Run custom environment scripts (that are sourced)
 {{ range $script := .instance_group.EnvironScripts }}
     source {{ script_path $script }}

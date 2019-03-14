@@ -7,5 +7,8 @@ MAINTAINER cloudfoundry@suse.example
 LABEL "instance_group"="{{ .instance_group.Name }}"
 
 ADD root /
+{{ range .moves }}
+{{ . }}
+{{ end }}
 
 ENTRYPOINT ["/usr/bin/dumb-init", "/opt/fissile/run.sh"]
