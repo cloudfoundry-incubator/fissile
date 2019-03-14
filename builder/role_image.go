@@ -283,16 +283,22 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 	// because the symlinks will not resolve inside bpm containers.
 
 	packageSet := map[string]string{}
-	moves := []string{}
+	runCommands := []string{}
+	first := true
 
 	for _, jobReference := range instanceGroup.JobReferences {
 		for _, pkg := range jobReference.Packages {
 			if _, ok := packageSet[pkg.Name]; !ok {
-				// Generate a docker move command
-				destination := filepath.Join("root/var/vcap/packages", pkg.Name)
-				origin := filepath.Join("root/var/vcap/packages-src", pkg.Fingerprint)
-				move := fmt.Sprintf("RUN mv %s %s", origin, destination)
-				moves = append(moves, move)
+				// Make package destination once
+				if first {
+					runCommands = append(runCommands, "mkdir -p /var/vcap/packages")
+					first = false
+				}
+				// Move the package into place
+				destination := filepath.Join("/var/vcap/packages", pkg.Name)
+				origin := filepath.Join("/var/vcap/packages-src", pkg.Fingerprint)
+				move := fmt.Sprintf("mv %s %s", origin, destination)
+				runCommands = append(runCommands, move)
 
 				packageSet[pkg.Name] = pkg.Fingerprint
 			} else {
@@ -308,7 +314,7 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 		"base_image":     r.BaseImageName,
 		"instance_group": instanceGroup,
 		"licenses":       instanceGroup.JobReferences[0].Release.License.Files,
-		"moves":          moves,
+		"runCommands":    runCommands,
 	}
 
 	dockerfileTemplate := template.New("Dockerfile-role")
