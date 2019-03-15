@@ -49,6 +49,7 @@ type RoleRunCPU struct {
 type RoleRunScaling struct {
 	Min       int  `yaml:"min"`
 	Max       int  `yaml:"max"`
+	Default   int  `yaml:"default"`
 	HA        int  `yaml:"ha,omitempty"`
 	MustBeOdd bool `yaml:"must_be_odd,omitempty"`
 }
@@ -151,6 +152,9 @@ func (r *RoleRun) setScaling(jobReferences JobReferences) {
 	})
 	r.Scaling.Min = maxInteger(jobReferences, func(j JobReference) int {
 		return j.ContainerProperties.BoshContainerization.Run.Scaling.Min
+	})
+	r.Scaling.Default = maxInteger(jobReferences, func(j JobReference) int {
+		return j.ContainerProperties.BoshContainerization.Run.Scaling.Default
 	})
 	r.Scaling.MustBeOdd = anyMustBeOdd(jobReferences)
 

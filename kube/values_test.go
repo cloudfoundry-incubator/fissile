@@ -77,6 +77,65 @@ func TestMakeValues(t *testing.T) {
 		assert.Contains(t, sizing.Comment(), "underscore")
 	})
 
+	t.Run("Sizing Min", func(t *testing.T) {
+		t.Parallel()
+		settings := ExportSettings{
+			OutputDir: outDir,
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{
+					&model.InstanceGroup{
+						Name: "arole",
+						Run: &model.RoleRun{
+							Scaling: &model.RoleRunScaling{
+								Min: 7,
+								Max: 9,
+							},
+						},
+					},
+				},
+				Configuration: &model.Configuration{},
+			},
+		}
+
+		node, err := MakeValues(settings)
+		assert.NoError(t, err)
+		require.NotNil(t, node)
+
+		sizing := node.Get("sizing")
+		require.NotNil(t, sizing)
+		assert.Contains(t, sizing.String(), "count: 7")
+	})
+
+	t.Run("Sizing Min with Default", func(t *testing.T) {
+		t.Parallel()
+		settings := ExportSettings{
+			OutputDir: outDir,
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{
+					&model.InstanceGroup{
+						Name: "arole",
+						Run: &model.RoleRun{
+							Scaling: &model.RoleRunScaling{
+								Min:     7,
+								Max:     9,
+								Default: 8,
+							},
+						},
+					},
+				},
+				Configuration: &model.Configuration{},
+			},
+		}
+
+		node, err := MakeValues(settings)
+		assert.NoError(t, err)
+		require.NotNil(t, node)
+
+		sizing := node.Get("sizing")
+		require.NotNil(t, sizing)
+		assert.Contains(t, sizing.String(), "count: 8")
+	})
+
 	t.Run("Check Default Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
