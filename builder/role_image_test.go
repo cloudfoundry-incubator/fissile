@@ -214,8 +214,6 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	roleImageBuilder := newRoleImageBuilder(roleManifestPath, lightOpinionsPath, darkOpinionsPath)
 	roleImageBuilder.BaseImageName = releasePathConfigSpec
 
-	torPkg := getPackage(roleManifest.InstanceGroups, "myrole", "tor", "tor")
-
 	const TypeMissing byte = tar.TypeCont // flag to indicate an expected missing file
 	expected := map[string]struct {
 		desc     string
@@ -234,7 +232,6 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 		"root/var/vcap/jobs-src/tor/templates/bin/monit_debugger": {desc: "job template file"},
 		"root/var/vcap/jobs-src/tor/config_spec.json":             {desc: "tor config spec", keep: true, mode: 0644},
 		"root/var/vcap/jobs-src/new_hostname/config_spec.json":    {desc: "new_hostname config spec", keep: true},
-		"root/var/vcap/packages/tor":                              {desc: "package symlink", typeflag: tar.TypeSymlink, keep: true},
 	}
 	actual := make(map[string][]byte)
 
@@ -295,11 +292,6 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 
 	for name, info := range expected {
 		assert.Equal(TypeMissing, info.typeflag, "File %s was not found", name)
-	}
-
-	if assert.Contains(actual, "root/var/vcap/packages/tor", "tor package missing") {
-		expectedTarget := filepath.Join("..", "packages-src", torPkg.Fingerprint)
-		assert.Equal(string(actual["root/var/vcap/packages/tor"]), expectedTarget)
 	}
 
 	// And verify the config specs are as expected

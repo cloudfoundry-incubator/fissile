@@ -88,29 +88,6 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 			}
 		}
 
-		// Symlink compiled packages
-		packageSet := map[string]string{}
-		for _, jobReference := range instanceGroup.JobReferences {
-			for _, pkg := range jobReference.Packages {
-				if _, ok := packageSet[pkg.Name]; !ok {
-					err := util.WriteToTarStream(tarWriter, nil, tar.Header{
-						Name:     filepath.Join("root/var/vcap/packages", pkg.Name),
-						Typeflag: tar.TypeSymlink,
-						Linkname: filepath.Join("..", "packages-src", pkg.Fingerprint),
-					})
-					if err != nil {
-						return fmt.Errorf("failed to write package symlink for %s: %s", pkg.Name, err)
-					}
-					packageSet[pkg.Name] = pkg.Fingerprint
-				} else {
-					if pkg.Fingerprint != packageSet[pkg.Name] {
-						r.UI.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
-							color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
-					}
-				}
-			}
-		}
-
 		// Copy jobs templates, spec configs and monit
 		for _, jobReference := range instanceGroup.JobReferences {
 			err := addJobTemplates(jobReference.Job, "root/var/vcap/jobs-src", tarWriter)
@@ -300,13 +277,47 @@ func (r *RoleImageBuilder) generateDockerfile(instanceGroup *model.InstanceGroup
 		return err
 	}
 
-	dockerfileTemplate := template.New("Dockerfile-role")
+	// In a role move the packages from /var/vcap/packages-src to
+	// /var/vcap/packages.  This replaces the original form of
+	// symlinking them into place.  The change is necessary
+	// because the symlinks will not resolve inside bpm containers.
+
+	packageSet := map[string]string{}
+	runCommands := []string{}
+	first := true
+
+	for _, jobReference := range instanceGroup.JobReferences {
+		for _, pkg := range jobReference.Packages {
+			if _, ok := packageSet[pkg.Name]; !ok {
+				// Make package destination once
+				if first {
+					runCommands = append(runCommands, "mkdir -p /var/vcap/packages")
+					first = false
+				}
+				// Move the package into place
+				destination := filepath.Join("/var/vcap/packages", pkg.Name)
+				origin := filepath.Join("/var/vcap/packages-src", pkg.Fingerprint)
+				move := fmt.Sprintf("mv %s %s", origin, destination)
+				runCommands = append(runCommands, move)
+
+				packageSet[pkg.Name] = pkg.Fingerprint
+			} else {
+				if pkg.Fingerprint != packageSet[pkg.Name] {
+					r.UI.Printf("WARNING: duplicate package %s. Using package with fingerprint %s.\n",
+						color.CyanString(pkg.Name), color.RedString(packageSet[pkg.Name]))
+				}
+			}
+		}
+	}
 
 	context := map[string]interface{}{
 		"base_image":     r.BaseImageName,
 		"instance_group": instanceGroup,
 		"licenses":       instanceGroup.JobReferences[0].Release.License.Files,
+		"runCommands":    runCommands,
 	}
+
+	dockerfileTemplate := template.New("Dockerfile-role")
 
 	dockerfileTemplate, err = dockerfileTemplate.Parse(string(asset))
 	if err != nil {
