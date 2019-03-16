@@ -75,7 +75,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	lines := getDockerfileLines(dockerfile.String())
 	assert.Equal([]string{
 		"FROM scratch:latest",
-		"ADD packages-src /var/vcap/packages-src/",
+		"ADD packages-src /var/vcap/packages/.src/",
 		"LABEL version.generator.fissile=3.14.15",
 		`LABEL "publisher"="SUSE Linux Products GmbH"`,
 		`LABEL "version.cap"="1.2.3"`,
@@ -142,7 +142,7 @@ func TestNewDockerPopulator(t *testing.T) {
 			testers := []func(){
 				func() { assert.Equal(fmt.Sprintf("FROM %s", baseImage.ID), line, "line 1 should start with FROM") },
 				func() {
-					assert.Equal("ADD packages-src /var/vcap/packages-src/", line, "line 3 mismatch (ADD, package src location)")
+					assert.Equal("ADD packages-src /var/vcap/packages/.src/", line, "line 3 mismatch (ADD, package src location)")
 				},
 				func() {
 					assert.Equal("LABEL version.generator.fissile=3.14.15", line, "line 4 mismatch (LABEL, generator version)")

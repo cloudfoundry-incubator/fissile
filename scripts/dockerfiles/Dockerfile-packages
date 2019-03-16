@@ -1,6 +1,6 @@
 FROM {{ index . "base_image" }}
 
-ADD packages-src /var/vcap/packages-src/
+ADD packages-src /var/vcap/packages/.src/
 
 LABEL {{ index . "fissile_version" }}
 {{ range $label, $value := .labels }}
