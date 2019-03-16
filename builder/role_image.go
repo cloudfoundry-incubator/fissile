@@ -96,7 +96,7 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 					err := util.WriteToTarStream(tarWriter, nil, tar.Header{
 						Name:     filepath.Join("root/var/vcap/packages", pkg.Name),
 						Typeflag: tar.TypeSymlink,
-						Linkname: filepath.Join("..", "packages-src", pkg.Fingerprint),
+						Linkname: filepath.Join("..", "packages", ".src", pkg.Fingerprint),
 					})
 					if err != nil {
 						return fmt.Errorf("failed to write package symlink for %s: %s", pkg.Name, err)

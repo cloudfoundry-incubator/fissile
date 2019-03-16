@@ -298,7 +298,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 	}
 
 	if assert.Contains(actual, "root/var/vcap/packages/tor", "tor package missing") {
-		expectedTarget := filepath.Join("..", "packages-src", torPkg.Fingerprint)
+		expectedTarget := filepath.Join("..", "packages", ".src", torPkg.Fingerprint)
 		assert.Equal(string(actual["root/var/vcap/packages/tor"]), expectedTarget)
 	}
 
