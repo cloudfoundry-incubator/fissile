@@ -158,8 +158,11 @@ func (r *RoleRun) setScaling(jobReferences JobReferences) {
 	})
 	r.Scaling.MustBeOdd = anyMustBeOdd(jobReferences)
 
-	if r.Scaling != nil && r.Scaling.HA == 0 {
+	if r.Scaling.HA == 0 {
 		r.Scaling.HA = r.Scaling.Min
+	}
+	if r.Scaling.Default < r.Scaling.Min {
+		r.Scaling.Default = r.Scaling.Min
 	}
 }
 

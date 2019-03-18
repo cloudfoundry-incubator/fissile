@@ -152,17 +152,17 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	}
 
 	if !settings.CreateHelmChart {
-		spec.Add("replicas", instanceGroup.Run.Scaling.Min)
+		spec.Add("replicas", instanceGroup.Run.Scaling.Default)
 		spec.Sort()
 		return nil
 	}
 
 	roleName := makeVarName(instanceGroup.Name)
 	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
-	if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
+	if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Default {
 		// Under HA use HA count if the user hasn't explicitly modified the default count
 		count = fmt.Sprintf("{{ if and .Values.config.HA (eq (int %s) %d) -}} %d {{- else -}} {{ %s }} {{- end }}",
-			count, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.HA, count)
+			count, instanceGroup.Run.Scaling.Default, instanceGroup.Run.Scaling.HA, count)
 	} else {
 		count = "{{ " + count + " }}"
 	}
@@ -183,9 +183,9 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 		if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
 			fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, instanceGroup.Run.Scaling.HA)
 			count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
-			// If count != Min then count must be >= HA
+			// If count != Default then count must be >= HA
 			block := fmt.Sprintf("if and .Values.config.HA (and (ne (int %s) %d) (lt (int %s) %d))",
-				count, instanceGroup.Run.Scaling.Min, count, instanceGroup.Run.Scaling.HA)
+				count, instanceGroup.Run.Scaling.Default, count, instanceGroup.Run.Scaling.HA)
 			controller.Add("_minHAReplicas", fail, helm.Block(block))
 		}
 	}
