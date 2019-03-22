@@ -508,12 +508,21 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 		env = append(env, helm.NewMapping("name", config.Name, "value", stringifiedValue))
 	}
 
-	fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
+	{
+		fieldRef := helm.NewMapping("fieldPath", "metadata.namespace")
+		envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")
+		envVar.Add("valueFrom", helm.NewMapping("fieldRef", fieldRef))
+		env = append(env, envVar)
+	}
 
-	envVar := helm.NewMapping("name", "KUBERNETES_NAMESPACE")
-	envVar.Add("valueFrom", helm.NewMapping("fieldRef", fieldRef))
-
-	env = append(env, envVar)
+	{
+		envVar := helm.NewMapping("name", "VCAP_HARD_NPROC", "value", "{{ .Values.kube.limits.nproc.hard | quote }}")
+		env = append(env, envVar)
+	}
+	{
+		envVar := helm.NewMapping("name", "VCAP_SOFT_NPROC", "value", "{{ .Values.kube.limits.nproc.soft | quote }}")
+		env = append(env, envVar)
+	}
 
 	sort.Slice(env[:], func(i, j int) bool {
 		return env[i].Get("name").String() < env[j].Get("name").String()
