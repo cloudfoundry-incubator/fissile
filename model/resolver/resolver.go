@@ -135,6 +135,20 @@ func (r *Resolver) ResolveRoleManifest() error {
 				instanceGroup.Type, "Expected one of bosh, bosh-task, or colocated-container"))
 		}
 
+		// default_feature, if_feature, and unless_feature all all mutually exclusive
+		if (instanceGroup.DefaultFeature != "" && (instanceGroup.IfFeature != "" || instanceGroup.UnlessFeature != "")) ||
+			(instanceGroup.IfFeature != "" && instanceGroup.UnlessFeature != "") {
+
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("instance_groups[%s]", instanceGroup.Name),
+				fmt.Sprintf("default_feature[%s], if_feature[%s], and unless_feature[%s] are all mutually exclusive",
+					instanceGroup.DefaultFeature, instanceGroup.IfFeature, instanceGroup.UnlessFeature)))
+		}
+
+		m.AddFeature(instanceGroup.DefaultFeature, true)
+		m.AddFeature(instanceGroup.IfFeature, false)
+		m.AddFeature(instanceGroup.UnlessFeature, false)
+
 		allErrs = append(allErrs, instanceGroup.CalculateRoleRun()...)
 		allErrs = append(allErrs, validateRoleTags(instanceGroup)...)
 		allErrs = append(allErrs, validateRoleRun(instanceGroup, m)...)

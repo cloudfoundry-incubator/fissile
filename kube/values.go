@@ -203,5 +203,11 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	kube.Add("psp", psps.Sort())
 	kube.Sort()
 
+	enable := helm.NewMapping()
+	for name, value := range settings.RoleManifest.Features {
+		enable.Add(name, value)
+	}
+	values.Add("enable", enable.Sort())
+
 	return values, nil
 }

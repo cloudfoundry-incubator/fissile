@@ -16,6 +16,7 @@ type RoleManifest struct {
 	Releases       []*ReleaseRef `yaml:"releases"`
 
 	LoadedReleases   Releases
+	Features         map[string]bool
 	ManifestFilePath string
 	ManifestContent  []byte `yaml:"-"`
 }
@@ -34,7 +35,9 @@ type LoadRoleManifestOptions struct {
 
 // NewRoleManifest returns a new role manifest struct
 func NewRoleManifest() *RoleManifest {
-	return &RoleManifest{}
+	m := &RoleManifest{}
+	m.Features = make(map[string]bool)
+	return m
 }
 
 // LoadManifestFromFile loads the manifest content from a file
@@ -46,6 +49,16 @@ func (m *RoleManifest) LoadManifestFromFile(manifestFilePath string) (err error)
 	m.ManifestFilePath = manifestFilePath
 	err = yaml.Unmarshal(m.ManifestContent, &m)
 	return
+}
+
+// AddFeature will add a feature name to the manifest.
+// A feature needs to be enabled only once to be enabled globally.
+func (m *RoleManifest) AddFeature(name string, enabledByDefault bool) {
+	if name != "" {
+		if _, exists := m.Features[name]; !exists || enabledByDefault {
+			m.Features[name] = enabledByDefault
+		}
+	}
 }
 
 // LookupInstanceGroup will find the given instance group in the role manifest

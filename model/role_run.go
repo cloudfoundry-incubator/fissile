@@ -116,7 +116,7 @@ type HealthProbe struct {
 }
 
 func maxInteger(jobs JobReferences, getProperty jobReferenceIntegerProperty) int {
-	max := 0
+	max := 1
 	for _, j := range jobs {
 		test := getProperty(*j)
 		if test > max {
