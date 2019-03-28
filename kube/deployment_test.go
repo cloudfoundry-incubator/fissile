@@ -265,6 +265,10 @@ func TestNewDeploymentHelm(t *testing.T) {
 								valueFrom:
 									fieldRef:
 										fieldPath: "metadata.namespace"
+							-	name: "VCAP_HARD_NPROC"
+								value: "2048"
+							-	name: "VCAP_SOFT_NPROC"
+								value: "1024"
 							image: "docker.suse.fake/splat/the_repos-some-group:3b960ef56f837ae186cdd546d03750cca62676bc"
 							lifecycle:
 								preStop:
@@ -401,6 +405,10 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 								valueFrom:
 									fieldRef:
 										fieldPath: "metadata.namespace"
+							-	name: "VCAP_HARD_NPROC"
+								value: "2048"
+							-	name: "VCAP_SOFT_NPROC"
+								value: "1024"
 							image: "docker.suse.fake/splat/the_repos-istio-managed-group:3b960ef56f837ae186cdd546d03750cca62676bc"
 							lifecycle:
 								preStop:
