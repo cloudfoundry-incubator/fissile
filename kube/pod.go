@@ -513,13 +513,23 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 	envVar.Add("valueFrom", helm.NewMapping("fieldRef", fieldRef))
 	env = append(env, envVar)
 
-	env = append(env, helm.NewMapping(
-		"name", "VCAP_HARD_NPROC",
-		"value", "{{ .Values.kube.limits.nproc.hard | quote }}"))
+	if settings.CreateHelmChart {
+		env = append(env, helm.NewMapping(
+			"name", "VCAP_HARD_NPROC",
+			"value", "{{ .Values.kube.limits.nproc.hard | quote }}"))
 
-	env = append(env, helm.NewMapping(
-		"name", "VCAP_SOFT_NPROC",
-		"value", "{{ .Values.kube.limits.nproc.soft | quote }}"))
+		env = append(env, helm.NewMapping(
+			"name", "VCAP_SOFT_NPROC",
+			"value", "{{ .Values.kube.limits.nproc.soft | quote }}"))
+	} else {
+		env = append(env, helm.NewMapping(
+			"name", "VCAP_HARD_NPROC",
+			"value", "2048"))
+
+		env = append(env, helm.NewMapping(
+			"name", "VCAP_SOFT_NPROC",
+			"value", "1024"))
+	}
 
 	sort.Slice(env[:], func(i, j int) bool {
 		return env[i].Get("name").String() < env[j].Get("name").String()
