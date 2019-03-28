@@ -14,22 +14,20 @@ EOL
   exit 0
 fi
 
-print_err() {
-  echo -e "\e[31m## ${1}" >&2
+fail_exit() {
+    echo -e "\e[0;31m## ${1}\e[0m" >&2
+    exit 1
 }
 
 if [ -n "${VCAP_HARD_NPROC:-}" ] && [ -z "${VCAP_SOFT_NPROC:-}" ]; then
-  print_err ".kube.limits.nproc.soft must be set when .kube.limits.nproc.hard is set"
-  exit 1
+  fail_exit ".kube.limits.nproc.soft must be set when .kube.limits.nproc.hard is set"
 fi
 if [ -n "${VCAP_SOFT_NPROC:-}" ] && [ -z "${VCAP_HARD_NPROC:-}" ]; then
-  print_err ".kube.limits.nproc.hard must be set when .kube.limits.nproc.soft is set"
-  exit 1
+  fail_exit ".kube.limits.nproc.hard must be set when .kube.limits.nproc.soft is set"
 fi
 if [ -n "${VCAP_HARD_NPROC:-}" ] && [ -n "${VCAP_SOFT_NPROC:-}" ]; then
   if (( "${VCAP_SOFT_NPROC}" > "${VCAP_HARD_NPROC}" )); then
-    print_err ".kube.limits.nproc.soft (${VCAP_SOFT_NPROC}) cannot be larger than .kube.limits.nproc.hard (${VCAP_HARD_NPROC})"
-    exit 1
+    fail_exit ".kube.limits.nproc.soft (${VCAP_SOFT_NPROC}) cannot be larger than .kube.limits.nproc.hard (${VCAP_HARD_NPROC})"
   fi
   LIMITS_FILEPATH="/etc/security/limits.conf"
   echo "Setting hard nproc limit for vcap: ${VCAP_HARD_NPROC}"
