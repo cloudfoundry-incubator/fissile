@@ -600,16 +600,17 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-	  fieldRef:
-		  fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_COUNTER"
-  value: "3"
-- name: "VCAP_HARD_NPROC"
-  value: "2048"
-- name: "VCAP_SOFT_NPROC"
-  value: "1024"`, actual)
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_COUNTER"
+			value: "3"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
@@ -677,16 +678,17 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "KUBE_SECRETS_GENERATION_NAME"
-  value: "secrets-CV-SGC"
-- name: "VCAP_HARD_NPROC"
-  value: "2048"
-- name: "VCAP_SOFT_NPROC"
-  value: "1024"`, actual)
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SECRETS_GENERATION_NAME"
+			value: "secrets-CV-SGC"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
@@ -714,19 +716,20 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
-- name: "A_SECRET"
-  valueFrom:
-    secretKeyRef:
-      key: "a-secret"
-      name: "secrets"
-- name: "KUBERNETES_NAMESPACE"
-  valueFrom:
-    fieldRef:
-      fieldPath: "metadata.namespace"
-- name: "VCAP_HARD_NPROC"
-  value: "2048"
-- name: "VCAP_SOFT_NPROC"
-  value: "1024"`, actual)
+		-	name: "A_SECRET"
+			valueFrom:
+				secretKeyRef:
+					key: "a-secret"
+					name: "secrets"
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
+	`, actual)
 }
 
 func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
