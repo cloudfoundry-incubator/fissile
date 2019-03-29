@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim:autoindent expandtab tabstop=2 softtabstop=2:
 
 set -e
 
