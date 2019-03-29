@@ -118,9 +118,9 @@ ln -s /var/vcap/sys /var/vcap/data/sys
 {{ end }}
 
 configgin \
-	--jobs /opt/fissile/job_config.json \
-	--env2conf /opt/fissile/env2conf.yml \
-	--bosh-deployment-manifest /opt/fissile/config/deployment-manifest.yml
+  --jobs /opt/fissile/job_config.json \
+  --env2conf /opt/fissile/env2conf.yml \
+  --bosh-deployment-manifest /opt/fissile/config/deployment-manifest.yml
 
 if [ -e /etc/monitrc ]
 then
@@ -161,12 +161,12 @@ function sorted-pre-start-paths()
     declare -a fnames
     idx=0
     if [ -x /var/vcap/jobs/consul_agent/bin/pre-start ] ; then
-	fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
-	idx=$((idx + 1))
+      fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
+      idx=$((idx + 1))
     fi
     for fname in $(find /var/vcap/jobs/*/bin -name pre-start | grep -v '/consul_agent/bin/pre-start$') ; do
-	fnames[$idx]=$fname
-	idx=$((idx + 1))
+      fnames[$idx]=$fname
+      idx=$((idx + 1))
     done
     echo ${fnames[*]}
 }
@@ -182,13 +182,13 @@ done
     {{ range $job := .instance_group.JobReferences}}
         if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/run ] ; then
             /var/vcap/jobs/{{ $job.Name }}/bin/run
-	    idx=$((idx + 1))
-	fi
+            idx=$((idx + 1))
+        fi
     {{ end }}
         if [ ${idx} -eq 0 ] ; then
-	    echo "No runnable jobs found for this task" 1>&2
-	    exit 1
-	fi
+          echo "No runnable jobs found for this task" 1>&2
+          exit 1
+        fi
 {{ else }}
 
   killer() {
