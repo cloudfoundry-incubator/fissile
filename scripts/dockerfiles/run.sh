@@ -15,8 +15,8 @@ EOL
 fi
 
 fail_exit() {
-    echo -e "\e[0;31m## ${1}\e[0m" >&2
-    exit 1
+  echo -e "\e[0;31m## ${1}\e[0m" >&2
+  exit 1
 }
 
 if [ -n "${VCAP_HARD_NPROC:-}" ] && [ -z "${VCAP_SOFT_NPROC:-}" ]; then
