@@ -7,10 +7,10 @@ set -e
 grep $(hostname) /etc/hosts
 
 if [[ "$1" == "--help" ]]; then
-cat <<EOL
+  cat <<EOL
 Usage: run.sh
 EOL
-exit 0
+  exit 0
 fi
 
 # Make BOSH installed binaries available
@@ -58,7 +58,7 @@ rm -f /var/vcap/monit/ready /var/vcap/monit/ready.lock
 # When the container gets restarted, processes may end up with different pids
 find /run -name "*.pid" -delete
 if [ -d /var/vcap/sys/run ]; then
-    find /var/vcap/sys/run -name "*.pid" -delete
+  find /var/vcap/sys/run -name "*.pid" -delete
 fi
 
 # Note, any changes to this list of variables have to be replicated in
@@ -90,7 +90,7 @@ if test "${#KUBE_COMPONENT_INDEX}" -gt 4 ; then
   # https://github.com/kubernetes/apimachinery/blob/b166f81f/pkg/util/rand/rand.go#L73
   export KUBE_COMPONENT_INDEX="$(
     echo -n ${HOSTNAME##*-} \
-    | gawk -vRS=".|" ' BEGIN { chars="bcdfghjklmnpqrstvwxz0123456789" } { n = n * length(chars) + index(chars, RT) - 1 } END { print n }'
+      | gawk -vRS=".|" ' BEGIN { chars="bcdfghjklmnpqrstvwxz0123456789" } { n = n * length(chars) + index(chars, RT) - 1 } END { print n }'
   )"
 fi
 if test -z "${KUBERNETES_CLUSTER_DOMAIN:-}" && grep -E --quiet '^search' /etc/resolv.conf ; then
@@ -110,11 +110,11 @@ ln -s /var/vcap/sys /var/vcap/data/sys
 
 # Run custom environment scripts (that are sourced)
 {{ range $script := .instance_group.EnvironScripts }}
-    source {{ script_path $script }}
+source {{ script_path $script }}
 {{ end }}
 # Run custom role scripts
-{{ range $script := .instance_group.Scripts}}
-    bash {{ script_path $script }}
+{{ range $script := .instance_group.Scripts }}
+bash {{ script_path $script }}
 {{ end }}
 
 configgin \
@@ -140,88 +140,90 @@ then
 fi
 
 {{ if eq .instance_group.Type "bosh-task" }}
-    # Start rsyslog and cron
-    /usr/sbin/rsyslogd
-    cron
+# Start rsyslog and cron
+/usr/sbin/rsyslogd
+cron
 {{ else }}
-    # rsyslog and cron are started via monit
+# rsyslog and cron are started via monit
 {{ end }}
 
 # Run custom post config role scripts
 # Run any custom scripts other than pre-start
-{{ range $script := .instance_group.PostConfigScripts}}
-    echo bash {{ script_path $script }}
-    bash {{ script_path $script }}
+{{ range $script := .instance_group.PostConfigScripts }}
+echo bash {{ script_path $script }}
+bash {{ script_path $script }}
 {{ end }}
 
 # Run all the scripts called pre-start, but ensure consul_agent/bin/pre-start is run before others.
 # None of the other pre-start scripts appear to have any dependencies on one another.
-function sorted-pre-start-paths()
-{
-    declare -a fnames
-    idx=0
-    if [ -x /var/vcap/jobs/consul_agent/bin/pre-start ] ; then
-      fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
-      idx=$((idx + 1))
-    fi
-    for fname in $(find /var/vcap/jobs/*/bin -name pre-start | grep -v '/consul_agent/bin/pre-start$') ; do
-      fnames[$idx]=$fname
-      idx=$((idx + 1))
-    done
-    echo ${fnames[*]}
+function sorted-pre-start-paths() {
+  declare -a fnames
+  idx=0
+  if [ -x /var/vcap/jobs/consul_agent/bin/pre-start ] ; then
+    fnames[$idx]=/var/vcap/jobs/consul_agent/bin/pre-start
+    idx=$((idx + 1))
+  fi
+  for fname in $(find /var/vcap/jobs/*/bin -name pre-start | grep -v '/consul_agent/bin/pre-start$') ; do
+    fnames[$idx]=$fname
+    idx=$((idx + 1))
+  done
+  echo ${fnames[*]}
 }
 
 for fname in $(sorted-pre-start-paths) ; do
-    echo bash $fname
-    bash $fname
+  echo bash $fname
+  bash $fname
 done
 
 # Run
-{{ if eq .instance_group.Type "bosh-task" }}
-        idx=0
-    {{ range $job := .instance_group.JobReferences}}
-        if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/run ] ; then
-            /var/vcap/jobs/{{ $job.Name }}/bin/run
-            idx=$((idx + 1))
-        fi
-    {{ end }}
-        if [ ${idx} -eq 0 ] ; then
-          echo "No runnable jobs found for this task" 1>&2
-          exit 1
-        fi
-{{ else }}
+{{ if eq .instance_group.Type "bosh-task" -}}
 
-  killer() {
-    # Wait for all monit services to be stopped
-    echo "Received SIGTERM. Will run 'monit stop all'."
-
-    total_services=$(monit summary | grep -c "^Process")
-
-    monit stop all
-
-    echo "Ran 'monit stop all'."
-
-    while [ $total_services != $(monit summary | grep "^Process" | grep -c "Not monitored") ] ; do
-       if ! pidof monit 2>/dev/null >/dev/null ; then
-           break
-       fi
-       sleep 1
-    done
-
-    echo "All monit processes have been stopped."
-    monit summary
-    monit quit
-  }
-
-  trap killer SIGTERM
-
-  if [[ "${LOG_LEVEL}" == "debug"* || -n "${LOG_DEBUG}" ]]; then
-    # monit -v without the -I would fork a child, but then we can't wait on it,
-    # so it's not very useful.
-    monit -vI &
-  else
-    monit -I &
-  fi
-  child=$!
-  wait "$child"
+idx=0
+{{ range $job := .instance_group.JobReferences }}
+if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/run ] ; then
+  /var/vcap/jobs/{{ $job.Name }}/bin/run
+  idx=$((idx + 1))
+fi
 {{ end }}
+if [ ${idx} -eq 0 ] ; then
+  echo "No runnable jobs found for this task" 1>&2
+  exit 1
+fi
+
+{{ else -}}
+
+killer() {
+  # Wait for all monit services to be stopped
+  echo "Received SIGTERM. Will run 'monit stop all'."
+
+  total_services=$(monit summary | grep -c "^Process")
+
+  monit stop all
+
+  echo "Ran 'monit stop all'."
+
+  while [ $total_services != $(monit summary | grep "^Process" | grep -c "Not monitored") ] ; do
+    if ! pidof monit 2>/dev/null >/dev/null ; then
+      break
+    fi
+    sleep 1
+  done
+
+  echo "All monit processes have been stopped."
+  monit summary
+  monit quit
+}
+
+trap killer SIGTERM
+
+if [[ "${LOG_LEVEL}" == "debug"* || -n "${LOG_DEBUG}" ]]; then
+  # monit -v without the -I would fork a child, but then we can't wait on it,
+  # so it's not very useful.
+  monit -vI &
+else
+  monit -I &
+fi
+child=$!
+wait "$child"
+
+{{- end }}
