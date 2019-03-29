@@ -2,8 +2,8 @@
 
 set -e
 
-# Sometimes kube doesn't manage to put the hostname into /etc/hosts
-# In that case exit with error to restart the pod and try again
+# Sometimes kube doesn't manage to put the hostname into /etc/hosts.
+# In that case exit with error to restart the pod and try again.
 grep $(hostname) /etc/hosts
 
 if [[ "$1" == "--help" ]]; then
@@ -13,13 +13,13 @@ EOL
   exit 0
 fi
 
-# Make BOSH installed binaries available
+# Make BOSH installed binaries available.
 export PATH=/var/vcap/bosh/bin:$PATH
 
-# Load RVM
+# Load RVM.
 source /usr/local/rvm/scripts/rvm
 
-# Taken from https://github.com/cloudfoundry/bosh-linux-stemcell-builder/blob/95aa0de0fe734547b2dd9241685c31c5f6d61a83/stemcell_builder/lib/prelude_apply.bash
+# Taken from https://github.com/cloudfoundry/bosh-linux-stemcell-builder/blob/95aa0de0fe734547b2dd9241685c31c5f6d61a83/stemcell_builder/lib/prelude_apply.bash.
 # To be used by scripts that are run or sourced by this file.
 function get_os_type {
   centos_file=$chroot/etc/centos-release
@@ -55,14 +55,14 @@ export -f get_os_type
 # ready yet.
 rm -f /var/vcap/monit/ready /var/vcap/monit/ready.lock
 
-# When the container gets restarted, processes may end up with different pids
+# When the container gets restarted, processes may end up with different pids.
 find /run -name "*.pid" -delete
 if [ -d /var/vcap/sys/run ]; then
   find /var/vcap/sys/run -name "*.pid" -delete
 fi
 
 # Note, any changes to this list of variables have to be replicated in
-# --> model/mustache.go, func builtins
+# --> model/mustache.go, func builtins.
 export IP_ADDRESS=$(/bin/hostname -i | awk '{print $1}')
 export DNS_RECORD_NAME=$(/bin/hostname)
 
@@ -85,7 +85,7 @@ export KUBE_COMPONENT_INDEX="${HOSTNAME##*-}"
 if test "${#KUBE_COMPONENT_INDEX}" -gt 4 ; then
   # Convert the instance id for a regular pod into a proper number.
   # We use the gawk expression to ensure we have a unique instance id across all
-  # active containers.  The name was generated via
+  # active containers.  The name was generated via:
   # https://github.com/kubernetes/kubernetes/blob/v1.7.0/pkg/api/v1/generate.go#L59
   # https://github.com/kubernetes/apimachinery/blob/b166f81f/pkg/util/rand/rand.go#L73
   export KUBE_COMPONENT_INDEX="$(
@@ -97,22 +97,22 @@ if test -z "${KUBERNETES_CLUSTER_DOMAIN:-}" && grep -E --quiet '^search' /etc/re
   export KUBERNETES_CLUSTER_DOMAIN="$(perl -ne 'print $1 if /^search.* svc\.(\S+)/' /etc/resolv.conf)"
 fi
 
-# Write a couple of identification files for the stemcell
+# Write a couple of identification files for the stemcell.
 mkdir -p /var/vcap/instance
 echo {{ .instance_group.Name }} > /var/vcap/instance/name
 echo "${KUBE_COMPONENT_INDEX}" > /var/vcap/instance/id
 
-# BOSH creates various convenience symlinks under /var/vcap/data
+# BOSH creates various convenience symlinks under /var/vcap/data.
 mkdir -p /var/vcap/data
 ln -s /var/vcap/jobs /var/vcap/data/jobs
 ln -s /var/vcap/packages /var/vcap/data/packages
 ln -s /var/vcap/sys /var/vcap/data/sys
 
-# Run custom environment scripts (that are sourced)
+# Run custom environment scripts (that are sourced).
 {{ range $script := .instance_group.EnvironScripts }}
 source {{ script_path $script }}
 {{ end }}
-# Run custom role scripts
+# Run custom role scripts.
 {{ range $script := .instance_group.Scripts }}
 bash {{ script_path $script }}
 {{ end }}
@@ -127,12 +127,12 @@ then
   chmod 0600 /etc/monitrc
 fi
 
-# Create run dir
+# Create run dir.
 mkdir -p /var/vcap/sys/run
 chown root:vcap /var/vcap/sys/run
 chmod 775 /var/vcap/sys/run
 
-# Fix permissions
+# Fix permissions.
 chmod 640 /var/log/messages
 if [ -d /var/spool/cron/tabs ]
 then
@@ -140,15 +140,15 @@ then
 fi
 
 {{ if eq .instance_group.Type "bosh-task" }}
-# Start rsyslog and cron
+# Start rsyslog and cron.
 /usr/sbin/rsyslogd
 cron
 {{ else }}
-# rsyslog and cron are started via monit
+# rsyslog and cron are started via monit.
 {{ end }}
 
-# Run custom post config role scripts
-# Run any custom scripts other than pre-start
+# Run custom post config role scripts.
+# Run any custom scripts other than pre-start.
 {{ range $script := .instance_group.PostConfigScripts }}
 echo bash {{ script_path $script }}
 bash {{ script_path $script }}
@@ -193,7 +193,7 @@ fi
 {{ else -}}
 
 killer() {
-  # Wait for all monit services to be stopped
+  # Wait for all monit services to be stopped.
   echo "Received SIGTERM. Will run 'monit stop all'."
 
   total_services=$(monit summary | grep -c "^Process")
