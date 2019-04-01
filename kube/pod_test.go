@@ -370,6 +370,10 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SIZING_FOO_COUNT"
 			value: "33"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -407,6 +411,10 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SIZING_FOO_COUNT"
 			value: "22"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -460,6 +468,10 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 			value: "387"
 		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
 			value: "333"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -517,6 +529,10 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 			value: "354"
 		-	name: "KUBE_SIZING_FOO_PORTS_STORE_MIN"
 			value: "333"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -549,6 +565,10 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SECRETS_GENERATION_COUNTER"
 			value: "1"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -586,6 +606,10 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SECRETS_GENERATION_COUNTER"
 			value: "3"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -618,6 +642,10 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SECRETS_GENERATION_NAME"
 			value: "secrets-1"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -656,6 +684,10 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SECRETS_GENERATION_NAME"
 			value: "secrets-CV-SGC"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -693,6 +725,10 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 			valueFrom:
 				fieldRef:
 					fieldPath: "metadata.namespace"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
 	`, actual)
 }
 
@@ -740,6 +776,10 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 				valueFrom:
 					fieldRef:
 						fieldPath: "metadata.namespace"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 
@@ -784,6 +824,10 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 			`, actual)
 		})
 
@@ -807,6 +851,10 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 			`, actual)
 		})
 
@@ -831,6 +879,10 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 			`, actual)
 		})
 	})
@@ -873,6 +925,10 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: "[\"or\",\"other\"]"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 
@@ -901,6 +957,10 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: ""
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 }
@@ -947,6 +1007,10 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: ""
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 
@@ -968,6 +1032,10 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: "else"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 }
@@ -1031,6 +1099,10 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: "needed"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 
@@ -1052,6 +1124,10 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 						fieldPath: "metadata.namespace"
 			-	name: "SOMETHING"
 				value: "{\"foo\":\"bar\"}"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
 		`, actual)
 	})
 }
@@ -1744,6 +1820,10 @@ func TestPodPreFlightHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -1862,6 +1942,10 @@ func TestPodPostFlightHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-post-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
 				lifecycle:
 					preStop:
@@ -1990,6 +2074,10 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2081,6 +2169,10 @@ func TestPodMemoryHelmActive(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2211,6 +2303,10 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2302,6 +2398,10 @@ func TestPodCPUHelmActive(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 				lifecycle:
 					preStop:
@@ -2883,6 +2983,10 @@ func TestPodIstioManagedHelm(t *testing.T) {
 					valueFrom:
 						fieldRef:
 							fieldPath: "metadata.namespace"
+				-	name: "VCAP_HARD_NPROC"
+					value: "2048"
+				-	name: "VCAP_SOFT_NPROC"
+					value: "1024"
 				image: "R/O/theRepo-istio-managed-role:e9f459d3c3576bf1129a6b18ca2763f73fa19645"
 				lifecycle:
 					preStop:

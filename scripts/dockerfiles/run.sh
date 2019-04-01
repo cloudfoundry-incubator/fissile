@@ -14,6 +14,28 @@ EOL
   exit 0
 fi
 
+fail_exit() {
+  echo -e "\e[0;31m## ${1}\e[0m" >&2
+  exit 1
+}
+
+if [ -n "${VCAP_HARD_NPROC:-}" ] && [ -z "${VCAP_SOFT_NPROC:-}" ]; then
+  fail_exit ".kube.limits.nproc.soft must be set when .kube.limits.nproc.hard is set"
+fi
+if [ -n "${VCAP_SOFT_NPROC:-}" ] && [ -z "${VCAP_HARD_NPROC:-}" ]; then
+  fail_exit ".kube.limits.nproc.hard must be set when .kube.limits.nproc.soft is set"
+fi
+if [ -n "${VCAP_HARD_NPROC:-}" ] && [ -n "${VCAP_SOFT_NPROC:-}" ]; then
+  if (( "${VCAP_SOFT_NPROC}" > "${VCAP_HARD_NPROC}" )); then
+    fail_exit ".kube.limits.nproc.soft (${VCAP_SOFT_NPROC}) cannot be larger than .kube.limits.nproc.hard (${VCAP_HARD_NPROC})"
+  fi
+  LIMITS_FILEPATH="/etc/security/limits.conf"
+  echo "Setting hard nproc limit for vcap: ${VCAP_HARD_NPROC}"
+  sed -i "s|\(vcap[ ]*hard[ ]*nproc[ ]*\)[0-9]*|\1${VCAP_HARD_NPROC}|" "${LIMITS_FILEPATH}"
+  echo "Setting soft nproc limit for vcap: ${VCAP_SOFT_NPROC}"
+  sed -i "s|\(vcap[ ]*soft[ ]*nproc[ ]*\)[0-9]*|\1${VCAP_SOFT_NPROC}|" "${LIMITS_FILEPATH}"
+fi
+
 # Make BOSH installed binaries available.
 export PATH=/var/vcap/bosh/bin:$PATH
 

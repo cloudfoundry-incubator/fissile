@@ -195,6 +195,10 @@ func TestJobHelm(t *testing.T) {
 							valueFrom:
 								fieldRef:
 									fieldPath: "metadata.namespace"
+						-	name: "VCAP_HARD_NPROC"
+							value: "2048"
+						-	name: "VCAP_SOFT_NPROC"
+							value: "1024"
 						image: "docker.suse.fake/splat/the_repos-pre-role:b0668a0daba46290566d99ee97d7b45911a53293"
 						lifecycle:
 							preStop:

@@ -207,6 +207,14 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		psps.Add(pspName, nil)
 	}
 	kube.Add("psp", psps.Sort())
+	kube.Add(
+		"limits", helm.NewMapping(
+			"nproc", helm.NewMapping(
+				"hard", "",
+				"soft", "",
+			),
+		),
+	)
 	kube.Sort()
 
 	return values, nil

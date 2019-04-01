@@ -191,7 +191,14 @@ func MakeBasicValues() *helm.Mapping {
 				"username", "",
 				"password", ""),
 			"organization", "",
-			"auth", nil),
+			"auth", nil,
+			"limits", helm.NewMapping(
+				"nproc", helm.NewMapping(
+					"hard", "2048",
+					"soft", "1024",
+				),
+			),
+		),
 		"config", helm.NewMapping(
 			"HA", helm.NewNode(false, helm.Comment("Flag to activate high-availability mode")),
 			"memory", helm.NewNode(helm.NewMapping(
