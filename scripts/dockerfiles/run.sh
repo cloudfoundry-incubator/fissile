@@ -180,7 +180,8 @@ bash {{ script_path $script }}
 # Run pre-start scripts for each job.
 {{ range $job := .instance_group.JobReferences }}
 if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/pre-start ] ; then
-  /var/vcap/jobs/{{ $job.Name }}/bin/pre-start
+  echo bash /var/vcap/jobs/{{ $job.Name }}/bin/pre-start
+  bash /var/vcap/jobs/{{ $job.Name }}/bin/pre-start
 fi
 {{ end }}
 
