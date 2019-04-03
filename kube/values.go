@@ -104,13 +104,7 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 					instanceGroup.Run.Scaling.HA)
 			}
 		}
-
-		count := instanceGroup.Run.Scaling.Default
-		if count == 0 {
-			count = instanceGroup.Run.Scaling.Min
-		}
-
-		entry.Add("count", count, helm.Comment(comment))
+		entry.Add("count", instanceGroup.Run.Scaling.Min, helm.Comment(comment))
 		if settings.UseMemoryLimits {
 			var request helm.Node
 			if instanceGroup.Run.Memory.Request == nil {
@@ -216,6 +210,12 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		),
 	)
 	kube.Sort()
+
+	enable := helm.NewMapping()
+	for name, value := range settings.RoleManifest.Features {
+		enable.Add(name, value)
+	}
+	values.Add("enable", enable.Sort())
 
 	return values, nil
 }

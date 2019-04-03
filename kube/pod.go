@@ -362,13 +362,29 @@ func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, 
 }
 
 func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (helm.Node, error) {
+	featureRexgexp := regexp.MustCompile("^FEATURE_([A-Z][A-Z_]*)_ENABLED$")
 	sizingCountRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
 	sizingPortsRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_PORTS_([A-Z][A-Z_]*)_(MIN|MAX)$")
 
 	var env []helm.Node
 	for _, config := range configs {
+		// FEATURE_flag
+		match := featureRexgexp.FindStringSubmatch(config.Name)
+		if match != nil {
+			feature := strings.ToLower(match[1])
+			if _, exists := settings.RoleManifest.Features[feature]; !exists {
+				return nil, fmt.Errorf("Feature %s does not exist", feature)
+			}
+			value := "false"
+			if settings.CreateHelmChart {
+				value = fmt.Sprintf("{{ .Values.enable.%s | quote }}", feature)
+			}
+			env = append(env, helm.NewMapping("name", config.Name, "value", value))
+			continue
+		}
+
 		// KUBE_SIZING_role_COUNT
-		match := sizingCountRegexp.FindStringSubmatch(config.Name)
+		match = sizingCountRegexp.FindStringSubmatch(config.Name)
 		if match != nil {
 			roleName := util.ConvertNameToKey(match[1])
 			role := settings.RoleManifest.LookupInstanceGroup(roleName)

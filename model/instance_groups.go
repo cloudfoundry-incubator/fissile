@@ -36,6 +36,9 @@ func (igs InstanceGroups) Swap(i, j int) {
 // InstanceGroup represents a collection of jobs that are colocated on a container
 type InstanceGroup struct {
 	Name              string         `yaml:"name"`
+	DefaultFeature    string         `yaml:"default_feature"`
+	IfFeature         string         `yaml:"if_feature"`
+	UnlessFeature     string         `yaml:"unless_feature"`
 	Description       string         `yaml:"description"`
 	EnvironScripts    []string       `yaml:"environment_scripts"`
 	Scripts           []string       `yaml:"scripts"`

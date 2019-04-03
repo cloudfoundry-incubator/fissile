@@ -169,29 +169,37 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	spec.Add("replicas", count)
 	spec.Sort()
 
-	if instanceGroup.Run.Scaling.Min == 0 {
-		block := helm.Block(fmt.Sprintf("if gt (int .Values.sizing.%s.count) 0", roleName))
-		controller.Set(block)
+	// default_feature, if_feature, and unless_feature are all mutually exclusive, so only one can be set
+	var nodeMod helm.NodeModifier
+	if instanceGroup.IfFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.IfFeature))
+	} else if instanceGroup.DefaultFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.DefaultFeature))
+	} else if instanceGroup.UnlessFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if not .Values.enable.%s", instanceGroup.UnlessFeature))
+	}
+	if nodeMod != nil {
+		controller.Set(nodeMod)
 		if service != nil {
-			service.Set(block)
-		}
-	} else {
-		fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances" }}`, roleName, instanceGroup.Run.Scaling.Min)
-		block := fmt.Sprintf("if lt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Min)
-		controller.Add("_minReplicas", fail, helm.Block(block))
-
-		if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
-			fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, instanceGroup.Run.Scaling.HA)
-			count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
-			// If count != Min then count must be >= HA
-			block := fmt.Sprintf("if and .Values.config.HA (and (ne (int %s) %d) (lt (int %s) %d))",
-				count, instanceGroup.Run.Scaling.Min, count, instanceGroup.Run.Scaling.HA)
-			controller.Add("_minHAReplicas", fail, helm.Block(block))
+			service.Set(nodeMod)
 		}
 	}
 
-	fail := fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, instanceGroup.Run.Scaling.Max)
-	block := fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Max)
+	fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances" }}`, roleName, instanceGroup.Run.Scaling.Min)
+	block := fmt.Sprintf("if lt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Min)
+	controller.Add("_minReplicas", fail, helm.Block(block))
+
+	if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
+		fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, instanceGroup.Run.Scaling.HA)
+		count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
+		// If count != Min then count must be >= HA
+		block := fmt.Sprintf("if and .Values.config.HA (and (ne (int %s) %d) (lt (int %s) %d))",
+			count, instanceGroup.Run.Scaling.Min, count, instanceGroup.Run.Scaling.HA)
+		controller.Add("_minHAReplicas", fail, helm.Block(block))
+	}
+
+	fail = fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, instanceGroup.Run.Scaling.Max)
+	block = fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
 
 	if instanceGroup.Run.Scaling.MustBeOdd {
