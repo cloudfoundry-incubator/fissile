@@ -529,9 +529,7 @@ func validateColocatedContainerVolumeShares(roleManifest *model.RoleManifest) va
 	allErrs := validation.ErrorList{}
 
 	for _, instanceGroup := range roleManifest.InstanceGroups {
-		numberOfColocatedContainers := len(instanceGroup.ColocatedContainers())
-
-		if numberOfColocatedContainers > 0 {
+		if len(instanceGroup.ColocatedContainers()) > 0 {
 			emptyDirVolumesTags := []string{}
 			emptyDirVolumesPath := map[string]string{}
 			emptyDirVolumesCount := map[string]int{}
@@ -541,37 +539,46 @@ func validateColocatedContainerVolumeShares(roleManifest *model.RoleManifest) va
 				if volume.Type == model.VolumeTypeEmptyDir {
 					emptyDirVolumesTags = append(emptyDirVolumesTags, volume.Tag)
 					emptyDirVolumesPath[volume.Tag] = volume.Path
+
+					// Initialize counters of volume tags of the main instance group
 					emptyDirVolumesCount[volume.Tag] = 0
 				}
 			}
 
-			for _, colocatedRole := range instanceGroup.GetColocatedRoles() {
-				for _, volume := range colocatedRole.Run.Volumes {
+			for _, colocatedInstanceGroup := range instanceGroup.GetColocatedRoles() {
+				for _, volume := range colocatedInstanceGroup.Run.Volumes {
 					if volume.Type == model.VolumeTypeEmptyDir {
+						// Initialize an additional volume tag in case the colocated
+						// containers brings a new tag into the game.
 						if _, ok := emptyDirVolumesCount[volume.Tag]; !ok {
 							emptyDirVolumesCount[volume.Tag] = 0
 						}
 
+						// Count the usage of a volume (by tag) of a colocated container
 						emptyDirVolumesCount[volume.Tag]++
 
-						if path, ok := emptyDirVolumesPath[volume.Tag]; ok {
-							if path != volume.Path {
-								// Same tag, but different paths
-								allErrs = append(allErrs, validation.Invalid(
-									fmt.Sprintf("instance_group[%s]", colocatedRole.Name),
-									volume.Path,
-									fmt.Sprintf("colocated instance group specifies a shared volume with tag %s, which path does not match the path of the main instance group shared volume with the same tag", volume.Tag)))
-							}
+						// Validate that volumes with the same tag in both the main instance group
+						// and the colocated container have the same path configured. The same tag
+						// but a different path results in a validation error.
+						if path, ok := emptyDirVolumesPath[volume.Tag]; ok && path != volume.Path {
+							// Same tag, but different paths
+							allErrs = append(allErrs, validation.Invalid(
+								fmt.Sprintf("instance_group[%s]", colocatedInstanceGroup.Name),
+								volume.Path,
+								fmt.Sprintf("colocated instance group specifies a shared volume with tag %s, which path does not match the path of the main instance group shared volume with the same tag", volume.Tag)))
 						}
 					}
 				}
 			}
 
-			// Check the counters
+			// Validate that each (emptyDir) volume of the main instance group is at least
+			// used once by one of its colocated containers. A volume of the main instance
+			// group that is not used by any colocated container results in a validation
+			// error. The volumes are sorted alphabetically by tag to have reproducable
+			// validation error messages.
 			sort.Strings(emptyDirVolumesTags)
 			for _, tag := range emptyDirVolumesTags {
-				count := emptyDirVolumesCount[tag]
-				if count != numberOfColocatedContainers {
+				if emptyDirVolumesCount[tag] == 0 {
 					allErrs = append(allErrs, validation.Required(
 						fmt.Sprintf("instance_group[%s]", instanceGroup.Name),
 						fmt.Sprintf("container must use shared volumes of the main instance group: %s", tag)))
