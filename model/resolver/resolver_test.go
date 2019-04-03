@@ -1064,6 +1064,28 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 		"instance_group[main-role]: Required value: container must use shared volumes of the main instance group: vcap-store")
 }
 
+func TestLoadRoleManifestColocatedContainersValidationOfMultipleColocatedContainersWithDifferentMounts(t *testing.T) {
+	assert := assert.New(t)
+
+	workDir, err := os.Getwd()
+	assert.NoError(err)
+
+	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
+	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
+	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-different-volume-shares.yml")
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
+		ReleaseOptions: ReleaseOptions{
+			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
+		ValidationOptions: RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
+
+	assert.NotNil(roleManifest)
+	assert.Nil(err)
+}
+
 func TestLoadRoleManifestWithReleaseReferences(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)

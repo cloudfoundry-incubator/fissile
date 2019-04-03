@@ -1,0 +1,44 @@
+---
+instance_groups:
+- name: main-role
+  scripts: [scripts/myrole.sh]
+  jobs:
+  - name: new_hostname
+    release: tor
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        colocated_containers:
+        - to-be-colocated-1
+        - to-be-colocated-2
+        run:
+          memory: 1
+          volumes:
+          - path: /shared/data
+            type: emptyDir
+            tag: shared-data
+
+- name: to-be-colocated-1
+  type: colocated-container
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          memory: 1
+          volumes:
+          - path: /shared/data
+            type: emptyDir
+            tag: shared-data
+
+- name: to-be-colocated-2
+  type: colocated-container
+  jobs:
+  - name: ntpd
+    release: ntp
+    properties:
+      bosh_containerization:
+        run:
+          memory: 1
