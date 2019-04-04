@@ -359,7 +359,16 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 		}
 	}
 
-	// Record in each job what roles consume it.
+	errors = append(errors, r.recordJobConsumers(m)...)
+
+	return errors
+}
+
+// recordJobConsumers examines a role manifest and records in each job what
+// roles consume it.
+func (r *Resolver) recordJobConsumers(m *model.RoleManifest) validation.ErrorList {
+	errors := make(validation.ErrorList, 0)
+
 	for _, consumerInstanceGroup := range m.InstanceGroups {
 		for _, consumerJob := range consumerInstanceGroup.JobReferences {
 			for linkName, consumer := range consumerJob.ResolvedConsumers {
