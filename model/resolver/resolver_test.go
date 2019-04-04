@@ -895,6 +895,9 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 			if jobReference.ResolvedConsumers == nil {
 				jobReference.ResolvedConsumers = make(map[string]model.JobConsumesInfo)
 			}
+			if jobReference.ResolvedConsumedBy == nil {
+				jobReference.ResolvedConsumedBy = make(map[string][]model.JobLinkInfo)
+			}
 		}
 	}
 	errors := resolver.NewResolver(roleManifest, nil, model.LoadRoleManifestOptions{}).ResolveLinks()
@@ -1109,12 +1112,12 @@ func TestLoadRoleManifestColocatedContainersValidationOfMultipleColocatedContain
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-different-volume-shares.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 
