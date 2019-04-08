@@ -22,3 +22,23 @@ func PrefixString(str, prefix, separator string) string {
 	}
 	return str
 }
+
+// WordList returns a string of all words in the 'words' slice. For 2 or more words the
+// last word is prefixed by `conjunction`, and if there are at least 3 words, then they
+// are separated by the oxford comma.
+//
+// WordList([]string{"foo", "bar"}, "and") => "foo and bar"
+// WordList([]string{"foo", "bar", "baz"}, "or") => "foo, bar, or baz"
+func WordList(words []string, conjunction string) string {
+	length := len(words)
+	switch length {
+	case 0:
+		return ""
+	case 1:
+		return words[0]
+	case 2:
+		return words[0] + " " + conjunction + " " + words[1]
+	default:
+		return fmt.Sprintf("%s, %s %s", strings.Join(words[:length-1], ", "), conjunction, words[length-1])
+	}
+}
