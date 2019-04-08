@@ -11,7 +11,8 @@ type JobReference struct {
 	Name                string                     `yaml:"name"`    // The name of the job
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
 	ExportedProviders   map[string]JobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers   map[string]JobConsumesInfo `yaml:"consumes"`
+	ResolvedConsumers   map[string]JobConsumesInfo `yaml:"consumes"`    // Instance groups that this job links to & requires
+	ResolvedConsumedBy  map[string][]JobLinkInfo   `yaml:"consumed_by"` // Instance groups that consume a link
 	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
 
@@ -182,8 +183,9 @@ func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsP
 		Networks   struct {
 			Default map[string]string `json:"default"`
 		} `json:"networks"`
-		ExportedProperties []string               `json:"exported_properties"`
-		Consumes           map[string]JobLinkInfo `json:"consumes"`
+		ExportedProperties []string                 `json:"exported_properties"`
+		Consumes           map[string]JobLinkInfo   `json:"consumes"`
+		ConsumedBy         map[string][]JobLinkInfo `json:"consumed_by"`
 	}
 
 	config.Parameters = make(map[string]string)
@@ -191,12 +193,14 @@ func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsP
 	config.Networks.Default = make(map[string]string)
 	config.ExportedProperties = make([]string, 0)
 	config.Consumes = make(map[string]JobLinkInfo)
+	config.ConsumedBy = make(map[string][]JobLinkInfo)
 
 	config.Job.Name = instanceGroup.Name
 
 	for _, consumer := range j.ResolvedConsumers {
 		config.Consumes[consumer.Name] = consumer.JobLinkInfo
 	}
+	config.ConsumedBy = j.ResolvedConsumedBy
 
 	opinions, err := NewOpinions(lightOpinionsPath, darkOpinionsPath)
 	if err != nil {

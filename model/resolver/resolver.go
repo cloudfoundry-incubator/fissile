@@ -359,6 +359,49 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 		}
 	}
 
+	errors = append(errors, r.recordJobConsumers(m)...)
+
+	return errors
+}
+
+// recordJobConsumers examines a role manifest and records in each job what
+// roles consume it.
+func (r *Resolver) recordJobConsumers(m *model.RoleManifest) validation.ErrorList {
+	errors := make(validation.ErrorList, 0)
+
+	for _, consumerInstanceGroup := range m.InstanceGroups {
+		for _, consumerJob := range consumerInstanceGroup.JobReferences {
+			for linkName, consumer := range consumerJob.ResolvedConsumers {
+				providerInstanceGroup := m.LookupInstanceGroup(consumer.RoleName)
+				if providerInstanceGroup == nil {
+					// This should not happen: we resolved a link, but can no
+					// longer find the instance group that provides it.
+					field := fmt.Sprintf("instance_group[%s].job[%s].consumes[%s]", consumerInstanceGroup.Name, consumerJob.Name, linkName)
+					message := fmt.Errorf("Could not find resolved instance group %s", consumer.RoleName)
+					errors = append(errors, validation.InternalError(field, message))
+					continue
+				}
+				providerJob := providerInstanceGroup.LookupJob(consumer.JobName)
+				if providerJob == nil {
+					// This should not happen: we resolved a link, but can no
+					// longer find the job that provides it.
+					field := fmt.Sprintf("instance_group[%s].job[%s].consumes[%s]", consumerInstanceGroup.Name, consumerJob.Name, linkName)
+					message := fmt.Errorf("Could not find resolved job %s in instance group %s", consumer.JobName, consumer.RoleName)
+					errors = append(errors, validation.InternalError(field, message))
+					continue
+				}
+				linkInfo := model.JobLinkInfo{
+					Name:        consumer.Name,
+					Type:        consumer.Type,
+					RoleName:    consumerInstanceGroup.Name,
+					JobName:     consumerJob.Name,
+					ServiceName: consumer.ServiceName, // unused
+				}
+				providerJob.ResolvedConsumedBy[linkName] = append(providerJob.ResolvedConsumedBy[linkName], linkInfo)
+			}
+		}
+	}
+
 	return errors
 }
 

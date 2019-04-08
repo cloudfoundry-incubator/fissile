@@ -333,6 +333,7 @@ func TestGenerateRoleImageDockerfileDir(t *testing.T) {
 				}
 			},
 			"consumes": {},
+			"consumed_by": {},
 			"exported_properties": []
 		}`
 		assert.JSONEq(expectedString, string(buf))

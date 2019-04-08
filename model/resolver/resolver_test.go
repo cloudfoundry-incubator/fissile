@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	. "code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/model/loader"
 	"code.cloudfoundry.org/fissile/model/resolver"
 	"github.com/stretchr/testify/assert"
@@ -19,15 +19,15 @@ func TestLoadRoleManifestOK(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/tor-good.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			ReleaseNames:     []string{},
 			ReleaseVersions:  []string{},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases"),
 		},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)
@@ -55,8 +55,8 @@ func TestScriptPathInvalid(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/script-bad-prefix.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -89,8 +89,8 @@ func TestLoadRoleManifestNotOKBadJobName(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/tor-bad.yml")
-	_, err = loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	_, err = loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -105,8 +105,8 @@ func TestLoadDuplicateReleases(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/tor-good.yml")
-	_, err = loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	_, err = loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -123,12 +123,12 @@ func TestLoadRoleManifestMultipleReleasesOK(t *testing.T) {
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/multiple-good.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)
@@ -156,8 +156,8 @@ func TestLoadRoleManifestMultipleReleasesNotOk(t *testing.T) {
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/multiple-bad.yml")
-	_, err = loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	_, err = loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -174,8 +174,8 @@ func TestNonBoshRolesAreNotAllowed(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/non-bosh-roles.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -189,8 +189,8 @@ func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-badly-sorted.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -209,8 +209,8 @@ func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-with-dup-prev-names.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -229,12 +229,12 @@ func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-without-usage.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.EqualError(t, err,
@@ -248,12 +248,12 @@ func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-without-decl.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.EqualError(t, err,
@@ -267,12 +267,12 @@ func TestLoadRoleManifestVariablesSSH(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-ssh.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 
@@ -286,12 +286,12 @@ func TestLoadRoleManifestNonTemplates(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/templates-non.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.EqualError(t, err,
@@ -305,12 +305,12 @@ func TestLoadRoleManifestBadType(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/bad-type.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 
@@ -327,12 +327,12 @@ func TestLoadRoleManifestBadCVType(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/bad-cv-type.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 
@@ -347,12 +347,12 @@ func TestLoadRoleManifestBadCVTypeConflictInternal(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/bad-cv-type-internal.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.EqualError(t, err,
@@ -366,8 +366,8 @@ func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/rbac-missing-account.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -381,12 +381,12 @@ func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/rbac-missing-role.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.EqualError(t, err, `configuration.auth.accounts[test-account].roles: Not found: "missing-role"`)
@@ -401,12 +401,12 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir,
 		"../../test-assets/role-manifests/model/rbac-merge-psp.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)
@@ -450,7 +450,7 @@ func TestLoadRoleManifestPSPMerge(t *testing.T) {
 	assert.True(t, clusterRoleHasPrivilegedPSP("default-privileged", &auth.ClusterRoles), "Failed to find privileged PSP")
 }
 
-func clusterRoleHasPrivilegedPSP(clusterRoleName string, clusterRoles *map[string]AuthRole) bool {
+func clusterRoleHasPrivilegedPSP(clusterRoleName string, clusterRoles *map[string]model.AuthRole) bool {
 	for _, rule := range (*clusterRoles)[clusterRoleName] {
 		if !rule.IsPodSecurityPolicyRule() {
 			continue
@@ -464,7 +464,7 @@ func clusterRoleHasPrivilegedPSP(clusterRoleName string, clusterRoles *map[strin
 	return false
 }
 
-func accountHasPrivilegedPSP(account AuthAccount, clusterRoles *map[string]AuthRole) bool {
+func accountHasPrivilegedPSP(account model.AuthAccount, clusterRoles *map[string]model.AuthRole) bool {
 	for _, clusterRoleName := range account.ClusterRoles {
 		if clusterRoleHasPrivilegedPSP(clusterRoleName, clusterRoles) {
 			return true
@@ -481,12 +481,12 @@ func TestLoadRoleManifestSACloneForPSPMismatch(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	roleManifestPath := filepath.Join(workDir,
 		"../../test-assets/role-manifests/model/rbac-clone-sa-psp-mismatch.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)
@@ -623,12 +623,12 @@ func TestLoadRoleManifestRunGeneral(t *testing.T) {
 			t.Run(tc.manifest, func(t *testing.T) {
 				t.Parallel()
 				roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model", tc.manifest)
-				roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-					ReleaseOptions: ReleaseOptions{
+				roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+					ReleaseOptions: model.ReleaseOptions{
 						ReleasePaths:     []string{torReleasePath},
 						BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 						FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-					ValidationOptions: RoleManifestValidationOptions{
+					ValidationOptions: model.RoleManifestValidationOptions{
 						AllowMissingScripts: true,
 					}})
 
@@ -656,90 +656,126 @@ func TestResolveLinks(t *testing.T) {
 	}
 
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/multiple-good.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     releasePaths,
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)
 	require.NotNil(t, roleManifest)
 
 	// loader.LoadRoleManifest implicitly runs resolveLinks()
-
 	role := roleManifest.LookupInstanceGroup("myrole")
 	job := role.LookupJob("ntpd")
-	if !assert.NotNil(t, job) {
-		return
-	}
+	require.NotNil(t, job)
 
-	// Comparing things with assert.Equal() just gives us impossible-to-read dumps
-	samples := []struct {
-		Name     string
-		Type     string
-		Optional bool
-		Missing  bool
-	}{
-		// These should match the order in the ntp-release ntp job.MF
-		{Name: "ntp-server", Type: "ntpd"},
-		{Name: "ntp-client", Type: "ntp"},
-		{Type: "missing", Missing: true},
-	}
+	t.Run("consumes", func(t *testing.T) {
+		// Comparing things with assert.Equal() just gives us impossible-to-read dumps
+		samples := []struct {
+			Name     string
+			Type     string
+			Optional bool
+			Missing  bool
+		}{
+			// These should match the order in the ntp-release ntp job.MF
+			{Name: "ntp-server", Type: "ntpd"},
+			{Name: "ntp-client", Type: "ntp"},
+			{Type: "missing", Missing: true},
+		}
 
-	expectedLength := 0
-	for _, expected := range samples {
-		t.Run("", func(t *testing.T) {
-			if expected.Missing {
-				for name, consumeInfo := range job.ResolvedConsumers {
-					assert.NotEqual(t, expected.Type, consumeInfo.Type,
-						"link should not resolve, got %s (type %s) in %s / %s",
-						name, consumeInfo.Type, consumeInfo.RoleName, consumeInfo.JobName)
+		expectedLength := 0
+		for _, expected := range samples {
+			t.Run("", func(t *testing.T) {
+				if expected.Missing {
+					for name, consumeInfo := range job.ResolvedConsumers {
+						assert.NotEqual(t, expected.Type, consumeInfo.Type,
+							"link should not resolve, got %s (type %s) in %s / %s",
+							name, consumeInfo.Type, consumeInfo.RoleName, consumeInfo.JobName)
+					}
+					return
 				}
-				return
-			}
-			expectedLength++
-			require.Contains(t, job.ResolvedConsumers, expected.Name, "link %s is missing", expected.Name)
-			actual := job.ResolvedConsumers[expected.Name]
-			assert.Equal(t, expected.Name, actual.Name, "link name mismatch")
-			assert.Equal(t, expected.Type, actual.Type, "link type mismatch")
-			assert.Equal(t, role.Name, actual.RoleName, "link role name mismatch")
-			assert.Equal(t, job.Name, actual.JobName, "link job name mismatch")
-		})
-	}
-	assert.Len(t, job.ResolvedConsumers, expectedLength)
+				expectedLength++
+				require.Contains(t, job.ResolvedConsumers, expected.Name, "link %s is missing", expected.Name)
+				actual := job.ResolvedConsumers[expected.Name]
+				assert.Equal(t, expected.Name, actual.Name, "link name mismatch")
+				assert.Equal(t, expected.Type, actual.Type, "link type mismatch")
+				assert.Equal(t, role.Name, actual.RoleName, "link role name mismatch")
+				assert.Equal(t, job.Name, actual.JobName, "link job name mismatch")
+			})
+		}
+		assert.Len(t, job.ResolvedConsumers, expectedLength)
+	})
+
+	t.Run("consumed-by", func(t *testing.T) {
+		expected := map[string][]model.JobLinkInfo{
+			"ntp-client": []model.JobLinkInfo{
+				{RoleName: "myrole", JobName: "tor"},
+				{RoleName: "myrole", JobName: "ntpd"},
+				{RoleName: "foorole", JobName: "tor"},
+			},
+			"ntp-server": []model.JobLinkInfo{
+				{RoleName: "myrole", JobName: "ntpd"},
+			},
+		}
+		for linkName, expectedConsumedByList := range expected {
+			t.Run(linkName, func(t *testing.T) {
+				consumedByList, ok := job.ResolvedConsumedBy[linkName]
+				require.True(t, ok, "Could not find consumed-by for link %s", linkName)
+				for _, expectedConsumedBy := range expectedConsumedByList {
+					found := false
+					for _, consumedBy := range consumedByList {
+						if consumedBy.RoleName != expectedConsumedBy.RoleName {
+							continue
+						}
+						if consumedBy.JobName != expectedConsumedBy.JobName {
+							continue
+						}
+						assert.False(t, found,
+							"Found duplicate consumed-by info for link %s with instance group %s job %s",
+							linkName, expectedConsumedBy.RoleName, expectedConsumedBy.JobName)
+						found = true
+					}
+					assert.True(t, found,
+						"Could not find consumed-by for link %s with instance group %s job %s",
+						linkName, expectedConsumedBy.RoleName, expectedConsumedBy.JobName)
+				}
+			})
+		}
+	})
 }
 
 func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	job1 := &Job{
+	job1 := &model.Job{
 		Name: "job-1",
-		AvailableProviders: map[string]JobProvidesInfo{
+		AvailableProviders: map[string]model.JobProvidesInfo{
 			"job-1-provider-1": {
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-1-provider-1",
 					Type: "link-1",
 				},
 			},
 			"job-1-provider-2": {
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-1-provider-2",
 					Type: "link-2",
 				},
 			},
 			"job-1-provider-3": {
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-1-provider-3",
 					Type: "link-5",
 				},
 			},
 		},
-		DesiredConsumers: []JobConsumesInfo{
+		DesiredConsumers: []model.JobConsumesInfo{
 			{
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-1-provider-1",
 					Type: "link-1",
 				},
@@ -747,11 +783,11 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 
-	job2 := &Job{
+	job2 := &model.Job{
 		Name: "job-2",
-		AvailableProviders: map[string]JobProvidesInfo{
+		AvailableProviders: map[string]model.JobProvidesInfo{
 			"job-2-provider-1": {
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-2-provider-1",
 					Type: "link-3",
 				},
@@ -759,47 +795,47 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 
-	job3 := &Job{
+	job3 := &model.Job{
 		Name: "job-3",
-		AvailableProviders: map[string]JobProvidesInfo{
+		AvailableProviders: map[string]model.JobProvidesInfo{
 			"job-3-provider-3": {
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-3-provider-3",
 					Type: "link-4",
 				},
 			},
 		},
-		DesiredConsumers: []JobConsumesInfo{
+		DesiredConsumers: []model.JobConsumesInfo{
 			{
 				// There is exactly one implicit provider of this type; use it
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Type: "link-1", // j1
 				},
 			},
 			{
 				// This job has multiple available implicit providers with
 				// the same type; this should not resolve.
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Type: "link-3", // j3
 				},
 				Optional: true,
 			},
 			{
 				// There is exactly one explicit provider of this name
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "job-3-provider-3", // j3
 				},
 			},
 			{
 				// There are no providers of this type
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Type: "missing",
 				},
 				Optional: true,
 			},
 			{
 				// This requires an alias
-				JobLinkInfo: JobLinkInfo{
+				JobLinkInfo: model.JobLinkInfo{
 					Name: "actual-consumer-name",
 				},
 				Optional: true, // Not resolvable in role 3
@@ -807,20 +843,20 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		},
 	}
 
-	roleManifest := &RoleManifest{
-		InstanceGroups: InstanceGroups{
-			&InstanceGroup{
+	roleManifest := &model.RoleManifest{
+		InstanceGroups: model.InstanceGroups{
+			&model.InstanceGroup{
 				Name: "role-1",
-				JobReferences: JobReferences{
+				JobReferences: model.JobReferences{
 					{
 						Job: job1,
-						ExportedProviders: map[string]JobProvidesInfo{
-							"job-1-provider-3": JobProvidesInfo{
+						ExportedProviders: map[string]model.JobProvidesInfo{
+							"job-1-provider-3": model.JobProvidesInfo{
 								Alias: "unique-alias",
 							},
 						},
-						ContainerProperties: JobContainerProperties{
-							BoshContainerization: JobBoshContainerization{
+						ContainerProperties: model.JobContainerProperties{
+							BoshContainerization: model.JobBoshContainerization{
 								ServiceName: "job-1-service",
 							},
 						},
@@ -828,28 +864,28 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 					{Job: job2},
 				},
 			},
-			&InstanceGroup{
+			&model.InstanceGroup{
 				Name: "role-2",
-				JobReferences: JobReferences{
+				JobReferences: model.JobReferences{
 					{Job: job2},
 					{
 						Job: job3,
 						// This has an explicitly exported provider
-						ExportedProviders: map[string]JobProvidesInfo{
-							"job-3-provider-3": JobProvidesInfo{},
+						ExportedProviders: map[string]model.JobProvidesInfo{
+							"job-3-provider-3": model.JobProvidesInfo{},
 						},
-						ResolvedConsumers: map[string]JobConsumesInfo{
-							"actual-consumer-name": JobConsumesInfo{
+						ResolvedConsumers: map[string]model.JobConsumesInfo{
+							"actual-consumer-name": model.JobConsumesInfo{
 								Alias: "unique-alias",
 							},
 						},
 					},
 				},
 			},
-			&InstanceGroup{
+			&model.InstanceGroup{
 				Name: "role-3",
 				// This does _not_ have an explicitly exported provider
-				JobReferences: JobReferences{{Job: job2}, {Job: job3}},
+				JobReferences: model.JobReferences{{Job: job2}, {Job: job3}},
 			},
 		},
 	}
@@ -857,11 +893,14 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		for _, jobReference := range r.JobReferences {
 			jobReference.Name = jobReference.Job.Name
 			if jobReference.ResolvedConsumers == nil {
-				jobReference.ResolvedConsumers = make(map[string]JobConsumesInfo)
+				jobReference.ResolvedConsumers = make(map[string]model.JobConsumesInfo)
+			}
+			if jobReference.ResolvedConsumedBy == nil {
+				jobReference.ResolvedConsumedBy = make(map[string][]model.JobLinkInfo)
 			}
 		}
 	}
-	errors := resolver.NewResolver(roleManifest, nil, LoadRoleManifestOptions{}).ResolveLinks()
+	errors := resolver.NewResolver(roleManifest, nil, model.LoadRoleManifestOptions{}).ResolveLinks()
 	assert.Empty(errors)
 	role := roleManifest.LookupInstanceGroup("role-2")
 	require.NotNil(role, "Failed to find role")
@@ -872,8 +911,8 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	assert.Len(consumes, 3, "incorrect number of resulting link consumers")
 
 	if assert.Contains(consumes, "job-1-provider-1", "failed to find role by type") {
-		assert.Equal(JobConsumesInfo{
-			JobLinkInfo: JobLinkInfo{
+		assert.Equal(model.JobConsumesInfo{
+			JobLinkInfo: model.JobLinkInfo{
 				Name:        "job-1-provider-1",
 				Type:        "link-1",
 				RoleName:    "role-1",
@@ -887,8 +926,8 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 		"should not automatically resolve consumers with multiple providers of the type")
 
 	if assert.Contains(consumes, "job-3-provider-3", "did not find explicitly named provider") {
-		assert.Equal(JobConsumesInfo{
-			JobLinkInfo: JobLinkInfo{
+		assert.Equal(model.JobConsumesInfo{
+			JobLinkInfo: model.JobLinkInfo{
 				Name:        "job-3-provider-3",
 				Type:        "link-4",
 				RoleName:    "role-2",
@@ -899,8 +938,8 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	}
 
 	if assert.Contains(consumes, "actual-consumer-name", "did not resolve consumer with alias") {
-		assert.Equal(JobConsumesInfo{
-			JobLinkInfo: JobLinkInfo{
+		assert.Equal(model.JobConsumesInfo{
+			JobLinkInfo: model.JobLinkInfo{
 				Name:        "job-1-provider-3",
 				Type:        "link-5",
 				RoleName:    "role-1",
@@ -920,24 +959,24 @@ func TestLoadRoleManifestColocatedContainers(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(err)
 	assert.NotNil(roleManifest)
 
 	assert.Len(roleManifest.InstanceGroups, 2)
-	assert.EqualValues(RoleTypeBosh, roleManifest.LookupInstanceGroup("main-role").Type)
-	assert.EqualValues(RoleTypeColocatedContainer, roleManifest.LookupInstanceGroup("to-be-colocated").Type)
+	assert.EqualValues(model.RoleTypeBosh, roleManifest.LookupInstanceGroup("main-role").Type)
+	assert.EqualValues(model.RoleTypeColocatedContainer, roleManifest.LookupInstanceGroup("to-be-colocated").Type)
 	assert.Len(roleManifest.LookupInstanceGroup("main-role").ColocatedContainers(), 1)
 
 	for _, roleName := range []string{"main-role", "to-be-colocated"} {
-		assert.EqualValues([]*RoleRunVolume{&RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupInstanceGroup(roleName).Run.Volumes)
+		assert.EqualValues([]*model.RoleRunVolume{&model.RoleRunVolume{Path: "/var/vcap/store", Type: "emptyDir", Tag: "shared-data"}}, roleManifest.LookupInstanceGroup(roleName).Run.Volumes)
 	}
 }
 
@@ -950,8 +989,8 @@ func TestLoadRoleManifestColocatedContainersValidationMissingRole(t *testing.T) 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-missing-role.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
@@ -968,12 +1007,12 @@ func TestLoadRoleManifestColocatedContainersValidationUsusedRole(t *testing.T) {
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-unused-role.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.Nil(roleManifest)
@@ -991,12 +1030,12 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisions(t *testing.
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-port-collision.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.Nil(roleManifest)
@@ -1013,12 +1052,12 @@ func TestLoadRoleManifestColocatedContainersValidationPortCollisionsWithProtocol
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-no-port-collision.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(err)
@@ -1033,11 +1072,11 @@ func TestLoadRoleManifestColocatedContainersValidationInvalidTags(t *testing.T) 
 
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 
-	_, err = NewDevRelease(torReleasePath, "", "", filepath.Join(workDir, "../../test-assets/bosh-cache"))
+	_, err = model.NewDevRelease(torReleasePath, "", "", filepath.Join(workDir, "../../test-assets/bosh-cache"))
 	assert.NoError(err)
 
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
-	_, err = NewDevRelease(ntpReleasePath, "", "", filepath.Join(workDir, "../../test-assets/bosh-cache"))
+	_, err = model.NewDevRelease(ntpReleasePath, "", "", filepath.Join(workDir, "../../test-assets/bosh-cache"))
 	assert.NoError(err)
 }
 
@@ -1050,12 +1089,12 @@ func TestLoadRoleManifestColocatedContainersValidationOfSharedVolumes(t *testing
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-volume-share-issues.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.Nil(roleManifest)
@@ -1073,12 +1112,12 @@ func TestLoadRoleManifestColocatedContainersValidationOfMultipleColocatedContain
 	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
 	ntpReleasePath := filepath.Join(workDir, "../../test-assets/ntp-release")
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/colocated-containers-with-different-volume-shares.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			ReleasePaths:     []string{torReleasePath, ntpReleasePath},
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 
@@ -1091,11 +1130,11 @@ func TestLoadRoleManifestWithReleaseReferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/online-release-references.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, LoadRoleManifestOptions{
-		ReleaseOptions: ReleaseOptions{
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
 			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
 			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: RoleManifestValidationOptions{
+		ValidationOptions: model.RoleManifestValidationOptions{
 			AllowMissingScripts: true,
 		}})
 	assert.NoError(t, err)

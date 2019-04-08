@@ -54,6 +54,16 @@ func TestWriteConfigs(t *testing.T) {
 						},
 					},
 				},
+				ResolvedConsumedBy: map[string][]JobLinkInfo{
+					"consumed-by": []JobLinkInfo{
+						{
+							Name:     "consumed-by",
+							Type:     "consumed-by-type",
+							RoleName: "another role",
+							JobName:  job.Name,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -94,6 +104,13 @@ func TestWriteConfigs(t *testing.T) {
 				"job": "silly job",
 				"service_name": ""
 			}
+		},
+		"consumed_by": {
+			"consumed-by": [{
+				"role": "another role",
+				"job": "silly job",
+				"service_name": ""
+			}]
 		},
 		"exported_properties": [
 			"exported-prop"

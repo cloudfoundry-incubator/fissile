@@ -13,6 +13,8 @@ instance_groups:
     release: tor
   - name: ntpd
     release: ntp
+    provides:
+      ntp-client: {}
 - name: foorole
   type: bosh-task
   jobs:
