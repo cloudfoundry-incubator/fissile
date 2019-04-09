@@ -22,8 +22,8 @@ func formattedExample(example string) string {
 	return example
 }
 
-// MakeValues returns a Mapping with all default values for the Helm chart
-func MakeValues(settings ExportSettings) (helm.Node, error) {
+// MakeValues returns a Mapping with all default values for the Helm chart.
+func MakeValues(settings ExportSettings) helm.Node {
 	values := MakeBasicValues()
 	env := helm.NewMapping()
 	secrets := helm.NewMapping()
@@ -265,5 +265,5 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 	}
 	values.Add("enable", enable.Sort())
 
-	return values, nil
+	return values
 }

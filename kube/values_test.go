@@ -35,10 +35,9 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
+		node := MakeValues(settings)
 
 		assert.NotNil(t, node)
-		assert.NoError(t, err)
 
 		actual, err := RoundtripKube(node)
 		if !assert.NoError(t, err) {
@@ -68,8 +67,7 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
 		require.NotNil(t, node)
 
 		sizing := node.Get("sizing")
@@ -86,10 +84,9 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
+		node := MakeValues(settings)
 
 		assert.NotNil(t, node)
-		assert.NoError(t, err)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -107,10 +104,9 @@ func TestMakeValues(t *testing.T) {
 
 		settings.Registry = "example.com"
 
-		node, err := MakeValues(settings)
+		node := MakeValues(settings)
 
 		assert.NotNil(t, node)
-		assert.NoError(t, err)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -126,10 +122,9 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
+		node := MakeValues(settings)
 
 		assert.NotNil(t, node)
-		assert.NoError(t, err)
 
 		auth := node.Get("kube").Get("auth")
 
@@ -149,10 +144,9 @@ func TestMakeValues(t *testing.T) {
 
 		settings.AuthType = authString
 
-		node, err := MakeValues(settings)
+		node := MakeValues(settings)
 
 		assert.NotNil(t, node)
-		assert.NoError(t, err)
 
 		auth := node.Get("kube").Get("auth")
 

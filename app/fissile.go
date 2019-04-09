@@ -755,10 +755,7 @@ func (f *Fissile) GenerateKube(settings kube.ExportSettings) error {
 	}
 
 	if settings.CreateHelmChart {
-		values, err := kube.MakeValues(settings)
-		if err != nil {
-			return err
-		}
+		values := kube.MakeValues(settings)
 		err = f.writeHelmNode(settings.OutputDir, "values.yaml", values)
 		if err != nil {
 			return err
