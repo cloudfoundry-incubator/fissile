@@ -67,8 +67,9 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
@@ -83,8 +84,9 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
@@ -101,8 +103,9 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
@@ -117,8 +120,9 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
