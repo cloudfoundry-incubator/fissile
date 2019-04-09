@@ -1,8 +1,6 @@
 package kube
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"code.cloudfoundry.org/fissile/model"
@@ -14,14 +12,9 @@ import (
 func TestMakeValues(t *testing.T) {
 	t.Parallel()
 
-	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
-	require.NoError(t, err)
-	defer os.RemoveAll(outDir)
-
 	t.Run("Capabilities", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
 				InstanceGroups: model.InstanceGroups{
 					&model.InstanceGroup{
@@ -50,7 +43,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Sizing", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
 				InstanceGroups: model.InstanceGroups{
 					&model.InstanceGroup{
@@ -75,7 +67,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
@@ -92,7 +83,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
@@ -111,7 +101,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
@@ -128,7 +117,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
 				Configuration: &model.Configuration{},
 			},
