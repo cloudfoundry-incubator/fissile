@@ -80,3 +80,44 @@ func TestPrefixString(t *testing.T) {
 		})
 	}
 }
+
+func TestWordList(t *testing.T) {
+	tests := []struct {
+		name        string
+		words       []string
+		conjunction string
+		expected    string
+	}{
+		{
+			name:        "empty word list",
+			words:       []string{},
+			conjunction: "and",
+			expected:    "",
+		},
+		{
+			name:        "single word",
+			words:       []string{"foo"},
+			conjunction: "and",
+			expected:    "foo",
+		},
+		{
+			name:        "two words",
+			words:       []string{"foo", "bar"},
+			conjunction: "and",
+			expected:    "foo and bar",
+		},
+		{
+			name:        "three words",
+			words:       []string{"foo", "bar", "baz"},
+			conjunction: "or",
+			expected:    "foo, bar, or baz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := util.WordList(tt.words, tt.conjunction)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

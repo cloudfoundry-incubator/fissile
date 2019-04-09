@@ -156,7 +156,7 @@ func (g *InstanceGroup) GetLongDescription() string {
 		}
 	}
 	if len(noDesc) > 0 {
-		desc += fmt.Sprintf("\n\n%s%s", also, strings.Join(noDesc, ", "))
+		desc += fmt.Sprintf("\n\n%s%s", also, util.WordList(noDesc, "and"))
 	}
 	return desc
 }

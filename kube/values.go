@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
+	"code.cloudfoundry.org/fissile/util"
 )
 
 func formattedExample(example string) string {
@@ -90,11 +91,33 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 		}
 
 		var comment string
+		it := fmt.Sprintf("The %s instance group", makeVarName(instanceGroup.Name))
+
+		var feature string
+		enabled := "enabled"
+
+		if instanceGroup.IfFeature != "" {
+			feature = instanceGroup.IfFeature
+		} else if instanceGroup.DefaultFeature != "" {
+			feature = instanceGroup.DefaultFeature
+		} else if instanceGroup.UnlessFeature != "" {
+			feature = instanceGroup.UnlessFeature
+			enabled = "disabled"
+		}
+		if feature != "" {
+			canBe := "can be"
+			if settings.RoleManifest.Features[feature] {
+				canBe = "is"
+			}
+			comment = fmt.Sprintf("%s %s %s by the %s feature.\n", it, canBe, enabled, feature)
+			it = "It"
+		}
+
 		if instanceGroup.Run.Scaling.Min == instanceGroup.Run.Scaling.Max {
-			comment = fmt.Sprintf("The %s instance group cannot be scaled.", instanceGroup.Name)
+			comment += fmt.Sprintf("%s cannot be scaled.", it)
 		} else {
-			comment = fmt.Sprintf("The %s instance group can scale between %d and %d instances.",
-				instanceGroup.Name, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.Max)
+			comment += fmt.Sprintf("%s can scale between %d and %d instances.",
+				it, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.Max)
 
 			if instanceGroup.Run.Scaling.MustBeOdd {
 				comment += "\nThe instance count must be an odd number (not divisible by 2)."
@@ -213,7 +236,32 @@ func MakeValues(settings ExportSettings) (helm.Node, error) {
 
 	enable := helm.NewMapping()
 	for name, value := range settings.RoleManifest.Features {
-		enable.Add(name, value)
+		var ifFeatures []string
+		var unlessFeatures []string
+		for _, instanceGroup := range settings.RoleManifest.InstanceGroups {
+			if instanceGroup.IfFeature == name {
+				ifFeatures = append(ifFeatures, makeVarName(instanceGroup.Name))
+			} else if instanceGroup.DefaultFeature == name {
+				ifFeatures = append(ifFeatures, makeVarName(instanceGroup.Name))
+			} else if instanceGroup.UnlessFeature == name {
+				unlessFeatures = append(unlessFeatures, makeVarName(instanceGroup.Name))
+			}
+		}
+		var comment string
+		if len(ifFeatures) > 0 {
+			comment = fmt.Sprintf("The %s feature enables these instance groups: %s",
+				name, util.WordList(ifFeatures, "and"))
+		}
+		if len(unlessFeatures) > 0 {
+			if len(comment) == 0 {
+				comment = fmt.Sprintf("The %s feature disables these instance groups: %s",
+					name, util.WordList(unlessFeatures, "and"))
+			} else {
+				comment += fmt.Sprintf("\nIt disables these instance groups: %s",
+					util.WordList(unlessFeatures, "and"))
+			}
+		}
+		enable.Add(name, value, helm.Comment(comment))
 	}
 	values.Add("enable", enable.Sort())
 
