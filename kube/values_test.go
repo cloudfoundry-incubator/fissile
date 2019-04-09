@@ -36,13 +36,10 @@ func TestMakeValues(t *testing.T) {
 		}
 
 		node := MakeValues(settings)
-
-		assert.NotNil(t, node)
+		require.NotNil(t, node)
 
 		actual, err := RoundtripKube(node)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 		testhelpers.IsYAMLSubsetString(assert.New(t), `---
 			sizing:
 				arole:
@@ -85,8 +82,7 @@ func TestMakeValues(t *testing.T) {
 		}
 
 		node := MakeValues(settings)
-
-		assert.NotNil(t, node)
+		require.NotNil(t, node)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -105,8 +101,7 @@ func TestMakeValues(t *testing.T) {
 		settings.Registry = "example.com"
 
 		node := MakeValues(settings)
-
-		assert.NotNil(t, node)
+		require.NotNil(t, node)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -123,8 +118,7 @@ func TestMakeValues(t *testing.T) {
 		}
 
 		node := MakeValues(settings)
-
-		assert.NotNil(t, node)
+		require.NotNil(t, node)
 
 		auth := node.Get("kube").Get("auth")
 
@@ -145,8 +139,7 @@ func TestMakeValues(t *testing.T) {
 		settings.AuthType = authString
 
 		node := MakeValues(settings)
-
-		assert.NotNil(t, node)
+		require.NotNil(t, node)
 
 		auth := node.Get("kube").Get("auth")
 
