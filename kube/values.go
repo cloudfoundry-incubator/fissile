@@ -266,7 +266,7 @@ func MakeValues(settings ExportSettings) helm.Node {
 	values.Add("enable", enable.Sort())
 
 	ingress := helm.NewMapping()
-	ingress.Add("annotations", helm.NewMapping(), helm.Comment("ingress.annotations specify custom ingress annotations that gets merged to the default annotations."))
+	ingress.Add("annotations", helm.NewMapping(), helm.Comment("ingress.annotations allows specifying custom ingress annotations that gets merged to the default annotations."))
 	ingress.Add("enabled", false, helm.Comment("ingress.enabled enables ingress support - working ingress controller necessary."))
 	ingress.Add("tls", helm.NewMapping(), helm.Comment("ingress.tls.crt and ingress.tls.key, when specified, are used by the TLS secret for the Ingress resource."))
 	values.Add("ingress", ingress.Sort())

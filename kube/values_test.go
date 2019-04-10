@@ -143,8 +143,8 @@ func TestMakeValues(t *testing.T) {
 
 		expected := `---
 
-# ingress.annotations specify custom ingress annotations that gets merged to the
-# default annotations.
+# ingress.annotations allows specifying custom ingress annotations that gets
+# merged to the default annotations.
 annotations: {}
 
 # ingress.enabled enables ingress support - working ingress controller
