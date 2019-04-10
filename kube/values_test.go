@@ -137,4 +137,35 @@ func TestMakeValues(t *testing.T) {
 
 		assert.Equal(t, auth.String(), authString)
 	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+
+		expected := `---
+
+# ingress.annotations specify custom ingress annotations that gets merged to the
+# default annotations.
+annotations: {}
+
+# ingress.enabled enables ingress support - working ingress controller
+# necessary.
+enabled: false
+
+# ingress.tls.crt and ingress.tls.key, when specified, are used by the TLS
+# secret for the Ingress resource.
+tls: {}
+`
+
+		settings := ExportSettings{
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
+			},
+		}
+		node := MakeValues(settings)
+		require.NotNil(t, node)
+		actual := node.Get("ingress").String()
+
+		assert.Exactly(t, expected, actual)
+	})
 }
