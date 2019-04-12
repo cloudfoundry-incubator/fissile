@@ -257,8 +257,8 @@ func newService(role *model.InstanceGroup, job *model.JobReference, serviceType 
 	service.Add("spec", spec.Sort())
 
 	if settings.CreateHelmChart && serviceType == newServiceTypePublic {
-		block := `if and .Values.services.loadbalanced .Values.services.ingress`
-		fail := `{{ fail "services.loadbalanced and services.ingress cannot both be set" }}`
+		block := `if and .Values.services.loadbalanced .Values.ingress.enabled`
+		fail := `{{ fail "services.loadbalanced and ingress.enabled cannot both be set" }}`
 		service.Add("_incompatible", fail, helm.Block(block))
 	}
 
