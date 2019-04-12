@@ -296,44 +296,6 @@ func TestIstioManagedServiceHelm(t *testing.T) {
 					app.kubernetes.io/component: "myrole"
 		`, actual)
 	})
-
-	t.Run("Ingress", func(t *testing.T) {
-		t.Parallel()
-		config := map[string]interface{}{
-			"Values.services.ingress": "nic",
-			"Values.config.use_istio": true,
-		}
-		actual, err := RoundtripNode(service, config)
-		require.NoError(t, err)
-		testhelpers.IsYAMLEqualString(assert, `---
-			apiVersion: "v1"
-			kind: "Service"
-			metadata:
-				name: "myrole-tor"
-				labels:
-					app: myrole-tor
-					app.kubernetes.io/component: myrole-tor
-					app.kubernetes.io/instance: MyRelease
-					app.kubernetes.io/managed-by: Tiller
-					app.kubernetes.io/name: MyChart
-					app.kubernetes.io/version: 1.22.333.4444
-					helm.sh/chart: MyChart-42.1_foo
-					skiff-role-name: "myrole-tor"
-			spec:
-				ports:
-				-	name: "http"
-					port: 80
-					protocol: "TCP"
-					targetPort: 8080
-				-	name: "https"
-					port: 443
-					protocol: "TCP"
-					targetPort: 443
-				selector:
-					app: myrole
-					app.kubernetes.io/component: "myrole"
-		`, actual)
-	})
 }
 
 func TestHeadlessServiceKube(t *testing.T) {
