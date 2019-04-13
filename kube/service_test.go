@@ -167,7 +167,7 @@ func TestServiceHelm(t *testing.T) {
 	t.Run("Ingress", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.services.ingress": "nic",
+			"Values.ingress.enabled": true,
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -431,7 +431,7 @@ func TestHeadlessServiceHelm(t *testing.T) {
 	t.Run("Ingress", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.services.ingress": "nic",
+			"Values.ingress.enabled": true,
 		}
 		actual, err := RoundtripNode(service, config)
 		require.NoError(t, err)
@@ -589,7 +589,7 @@ func TestPublicServiceHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.kube.external_ips":     "[127.0.0.1,127.0.0.2]",
 			"Values.services.loadbalanced": "true",
-			"Values.services.ingress":      "nic",
+			"Values.ingress.enabled":       true,
 		}
 
 		_, err := RoundtripNode(service, config)
@@ -600,7 +600,7 @@ func TestPublicServiceHelm(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.external_ips": "[127.0.0.1,127.0.0.2]",
-			"Values.services.ingress":  "nic",
+			"Values.ingress.enabled":   true,
 		}
 
 		actual, err := RoundtripNode(service, config)
