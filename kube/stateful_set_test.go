@@ -484,24 +484,22 @@ func TestStatefulSetVolumesKube(t *testing.T) {
 			volumeClaimTemplates:
 				-
 					metadata:
-						annotations:
-							volume.beta.kubernetes.io/storage-class: persistent
 						name: persistent-volume
 					spec:
 						accessModes: [ReadWriteOnce]
 						resources:
 							requests:
 								storage: 5G
+						storageClassName:	persistent
 				-
 					metadata:
-						annotations:
-							volume.beta.kubernetes.io/storage-class: shared
 						name: shared-volume
 					spec:
 						accessModes: [ReadWriteMany]
 						resources:
 							requests:
 								storage: 40G
+						storageClassName:	shared
 	`
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
@@ -571,7 +569,6 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 				-
 					metadata:
 						annotations:
-							volume.beta.kubernetes.io/storage-class: a-company-file-gold
 							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
 						name: persistent-volume
 					spec:
@@ -579,10 +576,10 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 						resources:
 							requests:
 								storage: 5G
+						storageClassName:	a-company-file-gold
 				-
 					metadata:
 						annotations:
-							volume.beta.kubernetes.io/storage-class: shared
 							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
 						name: shared-volume
 					spec:
@@ -590,6 +587,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 						resources:
 							requests:
 								storage: 40G
+						storageClassName:	shared
 	`
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
@@ -674,24 +672,22 @@ func TestStatefulSetVolumesHelm(t *testing.T) {
 			volumeClaimTemplates:
 				-
 					metadata:
-						annotations:
-							volume.beta.kubernetes.io/storage-class: persistent
 						name: persistent-volume
 					spec:
 						accessModes: [ReadWriteOnce]
 						resources:
 							requests:
 								storage: 5G
+						storageClassName:	persistent
 				-
 					metadata:
-						annotations:
-							volume.beta.kubernetes.io/storage-class: shared
 						name: shared-volume
 					spec:
 						accessModes: [ReadWriteMany]
 						resources:
 							requests:
 								storage: 40G
+						storageClassName:	shared
 	`
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 
@@ -793,14 +789,13 @@ func TestStatefulSetEmptyDirVolumesKube(t *testing.T) {
 			volumeClaimTemplates:
 				-
 					metadata:
-						annotations:
-							volume.beta.kubernetes.io/storage-class: persistent
 						name: persistent-volume
 					spec:
 						accessModes: [ReadWriteOnce]
 						resources:
 							requests:
 								storage: 5G
+						storageClassName:	persistent
 	`
 	testhelpers.IsYAMLSubsetString(assert, expected, actual)
 }
