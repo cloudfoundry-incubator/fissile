@@ -1,8 +1,6 @@
 package kube
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"code.cloudfoundry.org/fissile/model"
@@ -14,14 +12,9 @@ import (
 func TestMakeValues(t *testing.T) {
 	t.Parallel()
 
-	outDir, err := ioutil.TempDir("", "fissile-generate-auth-")
-	require.NoError(t, err)
-	defer os.RemoveAll(outDir)
-
 	t.Run("Capabilities", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
 				InstanceGroups: model.InstanceGroups{
 					&model.InstanceGroup{
@@ -35,15 +28,11 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
-
-		assert.NotNil(t, node)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
+		require.NotNil(t, node)
 
 		actual, err := RoundtripKube(node)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 		testhelpers.IsYAMLSubsetString(assert.New(t), `---
 			sizing:
 				arole:
@@ -54,7 +43,6 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Sizing", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
 			RoleManifest: &model.RoleManifest{
 				InstanceGroups: model.InstanceGroups{
 					&model.InstanceGroup{
@@ -68,8 +56,7 @@ func TestMakeValues(t *testing.T) {
 			},
 		}
 
-		node, err := MakeValues(settings)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
 		require.NotNil(t, node)
 
 		sizing := node.Get("sizing")
@@ -80,16 +67,14 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
-		node, err := MakeValues(settings)
-
-		assert.NotNil(t, node)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
+		require.NotNil(t, node)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -99,18 +84,16 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Registry", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
 		settings.Registry = "example.com"
 
-		node, err := MakeValues(settings)
-
-		assert.NotNil(t, node)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
+		require.NotNil(t, node)
 
 		registry := node.Get("kube").Get("registry").Get("hostname")
 
@@ -120,16 +103,14 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Default Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
-		node, err := MakeValues(settings)
-
-		assert.NotNil(t, node)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
+		require.NotNil(t, node)
 
 		auth := node.Get("kube").Get("auth")
 
@@ -139,9 +120,9 @@ func TestMakeValues(t *testing.T) {
 	t.Run("Check Custom Auth", func(t *testing.T) {
 		t.Parallel()
 		settings := ExportSettings{
-			OutputDir: outDir,
-			RoleManifest: &model.RoleManifest{InstanceGroups: model.InstanceGroups{},
-				Configuration: &model.Configuration{},
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
 			},
 		}
 
@@ -149,13 +130,42 @@ func TestMakeValues(t *testing.T) {
 
 		settings.AuthType = authString
 
-		node, err := MakeValues(settings)
-
-		assert.NotNil(t, node)
-		assert.NoError(t, err)
+		node := MakeValues(settings)
+		require.NotNil(t, node)
 
 		auth := node.Get("kube").Get("auth")
 
 		assert.Equal(t, auth.String(), authString)
+	})
+
+	t.Run("Ingress", func(t *testing.T) {
+		t.Parallel()
+
+		expected := `---
+
+# ingress.annotations allows specifying custom ingress annotations that gets
+# merged to the default annotations.
+annotations: {}
+
+# ingress.enabled enables ingress support - working ingress controller
+# necessary.
+enabled: false
+
+# ingress.tls.crt and ingress.tls.key, when specified, are used by the TLS
+# secret for the Ingress resource.
+tls: {}
+`
+
+		settings := ExportSettings{
+			RoleManifest: &model.RoleManifest{
+				InstanceGroups: model.InstanceGroups{},
+				Configuration:  &model.Configuration{},
+			},
+		}
+		node := MakeValues(settings)
+		require.NotNil(t, node)
+		actual := node.Get("ingress").String()
+
+		assert.Exactly(t, expected, actual)
 	})
 }
