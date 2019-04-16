@@ -88,22 +88,10 @@ func getVolumeClaims(role *model.InstanceGroup, createHelmChart bool) []helm.Nod
 		meta := helm.NewMapping("name", volume.Tag)
 		if len(volume.Annotations) > 0 {
 			annotationList := helm.NewMapping()
-			haveAnnotations := false
 			for key, value := range volume.Annotations {
-				// Detect and convert a storage-class annotation in the role-manifest to
-				// a regular storage class name. Needed because such an annotation is the
-				// only way for the role manifest to override the type-derived storage
-				// class, yet we must not emit this specific annotation anymore.
-				if key == VolumeStorageClassAnnotation {
-					storageClass = value
-					continue
-				}
 				annotationList.Add(key, value)
-				haveAnnotations = true
 			}
-			if haveAnnotations {
-				meta.Add("annotations", annotationList)
-			}
+			meta.Add("annotations", annotationList)
 		}
 
 		var size string

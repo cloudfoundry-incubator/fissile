@@ -569,6 +569,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 				-
 					metadata:
 						annotations:
+							volume.beta.kubernetes.io/storage-class: a-company-file-gold
 							volume.beta.kubernetes.io/storage-provisioner: a-company.io/storage-provisioner
 						name: persistent-volume
 					spec:
@@ -576,7 +577,7 @@ func TestStatefulSetVolumesWithAnnotationKube(t *testing.T) {
 						resources:
 							requests:
 								storage: 5G
-						storageClassName:	a-company-file-gold
+						storageClassName:	persistent
 				-
 					metadata:
 						annotations:
