@@ -170,14 +170,13 @@ func TestPodGetVolumes(t *testing.T) {
 			expected: `---
 				metadata:
 					name: persistent-volume
-					annotations:
-						volume.beta.kubernetes.io/storage-class: persistent
 				spec:
 					accessModes:
 					-	ReadWriteOnce
 					resources:
 						requests:
-							storage: 5G`,
+							storage: 5G
+					storageClassName:	persistent`,
 		},
 		{
 			desc:  "sharedClaim",
@@ -185,14 +184,13 @@ func TestPodGetVolumes(t *testing.T) {
 			expected: `---
 				metadata:
 					name: shared-volume
-					annotations:
-						volume.beta.kubernetes.io/storage-class: shared
 				spec:
 					accessModes:
 					-	ReadWriteMany
 					resources:
 						requests:
-							storage: 40G`,
+							storage: 40G
+					storageClassName:	shared`,
 		},
 	}
 	for _, sample := range samples {
@@ -245,14 +243,13 @@ func TestPodGetVolumesHelm(t *testing.T) {
 		testhelpers.IsYAMLEqualString(assert, `---
 		metadata:
 			name: "persistent-volume"
-			annotations:
-				volume.beta.kubernetes.io/storage-class: "Persistent"
 		spec:
 			accessModes:
 			-	"ReadWriteOnce"
 			resources:
 				requests:
 					storage: "42G"
+			storageClassName:	"Persistent"
 		`, actual)
 	}
 
@@ -261,14 +258,13 @@ func TestPodGetVolumesHelm(t *testing.T) {
 		testhelpers.IsYAMLEqualString(assert, `---
 		metadata:
 			name: "shared-volume"
-			annotations:
-				volume.beta.kubernetes.io/storage-class: "Shared"
 		spec:
 			accessModes:
 			-	"ReadWriteMany"
 			resources:
 				requests:
 					storage: "84G"
+			storageClassName:	"Shared"
 		`, actual)
 	}
 }
