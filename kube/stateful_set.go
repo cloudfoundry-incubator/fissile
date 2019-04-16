@@ -87,11 +87,7 @@ func getVolumeClaims(role *model.InstanceGroup, createHelmChart bool) []helm.Nod
 
 		meta := helm.NewMapping("name", volume.Tag)
 		if len(volume.Annotations) > 0 {
-			annotationList := helm.NewMapping()
-			for key, value := range volume.Annotations {
-				annotationList.Add(key, value)
-			}
-			meta.Add("annotations", annotationList)
+			meta.Add("annotations", helm.NewNode(volume.Annotations))
 		}
 
 		var size string
