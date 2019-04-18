@@ -690,7 +690,7 @@ func TestResolveLinks(t *testing.T) {
 		for _, expected := range samples {
 			t.Run("", func(t *testing.T) {
 				if expected.Missing {
-					for name, consumeInfo := range job.ResolvedConsumers {
+					for name, consumeInfo := range job.ResolvedConsumes {
 						assert.NotEqual(t, expected.Type, consumeInfo.Type,
 							"link should not resolve, got %s (type %s) in %s / %s",
 							name, consumeInfo.Type, consumeInfo.RoleName, consumeInfo.JobName)
@@ -698,15 +698,15 @@ func TestResolveLinks(t *testing.T) {
 					return
 				}
 				expectedLength++
-				require.Contains(t, job.ResolvedConsumers, expected.Name, "link %s is missing", expected.Name)
-				actual := job.ResolvedConsumers[expected.Name]
+				require.Contains(t, job.ResolvedConsumes, expected.Name, "link %s is missing", expected.Name)
+				actual := job.ResolvedConsumes[expected.Name]
 				assert.Equal(t, expected.Name, actual.Name, "link name mismatch")
 				assert.Equal(t, expected.Type, actual.Type, "link type mismatch")
 				assert.Equal(t, role.Name, actual.RoleName, "link role name mismatch")
 				assert.Equal(t, job.Name, actual.JobName, "link job name mismatch")
 			})
 		}
-		assert.Len(t, job.ResolvedConsumers, expectedLength)
+		assert.Len(t, job.ResolvedConsumes, expectedLength)
 	})
 
 	t.Run("consumed-by", func(t *testing.T) {
@@ -850,7 +850,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 				JobReferences: model.JobReferences{
 					{
 						Job: job1,
-						ExportedProviders: map[string]model.JobProvidesInfo{
+						ExportedProvides: map[string]model.JobProvidesInfo{
 							"job-1-provider-3": model.JobProvidesInfo{
 								Alias: "unique-alias",
 							},
@@ -871,10 +871,10 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 					{
 						Job: job3,
 						// This has an explicitly exported provider
-						ExportedProviders: map[string]model.JobProvidesInfo{
+						ExportedProvides: map[string]model.JobProvidesInfo{
 							"job-3-provider-3": model.JobProvidesInfo{},
 						},
-						ResolvedConsumers: map[string]model.JobConsumesInfo{
+						ResolvedConsumes: map[string]model.JobConsumesInfo{
 							"actual-consumer-name": model.JobConsumesInfo{
 								Alias: "unique-alias",
 							},
@@ -892,8 +892,8 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	for _, r := range roleManifest.InstanceGroups {
 		for _, jobReference := range r.JobReferences {
 			jobReference.Name = jobReference.Job.Name
-			if jobReference.ResolvedConsumers == nil {
-				jobReference.ResolvedConsumers = make(map[string]model.JobConsumesInfo)
+			if jobReference.ResolvedConsumes == nil {
+				jobReference.ResolvedConsumes = make(map[string]model.JobConsumesInfo)
 			}
 			if jobReference.ResolvedConsumedBy == nil {
 				jobReference.ResolvedConsumedBy = make(map[string][]model.JobLinkInfo)
@@ -906,7 +906,7 @@ func TestRoleResolveLinksMultipleProvider(t *testing.T) {
 	require.NotNil(role, "Failed to find role")
 	job := role.LookupJob("job-3")
 	require.NotNil(job, "Failed to find job")
-	consumes := job.ResolvedConsumers
+	consumes := job.ResolvedConsumes
 
 	assert.Len(consumes, 3, "incorrect number of resulting link consumers")
 

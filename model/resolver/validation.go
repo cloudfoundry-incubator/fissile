@@ -45,14 +45,14 @@ func validateInstanceGroup(roleManifest *model.RoleManifest, g *model.InstanceGr
 		}
 		jobReference.Job = job
 
-		if jobReference.ResolvedConsumers == nil {
+		if jobReference.ResolvedConsumes == nil {
 			// No explicitly specified consumers
-			jobReference.ResolvedConsumers = make(map[string]model.JobConsumesInfo)
+			jobReference.ResolvedConsumes = make(map[string]model.JobConsumesInfo)
 		}
 
-		for name, info := range jobReference.ResolvedConsumers {
+		for name, info := range jobReference.ResolvedConsumes {
 			info.Name = name
-			jobReference.ResolvedConsumers[name] = info
+			jobReference.ResolvedConsumes[name] = info
 		}
 
 		if jobReference.ResolvedConsumedBy == nil {
