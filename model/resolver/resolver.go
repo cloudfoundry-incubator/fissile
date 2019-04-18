@@ -262,7 +262,7 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 					})
 				}
 			}
-			for name, provider := range jobReference.ExportedProviders {
+			for name, provider := range jobReference.ExportedProvides {
 				info, ok := jobReference.Job.AvailableProviders[name]
 				if !ok {
 					errors = append(errors, validation.NotFound(
@@ -293,7 +293,7 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 			expectedConsumers := make([]model.JobConsumesInfo, len(jobReference.Job.DesiredConsumers))
 			copy(expectedConsumers, jobReference.Job.DesiredConsumers)
 			// Deal with any explicitly marked consumers in the role manifest
-			for consumerName, consumerInfo := range jobReference.ResolvedConsumers {
+			for consumerName, consumerInfo := range jobReference.ResolvedConsumes {
 				consumerAlias := consumerName
 				if consumerInfo.Alias != "" {
 					consumerAlias = consumerInfo.Alias
@@ -313,7 +313,7 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 						fmt.Sprintf(`consumer %s not found`, consumerAlias)))
 					continue
 				}
-				jobReference.ResolvedConsumers[consumerName] = model.JobConsumesInfo{
+				jobReference.ResolvedConsumes[consumerName] = model.JobConsumesInfo{
 					JobLinkInfo: provider.JobLinkInfo,
 				}
 
@@ -343,13 +343,13 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 					if name == "" {
 						name = provider.Name
 					}
-					info := jobReference.ResolvedConsumers[name]
+					info := jobReference.ResolvedConsumes[name]
 					info.Name = provider.Name
 					info.Type = provider.Type
 					info.RoleName = provider.RoleName
 					info.JobName = provider.JobName
 					info.ServiceName = provider.ServiceName
-					jobReference.ResolvedConsumers[name] = info
+					jobReference.ResolvedConsumes[name] = info
 				} else if !consumerInfo.Optional {
 					errors = append(errors, validation.Required(
 						fmt.Sprintf(`instance_group[%s].job[%s].consumes[%s]`, instanceGroup.Name, jobReference.Name, consumerInfo.Name),
@@ -371,7 +371,7 @@ func (r *Resolver) recordJobConsumers(m *model.RoleManifest) validation.ErrorLis
 
 	for _, consumerInstanceGroup := range m.InstanceGroups {
 		for _, consumerJob := range consumerInstanceGroup.JobReferences {
-			for linkName, consumer := range consumerJob.ResolvedConsumers {
+			for linkName, consumer := range consumerJob.ResolvedConsumes {
 				providerInstanceGroup := m.LookupInstanceGroup(consumer.RoleName)
 				if providerInstanceGroup == nil {
 					// This should not happen: we resolved a link, but can no

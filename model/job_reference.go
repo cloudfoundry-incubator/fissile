@@ -10,8 +10,8 @@ type JobReference struct {
 	*Job                `yaml:"-"`                 // The resolved job
 	Name                string                     `yaml:"name"`    // The name of the job
 	ReleaseName         string                     `yaml:"release"` // The release the job comes from
-	ExportedProviders   map[string]JobProvidesInfo `yaml:"provides"`
-	ResolvedConsumers   map[string]JobConsumesInfo `yaml:"consumes"`    // Instance groups that this job links to & requires
+	ExportedProvides    map[string]JobProvidesInfo `yaml:"provides"`
+	ResolvedConsumes    map[string]JobConsumesInfo `yaml:"consumes"`    // Instance groups that this job links to & requires
 	ResolvedConsumedBy  map[string][]JobLinkInfo   `yaml:"consumed_by"` // Instance groups that consume a link
 	ContainerProperties JobContainerProperties     `yaml:"properties"`
 }
@@ -197,7 +197,7 @@ func (j *JobReference) WriteConfigs(instanceGroup *InstanceGroup, lightOpinionsP
 
 	config.Job.Name = instanceGroup.Name
 
-	for _, consumer := range j.ResolvedConsumers {
+	for _, consumer := range j.ResolvedConsumes {
 		config.Consumes[consumer.Name] = consumer.JobLinkInfo
 	}
 	config.ConsumedBy = j.ResolvedConsumedBy

@@ -44,7 +44,7 @@ func TestWriteConfigs(t *testing.T) {
 			{
 				Job:  job,
 				Name: "silly job",
-				ResolvedConsumers: map[string]JobConsumesInfo{
+				ResolvedConsumes: map[string]JobConsumesInfo{
 					"serious": JobConsumesInfo{
 						JobLinkInfo: JobLinkInfo{
 							Name:     "serious",
