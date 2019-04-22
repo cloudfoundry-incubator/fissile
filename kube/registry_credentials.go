@@ -37,6 +37,9 @@ func MakeRegistryCredentials(settings ExportSettings) (helm.Node, error) {
 		SetAPIVersion("v1").
 		SetKind("Secret").
 		SetName("registry-credentials")
+	if settings.CreateHelmChart {
+		cb.AddModifier(helm.Block(`if ne .Values.kube.registry.username ""`))
+	}
 	secret, err := cb.Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build a new kube config: %v", err)

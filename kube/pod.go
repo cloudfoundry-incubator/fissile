@@ -48,7 +48,9 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 		// This role requires a custom service account
 		spec.Add("serviceAccountName", role.Run.ServiceAccount, authModeRBAC(settings))
 	}
-
+	if settings.CreateHelmChart {
+		spec.Get("imagePullSecrets").Set(helm.Block(`if ne .Values.kube.registry.username ""`))
+	}
 	// BOSH can potentially have an infinite termination grace period; we don't
 	// really trust that, so we'll just go with ten minutes and hope it's enough
 	spec.Add("terminationGracePeriodSeconds", 600)
