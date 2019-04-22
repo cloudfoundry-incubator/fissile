@@ -224,7 +224,12 @@ func getBasicConfig() (map[string]interface{}, error) {
 		switch n := node.(type) {
 		case *helm.Scalar:
 			var v interface{}
-			err := yaml.Unmarshal([]byte(n.String()), &v)
+			buffer := &bytes.Buffer{}
+			err := helm.NewEncoder(buffer).Encode(n)
+			if err != nil {
+				return nil, fmt.Errorf("Error encoding node at %s: %s", strings.Join(path, "."), err)
+			}
+			err = yaml.Unmarshal(buffer.Bytes(), &v)
 			if err != nil {
 				return nil, fmt.Errorf("Error parsing node at %s: %s", strings.Join(path, "."), err)
 			}

@@ -24,8 +24,8 @@ func MakeRegistryCredentials(settings ExportSettings) (helm.Node, error) {
 
 		value = `{{ printf "{%q:{%q:%q,%q:%q,%q:%q}}" ` +
 			`.Values.kube.registry.hostname ` +
-			`"username" (default "" .Values.kube.registry.username) ` +
-			`"password" (default "" .Values.kube.registry.password) ` +
+			`"username" .Values.kube.registry.username ` +
+			`"password" .Values.kube.registry.password ` +
 			`"auth" (printf "%s:%s" .Values.kube.registry.username .Values.kube.registry.password | b64enc) ` +
 			`| b64enc }}`
 	}
