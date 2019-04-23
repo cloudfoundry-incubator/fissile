@@ -23,9 +23,10 @@ update_readiness() {
     local svcacct=/var/run/secrets/kubernetes.io/serviceaccount
     curl --silent \
         --cacert "${svcacct}/ca.crt" \
-        -H "Authorization: bearer $(cat "${svcacct}/token")" \
-        -H 'Content-Type: application/merge-patch+json' \
-        -X 'PATCH' \
+        --header "Authorization: bearer $(cat "${svcacct}/token")" \
+        --header 'Content-Type: application/merge-patch+json' \
+        --output /dev/null \
+        --request 'PATCH' \
         "https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/api/v1/namespaces/$(cat "${svcacct}/namespace")/pods/${HOSTNAME}" \
         --data '{
             "metadata": {
@@ -40,14 +41,17 @@ if test -n "${FISSILE_ACTIVE_PASSIVE_PROBE:-}" ; then
     trap update_readiness EXIT
 fi
 
+if [ ! -r /etc/monitrc ] ; then
+    echo "Waiting for monit to start"
+    exit 1
+fi
+
 # Grab monit port
 monit_port=$(awk '/httpd port/ { print $4 }' /etc/monitrc)
 
 # Check that monit thinks everything is ready
 curl -s -u admin:"${MONIT_PASSWORD}" http://127.0.0.1:"${monit_port}"/_status | gawk '
-    BEGIN                                                     { status = 0 }
-    $1 == "status" && $2 != "running" && $2 != "accessible"   { print ; status = 1 }
-    END                                                       { exit status }
+    $1 == "status" && $2 != "running" && $2 != "accessible"   { print "Waiting for monit to be ready"; exit 1 }
     '
 
 # Check that any additional readiness checks are ready

@@ -97,7 +97,7 @@ func TestRunInContainer(t *testing.T) {
 	exitCode, container, err := dockerManager.RunInContainer(RunInContainerOpts{
 		ContainerName: getTestName(),
 		ImageName:     dockerImageName,
-		Cmd:           []string{"hostname"},
+		Cmd:           []string{"hostname", "--fqdn"},
 		StdoutWriter:  stdoutWriter,
 		StderrWriter:  stderrWriter,
 	})
