@@ -83,7 +83,7 @@ func checkForUndefinedBOSHProperties(label string, properties map[string]string,
 			}
 
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("%s '%s'", label, p), "In any BOSH release"))
+				fmt.Sprintf("%s '%s'", label, p), "In any used BOSH job"))
 		}
 	}
 

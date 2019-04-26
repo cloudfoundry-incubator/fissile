@@ -2,9 +2,9 @@
 # is an error
 ---
 expected_errors:
-- "light opinion 'tor.opinion': Not found: \"In any BOSH release\""
-- "light opinion 'tor.int_opinion': Not found: \"In any BOSH release\""
-- "light opinion 'tor.masked_opinion': Not found: \"In any BOSH release\""
+- "light opinion 'tor.opinion': Not found: \"In any used BOSH job\""
+- "light opinion 'tor.int_opinion': Not found: \"In any used BOSH job\""
+- "light opinion 'tor.masked_opinion': Not found: \"In any used BOSH job\""
 light_opinions:
   properties:
     tor:

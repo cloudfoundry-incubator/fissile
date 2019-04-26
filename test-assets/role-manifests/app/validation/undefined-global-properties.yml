@@ -2,7 +2,8 @@
 # from existing BOSH properties
 ---
 expected_errors:
-- "role-manifest 'fox': Not found: \"In any BOSH release\""
+- "role-manifest 'fox': Not found: \"In any used BOSH job\""
+- "role-manifest 'is.a.hash': Not found: \"In any used BOSH job\""
 instance_groups:
 - name: myrole
   scripts:
@@ -17,6 +18,7 @@ instance_groups:
 configuration:
   templates:
     properties.fox: ((FOO)) Not specified in any release
+    properties.is.a.hash: ((FOO)) Specified in a job not used
     properties.tor.hostname: ((FOO))
 variables:
 - name: FOO

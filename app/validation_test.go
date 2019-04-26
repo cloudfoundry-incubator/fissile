@@ -133,7 +133,7 @@ func TestValidationHash(t *testing.T) {
 	errs := f.Validate()
 
 	allExpected := []string{
-		`role-manifest 'not.a.hash.foo': Not found: "In any BOSH release"`,
+		`role-manifest 'not.a.hash.foo': Not found: "In any used BOSH job"`,
 		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
 	}
 	for _, expected := range allExpected {

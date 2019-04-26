@@ -1,30 +1,27 @@
-# This role manifest checks that dark opinions not defined in any BOSH release
-# is an error
+# This role manifest checks that dark opinions not defined in any BOSH job
+# referenced in the manifest is an error
 ---
 expected_errors:
-- "dark opinion 'tor.dark-opinion': Not found: \"In any BOSH release\""
-- "dark opinion 'tor.masked_opinion': Not found: \"In any BOSH release\""
+- "dark opinion 'is.a.hash': Not found: \"In any used BOSH job\""
+- "dark opinion 'tor.dark-opinion': Not found: \"In any used BOSH job\""
+- "dark opinion 'tor.masked_opinion': Not found: \"In any used BOSH job\""
 # extra errors needed to trigger the ones we're testing for
-- "role-manifest 'tor.dark-opinion': Not found: \"In any BOSH release\""
-- "role-manifest 'tor.masked_opinion': Not found: \"In any BOSH release\""
+- "role-manifest 'is.a.hash': Not found: \"In any used BOSH job\""
+- "role-manifest 'tor.dark-opinion': Not found: \"In any used BOSH job\""
+- "role-manifest 'tor.masked_opinion': Not found: \"In any used BOSH job\""
 dark_opinions:
   properties:
+    is:
+      a:
+        hash: unused
     tor:
       dark-opinion: this is a dark opinion
+      hostname: unused
       masked_opinion: masked
 instance_groups:
 - name: myrole
   scripts:
   - scripts/myrole.sh
-  jobs:
-  - name: new_hostname
-    release: tor
-    properties:
-      bosh_containerization:
-        run:
-          foo: x
-- name: foorole
-  type: bosh-task
   jobs:
   - name: tor
     release: tor
@@ -34,7 +31,9 @@ instance_groups:
           foo: x
 configuration:
   templates:
+    properties.is.a.hash: ((FOO)) # in the hashmat job, unused
     properties.tor.dark-opinion: ((FOO))
+    properties.tor.hostname: ((FOO)) # in the tor job
     properties.tor.masked_opinion: ((FOO))
 variables:
 - name: FOO

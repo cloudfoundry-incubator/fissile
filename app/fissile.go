@@ -317,11 +317,14 @@ type propertyInfo struct {
 	defaults  map[string][]*model.Job
 }
 
+// collectPropertyDefaults looks through all used jobs and returns all
+// properties defined in them, along with their default values and whether a
+// hash may be used for that property.
 func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 	result := make(propertyDefaults)
 
-	for _, release := range f.Manifest.LoadedReleases {
-		for _, job := range release.Jobs {
+	for _, instanceGroup := range f.Manifest.InstanceGroups {
+		for _, job := range instanceGroup.JobReferences {
 			for _, property := range job.Properties {
 				// Extend map for newly seen properties.
 				if _, ok := result[property.Name]; !ok {
@@ -331,7 +334,7 @@ func (f *Fissile) collectPropertyDefaults() propertyDefaults {
 				// Extend the map of defaults to job lists.
 				defaultAsString := fmt.Sprintf("%v", property.Default)
 				result[property.Name].defaults[defaultAsString] =
-					append(result[property.Name].defaults[defaultAsString], job)
+					append(result[property.Name].defaults[defaultAsString], job.Job)
 
 				// Handle the property's hash flag, based on the current default for
 				// it. Note that if the default is <nil> we assume that it can be a
