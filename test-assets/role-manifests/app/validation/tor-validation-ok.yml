@@ -1,5 +1,14 @@
 # This role manifest should pass validation with no issues
 ---
+expected_errors: []
+light_opinions:
+  properties:
+    tor:
+      client_keys: foo
+dark_opinions:
+  properties:
+    tor:
+      private_key: masked
 instance_groups:
 - name: myrole
   scripts:

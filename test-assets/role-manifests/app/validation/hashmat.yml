@@ -1,5 +1,9 @@
-# This role manifest is used to test validation
+# This role manifest is used to test that properties defined as children of
+# hashes pass validation, but properties defined as children of definitely-not-
+# hash-like-things fail validation.
 ---
+expected_errors:
+- "role-manifest 'not.a.hash.foo': Not found: \"In any used BOSH job\""
 instance_groups:
 - name: myrole
   scripts:
@@ -20,4 +24,3 @@ variables:
 - name: FOO
   options:
     description: "foo"
-

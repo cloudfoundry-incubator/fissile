@@ -79,7 +79,7 @@ func TestValidation(t *testing.T) {
 
 				errs := f.Validate()
 				if len(testData.Errors) == 0 {
-					assert.NoError(t, errs)
+					assert.Empty(t, errs)
 					return
 				}
 
@@ -90,56 +90,6 @@ func TestValidation(t *testing.T) {
 		}(roleManifestName[0 : len(roleManifestName)-len(".yml")])
 	}
 
-}
-
-func TestValidationOk(t *testing.T) {
-	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	f := NewFissileApplication(".", ui)
-	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-ok.yml")
-	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
-	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/test-opinions/good-opinions.yml")
-	f.Options.DarkOpinions = filepath.Join(workDir, "../test-assets/test-opinions/good-dark-opinions.yml")
-	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
-
-	err = f.LoadManifest()
-	assert.NoError(t, err)
-	require.NotNil(t, f.Manifest, "error loading role manifest")
-
-	errs := f.Validate()
-	assert.Empty(t, errs)
-}
-
-func TestValidationHash(t *testing.T) {
-	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	f := NewFissileApplication(".", ui)
-	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/hashmat.yml")
-	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
-	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
-
-	err = f.LoadManifest()
-	assert.NoError(t, err)
-	require.NotNil(t, f.Manifest, "error loading role manifest")
-
-	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/misc/empty.yml")
-	f.Options.DarkOpinions = f.Options.LightOpinions
-	errs := f.Validate()
-
-	allExpected := []string{
-		`role-manifest 'not.a.hash.foo': Not found: "In any used BOSH job"`,
-		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
-	}
-	for _, expected := range allExpected {
-		assert.Contains(t, errs.ErrorStrings(), expected)
-	}
-	assert.Len(t, errs, len(allExpected))
 }
 
 func TestMandatoryDescriptions(t *testing.T) {
