@@ -27,6 +27,10 @@ func (f *Fissile) Validate() validation.ErrorList {
 	lightOpinions := model.FlattenOpinions(opinions.Light, false)
 	manifestProperties := collectManifestProperties(f.Manifest)
 
+	allErrs = append(allErrs, checkForSortedProperties(
+		"configuration.templates",
+		f.Manifest.Configuration.Templates)...)
+
 	// All properties must be defined in a BOSH release
 	allErrs = append(allErrs, checkForUndefinedBOSHProperties("role-manifest",
 		manifestProperties, boshPropertyDefaultsAndJobs)...)

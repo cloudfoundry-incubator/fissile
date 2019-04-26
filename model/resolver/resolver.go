@@ -215,7 +215,6 @@ func (r *Resolver) ResolveRoleManifest() error {
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(m)...)
 		allErrs = append(allErrs, validateColocatedContainerVolumeShares(m)...)
 		allErrs = append(allErrs, validateVariableDescriptions(m)...)
-		allErrs = append(allErrs, validateSortedTemplates(m)...)
 		if !r.releaseResolver.CanValidate() {
 			allErrs = append(allErrs, validateScripts(m, r.options.ValidationOptions)...)
 		}

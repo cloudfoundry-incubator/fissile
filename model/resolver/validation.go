@@ -608,26 +608,6 @@ func validateVariableDescriptions(roleManifest *model.RoleManifest) validation.E
 	return allErrs
 }
 
-// validateSortedTemplates tests that all templates are sorted in alphabetical order
-func validateSortedTemplates(roleManifest *model.RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	previousKey := ""
-
-	for _, templateDef := range roleManifest.Configuration.Templates {
-		key := templateDef.Key.(string)
-
-		if previousKey != "" && previousKey > key {
-			allErrs = append(allErrs, validation.Forbidden(previousKey,
-				fmt.Sprintf("Template key does not sort before '%s'", key)))
-		}
-
-		previousKey = key
-	}
-
-	return allErrs
-}
-
 // validateScripts tests that all referenced scripts exist, and that all scripts
 // are referenced.
 func validateScripts(roleManifest *model.RoleManifest, validationOptions model.RoleManifestValidationOptions) validation.ErrorList {

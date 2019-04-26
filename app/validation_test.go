@@ -108,22 +108,6 @@ func TestMandatoryDescriptions(t *testing.T) {
 	assert.Contains(t, err.Error(), `PELERINUL: Required value: Description is required`)
 }
 
-func TestTemplateSorting(t *testing.T) {
-	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
-
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	f := NewFissileApplication(".", ui)
-	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-unsorted-templates.yml")
-	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
-	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
-
-	err = f.LoadManifest()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), `properties.tor.hostname: Forbidden: Template key does not sort before 'properties.tor.hashed_control_password'`)
-}
-
 func TestInvalidTemplateKeys(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 
