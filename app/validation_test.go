@@ -2,64 +2,96 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/SUSE/termui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestValidation(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 
 	workDir, err := os.Getwd()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	f := NewFissileApplication(".", ui)
-	f.Options.RoleManifest = filepath.Join(workDir, "../test-assets/role-manifests/app/tor-validation-issues.yml")
-	f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
-	f.Options.LightOpinions = filepath.Join(workDir, "../test-assets/test-opinions/opinions.yml")
-	f.Options.DarkOpinions = filepath.Join(workDir, "../test-assets/test-opinions/dark-opinions.yml")
-	f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+	roleManifestDir, err := os.Open(filepath.Join(workDir, "../test-assets/role-manifests/app/validation/"))
+	assert.NoError(t, err, "failed to open role manifest assets directory")
+	require.NotNil(t, roleManifestDir)
 
-	err = f.LoadManifest()
-	assert.NoError(t, err)
-	require.NotNil(t, f.Manifest, "error loading role manifest")
+	roleManifestNames, err := roleManifestDir.Readdirnames(0)
+	assert.NoError(t, err, "failed to list role manifest assets")
+	for _, roleManifestName := range roleManifestNames {
+		if filepath.Ext(roleManifestName) != ".yml" {
+			continue
+		}
+		func(testName string) {
+			t.Run(testName, func(t *testing.T) {
+				t.Parallel()
 
-	errs := f.Validate()
-	actual := errs.ErrorStrings()
-	allExpected := []string{
-		// checkForUndefinedBOSHProperties light
-		`light opinion 'tor.opinion': Not found: "In any BOSH release"`,
-		`light opinion 'tor.int_opinion': Not found: "In any BOSH release"`,
-		`light opinion 'tor.masked_opinion': Not found: "In any BOSH release"`,
-		// checkForUndefinedBOSHProperties dark
-		`dark opinion 'tor.dark-opinion': Not found: "In any BOSH release"`,
-		`dark opinion 'tor.masked_opinion': Not found: "In any BOSH release"`,
-		// checkForUndefinedBOSHProperties manifest
-		`role-manifest 'fox': Not found: "In any BOSH release"`,
-		// checkForUntemplatedDarkOpinions
-		`properties.tor.dark-opinion: Not found: "Dark opinion is missing template in role-manifest"`,
-		`properties.tor.masked_opinion: Not found: "Dark opinion is missing template in role-manifest"`,
-		// checkForDarkInTheLight
-		`properties.tor.masked_opinion: Forbidden: Dark opinion found in light opinions`,
-		// checkForDuplicatesBetweenManifestAndLight
-		`configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion`,
-		`instance-groups[myrole].configuration.templates[properties.tor.bogus]: Forbidden: Role-manifest duplicates opinion, remove from manifest`,
-		// checkForUndefinedBOSHProperties light, manifest - For the bogus property used above for checkOverridden
-		`role-manifest 'tor.bogus': Not found: "In any BOSH release"`,
-		`light opinion 'tor.bogus': Not found: "In any BOSH release"`,
-		`properties.tor.hostname: Forbidden: Light opinion matches default of 'localhost'`,
+				roleManifestPath := filepath.Join(roleManifestDir.Name(), testName+".yml")
+				roleManifestContents, err := ioutil.ReadFile(roleManifestPath)
+				assert.NoError(t, err, "failed to read role manifest")
 
-		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
+				var testData struct {
+					Errors        []string               `yaml:"expected_errors"`
+					LightOpinions map[string]interface{} `yaml:"light_opinions"`
+					DarkOpinions  map[string]interface{} `yaml:"dark_opinions"`
+				}
+				err = yaml.Unmarshal(roleManifestContents, &testData)
+				assert.NoError(t, err, "error reading test data")
+				sort.Strings(testData.Errors)
+
+				lightOpinions, err := ioutil.TempFile("", fmt.Sprintf("fissile-%s-*.yml", testName))
+				assert.NoError(t, err, "failed to create temporary light opinions")
+				require.NotNil(t, lightOpinions, "nil temporary light opinions")
+				defer os.Remove(lightOpinions.Name())
+				lightOpinionsEncoder := yaml.NewEncoder(lightOpinions)
+				assert.NoError(t, lightOpinionsEncoder.Encode(testData.LightOpinions), "error encoding light opinions")
+				assert.NoError(t, lightOpinionsEncoder.Close(), "error flushing light opinions")
+				assert.NoError(t, lightOpinions.Close(), "error closing light opinions")
+
+				darkOpinions, err := ioutil.TempFile("", fmt.Sprintf("fissile-%s-*.yml", testName))
+				assert.NoError(t, err, "failed to create temporary dark opinions")
+				require.NotNil(t, darkOpinions, "nil temporary dark opinions")
+				defer os.Remove(darkOpinions.Name())
+				darkOpinionsEncoder := yaml.NewEncoder(darkOpinions)
+				assert.NoError(t, darkOpinionsEncoder.Encode(testData.DarkOpinions), "error encoding dark opinions")
+				assert.NoError(t, darkOpinionsEncoder.Close(), "error flushing dark opinions")
+				assert.NoError(t, darkOpinions.Close(), "error closing dark opinions")
+
+				f := NewFissileApplication(".", ui)
+				f.Options.RoleManifest = roleManifestPath
+				f.Options.Releases = append(f.Options.Releases, filepath.Join(workDir, "../test-assets/tor-boshrelease"))
+				f.Options.LightOpinions = lightOpinions.Name()
+				f.Options.DarkOpinions = darkOpinions.Name()
+				f.Options.CacheDir = filepath.Join(workDir, "../test-assets/bosh-cache")
+
+				err = f.LoadManifest()
+				assert.NoError(t, err)
+				require.NotNil(t, f.Manifest, "error loading role manifest")
+
+				errs := f.Validate()
+				if len(testData.Errors) == 0 {
+					assert.NoError(t, errs)
+					return
+				}
+
+				actualErrors := errs.ErrorStrings()
+				for _, expected := range testData.Errors {
+					assert.Contains(t, actualErrors, expected)
+				}
+				assert.Len(t, actualErrors, len(testData.Errors))
+			})
+		}(roleManifestName[0 : len(roleManifestName)-len(".yml")])
 	}
-	for _, expected := range allExpected {
-		assert.Contains(t, actual, expected)
-	}
-	assert.Len(t, errs, len(allExpected))
+
 }
 
 func TestValidationOk(t *testing.T) {
