@@ -26,8 +26,9 @@ func TestValidatePortOutOfRange(t *testing.T) {
 		errs := ValidatePort(port, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, 1)
-		assert.Contains(errs.Errors(), `must be between 1 and 65535, inclusive`)
-		assert.Contains(errs.Errors(), fmt.Sprintf("field: Invalid value: %s:", port))
+		assert.Contains(
+			errs.ErrorStrings(),
+			fmt.Sprintf("field: Invalid value: %s: must be between 1 and 65535, inclusive", port))
 	}
 }
 
@@ -41,7 +42,7 @@ func TestValidatePortBadSyntax(t *testing.T) {
 		errs := ValidatePort(port, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, 1)
-		assert.Contains(errs.Errors(), `invalid syntax`)
+		assert.Contains(errs.Error(), `invalid syntax`)
 	}
 }
 
@@ -67,10 +68,9 @@ func TestValidateProtocolOutOfRange(t *testing.T) {
 		errs := ValidateProtocol(proto, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, 1)
-		assert.Equal(
+		assert.EqualError(errs,
 			fmt.Sprintf(`field: Unsupported value: "%s": supported values: TCP, UDP`,
-				proto),
-			errs.Errors())
+				proto))
 	}
 }
 
@@ -107,9 +107,9 @@ func TestValidatePortRangeOutOfRange(t *testing.T) {
 		_, _, errs := ValidatePortRange(acase.therange, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, len(acase.badvalue))
-		assert.Contains(errs.Errors(), `must be between 1 and 65535, inclusive`)
+		assert.Contains(errs.Error(), `must be between 1 and 65535, inclusive`)
 		for _, bad := range acase.badvalue {
-			assert.Contains(errs.Errors(), fmt.Sprintf("field: Invalid value: %s:", bad))
+			assert.Contains(errs.Error(), fmt.Sprintf("field: Invalid value: %s:", bad))
 		}
 	}
 }
@@ -124,6 +124,6 @@ func TestValidatePortRangeBadSyntax(t *testing.T) {
 		_, _, errs := ValidatePortRange(arange, "field")
 		assert.NotNil(errs)
 		assert.Len(errs, 1)
-		assert.Contains(errs.Errors(), `invalid syntax`)
+		assert.Contains(errs.Error(), `invalid syntax`)
 	}
 }

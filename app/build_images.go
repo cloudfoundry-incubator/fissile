@@ -37,7 +37,7 @@ func (f *Fissile) BuildImages(opt BuildImagesOptions) error {
 		return fmt.Errorf("Releases not loaded")
 	}
 	if errs := f.Validate(); len(errs) != 0 {
-		return fmt.Errorf(errs.Errors())
+		return errs
 	}
 
 	if opt.OutputDirectory != "" {

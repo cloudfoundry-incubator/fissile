@@ -91,7 +91,7 @@ func (r *Resolver) ResolveRoleManifest() error {
 	// If template keys are not strings, we need to stop early to avoid panics
 	allErrs = append(allErrs, validateTemplateKeysAndValues(m)...)
 	if len(allErrs) != 0 {
-		return fmt.Errorf(allErrs.Errors())
+		return allErrs
 	}
 
 	err := r.releaseResolver.MapReleases(m.LoadedReleases)
@@ -178,7 +178,7 @@ func (r *Resolver) ResolveRoleManifest() error {
 	}
 
 	if len(allErrs) != 0 {
-		return fmt.Errorf(allErrs.Errors())
+		return allErrs
 	}
 
 	for _, instanceGroup := range m.InstanceGroups {
@@ -223,7 +223,7 @@ func (r *Resolver) ResolveRoleManifest() error {
 	}
 
 	if len(allErrs) != 0 {
-		return fmt.Errorf(allErrs.Errors())
+		return allErrs
 	}
 
 	return nil

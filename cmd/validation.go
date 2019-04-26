@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +19,7 @@ Displays a report of all validation checks.
 
 		errs := fissile.Validate()
 		if len(errs) > 0 {
-			return fmt.Errorf(errs.Errors())
+			return errs
 		}
 		return nil
 	},

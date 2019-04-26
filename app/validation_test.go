@@ -30,7 +30,7 @@ func TestValidation(t *testing.T) {
 	require.NotNil(t, f.Manifest, "error loading role manifest")
 
 	errs := f.Validate()
-	actual := errs.Errors()
+	actual := errs.ErrorStrings()
 	allExpected := []string{
 		// checkForUndefinedBOSHProperties light
 		`light opinion 'tor.opinion': Not found: "In any BOSH release"`,
@@ -102,13 +102,12 @@ func TestValidationHash(t *testing.T) {
 	f.Options.DarkOpinions = f.Options.LightOpinions
 	errs := f.Validate()
 
-	actual := errs.Errors()
 	allExpected := []string{
 		`role-manifest 'not.a.hash.foo': Not found: "In any BOSH release"`,
 		// `XXX`, // Trigger a fail which shows the contents of `actual`. Also template for new assertions.
 	}
 	for _, expected := range allExpected {
-		assert.Contains(t, actual, expected)
+		assert.Contains(t, errs.ErrorStrings(), expected)
 	}
 	assert.Len(t, errs, len(allExpected))
 }

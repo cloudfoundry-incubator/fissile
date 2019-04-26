@@ -178,13 +178,18 @@ func InternalError(field string, err error) *Error {
 // we can keep it simple and leave ErrorList here.
 type ErrorList []*Error
 
-// Errors implements the error interface.
-func (v *ErrorList) Errors() string {
-	var values []string
+// Error implements the error interface.
+func (v ErrorList) Error() string {
+	return strings.Join(v.ErrorStrings(), "\n")
+}
 
-	for _, item := range *v {
+// ErrorStrings returns the underlying errors as a string slice, for testing
+func (v ErrorList) ErrorStrings() []string {
+	values := make([]string, 0, len(v))
+
+	for _, item := range v {
 		values = append(values, item.Error())
 	}
 
-	return strings.Join(values, "\n")
+	return values
 }
