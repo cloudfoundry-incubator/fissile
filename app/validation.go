@@ -6,6 +6,8 @@ import (
 
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/validation"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Validate applies a series of checks to the role
@@ -52,6 +54,33 @@ func (f *Fissile) Validate() validation.ErrorList {
 	// BOSH releases
 	allErrs = append(allErrs, f.checkLightDefaults(lightOpinions,
 		boshPropertyDefaultsAndJobs)...)
+
+	for _, instanceGroup := range f.Manifest.InstanceGroups {
+		allErrs = append(allErrs, checkForSortedProperties(
+			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
+			instanceGroup.Configuration.Templates)...)
+	}
+
+	return allErrs
+}
+
+// checkForSortedProperties checks that the given ordered YAML map slice have
+// all of its keys in order.
+func checkForSortedProperties(label string, propertyOrder yaml.MapSlice) validation.ErrorList {
+	var previous string
+	allErrs := validation.ErrorList{}
+
+	for index, property := range propertyOrder {
+		key := property.Key.(string)
+		if index > 0 {
+			if key < previous {
+				allErrs = append(allErrs, validation.Forbidden(
+					fmt.Sprintf("%s[%s]", label, previous),
+					fmt.Sprintf("Template key does not sort before '%s'", key)))
+			}
+		}
+		previous = key
+	}
 
 	return allErrs
 }
