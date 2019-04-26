@@ -84,10 +84,8 @@ func TestValidation(t *testing.T) {
 				}
 
 				actualErrors := errs.ErrorStrings()
-				for _, expected := range testData.Errors {
-					assert.Contains(t, actualErrors, expected)
-				}
-				assert.Len(t, actualErrors, len(testData.Errors))
+				sort.Strings(actualErrors)
+				assert.Equal(t, testData.Errors, actualErrors, "unexpected validation errors")
 			})
 		}(roleManifestName[0 : len(roleManifestName)-len(".yml")])
 	}

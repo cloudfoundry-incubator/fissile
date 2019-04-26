@@ -1,0 +1,27 @@
+# This role manifest is used to check that duplicate properties between the role
+# manifest and light opinions causes an error
+---
+expected_errors:
+- "configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion"
+light_opinions:
+  properties:
+    tor:
+      hostname: this is an error
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.tor.hostname: ((FOO))
+variables:
+- name: FOO
+  options:
+    description: foo

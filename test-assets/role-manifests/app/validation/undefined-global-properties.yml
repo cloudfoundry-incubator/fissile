@@ -1,0 +1,24 @@
+# This role manifest is used to check that global property overrides must come
+# from existing BOSH properties
+---
+expected_errors:
+- "role-manifest 'fox': Not found: \"In any BOSH release\""
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.fox: ((FOO)) Not specified in any release
+    properties.tor.hostname: ((FOO))
+variables:
+- name: FOO
+  options:
+    description: foo

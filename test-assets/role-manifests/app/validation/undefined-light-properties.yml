@@ -1,0 +1,26 @@
+# This role manifest checks that light opinions not defined in any BOSH release
+# is an error
+---
+expected_errors:
+- "light opinion 'tor.opinion': Not found: \"In any BOSH release\""
+- "light opinion 'tor.int_opinion': Not found: \"In any BOSH release\""
+- "light opinion 'tor.masked_opinion': Not found: \"In any BOSH release\""
+light_opinions:
+  properties:
+    tor:
+      opinion: this is an opinion
+      int_opinion: 31
+      masked_opinion: 'some value'
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+  - name: tor
+    release: tor

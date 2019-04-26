@@ -1,0 +1,19 @@
+# This role manifest is used to check that various validation issues are found
+---
+expected_errors:
+- "properties.tor.hostname: Forbidden: Light opinion matches default of 'localhost'"
+light_opinions:
+  properties:
+    tor:
+      hostname: localhost
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x

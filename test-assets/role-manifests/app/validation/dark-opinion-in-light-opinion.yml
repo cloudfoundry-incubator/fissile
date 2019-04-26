@@ -1,0 +1,35 @@
+# This role manifest is used to check that all dark opinions are not also listed
+# in the light opinions
+---
+expected_errors:
+- "properties.tor.hostname: Forbidden: Dark opinion found in light opinions"
+# This error has to occur for the tested error to occur...
+- "configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion"
+light_opinions:
+  properties:
+    tor:
+      hostname: moo
+dark_opinions:
+  properties:
+    tor:
+      hostname: hello
+      private_key: world
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+configuration:
+  templates:
+    properties.tor.hostname: ((FOO))
+    properties.tor.private_key: ((FOO))
+variables:
+- name: FOO
+  options:
+    description: foo
