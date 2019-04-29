@@ -25,27 +25,36 @@ func (f *Fissile) Validate() validation.ErrorList {
 	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
 	darkOpinions := model.FlattenOpinions(opinions.Dark, false)
 	lightOpinions := model.FlattenOpinions(opinions.Light, false)
-	manifestProperties := collectManifestProperties(f.Manifest)
 
 	allErrs = append(allErrs, checkForSortedProperties(
 		"configuration.templates",
-		f.Manifest.Configuration.Templates)...)
+		f.Manifest.Configuration.RawTemplates)...)
 
-	// All properties must be defined in a BOSH release
-	allErrs = append(allErrs, checkForUndefinedBOSHProperties("role-manifest",
-		manifestProperties, boshPropertyDefaultsAndJobs)...)
+	allErrs = append(allErrs, checkForUndefinedProperties(
+		"configuration.templates",
+		true,
+		f.Manifest.Configuration.Templates,
+		boshPropertyDefaultsAndJobs)...)
 
 	// All light opinions must exists in a bosh release
-	allErrs = append(allErrs, checkForUndefinedBOSHProperties("light opinion",
-		lightOpinions, boshPropertyDefaultsAndJobs)...)
+	usedLightProperties := map[string]model.ConfigurationTemplate{}
+	for lightProperty := range lightOpinions {
+		usedLightProperties[lightProperty] = model.ConfigurationTemplate{
+			IsGlobal: true,
+		}
+	}
+	allErrs = append(allErrs, checkForUndefinedProperties(
+		"light opinion",
+		true,
+		usedLightProperties, boshPropertyDefaultsAndJobs)...)
 
 	// All dark opinions must exists in a bosh release
-	allErrs = append(allErrs, checkForUndefinedBOSHProperties("dark opinion",
-		darkOpinions, boshPropertyDefaultsAndJobs)...)
+	// This test is not necessary, as all dark opinions must be overridden by
+	// some template, and all templates must come from a used job
 
 	// All dark opinions must be configured as templates
 	allErrs = append(allErrs, checkForUntemplatedDarkOpinions(darkOpinions,
-		manifestProperties)...)
+		f.Manifest.Configuration.Templates)...)
 
 	// No dark opinions must have defaults in light opinions
 	allErrs = append(allErrs, checkForDarkInTheLight(darkOpinions, lightOpinions)...)
@@ -54,15 +63,66 @@ func (f *Fissile) Validate() validation.ErrorList {
 	// opinions
 	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, f.Manifest)...)
 
-	// All light opinions should differ from their defaults in the
-	// BOSH releases
-	allErrs = append(allErrs, f.checkLightDefaults(lightOpinions,
-		boshPropertyDefaultsAndJobs)...)
+	variableUsage := map[string]int{}
+	for _, k := range f.Manifest.Variables {
+		variableUsage[k.Name] = 0
+		if k.CVOptions.Internal {
+			// We always count internal variables as used
+			variableUsage[k.Name]++
+		}
+	}
 
+	allPropertyDefaults := model.PropertyDefaults{}
 	for _, instanceGroup := range f.Manifest.InstanceGroups {
+		// Collect the names of properties used in this instance group
+		propertyDefaults := instanceGroup.CollectPropertyDefaults()
+		allErrs = append(allErrs, checkForUndefinedProperties(
+			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
+			false,
+			instanceGroup.Configuration.Templates,
+			propertyDefaults)...)
+		allErrs = append(allErrs, checkForUndefinedVariables(
+			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
+			instanceGroup.Configuration.Templates,
+			variableUsage,
+			false)...)
+
+		// Collect all property defaults across all instance groups for a global
+		// check later.
+		for propertyName, defaults := range propertyDefaults {
+			if _, ok := allPropertyDefaults[propertyName]; !ok {
+				allPropertyDefaults[propertyName] = model.NewPropertyInfo()
+			}
+			for v := range defaults.Defaults {
+				allPropertyDefaults[propertyName].Defaults[v] = append(allPropertyDefaults[propertyName].Defaults[v], defaults.Defaults[v]...)
+			}
+			if defaults.MaybeHash {
+				allPropertyDefaults[propertyName].MaybeHash = true
+			}
+		}
+
 		allErrs = append(allErrs, checkForSortedProperties(
 			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
-			instanceGroup.Configuration.Templates)...)
+			instanceGroup.Configuration.RawTemplates)...)
+	}
+
+	// All light opinions should differ from their defaults in the
+	// BOSH releases
+	allErrs = append(allErrs, checkLightDefaults(lightOpinions,
+		allPropertyDefaults)...)
+
+	allErrs = append(allErrs, checkNonConstantTemplates(f.Manifest.Configuration.RawTemplates)...)
+	allErrs = append(allErrs, checkForUndefinedVariables(
+		"configuration.templates",
+		f.Manifest.Configuration.Templates,
+		variableUsage,
+		true)...)
+	for variableName, variableUsageCount := range variableUsage {
+		if variableUsageCount == 0 {
+			allErrs = append(allErrs, validation.NotFound(
+				"variables",
+				fmt.Sprintf("No templates using '%s'", variableName)))
+		}
 	}
 
 	return allErrs
@@ -89,20 +149,23 @@ func checkForSortedProperties(label string, propertyOrder yaml.MapSlice) validat
 	return allErrs
 }
 
-// Check that the given 'properties' are all defined in a 'bosh'
-// release.
-func checkForUndefinedBOSHProperties(label string, properties map[string]string, bosh propertyDefaults) validation.ErrorList {
-	// All provided properties must be defined in a BOSH release
+// checkForUndefinedProperties checks that all properties are known
+func checkForUndefinedProperties(label string, global bool, templates map[string]model.ConfigurationTemplate, knownProperties model.PropertyDefaults) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	for property := range properties {
-		// Ignore specials (without the "properties." prefix)
-		if !strings.HasPrefix(property, "properties.") {
+	for propertyName, templateDef := range templates {
+		// Ignore global templates when checking instance-group specific ones,
+		// and vice versa.
+		if templateDef.IsGlobal != global {
 			continue
 		}
-		p := strings.TrimPrefix(property, "properties.")
+		// Ignore specials (without the "properties." prefix)
+		if !strings.HasPrefix(propertyName, "properties.") {
+			continue
+		}
 
-		if _, ok := bosh[p]; !ok {
+		p := strings.TrimPrefix(propertyName, "properties.")
+		if _, ok := knownProperties[p]; !ok {
 			// The property as is was not found. This is
 			// not necessarily an error. The "property"
 			// may actually part of the value for a
@@ -111,12 +174,13 @@ func checkForUndefinedBOSHProperties(label string, properties map[string]string,
 			// any of them exist, and report an error only
 			// if none of them do.
 
-			if checkParentsOfUndefined(p, bosh) {
+			if checkParentsOfUndefined(p, knownProperties) {
 				continue
 			}
 
 			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("%s '%s'", label, p), "In any used BOSH job"))
+				fmt.Sprintf("%s[%s]", label, propertyName),
+				"In any used BOSH job"))
 		}
 	}
 
@@ -126,22 +190,21 @@ func checkForUndefinedBOSHProperties(label string, properties map[string]string,
 // checkParentsOfUndefined walks the chain of parents for `p` from the
 // bottom up and checks if any of them exist. The elements of the
 // chain are separated by dots.
-func checkParentsOfUndefined(p string, bosh propertyDefaults) bool {
+func checkParentsOfUndefined(p string, defaults model.PropertyDefaults) bool {
 	at := strings.LastIndex(p, ".")
 
 	for at >= 0 {
 		// While there is a dot in the property name we have a
 		// parent to check the existence of
 
-		tail := p[at:]
-		parent := strings.TrimSuffix(p, tail)
+		parent := p[0:at]
 
-		if pInfo, ok := bosh[parent]; ok {
+		if pInfo, ok := defaults[parent]; ok {
 			// We have a possible parent. Look if that
 			// candidate may be a hash. If not our
 			// property cannot be valid.
 
-			if pInfo.maybeHash {
+			if pInfo.MaybeHash {
 				return true
 			}
 
@@ -155,39 +218,43 @@ func checkParentsOfUndefined(p string, bosh propertyDefaults) bool {
 	return false
 }
 
-// collectManifestProperties returns a map merging the global and
-// per-instance-group properties/templates into a single structure.
-func collectManifestProperties(roleManifest *model.RoleManifest) map[string]string {
-	properties := make(map[string]string)
+// checkForUndefinedVariables checks that all configuration templates are
+// defined in the variables section
+func checkForUndefinedVariables(label string, templates map[string]model.ConfigurationTemplate, variableUsage map[string]int, isGlobal bool) validation.ErrorList {
+	allErrs := validation.ErrorList{}
 
-	// Per-instance-group properties
-	for _, instanceGroup := range roleManifest.InstanceGroups {
-		for _, propertyDef := range instanceGroup.Configuration.Templates {
-			property := propertyDef.Key.(string)
-			template := propertyDef.Value
-
-			properties[property] = fmt.Sprintf("%v", template)
+	for propertyName, template := range templates {
+		if template.IsGlobal != isGlobal {
+			continue
+		}
+		varsInTemplate, err := model.ParseTemplate(template.Value)
+		if err != nil {
+			// Ignore bad template, cannot have sensible
+			// variable references
+			continue
+		}
+		for _, variable := range varsInTemplate {
+			if _, ok := variableUsage[variable]; !ok {
+				allErrs = append(allErrs, validation.NotFound(
+					fmt.Sprintf("%s[%s]", label, propertyName),
+					fmt.Sprintf("No declaration of variable '%s'", variable)))
+			}
+			// Unconditionally increment the usage counter; for variables that
+			// are undeclared, this means we won't emit the same warning twice.
+			variableUsage[variable]++
 		}
 	}
 
-	// And the global properties
-	for _, propertyDef := range roleManifest.Configuration.Templates {
-		property := propertyDef.Key.(string)
-		template := propertyDef.Value.(string)
-
-		properties[property] = template
-	}
-
-	return properties
+	return allErrs
 }
 
 // checkForUntemplatedDarkOpinions reports all dark opinions which are
 // not configured as templates in the manifest.
-func checkForUntemplatedDarkOpinions(dark map[string]string, properties map[string]string) validation.ErrorList {
+func checkForUntemplatedDarkOpinions(dark map[string]string, templates map[string]model.ConfigurationTemplate) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
 	for property := range dark {
-		if _, ok := properties[property]; ok {
+		if _, ok := templates[property]; ok {
 			continue
 		}
 		allErrs = append(allErrs, validation.NotFound(
@@ -221,30 +288,22 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 
 	check := make(map[string]struct{})
 
-	// The global properties, ...
-	for _, propertyDef := range roleManifest.Configuration.Templates {
-		property := propertyDef.Key.(string)
-		template := propertyDef.Value.(string)
-
-		allErrs = append(allErrs, checkForDuplicateProperty("configuration.templates", property, template, light, true)...)
-		check[property] = struct{}{}
-	}
-
-	// ... then the per-instance-group properties
 	for _, instanceGroup := range roleManifest.InstanceGroups {
 		prefix := fmt.Sprintf("instance-groups[%s].configuration.templates", instanceGroup.Name)
 
-		for _, propertyDef := range instanceGroup.Configuration.Templates {
-			property := propertyDef.Key.(string)
-			template := propertyDef.Value
-
-			// Skip over duplicates of the global
-			// properties in the per-instance-group data, we already
-			// checked them, see above.
-			if _, ok := check[property]; ok {
-				continue
+		for property, template := range instanceGroup.Configuration.Templates {
+			if template.IsGlobal {
+				if _, ok := check[property]; ok {
+					// Skip over duplicates of the global properties in the
+					// per-instance-group data, we already checked them in a
+					// different role
+					continue
+				}
+				check[property] = struct{}{}
+				allErrs = append(allErrs, checkForDuplicateProperty("configuration.templates", property, template.Value, light, true)...)
+			} else {
+				allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, template.Value, light, false)...)
 			}
-			allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, fmt.Sprintf("%v", template), light, false)...)
 		}
 	}
 
@@ -256,12 +315,12 @@ func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleMani
 func checkForDuplicateProperty(prefix, property, value string, light map[string]string, conflicts bool) validation.ErrorList {
 	allErrs := validation.ErrorList{}
 
-	lightvalue, ok := light[property]
+	lightValue, ok := light[property]
 	if !ok {
 		return allErrs
 	}
 
-	if lightvalue == value {
+	if lightValue == value {
 		return append(allErrs, validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
 			"Role-manifest duplicates opinion, remove from manifest"))
 	}
@@ -276,7 +335,7 @@ func checkForDuplicateProperty(prefix, property, value string, light map[string]
 
 // checkLightDefaults reports all light opinions whose value is
 // identical to their default in the BOSH releases
-func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefaults) validation.ErrorList {
+func checkLightDefaults(light map[string]string, pd model.PropertyDefaults) validation.ErrorList {
 
 	// light :: (property.name -> value-of-opinion)
 	// pd    :: (property.name -> (default.string -> [*job...])
@@ -295,21 +354,43 @@ func (f *Fissile) checkLightDefaults(light map[string]string, pd propertyDefault
 			continue
 		}
 
-		// Ignore properties with ambigous defaults.
-		if len(pInfo.defaults) > 1 {
+		// Ignore properties with ambiguous defaults.
+		if len(pInfo.Defaults) > 1 {
 			continue
 		}
 
-		// len(pInfo.defaults) == 1 --> This loop will run only once
-		// Is there a better (more direct?) way to get the
-		// single key, i.e. default from the map ?
-		for thedefault := range pInfo.defaults {
-			if opinion != thedefault {
-				continue
-			}
+		if _, ok := pInfo.Defaults[opinion]; ok {
 			allErrs = append(allErrs, validation.Forbidden(property,
 				fmt.Sprintf("Light opinion matches default of '%v'",
-					thedefault)))
+					opinion)))
+		}
+	}
+
+	return allErrs
+}
+
+// checkNonConstantTemplates checks that all templates at the global level use
+// some interprolation; constant values should be in opinions instead.
+func checkNonConstantTemplates(templates yaml.MapSlice) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	for _, templateDef := range templates {
+		key, ok := templateDef.Key.(string)
+		if !ok {
+			// Invalid property; this should be reported earlier
+			continue
+		}
+		template := templateDef.Value.(string)
+		varsInTemplate, err := model.ParseTemplate(template)
+		if err != nil {
+			// Ignore bad template, cannot have sensible
+			// variable references
+			continue
+		}
+		if len(varsInTemplate) == 0 {
+			allErrs = append(allErrs, validation.Forbidden(
+				fmt.Sprintf("configuration.templates[%s]", key),
+				"Templates used as constants are not allowed"))
 		}
 	}
 

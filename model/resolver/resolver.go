@@ -56,8 +56,8 @@ func (r *Resolver) Resolve() (*model.RoleManifest, error) {
 		m.Configuration = &model.Configuration{}
 	}
 
-	if m.Configuration.Templates == nil {
-		m.Configuration.Templates = yaml.MapSlice{}
+	if m.Configuration.RawTemplates == nil {
+		m.Configuration.RawTemplates = yaml.MapSlice{}
 	}
 
 	// Parse CVOptions
@@ -104,9 +104,6 @@ func (r *Resolver) ResolveRoleManifest() error {
 			grapher.GraphNode("release/"+release.Name, map[string]string{"label": "release/" + release.Name})
 		}
 	}
-
-	// See also 'GetVariablesForRole' (mustache.go), and LoadRoleManifest (caller, this file)
-	declaredConfigs := model.MakeMapOfVariables(m)
 
 	if m.Configuration.Authorization.Accounts == nil {
 		m.Configuration.Authorization.Accounts = make(map[string]model.AuthAccount)
@@ -200,16 +197,14 @@ func (r *Resolver) ResolveRoleManifest() error {
 	// Skip further validation if we fail to resolve any jobs
 	// This lets us assume valid jobs in the validation routines
 	if len(allErrs) == 0 {
+		r.calculateConfigurationTemplates(m)
+
 		if !r.releaseResolver.CanValidate() {
 			allErrs = append(allErrs, r.ResolveLinks()...)
 		}
 		allErrs = append(allErrs, validateVariableType(m.Variables)...)
 		allErrs = append(allErrs, validateVariableSorting(m.Variables)...)
 		allErrs = append(allErrs, validateVariablePreviousNames(m.Variables)...)
-		if !r.releaseResolver.CanValidate() {
-			allErrs = append(allErrs, validateVariableUsage(m)...)
-			allErrs = append(allErrs, validateTemplateUsage(m, declaredConfigs)...)
-		}
 		allErrs = append(allErrs, validateServiceAccounts(m)...)
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(m)...)
 		allErrs = append(allErrs, validateColocatedContainerPortCollisions(m)...)
@@ -607,4 +602,22 @@ clusterRoleLoop:
 		instanceGroup.Run.ServiceAccount = newAccountName
 	}
 	return errors
+}
+
+// calculateConfigurationTemplates caculates the global configuration templates
+// (only used for validation purposes) based on the configuration templates from
+// the individual instance groups. The resulting set is the union of globally-
+// declared templates and instance-group-specific ones.
+func (r *Resolver) calculateConfigurationTemplates(m *model.RoleManifest) {
+
+	m.Configuration.Templates = make(map[string]model.ConfigurationTemplate)
+
+	for _, g := range m.InstanceGroups {
+		for templateName, templateDef := range g.Configuration.Templates {
+			_, ok := m.Configuration.Templates[templateName]
+			if !ok || templateDef.IsGlobal {
+				m.Configuration.Templates[templateName] = templateDef
+			}
+		}
+	}
 }

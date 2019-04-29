@@ -27,7 +27,7 @@ func setRoleManifest(roleManifestPath string, manifestContent []byte, releases R
 	if err != nil {
 		return nil, err
 	}
-	roleManifest.Configuration = &Configuration{Templates: yaml.MapSlice{}}
+	roleManifest.Configuration = &Configuration{RawTemplates: yaml.MapSlice{}}
 	roleManifest.LoadedReleases = releases
 	return roleManifest, nil
 }

@@ -26,22 +26,19 @@ func MakeMapOfVariables(roleManifest *RoleManifest) CVMap {
 
 // GetVariablesForRole returns all the environment variables required for
 // calculating all the templates for the role
-func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
+func (g *InstanceGroup) GetVariablesForRole() (Variables, error) {
 
-	configsDictionary := MakeMapOfVariables(r.roleManifest)
+	configsDictionary := MakeMapOfVariables(g.roleManifest)
 
 	configs := CVMap{}
 
 	// First, render all referenced variables of type user.
 
-	for _, jobReference := range r.JobReferences {
+	for _, jobReference := range g.JobReferences {
 		for _, property := range jobReference.Properties {
 			propertyName := fmt.Sprintf("properties.%s", property.Name)
 
-			for _, templateDef := range r.Configuration.Templates {
-
-				templatePropName := templateDef.Key.(string)
-				template := fmt.Sprintf("%v", templateDef.Value)
+			for templatePropName, template := range g.Configuration.Templates {
 
 				switch true {
 				case templatePropName == propertyName:
@@ -51,7 +48,7 @@ func (r *InstanceGroup) GetVariablesForRole() (Variables, error) {
 					continue
 				}
 
-				varsInTemplate, err := ParseTemplate(template)
+				varsInTemplate, err := ParseTemplate(template.Value)
 				if err != nil {
 					return nil, err
 				}

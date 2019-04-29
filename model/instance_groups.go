@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
 	"code.cloudfoundry.org/fissile/util"
 	"code.cloudfoundry.org/fissile/validation"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // InstanceGroups is an array of Role*
@@ -214,12 +214,10 @@ func (g *InstanceGroup) GetScriptSignatures() (string, error) {
 func (g *InstanceGroup) GetTemplateSignatures() (string, error) {
 	hasher := sha1.New()
 
-	i := 0
-	templates := make([]string, len(g.Configuration.Templates))
+	templates := make([]string, 0, len(g.Configuration.Templates))
 
-	for _, templateDef := range g.Configuration.Templates {
-		templates[i] = fmt.Sprintf("%v: %v", templateDef.Key, templateDef.Value)
-		i++
+	for templateKey, templateValue := range g.Configuration.Templates {
+		templates = append(templates, fmt.Sprintf("%v: %v", templateKey, templateValue.Value))
 	}
 
 	sort.Strings(templates)
@@ -410,29 +408,28 @@ func (g *InstanceGroup) CalculateRoleConfigurationTemplates() {
 	if g.Configuration == nil {
 		g.Configuration = &Configuration{}
 	}
-	if g.Configuration.Templates == nil {
-		g.Configuration.Templates = yaml.MapSlice{}
-	}
 
-	roleConfigs := yaml.MapSlice{}
-	for _, templateDef := range g.Configuration.Templates {
+	g.Configuration.Templates = make(map[string]ConfigurationTemplate)
+
+	for _, templateDef := range g.Configuration.RawTemplates {
 		k := templateDef.Key.(string)
-		v := templateDef.Value
-
-		roleConfigs = append(roleConfigs, yaml.MapItem{Key: k, Value: v})
-	}
-
-	for _, templateDef := range g.roleManifest.Configuration.Templates {
-		k := templateDef.Key.(string)
-		v := templateDef.Value
-
-		if _, ok := GetTemplate(roleConfigs, k); !ok {
-
-			roleConfigs = append(roleConfigs, yaml.MapItem{Key: k, Value: v})
+		v := fmt.Sprintf("%v", templateDef.Value)
+		g.Configuration.Templates[k] = ConfigurationTemplate{
+			Value:    v,
+			IsGlobal: false,
 		}
 	}
 
-	g.Configuration.Templates = roleConfigs
+	for _, templateDef := range g.roleManifest.Configuration.RawTemplates {
+		k := templateDef.Key.(string)
+		v := fmt.Sprintf("%v", templateDef.Value)
+		if _, ok := g.Configuration.Templates[k]; !ok {
+			g.Configuration.Templates[k] = ConfigurationTemplate{
+				Value:    v,
+				IsGlobal: true,
+			}
+		}
+	}
 }
 
 // ColocatedContainers returns colocated_container entries from all jobs
@@ -570,6 +567,62 @@ func (g *InstanceGroup) GetColocatedRoles() InstanceGroups {
 		for _, name := range job.ContainerProperties.BoshContainerization.ColocatedContainers {
 			if role := g.roleManifest.LookupInstanceGroup(name); role != nil {
 				result = append(result, role)
+			}
+		}
+	}
+
+	return result
+}
+
+// PropertyDefaults is a map from property names to information about
+// it needed for validation.
+type PropertyDefaults map[string]*PropertyInfo
+
+// PropertyInfo is a structure listing the (stringified) defaults and
+// the associated jobs for a property, plus other aggregated
+// information (whether it is a hash, or not).
+type PropertyInfo struct {
+	MaybeHash bool
+	Defaults  map[string][]*Job
+}
+
+// NewPropertyInfo creates a new PropertyInfo structure instance
+func NewPropertyInfo() *PropertyInfo {
+	return &PropertyInfo{
+		Defaults: make(map[string][]*Job),
+	}
+}
+
+// CollectPropertyDefaults looks through all used jobs and returns all
+// properties defined in them, along with their default values and whether a
+// hash may be used for that property.
+func (g *InstanceGroup) CollectPropertyDefaults() PropertyDefaults {
+	result := make(PropertyDefaults)
+
+	for _, job := range g.JobReferences {
+		for _, property := range job.Properties {
+			// Extend map for newly seen properties.
+			if _, ok := result[property.Name]; !ok {
+				result[property.Name] = &PropertyInfo{
+					MaybeHash: false,
+					Defaults:  make(map[string][]*Job),
+				}
+			}
+
+			// Extend the map of defaults to job lists.
+			defaultAsString := fmt.Sprintf("%v", property.Default)
+			result[property.Name].Defaults[defaultAsString] =
+				append(result[property.Name].Defaults[defaultAsString], job.Job)
+
+			// Handle the property's hash flag, based on the current default for
+			// it. Note that if the default is <nil> we assume that it can be a
+			// hash. This works arounds problems in the CF spec files where the two
+			// hash-valued properties we are interested in do not have defaults.
+			// (uaa.clients, cc.quota_definitions).
+
+			if property.Default == nil ||
+				reflect.TypeOf(property.Default).Kind() == reflect.Map {
+				result[property.Name].MaybeHash = true
 			}
 		}
 	}

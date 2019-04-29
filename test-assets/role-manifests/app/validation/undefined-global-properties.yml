@@ -2,8 +2,8 @@
 # from existing BOSH properties
 ---
 expected_errors:
-- "role-manifest 'fox': Not found: \"In any used BOSH job\""
-- "role-manifest 'is.a.hash': Not found: \"In any used BOSH job\""
+- "configuration.templates[properties.fox]: Not found: \"In any used BOSH job\""
+- "configuration.templates[properties.is.a.hash]: Not found: \"In any used BOSH job\""
 instance_groups:
 - name: myrole
   scripts:

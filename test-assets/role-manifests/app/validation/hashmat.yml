@@ -3,7 +3,7 @@
 # hash-like-things fail validation.
 ---
 expected_errors:
-- "role-manifest 'not.a.hash.foo': Not found: \"In any used BOSH job\""
+- "configuration.templates[properties.not.a.hash.foo]: Not found: \"In any used BOSH job\""
 instance_groups:
 - name: myrole
   scripts:

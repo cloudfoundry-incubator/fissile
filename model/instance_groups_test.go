@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func TestRolesSort(t *testing.T) {
@@ -95,10 +94,9 @@ func TestGetTemplateSignatures(t *testing.T) {
 		Name:          "aaa",
 		JobReferences: JobReferences{},
 		Configuration: &Configuration{
-			Templates: yaml.MapSlice{
-				yaml.MapItem{
-					Key:   "foo",
-					Value: "bar",
+			Templates: map[string]ConfigurationTemplate{
+				"foo": ConfigurationTemplate{
+					Value: "var",
 				}}},
 	}
 
@@ -106,9 +104,8 @@ func TestGetTemplateSignatures(t *testing.T) {
 		Name:          "aaa",
 		JobReferences: JobReferences{},
 		Configuration: &Configuration{
-			Templates: yaml.MapSlice{
-				yaml.MapItem{
-					Key:   "bat",
+			Templates: map[string]ConfigurationTemplate{
+				"bat": ConfigurationTemplate{
 					Value: "baz",
 				}}},
 	}

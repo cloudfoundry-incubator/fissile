@@ -1,7 +1,12 @@
 # This role manifest tests that an undeclared variable is an error
 ---
+expected_errors:
+- "configuration.templates[properties.tor.private_key]: Not found: \"No declaration of variable 'HOME'\""
+- "instance_groups[myrole].configuration.templates[properties.tor.hostname]: Not found: \"No declaration of variable 'QQ'\""
 instance_groups:
 - name: myrole
+  scripts:
+  - scripts/myrole.sh
   jobs:
   - name: tor
     release: tor
@@ -9,10 +14,12 @@ instance_groups:
       bosh_containerization:
         run:
           foo: x
+  configuration:
+    templates:
+      properties.tor.hostname: ((QQ)) # QQ is not declared
 configuration:
   templates:
-    properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
-    properties.tor.hostname: '((FOO))'
+    properties.tor.hashed_control_password: '((FOO))((={{ }}=)){{PELERINUL}}'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))' # HOME is not declared
 variables:
 - name: BAR
