@@ -72,7 +72,6 @@ func (f *Fissile) Validate() validation.ErrorList {
 		}
 	}
 
-	allPropertyDefaults := model.PropertyDefaults{}
 	for _, instanceGroup := range f.Manifest.InstanceGroups {
 		// Collect the names of properties used in this instance group
 		propertyDefaults := instanceGroup.CollectPropertyDefaults()
@@ -86,21 +85,6 @@ func (f *Fissile) Validate() validation.ErrorList {
 			instanceGroup.Configuration.Templates,
 			variableUsage,
 			false)...)
-
-		// Collect all property defaults across all instance groups for a global
-		// check later.
-		for propertyName, defaults := range propertyDefaults {
-			if _, ok := allPropertyDefaults[propertyName]; !ok {
-				allPropertyDefaults[propertyName] = model.NewPropertyInfo()
-			}
-			for v := range defaults.Defaults {
-				allPropertyDefaults[propertyName].Defaults[v] = append(allPropertyDefaults[propertyName].Defaults[v], defaults.Defaults[v]...)
-			}
-			if defaults.MaybeHash {
-				allPropertyDefaults[propertyName].MaybeHash = true
-			}
-		}
-
 		allErrs = append(allErrs, checkForSortedProperties(
 			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
 			instanceGroup.Configuration.RawTemplates)...)
@@ -109,7 +93,7 @@ func (f *Fissile) Validate() validation.ErrorList {
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
 	allErrs = append(allErrs, checkLightDefaults(lightOpinions,
-		allPropertyDefaults)...)
+		boshPropertyDefaultsAndJobs)...)
 
 	allErrs = append(allErrs, checkNonConstantTemplates(f.Manifest.Configuration.RawTemplates)...)
 	allErrs = append(allErrs, checkForSortedVariables(f.Manifest.Variables)...)
