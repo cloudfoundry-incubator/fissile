@@ -4,6 +4,7 @@
 ---
 expected_errors:
 - "configuration.templates[properties.not.a.hash.foo]: Not found: \"In any used BOSH job\""
+- "instance_groups[other-role].configuration.templates[properties.not.a.hash.foo]: Not found: \"In any used BOSH job\""
 instance_groups:
 - name: myrole
   scripts:
@@ -11,10 +12,20 @@ instance_groups:
   jobs:
   - name: hashmat
     release: tor
-    properties:
+    properties: &boshprops
       bosh_containerization:
         run:
           foo: x
+- name: other-role
+  jobs:
+  - name: hashmat
+    release: tor
+    properties: *boshprops
+  configuration:
+    templates:
+      properties.is.a.hash.foo: '((FOO)) extend hash, ok'
+      properties.its.a.hash.foo: '((FOO)) extend possible hash, ok'
+      properties.not.a.hash.foo: '((FOO)) extend a non-hash, fail'
 configuration:
   templates:
     properties.is.a.hash.foo: '((FOO)) extend hash, ok'
