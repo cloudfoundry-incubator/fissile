@@ -15,161 +15,169 @@ import (
 // and the loaded bosh releases. The result is a (possibly empty)
 // array of any issues found.
 func (f *Fissile) Validate() validation.ErrorList {
+	errors := make(chan *validation.Error)
+	validator, err := newValidator(f, errors)
+	if err != nil {
+		return validation.ErrorList{err}
+	}
+	go validator.validate()
 	allErrs := validation.ErrorList{}
+	for err := range errors {
+		allErrs = append(allErrs, err)
+	}
+	return allErrs
+}
 
+type validator struct {
+	errOut           chan<- *validation.Error
+	f                *Fissile
+	propertyDefaults model.PropertyDefaults
+	lightOpinions    map[string]string
+	darkOpinions     map[string]string
+	variableUsage    map[string]int
+}
+
+func newValidator(f *Fissile, errOut chan<- *validation.Error) (*validator, *validation.Error) {
 	opinions, err := model.NewOpinions(f.Options.LightOpinions, f.Options.DarkOpinions)
 	if err != nil {
-		return append(allErrs, validation.GeneralError("Light are dark opinions could not be read", err))
+		return nil, validation.GeneralError("Light are dark opinions could not be read", err)
 	}
 
-	boshPropertyDefaultsAndJobs := f.collectPropertyDefaults()
-	darkOpinions := model.FlattenOpinions(opinions.Dark, false)
-	lightOpinions := model.FlattenOpinions(opinions.Light, false)
+	return &validator{
+		errOut:           errOut,
+		f:                f,
+		propertyDefaults: f.collectPropertyDefaults(),
+		lightOpinions:    model.FlattenOpinions(opinions.Light, false),
+		darkOpinions:     model.FlattenOpinions(opinions.Dark, false),
+		variableUsage:    make(map[string]int),
+	}, nil
+}
 
-	allErrs = append(allErrs, checkForSortedProperties(
+func (v *validator) validate() {
+	defer close(v.errOut)
+
+	v.checkForSortedProperties(
 		"configuration.templates",
-		f.Manifest.Configuration.RawTemplates)...)
+		v.f.Manifest.Configuration.RawTemplates)
 
-	allErrs = append(allErrs, checkForUndefinedProperties(
-		"configuration.templates",
-		true,
-		f.Manifest.Configuration.Templates,
-		boshPropertyDefaultsAndJobs)...)
-
-	// All light opinions must exists in a bosh release
-	usedLightProperties := map[string]model.ConfigurationTemplate{}
-	for lightProperty := range lightOpinions {
-		usedLightProperties[lightProperty] = model.ConfigurationTemplate{
-			IsGlobal: true,
+	for propertyName, templateDef := range v.f.Manifest.Configuration.Templates {
+		if templateDef.IsGlobal {
+			v.checkForUndefinedProperty(
+				"configuration.templates",
+				propertyName,
+				v.propertyDefaults)
 		}
 	}
-	allErrs = append(allErrs, checkForUndefinedProperties(
-		"light opinion",
-		true,
-		usedLightProperties, boshPropertyDefaultsAndJobs)...)
+
+	// All light opinions must exists in a bosh release
+	for lightProperty := range v.lightOpinions {
+		v.checkForUndefinedProperty(
+			"light opinion",
+			lightProperty,
+			v.propertyDefaults)
+	}
 
 	// All dark opinions must exists in a bosh release
 	// This test is not necessary, as all dark opinions must be overridden by
 	// some template, and all templates must come from a used job
 
 	// All dark opinions must be configured as templates
-	allErrs = append(allErrs, checkForUntemplatedDarkOpinions(darkOpinions,
-		f.Manifest.Configuration.Templates)...)
+	v.checkForUntemplatedDarkOpinions()
 
 	// No dark opinions must have defaults in light opinions
-	allErrs = append(allErrs, checkForDarkInTheLight(darkOpinions, lightOpinions)...)
+	v.checkForDarkInTheLight()
 
 	// No duplicates must exist between role manifest and light
 	// opinions
-	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, f.Manifest)...)
+	v.checkForDuplicatesBetweenManifestAndLight()
 
-	variableUsage := map[string]int{}
-	for _, k := range model.MakeMapOfVariables(f.Manifest) {
-		variableUsage[k.Name] = 0
+	for _, k := range model.MakeMapOfVariables(v.f.Manifest) {
+		v.variableUsage[k.Name] = 0
 		if k.CVOptions.Internal {
 			// We always count internal variables as used
-			variableUsage[k.Name]++
+			v.variableUsage[k.Name]++
 		}
 	}
 
-	for _, instanceGroup := range f.Manifest.InstanceGroups {
+	for _, instanceGroup := range v.f.Manifest.InstanceGroups {
+		label := fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name)
 		// Collect the names of properties used in this instance group
 		propertyDefaults := instanceGroup.CollectPropertyDefaults()
-		allErrs = append(allErrs, checkForUndefinedProperties(
-			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
-			false,
-			instanceGroup.Configuration.Templates,
-			propertyDefaults)...)
-		allErrs = append(allErrs, checkForUndefinedVariables(
-			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
-			instanceGroup.Configuration.Templates,
-			variableUsage,
-			false)...)
-		allErrs = append(allErrs, checkForSortedProperties(
-			fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name),
-			instanceGroup.Configuration.RawTemplates)...)
+		for propertyName, templateDef := range instanceGroup.Configuration.Templates {
+			if !templateDef.IsGlobal {
+				v.checkForUndefinedProperty(label, propertyName, propertyDefaults)
+				v.checkForUndefinedVariable(label, propertyName, templateDef.Value)
+			}
+		}
+		v.checkForSortedProperties(
+			label,
+			instanceGroup.Configuration.RawTemplates)
 	}
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
-	allErrs = append(allErrs, checkLightDefaults(lightOpinions,
-		boshPropertyDefaultsAndJobs)...)
+	v.checkLightDefaults()
 
-	allErrs = append(allErrs, checkNonConstantTemplates(f.Manifest.Configuration.RawTemplates)...)
-	allErrs = append(allErrs, checkForSortedVariables(f.Manifest.Variables)...)
-	allErrs = append(allErrs, checkForUndefinedVariables(
-		"configuration.templates",
-		f.Manifest.Configuration.Templates,
-		variableUsage,
-		true)...)
-	for variableName, variableUsageCount := range variableUsage {
-		if variableUsageCount == 0 {
-			allErrs = append(allErrs, validation.NotFound(
-				"variables",
-				fmt.Sprintf("No templates using '%s'", variableName)))
+	v.checkTemplateInvalidExpansion()
+	v.checkNonConstantTemplates()
+	v.checkForSortedVariables(v.f.Manifest.Variables)
+	for propertyName, templateDef := range v.f.Manifest.Configuration.Templates {
+		if templateDef.IsGlobal {
+			v.checkForUndefinedVariable("configuration.templates", propertyName, templateDef.Value)
 		}
 	}
-
-	return allErrs
+	for variableName, variableUsageCount := range v.variableUsage {
+		if variableUsageCount == 0 {
+			v.errOut <- validation.NotFound(
+				"variables",
+				fmt.Sprintf("No templates using '%s'", variableName))
+		}
+	}
 }
 
 // checkForSortedProperties checks that the given ordered YAML map slice have
 // all of its keys in order.
-func checkForSortedProperties(label string, propertyOrder yaml.MapSlice) validation.ErrorList {
+func (v *validator) checkForSortedProperties(label string, propertyOrder yaml.MapSlice) {
 	var previous string
-	allErrs := validation.ErrorList{}
-
 	for index, property := range propertyOrder {
 		key := property.Key.(string)
 		if index > 0 {
 			if key < previous {
-				allErrs = append(allErrs, validation.Forbidden(
+				v.errOut <- validation.Forbidden(
 					fmt.Sprintf("%s[%s]", label, previous),
-					fmt.Sprintf("Template key does not sort before '%s'", key)))
+					fmt.Sprintf("Template key does not sort before '%s'", key))
 			}
 		}
 		previous = key
 	}
-
-	return allErrs
 }
 
-// checkForUndefinedProperties checks that all properties are known
-func checkForUndefinedProperties(label string, global bool, templates map[string]model.ConfigurationTemplate, knownProperties model.PropertyDefaults) validation.ErrorList {
-	allErrs := validation.ErrorList{}
+// checkForUndefinedProperty checks that a given property is known
+func (v *validator) checkForUndefinedProperty(label, propertyName string, knownProperties model.PropertyDefaults) {
 
-	for propertyName, templateDef := range templates {
-		// Ignore global templates when checking instance-group specific ones,
-		// and vice versa.
-		if templateDef.IsGlobal != global {
-			continue
-		}
-		// Ignore specials (without the "properties." prefix)
-		if !strings.HasPrefix(propertyName, "properties.") {
-			continue
-		}
-
-		p := strings.TrimPrefix(propertyName, "properties.")
-		if _, ok := knownProperties[p]; !ok {
-			// The property as is was not found. This is
-			// not necessarily an error. The "property"
-			// may actually part of the value for a
-			// structured (hash) property. To determine
-			// this we walk the chain of parents to see if
-			// any of them exist, and report an error only
-			// if none of them do.
-
-			if checkParentsOfUndefined(p, knownProperties) {
-				continue
-			}
-
-			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("%s[%s]", label, propertyName),
-				"In any used BOSH job"))
-		}
+	// Ignore specials (without the "properties." prefix)
+	if !strings.HasPrefix(propertyName, "properties.") {
+		return
 	}
 
-	return allErrs
+	p := strings.TrimPrefix(propertyName, "properties.")
+	if _, ok := knownProperties[p]; !ok {
+		// The property as is was not found. This is
+		// not necessarily an error. The "property"
+		// may actually part of the value for a
+		// structured (hash) property. To determine
+		// this we walk the chain of parents to see if
+		// any of them exist, and report an error only
+		// if none of them do.
+
+		if checkParentsOfUndefined(p, knownProperties) {
+			return
+		}
+
+		v.errOut <- validation.NotFound(
+			fmt.Sprintf("%s[%s]", label, propertyName),
+			"In any used BOSH job")
+	}
 }
 
 // checkParentsOfUndefined walks the chain of parents for `p` from the
@@ -203,157 +211,141 @@ func checkParentsOfUndefined(p string, defaults model.PropertyDefaults) bool {
 	return false
 }
 
-func checkForSortedVariables(variables model.Variables) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
+func (v *validator) checkForSortedVariables(variables model.Variables) {
 	previousName := ""
 	for _, cv := range variables {
 		if cv.Name < previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
+			v.errOut <- validation.Invalid("variables",
 				previousName,
-				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+				fmt.Sprintf("Does not sort before '%s'", cv.Name))
 		} else if cv.Name == previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
-				previousName, "Appears more than once"))
+			v.errOut <- validation.Invalid("variables",
+				previousName, "Appears more than once")
 		}
 		previousName = cv.Name
 	}
-
-	return allErrs
 }
 
 // checkForUndefinedVariables checks that all configuration templates are
 // defined in the variables section
-func checkForUndefinedVariables(label string, templates map[string]model.ConfigurationTemplate, variableUsage map[string]int, isGlobal bool) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	for propertyName, template := range templates {
-		if template.IsGlobal != isGlobal {
-			continue
-		}
-		varsInTemplate, err := model.ParseTemplate(template.Value)
-		if err != nil {
-			// Ignore bad template, cannot have sensible
-			// variable references
-			continue
-		}
-		for _, variable := range varsInTemplate {
-			if _, ok := variableUsage[variable]; !ok {
-				allErrs = append(allErrs, validation.NotFound(
-					fmt.Sprintf("%s[%s]", label, propertyName),
-					fmt.Sprintf("No declaration of variable '%s'", variable)))
-			}
-			// Unconditionally increment the usage counter; for variables that
-			// are undeclared, this means we won't emit the same warning twice.
-			variableUsage[variable]++
-		}
+func (v *validator) checkForUndefinedVariable(label, propertyName, templateValue string) {
+	varsInTemplate, err := model.ParseTemplate(templateValue)
+	if err != nil {
+		// Ignore bad template, cannot have sensible
+		// variable references
+		return
 	}
-
-	return allErrs
+	for _, variable := range varsInTemplate {
+		if _, ok := v.variableUsage[variable]; !ok {
+			v.errOut <- validation.NotFound(
+				fmt.Sprintf("%s[%s]", label, propertyName),
+				fmt.Sprintf("No declaration of variable '%s'", variable))
+		}
+		// Unconditionally increment the usage counter; for variables that
+		// are undeclared, this means we won't emit the same warning twice.
+		v.variableUsage[variable]++
+	}
 }
 
 // checkForUntemplatedDarkOpinions reports all dark opinions which are
 // not configured as templates in the manifest.
-func checkForUntemplatedDarkOpinions(dark map[string]string, templates map[string]model.ConfigurationTemplate) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	for property := range dark {
-		if _, ok := templates[property]; ok {
-			continue
+func (v *validator) checkForUntemplatedDarkOpinions() {
+	for property := range v.darkOpinions {
+		if _, ok := v.f.Manifest.Configuration.Templates[property]; !ok {
+			v.errOut <- validation.NotFound(property, "Dark opinion is missing template in role-manifest")
 		}
-		allErrs = append(allErrs, validation.NotFound(
-			property, "Dark opinion is missing template in role-manifest"))
 	}
 
-	return allErrs
 }
 
 // checkForDarkInTheLight reports all dark opinions which have
 // defaults in light opinions, which is forbidden
-func checkForDarkInTheLight(dark map[string]string, light map[string]string) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	for property := range dark {
-		if _, ok := light[property]; !ok {
-			continue
+func (v *validator) checkForDarkInTheLight() {
+	for property := range v.darkOpinions {
+		if _, ok := v.lightOpinions[property]; ok {
+			v.errOut <- validation.Forbidden(property, "Dark opinion found in light opinions")
 		}
-		allErrs = append(allErrs, validation.Forbidden(
-			property, "Dark opinion found in light opinions"))
 	}
+}
 
-	return allErrs
+// checkTemplateInvalidExpansion reports all templates with syntax errors
+func (v *validator) checkTemplateInvalidExpansion() {
+	// seenGlobalProperties keeps track of which global properties we've already
+	// seen (and checked for duplicates in opinions).
+	seenGlobalProperties := make(map[string]struct{})
+
+	for _, instanceGroup := range v.f.Manifest.InstanceGroups {
+		groupPrefix := fmt.Sprintf("instance_groups[%s].configuration.templates", instanceGroup.Name)
+		for property, template := range instanceGroup.Configuration.Templates {
+			prefix := groupPrefix
+			if template.IsGlobal {
+				if _, ok := seenGlobalProperties[property]; ok {
+					continue
+				}
+				seenGlobalProperties[property] = struct{}{}
+				prefix = "configuration.templates"
+			}
+			if _, err := model.ParseTemplate(template.Value); err != nil {
+				v.errOut <- validation.Invalid(
+					fmt.Sprintf("%s[%s]", prefix, property),
+					template.Value,
+					fmt.Sprintf("Template expansion error: %v", err))
+			}
+		}
+	}
 }
 
 // checkForDuplicatesBetweenManifestAndLight reports all duplicates
 // between role manifest and light opinions, i.e. properties defined
 // in both.
-func checkForDuplicatesBetweenManifestAndLight(light map[string]string, roleManifest *model.RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
+func (v *validator) checkForDuplicatesBetweenManifestAndLight() {
 
-	check := make(map[string]struct{})
+	// seenGlobalProperties keeps track of which global properties we've already
+	// seen (and checked for duplicates in opinions).
+	seenGlobalProperties := make(map[string]struct{})
 
-	for _, instanceGroup := range roleManifest.InstanceGroups {
-		prefix := fmt.Sprintf("instance-groups[%s].configuration.templates", instanceGroup.Name)
+	for _, instanceGroup := range v.f.Manifest.InstanceGroups {
+		groupPrefix := fmt.Sprintf("instance-groups[%s].configuration.templates", instanceGroup.Name)
 
 		for property, template := range instanceGroup.Configuration.Templates {
+			prefix := groupPrefix
 			if template.IsGlobal {
-				if _, ok := check[property]; ok {
-					// Skip over duplicates of the global properties in the
-					// per-instance-group data, we already checked them in a
-					// different role
+				if _, ok := seenGlobalProperties[property]; ok {
 					continue
 				}
-				check[property] = struct{}{}
-				allErrs = append(allErrs, checkForDuplicateProperty("configuration.templates", property, template.Value, light, true)...)
-			} else {
-				allErrs = append(allErrs, checkForDuplicateProperty(prefix, property, template.Value, light, false)...)
+				seenGlobalProperties[property] = struct{}{}
+				prefix = "configuration.templates"
+			}
+			if lightValue, ok := v.lightOpinions[property]; ok {
+				if lightValue == template.Value {
+					// The role manifest _could_ override the opinion, if the
+					// opinion has literal values that needs to be run through
+					// mustache.
+					varsInTemplate, err := model.ParseTemplate(template.Value)
+					if err != nil || len(varsInTemplate) == 0 {
+						v.errOut <- validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
+							"Role-manifest duplicates opinion, remove from manifest")
+					}
+				} else if template.IsGlobal {
+					v.errOut <- validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
+						"Role-manifest overrides opinion, remove opinion")
+				}
 			}
 		}
 	}
-
-	return allErrs
-}
-
-// checkForDuplicateProperty performs the check for a property (of the
-// manifest) duplicated in the light opinions.
-func checkForDuplicateProperty(prefix, property, value string, light map[string]string, conflicts bool) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	lightValue, ok := light[property]
-	if !ok {
-		return allErrs
-	}
-
-	if lightValue == value {
-		return append(allErrs, validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
-			"Role-manifest duplicates opinion, remove from manifest"))
-	}
-
-	if conflicts {
-		return append(allErrs, validation.Forbidden(fmt.Sprintf("%s[%s]", prefix, property),
-			"Role-manifest overrides opinion, remove opinion"))
-	}
-
-	return allErrs
 }
 
 // checkLightDefaults reports all light opinions whose value is
 // identical to their default in the BOSH releases
-func checkLightDefaults(light map[string]string, pd model.PropertyDefaults) validation.ErrorList {
-
-	// light :: (property.name -> value-of-opinion)
-	// pd    :: (property.name -> (default.string -> [*job...])
-	allErrs := validation.ErrorList{}
-
-	for property, opinion := range light {
+func (v *validator) checkLightDefaults() {
+	for property, opinion := range v.lightOpinions {
 		// Ignore specials (without the "properties." prefix)
 		if !strings.HasPrefix(property, "properties.") {
 			continue
 		}
-		p := strings.TrimPrefix(property, "properties.")
 
 		// Ignore unknown/undefined property
-		pInfo, ok := pd[p]
+		pInfo, ok := v.propertyDefaults[strings.TrimPrefix(property, "properties.")]
 		if !ok {
 			continue
 		}
@@ -364,39 +356,30 @@ func checkLightDefaults(light map[string]string, pd model.PropertyDefaults) vali
 		}
 
 		if _, ok := pInfo.Defaults[opinion]; ok {
-			allErrs = append(allErrs, validation.Forbidden(property,
-				fmt.Sprintf("Light opinion matches default of '%v'",
-					opinion)))
+			v.errOut <- validation.Forbidden(property,
+				fmt.Sprintf("Light opinion matches default of '%v'", opinion))
 		}
 	}
-
-	return allErrs
 }
 
 // checkNonConstantTemplates checks that all templates at the global level use
 // some interprolation; constant values should be in opinions instead.
-func checkNonConstantTemplates(templates yaml.MapSlice) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	for _, templateDef := range templates {
-		key, ok := templateDef.Key.(string)
-		if !ok {
-			// Invalid property; this should be reported earlier
+func (v *validator) checkNonConstantTemplates() {
+	for key, template := range v.f.Manifest.Configuration.Templates {
+		if !template.IsGlobal {
+			// Non-global templates are allowed to be constant
 			continue
 		}
-		template := templateDef.Value.(string)
-		varsInTemplate, err := model.ParseTemplate(template)
+		varsInTemplate, err := model.ParseTemplate(template.Value)
 		if err != nil {
 			// Ignore bad template, cannot have sensible
 			// variable references
 			continue
 		}
 		if len(varsInTemplate) == 0 {
-			allErrs = append(allErrs, validation.Forbidden(
+			v.errOut <- validation.Forbidden(
 				fmt.Sprintf("configuration.templates[%s]", key),
-				"Templates used as constants are not allowed"))
+				"Templates used as constants are not allowed")
 		}
 	}
-
-	return allErrs
 }

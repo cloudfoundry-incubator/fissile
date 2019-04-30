@@ -1,0 +1,23 @@
+# This role manifest is used to check that templates with mustache errors are
+# correctly reported
+---
+expected_errors:
+- "configuration.templates[properties.tor.private_key]: Invalid value: \"((FOO\": Template expansion error: line 1: unmatched open tag"
+- "instance_groups[role].configuration.templates[properties.tor.hostname]: Invalid value: \"((FOO\": Template expansion error: line 1: unmatched open tag"
+instance_groups:
+- name: role
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+  configuration:
+    templates:
+      properties.tor.hostname: ((FOO
+configuration:
+  templates:
+    properties.tor.private_key: ((FOO

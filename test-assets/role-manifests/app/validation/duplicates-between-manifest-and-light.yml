@@ -2,11 +2,16 @@
 # manifest and light opinions causes an error
 ---
 expected_errors:
-- "configuration.templates[properties.tor.hostname]: Forbidden: Role-manifest overrides opinion, remove opinion"
+- "configuration.templates[properties.tor.hashed_control_password]: Forbidden: Role-manifest duplicates opinion, remove from manifest"
+- "configuration.templates[properties.tor.private_key]: Forbidden: Role-manifest overrides opinion, remove opinion"
+# The conditions we're testing for also produce the following errors:
+- "configuration.templates[properties.tor.hashed_control_password]: Forbidden: Templates used as constants are not allowed"
 light_opinions:
   properties:
     tor:
-      hostname: this is an error
+      hashed_control_password: constant
+      hostname: ((FOO))
+      private_key: this is overridden
 instance_groups:
 - name: myrole
   scripts:
@@ -20,7 +25,9 @@ instance_groups:
           foo: x
 configuration:
   templates:
-    properties.tor.hostname: ((FOO))
+    properties.tor.hashed_control_password: constant
+    properties.tor.hostname: ((FOO)) # This is okay, as there's variable expansion
+    properties.tor.private_key: ((FOO))
 variables:
 - name: FOO
   options:
