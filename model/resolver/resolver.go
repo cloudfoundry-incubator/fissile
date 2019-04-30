@@ -603,7 +603,7 @@ clusterRoleLoop:
 	return errors
 }
 
-// calculateConfigurationTemplates caculates the global configuration templates
+// calculateConfigurationTemplates calculates the global configuration templates
 // (only used for validation purposes) based on the configuration templates from
 // the individual instance groups. The resulting set is the union of globally-
 // declared templates and instance-group-specific ones.

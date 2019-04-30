@@ -15,6 +15,17 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// TestValidation runs through some data-driven tests to check that validation
+// errors are reported correctly.
+//
+// It goes through all the YAML files in the
+// .../test-assets/role-manifests/app/validation/ directory, each of which is
+// expected to be an extended role manifest.  In addition to the normal
+// contents, it should also have top level key "expected_errors" which contains
+// a list of strings, one each per expected error.  The ordering is ignored.
+// The extended role manifest may also have "light_opinions" and "dark_opinions"
+// keys; each of those can be used as the light (resp. dark) opinions files.
+// They will most likely contain the "properties" key at the next level.
 func TestValidation(t *testing.T) {
 	ui := termui.New(&bytes.Buffer{}, ioutil.Discard, nil)
 
