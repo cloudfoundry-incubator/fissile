@@ -183,26 +183,6 @@ func TestNonBoshRolesAreNotAllowed(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
-func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-badly-sorted.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths:     []string{torReleasePath},
-			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
-			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
-	require.Error(t, err)
-
-	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Does not sort before 'BAR'`)
-	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
-	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Appears more than once`)
-	// Note how this ignores other errors possibly present in the manifest and releases.
-	assert.Nil(t, roleManifest)
-}
-
 func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)

@@ -225,27 +225,6 @@ func validateVariableType(variables model.Variables) validation.ErrorList {
 	return allErrs
 }
 
-// validateVariableSorting tests whether the parameters are properly sorted or not.
-// It reports all variables which are out of order.
-func validateVariableSorting(variables model.Variables) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	previousName := ""
-	for _, cv := range variables {
-		if cv.Name < previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
-				previousName,
-				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
-		} else if cv.Name == previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
-				previousName, "Appears more than once"))
-		}
-		previousName = cv.Name
-	}
-
-	return allErrs
-}
-
 // validateVariablePreviousNames tests whether PreviousNames of a variable are used either
 // by as a Name or a PreviousName of another variable.
 func validateVariablePreviousNames(variables model.Variables) validation.ErrorList {

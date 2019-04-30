@@ -203,7 +203,6 @@ func (r *Resolver) ResolveRoleManifest() error {
 			allErrs = append(allErrs, r.ResolveLinks()...)
 		}
 		allErrs = append(allErrs, validateVariableType(m.Variables)...)
-		allErrs = append(allErrs, validateVariableSorting(m.Variables)...)
 		allErrs = append(allErrs, validateVariablePreviousNames(m.Variables)...)
 		allErrs = append(allErrs, validateServiceAccounts(m)...)
 		allErrs = append(allErrs, validateUnusedColocatedContainerRoles(m)...)

@@ -112,6 +112,7 @@ func (f *Fissile) Validate() validation.ErrorList {
 		allPropertyDefaults)...)
 
 	allErrs = append(allErrs, checkNonConstantTemplates(f.Manifest.Configuration.RawTemplates)...)
+	allErrs = append(allErrs, checkForSortedVariables(f.Manifest.Variables)...)
 	allErrs = append(allErrs, checkForUndefinedVariables(
 		"configuration.templates",
 		f.Manifest.Configuration.Templates,
@@ -216,6 +217,25 @@ func checkParentsOfUndefined(p string, defaults model.PropertyDefaults) bool {
 	}
 
 	return false
+}
+
+func checkForSortedVariables(variables model.Variables) validation.ErrorList {
+	allErrs := validation.ErrorList{}
+
+	previousName := ""
+	for _, cv := range variables {
+		if cv.Name < previousName {
+			allErrs = append(allErrs, validation.Invalid("variables",
+				previousName,
+				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
+		} else if cv.Name == previousName {
+			allErrs = append(allErrs, validation.Invalid("variables",
+				previousName, "Appears more than once"))
+		}
+		previousName = cv.Name
+	}
+
+	return allErrs
 }
 
 // checkForUndefinedVariables checks that all configuration templates are
