@@ -20,6 +20,12 @@ type ConfigurationTemplate struct {
 	IsGlobal bool
 }
 
+// MarshalYAML implements the yaml.Marshaler interface
+func (t ConfigurationTemplate) MarshalYAML() (interface{}, error) {
+	// Return just the value, for use in generating env2conf
+	return t.Value, nil
+}
+
 // ConfigurationAuthorization defines Configuration.Authorization
 type ConfigurationAuthorization struct {
 	RoleUsedBy          map[string]map[string]struct{} `yaml:"-"`
