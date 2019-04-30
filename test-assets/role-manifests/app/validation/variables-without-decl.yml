@@ -19,7 +19,8 @@ instance_groups:
       properties.tor.hostname: ((QQ)) # QQ is not declared
 configuration:
   templates:
-    properties.tor.hashed_control_password: '((FOO))((={{ }}=)){{PELERINUL}}'
+    # IP_ADDRESS is built in
+    properties.tor.hashed_control_password: '((FOO))((={{ }}=)){{PELERINUL}}{{IP_ADDRESS}}'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))' # HOME is not declared
 variables:
 - name: BAR

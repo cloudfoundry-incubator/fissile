@@ -64,7 +64,7 @@ func (f *Fissile) Validate() validation.ErrorList {
 	allErrs = append(allErrs, checkForDuplicatesBetweenManifestAndLight(lightOpinions, f.Manifest)...)
 
 	variableUsage := map[string]int{}
-	for _, k := range f.Manifest.Variables {
+	for _, k := range model.MakeMapOfVariables(f.Manifest) {
 		variableUsage[k.Name] = 0
 		if k.CVOptions.Internal {
 			// We always count internal variables as used
