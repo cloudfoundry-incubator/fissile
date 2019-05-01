@@ -183,26 +183,6 @@ func TestNonBoshRolesAreNotAllowed(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
-func TestLoadRoleManifestVariablesSortedError(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-badly-sorted.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths:     []string{torReleasePath},
-			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
-			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")}})
-	require.Error(t, err)
-
-	assert.Contains(t, err.Error(), `variables: Invalid value: "FOO": Does not sort before 'BAR'`)
-	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Does not sort before 'ALPHA'`)
-	assert.Contains(t, err.Error(), `variables: Invalid value: "PELERINUL": Appears more than once`)
-	// Note how this ignores other errors possibly present in the manifest and releases.
-	assert.Nil(t, roleManifest)
-}
-
 func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
@@ -223,44 +203,6 @@ func TestLoadRoleManifestVariablesPreviousNamesError(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
-func TestLoadRoleManifestVariablesNotUsed(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-without-usage.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths:     []string{torReleasePath},
-			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
-			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: model.RoleManifestValidationOptions{
-			AllowMissingScripts: true,
-		}})
-	assert.EqualError(t, err,
-		`variables: Not found: "No templates using 'SOME_VAR'"`)
-	assert.Nil(t, roleManifest)
-}
-
-func TestLoadRoleManifestVariablesNotDeclared(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/variables-without-decl.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths:     []string{torReleasePath},
-			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
-			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: model.RoleManifestValidationOptions{
-			AllowMissingScripts: true,
-		}})
-	assert.EqualError(t, err,
-		`variables: Not found: "No declaration of 'HOME'"`)
-	assert.Nil(t, roleManifest)
-}
-
 func TestLoadRoleManifestVariablesSSH(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)
@@ -278,25 +220,6 @@ func TestLoadRoleManifestVariablesSSH(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, roleManifest)
-}
-
-func TestLoadRoleManifestNonTemplates(t *testing.T) {
-	workDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
-	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/templates-non.yml")
-	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
-		ReleaseOptions: model.ReleaseOptions{
-			ReleasePaths:     []string{torReleasePath},
-			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
-			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
-		ValidationOptions: model.RoleManifestValidationOptions{
-			AllowMissingScripts: true,
-		}})
-	assert.EqualError(t, err,
-		`properties.tor.hostname: Forbidden: Templates used as constants are not allowed`)
-	assert.Nil(t, roleManifest)
 }
 
 func TestLoadRoleManifestBadType(t *testing.T) {

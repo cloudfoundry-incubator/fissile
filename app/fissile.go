@@ -304,58 +304,28 @@ func (f *Fissile) collectProperties() map[string]map[string]map[string]interface
 	return result
 }
 
-// propertyDefaults is a map from property names to information about
-// it needed for validation.
-type propertyDefaults map[string]*propertyInfo
+// collectPropertyDefaults looks through all used jobs and returns all
+// properties defined in them, along with their default values and whether a
+// hash may be used for that property.
+func (f *Fissile) collectPropertyDefaults() model.PropertyDefaults {
+	result := make(model.PropertyDefaults)
 
-// propertyInfo is a structure listing the (stringified) defaults and
-// the associated jobs for a property, plus other aggregated
-// information (whether it is a hash, or not).
-
-type propertyInfo struct {
-	maybeHash bool
-	defaults  map[string][]*model.Job
-}
-
-func (f *Fissile) collectPropertyDefaults() propertyDefaults {
-	result := make(propertyDefaults)
-
-	for _, release := range f.Manifest.LoadedReleases {
-		for _, job := range release.Jobs {
-			for _, property := range job.Properties {
-				// Extend map for newly seen properties.
-				if _, ok := result[property.Name]; !ok {
-					result[property.Name] = newPropertyInfo(false)
-				}
-
-				// Extend the map of defaults to job lists.
-				defaultAsString := fmt.Sprintf("%v", property.Default)
-				result[property.Name].defaults[defaultAsString] =
-					append(result[property.Name].defaults[defaultAsString], job)
-
-				// Handle the property's hash flag, based on the current default for
-				// it. Note that if the default is <nil> we assume that it can be a
-				// hash. This works arounds problems in the CF spec files where the two
-				// hash-valued properties we are interested in do not have defaults.
-				// (uaa.clients, cc.quota_definitions).
-
-				if property.Default == nil ||
-					reflect.TypeOf(property.Default).Kind() == reflect.Map {
-					result[property.Name].maybeHash = true
-				}
+	for _, instanceGroup := range f.Manifest.InstanceGroups {
+		for propertyName, defaults := range instanceGroup.CollectPropertyDefaults() {
+			_, ok := result[propertyName]
+			if !ok {
+				result[propertyName] = model.NewPropertyInfo()
+			}
+			for v := range defaults.Defaults {
+				result[propertyName].Defaults[v] = append(result[propertyName].Defaults[v], defaults.Defaults[v]...)
+			}
+			if defaults.MaybeHash {
+				result[propertyName].MaybeHash = true
 			}
 		}
 	}
 
 	return result
-}
-
-// newPropertyInfo creates a new information block for a property.
-func newPropertyInfo(maybeHash bool) *propertyInfo {
-	return &propertyInfo{
-		defaults:  make(map[string][]*model.Job),
-		maybeHash: maybeHash,
-	}
 }
 
 // Compile will compile a list of dev BOSH releases.

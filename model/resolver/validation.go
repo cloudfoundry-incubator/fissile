@@ -92,7 +92,7 @@ func validateTemplateKeysAndValues(roleManifest *model.RoleManifest) validation.
 			continue
 		}
 
-		for _, templateDef := range instanceGroup.Configuration.Templates {
+		for _, templateDef := range instanceGroup.Configuration.RawTemplates {
 			if _, ok := templateDef.Key.(string); !ok {
 				allErrs = append(allErrs, validation.Invalid(
 					fmt.Sprintf("template key for instance group %s", instanceGroup.Name),
@@ -106,7 +106,7 @@ func validateTemplateKeysAndValues(roleManifest *model.RoleManifest) validation.
 		return allErrs
 	}
 
-	for _, templateDef := range roleManifest.Configuration.Templates {
+	for _, templateDef := range roleManifest.Configuration.RawTemplates {
 		if _, ok := templateDef.Key.(string); !ok {
 			allErrs = append(allErrs, validation.Invalid(
 				"global template key",
@@ -225,27 +225,6 @@ func validateVariableType(variables model.Variables) validation.ErrorList {
 	return allErrs
 }
 
-// validateVariableSorting tests whether the parameters are properly sorted or not.
-// It reports all variables which are out of order.
-func validateVariableSorting(variables model.Variables) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	previousName := ""
-	for _, cv := range variables {
-		if cv.Name < previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
-				previousName,
-				fmt.Sprintf("Does not sort before '%s'", cv.Name)))
-		} else if cv.Name == previousName {
-			allErrs = append(allErrs, validation.Invalid("variables",
-				previousName, "Appears more than once"))
-		}
-		previousName = cv.Name
-	}
-
-	return allErrs
-}
-
 // validateVariablePreviousNames tests whether PreviousNames of a variable are used either
 // by as a Name or a PreviousName of another variable.
 func validateVariablePreviousNames(variables model.Variables) validation.ErrorList {
@@ -267,164 +246,6 @@ func validateVariablePreviousNames(variables model.Variables) validation.ErrorLi
 					}
 				}
 			}
-		}
-	}
-
-	return allErrs
-}
-
-// validateVariableUsage tests whether all parameters are used in a
-// template or not.  It reports all variables which are not used by at
-// least one template.  An exception are the variables marked with
-// `internal: true`. These are not reported.  Use this to declare
-// variables used only in the various scripts and not in templates.
-// See also the notes on type `ConfigurationVariable` in this file.
-func validateVariableUsage(roleManifest *model.RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	// See also 'GetVariablesForRole' (mustache.go).
-	unusedConfigs := model.MakeMapOfVariables(roleManifest)
-	if len(unusedConfigs) == 0 {
-		return allErrs
-	}
-
-	// Iterate over all roles, jobs, templates, extract the used
-	// variables. Remove each found from the set of unused
-	// configs.
-
-	for _, role := range roleManifest.InstanceGroups {
-		for _, jobReference := range role.JobReferences {
-			for _, property := range jobReference.Properties {
-				propertyName := fmt.Sprintf("properties.%s", property.Name)
-
-				if template, ok := model.GetTemplate(role.Configuration.Templates, propertyName); ok {
-					varsInTemplate, err := model.ParseTemplate(fmt.Sprintf("%v", template))
-					if err != nil {
-						// Ignore bad template, cannot have sensible
-						// variable references
-						continue
-					}
-					for _, envVar := range varsInTemplate {
-						if _, ok := unusedConfigs[envVar]; ok {
-							delete(unusedConfigs, envVar)
-						}
-						if len(unusedConfigs) == 0 {
-							// Everything got used, stop now.
-							return allErrs
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Iterate over the global templates, extract the used
-	// variables. Remove each found from the set of unused
-	// configs.
-
-	// Note, we have to ignore bad templates (no sensible variable
-	// references) and continue to check everything else.
-	for _, propertyDef := range roleManifest.Configuration.Templates {
-		template := propertyDef.Value.(string)
-
-		varsInTemplate, err := model.ParseTemplate(template)
-		if err != nil {
-			continue
-		}
-		for _, envVar := range varsInTemplate {
-			if _, ok := unusedConfigs[envVar]; ok {
-				delete(unusedConfigs, envVar)
-			}
-			if len(unusedConfigs) == 0 {
-				// Everything got used, stop now.
-				return allErrs
-			}
-		}
-	}
-
-	// We have only the unused variables left in the set. Report
-	// those which are not internal.
-	for cv, cvar := range unusedConfigs {
-		if cvar.CVOptions.Internal {
-			continue
-		}
-
-		allErrs = append(allErrs, validation.NotFound("variables",
-			fmt.Sprintf("No templates using '%s'", cv)))
-	}
-
-	return allErrs
-}
-
-// validateTemplateUsage tests whether all templates use only declared variables or not.
-// It reports all undeclared variables.
-func validateTemplateUsage(roleManifest *model.RoleManifest, declaredConfigs model.CVMap) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	// Iterate over all instance groups, jobs, templates, extract the used
-	// variables. Report all without a declaration.
-	for _, instanceGroup := range roleManifest.InstanceGroups {
-
-		// Note, we cannot use GetVariablesForRole here
-		// because it will abort on bad templates. Here we
-		// have to ignore them (no sensible variable
-		// references) and continue to check everything else.
-
-		for _, jobReference := range instanceGroup.JobReferences {
-			for _, property := range jobReference.Properties {
-				propertyName := fmt.Sprintf("properties.%s", property.Name)
-
-				if template, ok := model.GetTemplate(instanceGroup.Configuration.Templates, propertyName); ok {
-					varsInTemplate, err := model.ParseTemplate(fmt.Sprintf("%v", template))
-					if err != nil {
-						continue
-					}
-					for _, envVar := range varsInTemplate {
-						if _, ok := declaredConfigs[envVar]; ok {
-							continue
-						}
-
-						allErrs = append(allErrs, validation.NotFound("variables",
-							fmt.Sprintf("No declaration of '%s'", envVar)))
-
-						// Add a placeholder so that this variable is not reported again.
-						// One report is good enough.
-						declaredConfigs[envVar] = nil
-					}
-				}
-			}
-		}
-	}
-
-	// Iterate over the global templates, extract the used
-	// variables. Report all without a declaration.
-	for _, templateDef := range roleManifest.Configuration.Templates {
-		key := templateDef.Key.(string)
-		template := templateDef.Value.(string)
-		varsInTemplate, err := model.ParseTemplate(template)
-		if err != nil {
-			// Ignore bad template, cannot have sensible
-			// variable references
-			continue
-		}
-
-		if len(varsInTemplate) == 0 {
-			allErrs = append(allErrs, validation.Forbidden(key,
-				"Templates used as constants are not allowed"))
-		}
-
-		for _, envVar := range varsInTemplate {
-			if _, ok := declaredConfigs[envVar]; ok {
-				continue
-			}
-
-			allErrs = append(allErrs, validation.NotFound("configuration.templates",
-				fmt.Sprintf("No variable declaration of '%s'", envVar)))
-
-			// Add a placeholder so that this variable is
-			// not reported again.  One report is good
-			// enough.
-			declaredConfigs[envVar] = nil
 		}
 	}
 
@@ -603,26 +424,6 @@ func validateVariableDescriptions(roleManifest *model.RoleManifest) validation.E
 			allErrs = append(allErrs, validation.Required(variable.Name,
 				"Description is required"))
 		}
-	}
-
-	return allErrs
-}
-
-// validateSortedTemplates tests that all templates are sorted in alphabetical order
-func validateSortedTemplates(roleManifest *model.RoleManifest) validation.ErrorList {
-	allErrs := validation.ErrorList{}
-
-	previousKey := ""
-
-	for _, templateDef := range roleManifest.Configuration.Templates {
-		key := templateDef.Key.(string)
-
-		if previousKey != "" && previousKey > key {
-			allErrs = append(allErrs, validation.Forbidden(previousKey,
-				fmt.Sprintf("Template key does not sort before '%s'", key)))
-		}
-
-		previousKey = key
 	}
 
 	return allErrs

@@ -8,8 +8,22 @@ import (
 // Configuration contains information about how to configure the
 // resulting images
 type Configuration struct {
-	Authorization ConfigurationAuthorization `yaml:"auth,omitempty"`
-	Templates     yaml.MapSlice              `yaml:"templates"`
+	Authorization ConfigurationAuthorization       `yaml:"auth,omitempty"`
+	RawTemplates  yaml.MapSlice                    `yaml:"templates"`
+	Templates     map[string]ConfigurationTemplate `yaml:"-"`
+}
+
+// ConfigurationTemplate contains one entry in a configuration template; this is
+// the parsed value, as opposed to the raw value from YAML deserialization.
+type ConfigurationTemplate struct {
+	Value    string
+	IsGlobal bool
+}
+
+// MarshalYAML implements the yaml.Marshaler interface
+func (t ConfigurationTemplate) MarshalYAML() (interface{}, error) {
+	// Return just the value, for use in generating env2conf
+	return t.Value, nil
 }
 
 // ConfigurationAuthorization defines Configuration.Authorization

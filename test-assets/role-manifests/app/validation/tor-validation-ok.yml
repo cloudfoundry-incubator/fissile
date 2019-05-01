@@ -1,5 +1,14 @@
-# This role manifest is used to check that various validation issues are found
+# This role manifest should pass validation with no issues
 ---
+expected_errors: []
+light_opinions:
+  properties:
+    tor:
+      client_keys: foo
+dark_opinions:
+  properties:
+    tor:
+      private_key: masked
 instance_groups:
 - name: myrole
   scripts:
@@ -13,9 +22,6 @@ instance_groups:
           foo: x
   - name: tor
     release: tor
-  configuration:
-    templates:
-      properties.tor.bogus: BOGUS
 - name: foorole
   type: bosh-task
   jobs:
@@ -27,7 +33,6 @@ instance_groups:
           foo: x
 configuration:
   templates:
-    properties.fox: '((FOO): Not specified in any release'
     properties.tor.hashed_control_password: '((={{ }}=)){{PELERINUL}}'
     properties.tor.hostname: '((FOO))'
     properties.tor.private_key: '((#BAR))((HOME))((/BAR))'
@@ -41,6 +46,10 @@ variables:
 - name: HOME
   options:
     description: "foo"
+- name: KUPRIES
+  options:
+    description: "foo"
+    internal: true
 - name: PELERINUL
   options:
     description: "foo"

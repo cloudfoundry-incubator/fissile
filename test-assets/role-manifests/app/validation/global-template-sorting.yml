@@ -1,0 +1,28 @@
+# This role manifest is used to check that all property overrides at the global
+# level are sorted
+---
+expected_errors:
+- "configuration.templates[properties.tor.private_key]: Forbidden: Template key does not sort before 'properties.tor.hostname'"
+instance_groups:
+- name: good_role
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          foo: x
+  configuration:
+    templates:
+      properties.tor.hostname: ((FOO))
+      properties.tor.private_key: ((FOO))
+configuration:
+  templates:
+    properties.tor.private_key: ((FOO))
+    properties.tor.hostname: ((FOO))
+variables:
+- name: FOO
+  options:
+    description: foo

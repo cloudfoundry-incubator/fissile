@@ -94,14 +94,3 @@ func (m *RoleManifest) SelectInstanceGroups(roleNames []string) (InstanceGroups,
 
 	return results, nil
 }
-
-// GetTemplate returns a property from a yaml.MapSlice
-func GetTemplate(propertyDefs yaml.MapSlice, property string) (interface{}, bool) {
-	for _, item := range propertyDefs {
-		if item.Key.(string) == property {
-			return item.Value, true
-		}
-	}
-
-	return "", false
-}

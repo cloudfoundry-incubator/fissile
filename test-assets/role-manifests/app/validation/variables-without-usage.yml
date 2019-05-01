@@ -1,0 +1,34 @@
+# This role manifest tests that unused variables are an error
+---
+expected_errors:
+- "variables: Not found: \"No templates using 'UNUSED_VARIABLE'\""
+instance_groups:
+- name: myrole
+  scripts:
+  - scripts/myrole.sh
+  jobs:
+  - name: tor
+    release: tor
+    properties:
+      bosh_containerization:
+        run: {}
+  configuration:
+    templates:
+      properties.tor.hostname: ((USED_IN_INSTANCE_GROUP))
+configuration:
+  templates:
+    properties.tor.private_key: ((USED_GLOBALLY))
+variables:
+- name: INTERNAL_VARIABLE
+  options:
+    internal: true
+    description: Internal variables are allowed to be unused
+- name: UNUSED_VARIABLE
+  options:
+    description: This variable is not used anywhere and is an error
+- name: USED_GLOBALLY
+  options:
+    description: This variable is used in the global scope
+- name: USED_IN_INSTANCE_GROUP
+  options:
+    description: This variable is used in the instance group scope
