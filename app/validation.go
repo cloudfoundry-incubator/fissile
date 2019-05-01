@@ -29,12 +29,11 @@ func (f *Fissile) Validate() validation.ErrorList {
 }
 
 type validator struct {
-	errOut           chan<- *validation.Error
-	f                *Fissile
-	propertyDefaults model.PropertyDefaults
-	lightOpinions    map[string]string
-	darkOpinions     map[string]string
-	variableUsage    map[string]int
+	errOut        chan<- *validation.Error
+	f             *Fissile
+	lightOpinions map[string]string
+	darkOpinions  map[string]string
+	variableUsage map[string]int
 }
 
 func newValidator(f *Fissile, errOut chan<- *validation.Error) (*validator, *validation.Error) {
@@ -44,17 +43,18 @@ func newValidator(f *Fissile, errOut chan<- *validation.Error) (*validator, *val
 	}
 
 	return &validator{
-		errOut:           errOut,
-		f:                f,
-		propertyDefaults: f.collectPropertyDefaults(),
-		lightOpinions:    model.FlattenOpinions(opinions.Light, false),
-		darkOpinions:     model.FlattenOpinions(opinions.Dark, false),
-		variableUsage:    make(map[string]int),
+		errOut:        errOut,
+		f:             f,
+		lightOpinions: model.FlattenOpinions(opinions.Light, false),
+		darkOpinions:  model.FlattenOpinions(opinions.Dark, false),
+		variableUsage: make(map[string]int),
 	}, nil
 }
 
 func (v *validator) validate() {
 	defer close(v.errOut)
+
+	allPropertyDefaults := v.f.collectPropertyDefaults()
 
 	v.checkForSortedProperties(
 		"configuration.templates",
@@ -65,7 +65,7 @@ func (v *validator) validate() {
 			v.checkForUndefinedProperty(
 				"configuration.templates",
 				propertyName,
-				v.propertyDefaults)
+				allPropertyDefaults)
 		}
 	}
 
@@ -74,7 +74,7 @@ func (v *validator) validate() {
 		v.checkForUndefinedProperty(
 			"light opinion",
 			lightProperty,
-			v.propertyDefaults)
+			allPropertyDefaults)
 	}
 
 	// All dark opinions must exists in a bosh release
@@ -116,7 +116,7 @@ func (v *validator) validate() {
 
 	// All light opinions should differ from their defaults in the
 	// BOSH releases
-	v.checkLightDefaults()
+	v.checkLightDefaults(allPropertyDefaults)
 
 	v.checkTemplateInvalidExpansion()
 	v.checkNonConstantTemplates()
@@ -337,7 +337,7 @@ func (v *validator) checkForDuplicatesBetweenManifestAndLight() {
 
 // checkLightDefaults reports all light opinions whose value is
 // identical to their default in the BOSH releases
-func (v *validator) checkLightDefaults() {
+func (v *validator) checkLightDefaults(propertyDefaults model.PropertyDefaults) {
 	for property, opinion := range v.lightOpinions {
 		// Ignore specials (without the "properties." prefix)
 		if !strings.HasPrefix(property, "properties.") {
@@ -345,7 +345,7 @@ func (v *validator) checkLightDefaults() {
 		}
 
 		// Ignore unknown/undefined property
-		pInfo, ok := v.propertyDefaults[strings.TrimPrefix(property, "properties.")]
+		pInfo, ok := propertyDefaults[strings.TrimPrefix(property, "properties.")]
 		if !ok {
 			continue
 		}
