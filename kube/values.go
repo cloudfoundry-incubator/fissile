@@ -85,11 +85,6 @@ func MakeValues(settings ExportSettings) helm.Node {
 
 		entry := helm.NewMapping()
 
-		if !instanceGroup.IsPrivileged() {
-			entry.Add("capabilities", helm.NewList(),
-				helm.Comment("Additional privileges can be specified here"))
-		}
-
 		var comment string
 		it := fmt.Sprintf("The %s instance group", makeVarName(instanceGroup.Name))
 

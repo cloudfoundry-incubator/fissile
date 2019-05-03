@@ -1898,7 +1898,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
-		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := RoundtripNode(pod, config)
@@ -1944,8 +1943,6 @@ func TestPodPreFlightHelm(t *testing.T) {
 				resources: ~
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2021,7 +2018,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
-		"Values.sizing.post_role.capabilities": []interface{}{},
 	}
 
 	actual, err := RoundtripNode(pod, config)
@@ -2067,8 +2063,6 @@ func TestPodPostFlightHelm(t *testing.T) {
 				resources: ~
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2153,7 +2147,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 		"Values.kube.registry.username":         "U",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
 		"Values.sizing.pre_role.memory.request": nil,
 	}
 
@@ -2202,8 +2195,6 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 					limits:
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2248,7 +2239,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
 		"Values.kube.registry.username":         "U",
-		"Values.sizing.pre_role.capabilities":   []interface{}{},
 		"Values.sizing.pre_role.memory.limit":   "10",
 		"Values.sizing.pre_role.memory.request": "1",
 	}
@@ -2300,8 +2290,6 @@ func TestPodMemoryHelmActive(t *testing.T) {
 						memory: "10Mi"
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2384,7 +2372,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		"Values.kube.organization":             "O",
 		"Values.kube.registry.hostname":        "R",
 		"Values.kube.registry.username":        "U",
-		"Values.sizing.pre_role.capabilities":  []interface{}{},
 		"Values.sizing.pre_role.cpu.request":   nil,
 	}
 
@@ -2433,8 +2420,6 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 					limits:
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2479,7 +2464,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 		"Values.kube.organization":             "O",
 		"Values.kube.registry.hostname":        "R",
 		"Values.kube.registry.username":        "U",
-		"Values.sizing.pre_role.capabilities":  []interface{}{},
 		"Values.sizing.pre_role.cpu.limit":     "10",
 		"Values.sizing.pre_role.cpu.request":   "1",
 	}
@@ -2531,8 +2515,6 @@ func TestPodCPUHelmActive(t *testing.T) {
 						cpu: "10m"
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest
@@ -2561,83 +2543,21 @@ func TestGetSecurityContextCapList(t *testing.T) {
 		return
 	}
 
-	t.Run("Kube", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, false)
-		if !assert.NotNil(sc) {
-			return
-		}
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
 
-		actual, err := RoundtripKube(sc)
-		if !assert.NoError(err) {
-			return
-		}
-		testhelpers.IsYAMLEqualString(assert, `---
-			allowPrivilegeEscalation: false
-			capabilities:
-				add:
-				-	"SOMETHING"
-		`, actual)
-	})
-
-	t.Run("Helm", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, true)
-		if !assert.NotNil(sc) {
-			return
-		}
-
-		t.Run("OverrideNone", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
-				capabilities:
-					add:
-					-	"SOMETHING"
-			`, actual)
-		})
-
-		t.Run("OverrideALL", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				# privileged: true implies allowPrivilegeEscalation
-				allowPrivilegeEscalation: true
-				privileged: true
-			`, actual)
-		})
-
-		t.Run("OverrideSomething", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{"something"},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
-				capabilities:
-					add:
-					-	"SOMETHING"
-					-	"SOMETHING"
-			`, actual)
-		})
-	})
+	actual, err := RoundtripKube(sc)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		allowPrivilegeEscalation: false
+		capabilities:
+			add:
+			-	"SOMETHING"
+	`, actual)
 }
 
 func TestGetSecurityContextNil(t *testing.T) {
@@ -2653,78 +2573,19 @@ func TestGetSecurityContextNil(t *testing.T) {
 
 	role.Run.Capabilities = []string{}
 
-	t.Run("Kube", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, false)
-		if !assert.NotNil(sc) {
-			return
-		}
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
 
-		actual, err := RoundtripKube(sc)
-		if !assert.NoError(err) {
-			return
-		}
-		testhelpers.IsYAMLEqualString(assert, `---
-			allowPrivilegeEscalation: false
-		`, actual)
-	})
+	actual, err := RoundtripKube(sc)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		allowPrivilegeEscalation: false
+	`, actual)
 
-	t.Run("Helm", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, true)
-		if !assert.NotNil(sc) {
-			return
-		}
-
-		t.Run("OverrideNone", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
-				capabilities:
-					add:	~
-			`, actual)
-		})
-
-		t.Run("OverrideALL", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{"ALL"},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				# privileged: true implies allowPrivilegeEscalation
-				allowPrivilegeEscalation: true
-				privileged: true
-			`, actual)
-		})
-
-		t.Run("OverrideSomething", func(t *testing.T) {
-			t.Parallel()
-			config := map[string]interface{}{
-				"Values.sizing.myrole.capabilities": []interface{}{"something"},
-			}
-			actual, err := RoundtripNode(sc, config)
-			if !assert.NoError(err) {
-				return
-			}
-			testhelpers.IsYAMLEqualString(assert, `---
-				allowPrivilegeEscalation: false
-				capabilities:
-					add:
-					-	SOMETHING
-			`, actual)
-		})
-	})
 }
 
 func TestGetSecurityContextPrivileged(t *testing.T) {
@@ -2743,37 +2604,22 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 	// the backend code.
 	role.Run.Capabilities[0] = "ALL"
 
-	t.Run("Kube", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, false)
-		if !assert.NotNil(sc) {
-			return
-		}
+	sc := getSecurityContext(role)
+	if !assert.NotNil(sc) {
+		return
+	}
 
-		actual, err := RoundtripKube(sc)
-		if !assert.NoError(err) {
-			return
-		}
-		testhelpers.IsYAMLEqualString(assert, `---
-			privileged: true
-		`, actual)
-	})
-
-	t.Run("Helm", func(t *testing.T) {
-		t.Parallel()
-		sc := getSecurityContext(role, true)
-		if !assert.NotNil(sc) {
-			return
-		}
-
-		actual, err := RoundtripKube(sc)
-		if !assert.NoError(err) {
-			return
-		}
-		testhelpers.IsYAMLEqualString(assert, `---
-			privileged: true
-		`, actual)
-	})
+	actual, err := RoundtripKube(sc)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		allowPrivilegeEscalation: false
+		capabilities:
+			add:
+			-	"ALL"
+		privileged: true
+	`, actual)
 }
 
 func TestPodGetContainerImageNameKube(t *testing.T) {
@@ -3116,8 +2962,6 @@ func TestPodIstioManagedHelm(t *testing.T) {
 				resources: ~
 				securityContext:
 					allowPrivilegeEscalation: false
-					capabilities:
-						add:	~
 				volumeMounts:
 				-	mountPath: /opt/fissile/config
 					name: deployment-manifest

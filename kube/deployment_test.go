@@ -111,7 +111,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.sizing.some_group.count":                 "0",
 			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
-			"Values.sizing.some_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                  "docker.suse.fake",
 			"Values.kube.organization":                       "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
@@ -126,7 +125,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.sizing.some_group.count":                 "10",
 			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
-			"Values.sizing.some_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                  "docker.suse.fake",
 			"Values.kube.organization":                       "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
@@ -197,7 +195,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.config.use_istio":                        true,
 			"Values.sizing.some_group.count":                 "1",
 			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
-			"Values.sizing.some_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                  "docker.suse.fake",
 			"Values.kube.registry.username":                  "", // no imagePullSecrets
 			"Values.kube.organization":                       "splat",
@@ -285,8 +282,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 							resources: ~
 							securityContext:
 								allowPrivilegeEscalation: false
-								capabilities:
-									add:	~
 							volumeMounts:
 							-	mountPath: /opt/fissile/config
 								name: deployment-manifest
@@ -335,7 +330,6 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 			"Values.config.use_istio":                                 "true",
 			"Values.sizing.istio_managed_group.count":                 "1",
 			"Values.sizing.istio_managed_group.affinity.nodeAffinity": "snafu",
-			"Values.sizing.istio_managed_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                           "docker.suse.fake",
 			"Values.kube.registry.username":                           "U",
 			"Values.kube.organization":                                "splat",
@@ -424,8 +418,6 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 							resources: ~
 							securityContext:
 								allowPrivilegeEscalation: false
-								capabilities:
-									add:	~
 							volumeMounts:
 							-	mountPath: /opt/fissile/config
 								name: deployment-manifest
@@ -614,13 +606,11 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 	t.Run("Configured", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
-			"Values.sizing.some_group.affinity":     map[string]interface{}{},
-			"Values.sizing.some_group.count":        "1",
-			"Values.sizing.some_group.capabilities": []interface{}{},
-			"Values.sizing.colocated.capabilities":  []interface{}{},
-			"Values.kube.registry.hostname":         "docker.suse.fake",
-			"Values.kube.organization":              "splat",
-			"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
+			"Values.sizing.some_group.affinity":    map[string]interface{}{},
+			"Values.sizing.some_group.count":       "1",
+			"Values.kube.registry.hostname":        "docker.suse.fake",
+			"Values.kube.organization":             "splat",
+			"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		}
 
 		actual, err := RoundtripNode(deployment, config)
