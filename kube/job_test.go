@@ -150,6 +150,7 @@ func TestJobHelm(t *testing.T) {
 		"Template.BasePath":                    fakeTemplateDir,
 		"Release.Revision":                     "42",
 		"Values.kube.registry.hostname":        "docker.suse.fake",
+		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "splat",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		"Values.sizing.pre_role.capabilities":  []interface{}{},

@@ -199,6 +199,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			"Values.sizing.some_group.affinity.nodeAffinity": "snafu",
 			"Values.sizing.some_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                  "docker.suse.fake",
+			"Values.kube.registry.username":                  "", // no imagePullSecrets
 			"Values.kube.organization":                       "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":           "cluster.local",
 		}
@@ -291,8 +292,6 @@ func TestNewDeploymentHelm(t *testing.T) {
 								name: deployment-manifest
 								readOnly: true
 						dnsPolicy: "ClusterFirst"
-						imagePullSecrets:
-						- name: "registry-credentials"
 						restartPolicy: "Always"
 						terminationGracePeriodSeconds: 600
 						volumes:
@@ -338,6 +337,7 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 			"Values.sizing.istio_managed_group.affinity.nodeAffinity": "snafu",
 			"Values.sizing.istio_managed_group.capabilities":          []interface{}{},
 			"Values.kube.registry.hostname":                           "docker.suse.fake",
+			"Values.kube.registry.username":                           "U",
 			"Values.kube.organization":                                "splat",
 			"Values.env.KUBERNETES_CLUSTER_DOMAIN":                    "cluster.local",
 		}

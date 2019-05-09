@@ -87,4 +87,12 @@ func TestMakeRegistryCredentialsHelm(t *testing.T) {
 				skiff-role-name: "registry-credentials"
 		type: "kubernetes.io/dockercfg"
 	`, dcfg), actual)
+
+	// registry credentials are only created when the username is set
+	config["Values.kube.registry.username"] = ""
+	actual, err = RoundtripNode(registryCredentials, config)
+	if !assert.NoError(err) {
+		return
+	}
+	assert.Nil(actual, "There should be no credentials when the username is empty")
 }

@@ -1789,6 +1789,7 @@ func TestPodPreFlightHelm(t *testing.T) {
 
 	config := map[string]interface{}{
 		"Values.kube.registry.hostname":        "R",
+		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		"Values.sizing.pre_role.capabilities":  []interface{}{},
@@ -1911,6 +1912,7 @@ func TestPodPostFlightHelm(t *testing.T) {
 
 	config := map[string]interface{}{
 		"Values.kube.registry.hostname":        "R",
+		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		"Values.sizing.post_role.capabilities": []interface{}{},
@@ -2042,6 +2044,7 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.config.memory.requests":         nil,
 		"Values.kube.registry.hostname":         "R",
+		"Values.kube.registry.username":         "U",
 		"Values.kube.organization":              "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
@@ -2138,6 +2141,7 @@ func TestPodMemoryHelmActive(t *testing.T) {
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":  "cluster.local",
 		"Values.kube.organization":              "O",
 		"Values.kube.registry.hostname":         "R",
+		"Values.kube.registry.username":         "U",
 		"Values.sizing.pre_role.capabilities":   []interface{}{},
 		"Values.sizing.pre_role.memory.limit":   "10",
 		"Values.sizing.pre_role.memory.request": "1",
@@ -2273,6 +2277,7 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		"Values.kube.organization":             "O",
 		"Values.kube.registry.hostname":        "R",
+		"Values.kube.registry.username":        "U",
 		"Values.sizing.pre_role.capabilities":  []interface{}{},
 		"Values.sizing.pre_role.cpu.request":   nil,
 	}
@@ -2367,6 +2372,7 @@ func TestPodCPUHelmActive(t *testing.T) {
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 		"Values.kube.organization":             "O",
 		"Values.kube.registry.hostname":        "R",
+		"Values.kube.registry.username":        "U",
 		"Values.sizing.pre_role.capabilities":  []interface{}{},
 		"Values.sizing.pre_role.cpu.limit":     "10",
 		"Values.sizing.pre_role.cpu.request":   "1",
@@ -2950,6 +2956,7 @@ func TestPodIstioManagedHelm(t *testing.T) {
 	config := map[string]interface{}{
 		"Values.config.use_istio":                       "true",
 		"Values.kube.registry.hostname":                 "R",
+		"Values.kube.registry.username":                 "U",
 		"Values.kube.organization":                      "O",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN":          "cluster.local",
 		"Values.sizing.istio_managed_role.capabilities": []interface{}{},
