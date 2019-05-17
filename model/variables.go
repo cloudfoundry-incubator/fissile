@@ -15,12 +15,8 @@ type Variables []*VariableDefinition
 type VariableDefinition struct {
 	Name      string
 	Type      string
-	Options   VariableOptions
 	CVOptions CVOptions
 }
-
-// VariableOptions are not structured, their content depends on the type
-type VariableOptions map[string]interface{}
 
 // CVOptions is a configuration to be exposed to the IaaS
 //
@@ -48,6 +44,7 @@ type CVOptions struct {
 	Secret        bool        `yaml:"secret,omitempty"`
 	Required      bool        `yaml:"required,omitempty"`
 	Immutable     bool        `yaml:"immutable,omitempty"`
+	ImageName     bool        `yaml:"imagename,omitempty"`
 }
 
 // CVType is the type of the configuration variable; see the constants below

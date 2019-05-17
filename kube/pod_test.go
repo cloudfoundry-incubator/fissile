@@ -1132,6 +1132,84 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 	})
 }
 
+func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	ev, err := getEnvVarsFromConfigs(model.Variables{
+		&model.VariableDefinition{
+			Name: "IMAGENAME",
+			CVOptions: model.CVOptions{
+				Type:      model.CVTypeUser,
+				ImageName: true,
+			},
+		},
+	}, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest: &model.RoleManifest{
+			InstanceGroups: []*model.InstanceGroup{
+				&model.InstanceGroup{
+					Name: "foo",
+				},
+			},
+		},
+	})
+	if !assert.NoError(err) {
+		return
+	}
+
+	t.Run("WithRegistry", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.organization": "my-org",
+			"Values.env.IMAGENAME":     "my-image:my-tag",
+		}
+		actual, err := RoundtripNode(ev, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "IMAGENAME"
+				value: "docker.io/my-org/my-image:my-tag"
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
+		`, actual)
+	})
+
+	t.Run("WithoutRegistry", func(t *testing.T) {
+		t.Parallel()
+		config := map[string]interface{}{
+			"Values.kube.organization": "my-org",
+			"Values.env.IMAGENAME":     "registry/library/image:tag",
+		}
+
+		actual, err := RoundtripNode(ev, config)
+		if !assert.NoError(err) {
+			return
+		}
+
+		testhelpers.IsYAMLEqualString(assert, `---
+			-	name: "IMAGENAME"
+				value: "registry/library/image:tag"
+			-	name: "KUBERNETES_NAMESPACE"
+				valueFrom:
+					fieldRef:
+						fieldPath: "metadata.namespace"
+			-	name: "VCAP_HARD_NPROC"
+				value: "2048"
+			-	name: "VCAP_SOFT_NPROC"
+				value: "1024"
+		`, actual)
+	})
+}
+
 func TestPodGetContainerLivenessProbe(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
