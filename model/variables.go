@@ -44,6 +44,7 @@ type CVOptions struct {
 	Secret        bool        `yaml:"secret,omitempty"`
 	Required      bool        `yaml:"required,omitempty"`
 	Immutable     bool        `yaml:"immutable,omitempty"`
+	ImageName     bool        `yaml:"imagename,omitempty"`
 }
 
 // CVType is the type of the configuration variable; see the constants below

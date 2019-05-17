@@ -513,9 +513,20 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				required = fmt.Sprintf(`{{fail "env.%s has not been set"}}`, config.Name)
 			}
 			name := ".Values.env." + config.Name
-			tmpl := `{{if ne (typeOf %s) "<nil>"}}{{if has (kindOf %s) (list "map" "slice")}}` +
-				`{{%s | toJson | quote}}{{else}}{{%s | quote}}{{end}}{{else}}%s{{end}}`
-			stringifiedValue = fmt.Sprintf(tmpl, name, name, name, name, required)
+			if config.CVOptions.ImageName {
+				// Imagenames including 2 slashes already include the registry name and org.
+				// All others will be prefixed with the registry and org from values.yaml.
+				kube := ".Values.kube"
+				tmpl := `{{if regexMatch "/.+/" %s}}{{%s | quote}}{{else}}` +
+					`{{print %s.registry.hostname "/" %s.organization "/" %s | quote}}{{end}}`
+				stringifiedValue = fmt.Sprintf(tmpl, name, name, kube, kube, name)
+			} else {
+				tmpl := `{{if has (kindOf %s) (list "map" "slice")}}` +
+					`{{%s | toJson | quote}}{{else}}{{%s | quote}}{{end}}`
+				stringifiedValue = fmt.Sprintf(tmpl, name, name, name)
+			}
+			tmpl := `{{if ne (typeOf %s) "<nil>"}}%s{{else}}%s{{end}}`
+			stringifiedValue = fmt.Sprintf(tmpl, name, stringifiedValue, required)
 		} else {
 			var ok bool
 			ok, stringifiedValue = config.Value()
