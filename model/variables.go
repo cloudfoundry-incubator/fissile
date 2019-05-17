@@ -15,12 +15,8 @@ type Variables []*VariableDefinition
 type VariableDefinition struct {
 	Name      string
 	Type      string
-	Options   VariableOptions
 	CVOptions CVOptions
 }
-
-// VariableOptions are not structured, their content depends on the type
-type VariableOptions map[string]interface{}
 
 // CVOptions is a configuration to be exposed to the IaaS
 //
