@@ -514,7 +514,11 @@ func TestGenerateAuth(t *testing.T) {
 						"app.kubernetes.io/component": "nonprivileged"
 					}
 				},
-				"spec": {}
+				"spec": {
+					"runAsUser": {
+						"rule": "RunAsAny"
+					}
+				}
 			}`,
 		},
 	}

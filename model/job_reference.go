@@ -23,7 +23,6 @@ type JobContainerProperties struct {
 
 // JobBoshContainerization describes settings specific to containerization
 type JobBoshContainerization struct {
-	PodSecurityPolicy   string           `yaml:"pod-security-policy,omitempty"`
 	Ports               []JobExposedPort `yaml:"ports"`
 	Run                 *RoleRun         `yaml:"run"`
 	ColocatedContainers []string         `yaml:"colocated_containers,omitempty"`

@@ -23,25 +23,7 @@ const (
 
 // PodSecurityPolicy defines a pod security policy
 type PodSecurityPolicy struct {
-	Definition                 interface{}
-	privilegeEscalationAllowed *bool
-}
-
-// PrivilegeEscalationAllowed checks if this policy is set to allow privilege escalation
-func (policy *PodSecurityPolicy) PrivilegeEscalationAllowed() bool {
-	if policy.privilegeEscalationAllowed == nil {
-		allowed := false
-
-		if m, ok := policy.Definition.(map[interface{}]interface{}); ok {
-			if v, ok := m["allowPrivilegeEscalation"]; ok {
-				if b, ok := v.(bool); ok {
-					allowed = b
-				}
-			}
-		}
-		policy.privilegeEscalationAllowed = &allowed
-	}
-	return *policy.privilegeEscalationAllowed
+	Definition interface{}
 }
 
 // UnmarshalYAML implements the yaml.v2/Unmarshaler interface.

@@ -159,6 +159,11 @@ func (r *Resolver) ResolveRoleManifest() error {
 			accountName = instanceGroup.Run.ServiceAccount
 		}
 		account := m.Configuration.Authorization.Accounts[accountName]
+		if account.UsedBy == nil {
+			account.UsedBy = make(map[string]struct{})
+		}
+		account.UsedBy[instanceGroup.Name] = struct{}{}
+		m.Configuration.Authorization.Accounts[accountName] = account
 
 		for _, roleName := range account.Roles {
 			if m.Configuration.Authorization.RoleUsedBy[roleName] == nil {
@@ -212,7 +217,6 @@ func (r *Resolver) ResolveRoleManifest() error {
 		if !r.releaseResolver.CanValidate() {
 			allErrs = append(allErrs, validateScripts(m, r.options.ValidationOptions)...)
 		}
-		allErrs = append(allErrs, resolvePodSecurityPolicies(m)...)
 	}
 
 	if len(allErrs) != 0 {
@@ -395,211 +399,6 @@ func (r *Resolver) recordJobConsumers(m *model.RoleManifest) validation.ErrorLis
 		}
 	}
 
-	return errors
-}
-
-// resolvePodSecurityPolicies ensures that the pod security policies (PSPs) are
-// in a sane state:
-// - RoleManifest.Configuration.Authorization.Accounts can reference multiple cluster-roles
-// - The cluster roles are specified in
-//   RoleManifest.Configuration.Authorization.ClusterRoles
-// - The cluster role may be able to use PSPs
-// - If no PSPs are specified for an account, then the instance group may specify if it needs to be privileged via
-//   RoleManifest.InstanceGroup.JobReferences[].ContainerProperties.BoshContainerization.PodSecurityPolicy
-// - If using the backwards compatibility key, then if a privileged PSP is requested but the service account is not
-//   normally bound to a privileged PSP, a duplicate of the service account is created with a binding to the PSP (where
-//   the name of the new service account is the old names with a "-privileged" suffix).
-func resolvePodSecurityPolicies(m *model.RoleManifest) validation.ErrorList {
-	errors := make(validation.ErrorList, 0)
-
-	// Calculate what PSPs are attached to each cluster role
-	// Calculate whether each service account has a privileged PSP attached
-	// Find instance groups with insufficient privileges (and their service accounts)
-	// If no instance groups require more privileges, stop.
-	// Find a PSP to use as the privileged PSP
-	// Create a cluster role to use that PSP (if necessary)
-	// For each inadequate account, create a clone
-	// Fix up instance groups to use the cloned accounts
-
-	// Calculate what PSPs are attached to each cluster role
-	clusterRolePSPNames := make(map[string][]string)
-	for clusterRoleName, clusterRole := range m.Configuration.Authorization.ClusterRoles {
-		for _, rule := range clusterRole {
-			if !rule.IsPodSecurityPolicyRule() {
-				continue
-			}
-			for _, resourceName := range rule.ResourceNames {
-				if _, ok := m.Configuration.Authorization.PodSecurityPolicies[resourceName]; ok {
-					clusterRolePSPNames[clusterRoleName] = append(clusterRolePSPNames[clusterRoleName], resourceName)
-				} else {
-					errors = append(errors, validation.NotFound(
-						fmt.Sprintf(`configuration.auth.cluster-roles[%s]`, clusterRoleName),
-						fmt.Sprintf(`pod security policy %s`, resourceName)))
-				}
-			}
-		}
-	}
-
-	// Calculate whether each service account has a privileged PSP attached
-	serviceAccountHasPrivilegedPSP := make(map[string]bool)
-	for accountName, account := range m.Configuration.Authorization.Accounts {
-		serviceAccountHasPrivilegedPSP[accountName] = false
-		for clusterRoleIndex, clusterRoleName := range account.ClusterRoles {
-			_, ok := m.Configuration.Authorization.ClusterRoles[clusterRoleName]
-			if !ok {
-				// cluster role is missing
-				errors = append(errors, validation.NotFound(
-					fmt.Sprintf(`configuration.auth.accounts[%s].cluster-roles[%d]`, accountName, clusterRoleIndex),
-					fmt.Sprintf(`cluster role name %s`, clusterRoleName)))
-				continue
-			}
-			for _, clusterRolePSPName := range clusterRolePSPNames[clusterRoleName] {
-				psp := m.Configuration.Authorization.PodSecurityPolicies[clusterRolePSPName]
-				if psp.PrivilegeEscalationAllowed() {
-					serviceAccountHasPrivilegedPSP[accountName] = true
-				}
-				break
-			}
-		}
-	}
-
-	// Find instance groups with insufficient privileges (and their service accounts)
-	accountsNeedingEscalation := make(map[string][]int)
-	instanceGroupsNeedingEscalation := make(map[int]struct{})
-	for instanceGroupIndex, instanceGroup := range m.InstanceGroups {
-		serviceAccountName := instanceGroup.Run.ServiceAccount
-		serviceAccount := m.Configuration.Authorization.Accounts[serviceAccountName]
-
-		if serviceAccount.UsedBy == nil {
-			serviceAccount.UsedBy = make(map[string]struct{})
-		}
-		serviceAccount.UsedBy[instanceGroup.Name] = struct{}{}
-		m.Configuration.Authorization.Accounts[serviceAccountName] = serviceAccount
-
-		if e := instanceGroup.EnsureValidPodSecurityPolicyPrivilege(); e != nil {
-			// Instance group has invalid values
-			details := e.(*model.InvalidPodSecurityPolicyPrivilegeError)
-			errors = append(errors, validation.Invalid(
-				fmt.Sprintf(`instance_groups[%s].jobs[%s].properties.bosh_containerization.pod-security-policy`,
-					instanceGroup.Name,
-					details.JobName),
-				details.Value,
-				fmt.Sprintf("Expected one of: %s, %s",
-					model.PodSecurityPolicyNonPrivileged,
-					model.PodSecurityPolicyPrivileged)))
-			continue
-		}
-
-		if !instanceGroup.IsPrivilegedPodSecurityPolicy() {
-			// Ignore any instance groups that don't request extra privileges
-			continue
-		}
-		privilegedAccount, ok := serviceAccountHasPrivilegedPSP[serviceAccountName]
-		if !ok {
-			if serviceAccountName == "default" {
-				// Create a dummy one instead
-				privilegedAccount = false
-			} else {
-				errors = append(errors, validation.NotFound(
-					fmt.Sprintf(`instance_groups[%s].run.service-account`, instanceGroup.Name),
-					fmt.Sprintf(`service account %s`, serviceAccountName)))
-				continue
-			}
-		}
-
-		if privilegedAccount {
-			// service account is already privileged, no need to escalate
-			continue
-		}
-		accountsNeedingEscalation[serviceAccountName] = append(accountsNeedingEscalation[serviceAccountName], instanceGroupIndex)
-		instanceGroupsNeedingEscalation[instanceGroupIndex] = struct{}{}
-	}
-
-	// If no instance groups require more privileges, stop.
-	if len(instanceGroupsNeedingEscalation) < 1 {
-		return errors
-	}
-
-	// Find a PSP to use as the privileged PSP
-	defaultPrivilegedPSPName := "privileged"
-	for pspName, psp := range m.Configuration.Authorization.PodSecurityPolicies {
-		if util.StringInSlice(pspName, []string{"privileged", "default"}) {
-			if psp.PrivilegeEscalationAllowed() {
-				defaultPrivilegedPSPName = pspName
-				break
-			}
-		}
-	}
-
-	// Create a cluster role to use that PSP (if necessary)
-	var defaultPrivilegedClusterRoleName string
-	if m.Configuration.Authorization.ClusterRoles == nil {
-		m.Configuration.Authorization.ClusterRoles = make(map[string]model.AuthRole)
-	}
-clusterRoleLoop:
-	for clusterRoleName, clusterRole := range m.Configuration.Authorization.ClusterRoles {
-		for _, rule := range clusterRole {
-			if !rule.IsPodSecurityPolicyRule() {
-				continue
-			}
-			if util.StringInSlice(defaultPrivilegedPSPName, rule.ResourceNames) {
-				defaultPrivilegedClusterRoleName = clusterRoleName
-				break clusterRoleLoop
-			}
-		}
-	}
-	if defaultPrivilegedClusterRoleName == "" {
-		newClusterRole := model.AuthRole{model.AuthRule{
-			APIGroups:     []string{"extensions"},
-			Verbs:         []string{"use"},
-			Resources:     []string{"podsecuritypolicies"},
-			ResourceNames: []string{defaultPrivilegedPSPName},
-		}}
-		defaultPrivilegedClusterRoleName = "default-privileged"
-		m.Configuration.Authorization.ClusterRoles[defaultPrivilegedClusterRoleName] = newClusterRole
-	}
-
-	// For each inadequate account, create a clone (with corresponding cluster role)
-	for oldAccountName, affectedInstanceGroups := range accountsNeedingEscalation {
-		newAccountName := fmt.Sprintf("%s-privileged", oldAccountName)
-		oldAccount := m.Configuration.Authorization.Accounts[oldAccountName]
-		newAccount, ok := m.Configuration.Authorization.Accounts[newAccountName]
-		if !ok {
-			// The account didn't previously exist; create it by copying the old one
-			newAccount = model.AuthAccount{
-				Roles:        append(oldAccount.Roles),
-				ClusterRoles: append(oldAccount.ClusterRoles, defaultPrivilegedClusterRoleName),
-				UsedBy:       make(map[string]struct{}),
-			}
-			// Mark the roles as being used by the new account
-			for _, roleName := range newAccount.Roles {
-				m.Configuration.Authorization.RoleUsedBy[roleName][newAccountName] = struct{}{}
-			}
-			for _, clusterRoleName := range newAccount.ClusterRoles {
-				if m.Configuration.Authorization.ClusterRoleUsedBy[clusterRoleName] == nil {
-					// If we just created the default privileged cluster role, it has no counter yet
-					m.Configuration.Authorization.ClusterRoleUsedBy[clusterRoleName] = make(map[string]struct{})
-				}
-				m.Configuration.Authorization.ClusterRoleUsedBy[clusterRoleName][newAccountName] = struct{}{}
-			}
-		}
-		// Transfer the usage from the old account to the new account
-		for _, instanceGroupIndex := range affectedInstanceGroups {
-			instanceGroupName := m.InstanceGroups[instanceGroupIndex].Name
-			delete(oldAccount.UsedBy, instanceGroupName)
-			newAccount.UsedBy[instanceGroupName] = struct{}{}
-		}
-		m.Configuration.Authorization.Accounts[oldAccountName] = oldAccount
-		m.Configuration.Authorization.Accounts[newAccountName] = newAccount
-	}
-
-	// Fix up instance groups to use the cloned accounts
-	for instanceGroupIndex := range instanceGroupsNeedingEscalation {
-		instanceGroup := m.InstanceGroups[instanceGroupIndex]
-		oldAccountName := instanceGroup.Run.ServiceAccount
-		newAccountName := fmt.Sprintf("%s-privileged", oldAccountName)
-		instanceGroup.Run.ServiceAccount = newAccountName
-	}
 	return errors
 }
 

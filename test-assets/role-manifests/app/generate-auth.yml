@@ -35,8 +35,6 @@ configuration:
         resourceNames: [nonprivileged]
         resources: [podsecuritypolicies]
         verbs: [use]
-    pod-security-policies:
-      nonprivileged: {}
     roles:
       extra-permissions:
       - apiGroups: ['']
@@ -46,3 +44,6 @@ configuration:
       - apiGroups: ['']
         resources: [bird]
         verbs: [fly]
+    pod-security-policies:
+      nonprivileged: &psp-nonprivileged
+        runAsUser: { rule: RunAsAny }

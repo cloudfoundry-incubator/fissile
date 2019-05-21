@@ -179,29 +179,17 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 	rules := helm.NewList()
 	for _, ruleSpec := range authRole {
 		rule := helm.NewMapping()
-		APIGroups := helm.NewList()
-		for _, APIGroup := range ruleSpec.APIGroups {
-			APIGroups.Add(APIGroup)
-		}
-		rule.Add("apiGroups", APIGroups)
-		resources := helm.NewList()
-		for _, resource := range ruleSpec.Resources {
-			resources.Add(resource)
-		}
-		rule.Add("resources", resources)
-		verbs := helm.NewList()
-		for _, verb := range ruleSpec.Verbs {
-			verbs.Add(verb)
-		}
-		rule.Add("verbs", verbs)
+		rule.Add("apiGroups", helm.NewNode(ruleSpec.APIGroups))
+		rule.Add("resources", helm.NewNode(ruleSpec.Resources))
+		rule.Add("verbs", helm.NewNode(ruleSpec.Verbs))
 		if len(ruleSpec.ResourceNames) > 0 {
 			resourceNames := helm.NewList()
 			for _, resourceName := range ruleSpec.ResourceNames {
 				if settings.CreateHelmChart && ruleSpec.IsPodSecurityPolicyRule() {
 					// When creating helm charts for PSPs, let the user override it
 					resourceNames.Add(fmt.Sprintf(
-						`{{ if .Values.kube.psp.%[1]s }}{{ .Values.kube.psp.%[1]s }}{{ else }}{{ template "fissile.SanitizeName" (printf "%%s-psp-%[1]s" .Release.Namespace) }}{{ end }}`,
-						resourceName))
+						`{{ if .Values.kube.psp.%[1]s }}{{ .Values.kube.psp.%[1]s }}{{ else }}`+
+							`{{ template "fissile.SanitizeName" (printf "%%s-psp-%[1]s" .Release.Namespace) }}{{ end }}`, resourceName))
 				} else {
 					resourceNames.Add(resourceName)
 				}

@@ -2603,6 +2603,7 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 	// all-uppercase now ourselves, to match the expectations of
 	// the backend code.
 	role.Run.Capabilities[0] = "ALL"
+	role.Run.Privileged = false
 
 	sc := getSecurityContext(role)
 	if !assert.NotNil(sc) {
@@ -2614,11 +2615,10 @@ func TestGetSecurityContextPrivileged(t *testing.T) {
 		return
 	}
 	testhelpers.IsYAMLEqualString(assert, `---
-		allowPrivilegeEscalation: false
+		allowPrivilegeEscalation: true
 		capabilities:
 			add:
 			-	"ALL"
-		privileged: true
 	`, actual)
 }
 

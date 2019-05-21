@@ -570,12 +570,19 @@ func getSecurityContext(instanceGroup *model.InstanceGroup) helm.Node {
 	if len(instanceGroup.Run.Capabilities) > 0 {
 		sc.Add("capabilities", helm.NewMapping("add", helm.NewNode(instanceGroup.Run.Capabilities)))
 	}
-	if instanceGroup.IsPrivileged() {
-		sc.Add("privileged", instanceGroup.IsPrivileged())
+	if instanceGroup.Run.Privileged {
+		sc.Add("privileged", instanceGroup.Run.Privileged)
 	}
-	sc.Add("allowPrivilegeEscalation", instanceGroup.AllowPrivilegeEscalation())
+	allowPrivilegeEscalation := instanceGroup.Run.Privileged
+	for _, cap := range instanceGroup.Run.Capabilities {
+		if cap == "ALL" || cap == "SYS_ADMIN" {
+			allowPrivilegeEscalation = true
+			break
+		}
+	}
+	sc.Add("allowPrivilegeEscalation", allowPrivilegeEscalation)
 
-	return sc
+	return sc.Sort()
 }
 
 func getContainerLivenessProbe(role *model.InstanceGroup) (helm.Node, error) {
