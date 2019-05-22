@@ -397,8 +397,7 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 				return nil, fmt.Errorf("%s must not be a secret variable", config.Name)
 			}
 			if settings.CreateHelmChart {
-				value := fmt.Sprintf("{{ .Values.sizing.%s.count | quote }}", makeVarName(roleName))
-				envVar := helm.NewMapping("name", config.Name, "value", value)
+				envVar := helm.NewMapping("name", config.Name, "value", replicaCount(role, true))
 				env = append(env, envVar)
 			} else {
 				envVar := helm.NewMapping("name", config.Name, "value", strconv.Itoa(role.Run.Scaling.Min))

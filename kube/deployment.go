@@ -140,6 +140,17 @@ func generalCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	return nil
 }
 
+func replicaCount(instanceGroup *model.InstanceGroup, quoted bool) string {
+	quote := ""
+	if quoted {
+		quote = " | quote"
+	}
+	count := fmt.Sprintf(".Values.sizing.%s.count", makeVarName(instanceGroup.Name))
+	// Under HA use HA count if the user hasn't explicitly modified the default count
+	return fmt.Sprintf("{{ if and .Values.config.HA (eq (int %s) %d) }}{{ %d%s }}{{ else }}{{ %s%s }}{{ end }}",
+		count, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.HA, quote, count, quote)
+}
+
 // replicaCheck adds various guards to validate the number of replicas
 // for the pod described by the controller. It further adds the
 // replicas specification itself as well.
@@ -157,16 +168,7 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 		return nil
 	}
 
-	roleName := makeVarName(instanceGroup.Name)
-	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
-	if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
-		// Under HA use HA count if the user hasn't explicitly modified the default count
-		count = fmt.Sprintf("{{ if and .Values.config.HA (eq (int %s) %d) -}} %d {{- else -}} {{ %s }} {{- end }}",
-			count, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.HA, count)
-	} else {
-		count = "{{ " + count + " }}"
-	}
-	spec.Add("replicas", count)
+	spec.Add("replicas", replicaCount(instanceGroup, false))
 	spec.Sort()
 
 	// default_feature, if_feature, and unless_feature are all mutually exclusive, so only one can be set
@@ -185,6 +187,7 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 		}
 	}
 
+	roleName := makeVarName(instanceGroup.Name)
 	fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances" }}`, roleName, instanceGroup.Run.Scaling.Min)
 	block := fmt.Sprintf("if lt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Min)
 	controller.Add("_minReplicas", fail, helm.Block(block))

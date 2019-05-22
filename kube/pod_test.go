@@ -391,6 +391,12 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 			InstanceGroups: []*model.InstanceGroup{
 				&model.InstanceGroup{
 					Name: "foo",
+					Run: &model.RoleRun{
+						Scaling: &model.RoleRunScaling{
+							Min: 1,
+							HA:  7,
+						},
+					},
 				},
 			},
 		},
@@ -411,6 +417,28 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 					fieldPath: "metadata.namespace"
 		-	name: "KUBE_SIZING_FOO_COUNT"
 			value: "22"
+		-	name: "VCAP_HARD_NPROC"
+			value: "2048"
+		-	name: "VCAP_SOFT_NPROC"
+			value: "1024"
+	`, actual)
+
+	config = map[string]interface{}{
+		"Values.sizing.foo.count": 1, // Run.Scaling.Min
+		"Values.config.HA":        true,
+	}
+
+	actual, err = RoundtripNode(ev, config)
+	if !assert.NoError(err) {
+		return
+	}
+	testhelpers.IsYAMLEqualString(assert, `---
+		-	name: "KUBERNETES_NAMESPACE"
+			valueFrom:
+				fieldRef:
+					fieldPath: "metadata.namespace"
+		-	name: "KUBE_SIZING_FOO_COUNT"
+			value: "7"
 		-	name: "VCAP_HARD_NPROC"
 			value: "2048"
 		-	name: "VCAP_SOFT_NPROC"
