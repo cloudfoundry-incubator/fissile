@@ -514,10 +514,10 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 			}
 			name := ".Values.env." + config.Name
 			if config.CVOptions.ImageName {
-				// Imagenames including 2 slashes already include the registry name and org.
+				// Imagenames including a slash already include at least an org name.
 				// All others will be prefixed with the registry and org from values.yaml.
 				kube := ".Values.kube"
-				tmpl := `{{if regexMatch "/.+/" %s}}{{%s | quote}}{{else}}` +
+				tmpl := `{{if contains "/" %s}}{{%s | quote}}{{else}}` +
 					`{{print %s.registry.hostname "/" %s.organization "/" %s | quote}}{{end}}`
 				stringifiedValue = fmt.Sprintf(tmpl, name, name, kube, kube, name)
 			} else {

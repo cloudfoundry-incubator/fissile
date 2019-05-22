@@ -1158,7 +1158,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
 		return
 	}
 
-	t.Run("WithRegistry", func(t *testing.T) {
+	t.Run("WithoutOrg", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.organization": "my-org",
@@ -1183,11 +1183,11 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
 		`, actual)
 	})
 
-	t.Run("WithoutRegistry", func(t *testing.T) {
+	t.Run("WithOrg", func(t *testing.T) {
 		t.Parallel()
 		config := map[string]interface{}{
 			"Values.kube.organization": "my-org",
-			"Values.env.IMAGENAME":     "registry/library/image:tag",
+			"Values.env.IMAGENAME":     "org/image:tag",
 		}
 
 		actual, err := RoundtripNode(ev, config)
@@ -1197,7 +1197,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
 
 		testhelpers.IsYAMLEqualString(assert, `---
 			-	name: "IMAGENAME"
-				value: "registry/library/image:tag"
+				value: "org/image:tag"
 			-	name: "KUBERNETES_NAMESPACE"
 				valueFrom:
 					fieldRef:
