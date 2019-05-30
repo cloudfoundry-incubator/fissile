@@ -4,41 +4,12 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/fissile/model"
-	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMakeValues(t *testing.T) {
 	t.Parallel()
-
-	t.Run("Capabilities", func(t *testing.T) {
-		t.Parallel()
-		settings := ExportSettings{
-			RoleManifest: &model.RoleManifest{
-				InstanceGroups: model.InstanceGroups{
-					&model.InstanceGroup{
-						Name: "arole",
-						Run: &model.RoleRun{
-							Scaling: &model.RoleRunScaling{},
-						},
-					},
-				},
-				Configuration: &model.Configuration{},
-			},
-		}
-
-		node := MakeValues(settings)
-		require.NotNil(t, node)
-
-		actual, err := RoundtripKube(node)
-		require.NoError(t, err)
-		testhelpers.IsYAMLSubsetString(assert.New(t), `---
-			sizing:
-				arole:
-					capabilities:	[]
-		`, actual)
-	})
 
 	t.Run("Sizing", func(t *testing.T) {
 		t.Parallel()

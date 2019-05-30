@@ -153,7 +153,6 @@ func TestJobHelm(t *testing.T) {
 		"Values.kube.registry.username":        "U",
 		"Values.kube.organization":             "splat",
 		"Values.env.KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
-		"Values.sizing.pre_role.capabilities":  []interface{}{},
 	}
 
 	actual, err := RoundtripNode(job, config)
@@ -213,8 +212,6 @@ func TestJobHelm(t *testing.T) {
 						resources: ~
 						securityContext:
 							allowPrivilegeEscalation: false
-							capabilities:
-								add:	~
 						volumeMounts:
 						-	mountPath: /opt/fissile/config
 							name: deployment-manifest

@@ -174,7 +174,7 @@ func getContainerMapping(role *model.InstanceGroup, settings ExportSettings, gra
 		}
 	}
 
-	securityContext := getSecurityContext(role, settings.CreateHelmChart)
+	securityContext := getSecurityContext(role)
 	ports, err := getContainerPorts(role, settings)
 	if err != nil {
 		return nil, err
@@ -565,56 +565,24 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 	return helm.NewNode(env), nil
 }
 
-func getSecurityContext(instanceGroup *model.InstanceGroup, createHelmChart bool) helm.Node {
-	var hasAll string
-	var notAll string
-	var config string
-	if createHelmChart {
-		config = fmt.Sprintf(".Values.sizing.%s.capabilities", makeVarName(instanceGroup.Name))
-		hasAll = fmt.Sprintf(`if has "ALL" %s`, config)
-		notAll = fmt.Sprintf(`if not (has "ALL" %s)`, config)
-	}
-
-	if instanceGroup.IsPrivileged() {
-		// If instance group is privileged, there's nothing else we need to specify
-		return helm.NewMapping("privileged", true)
-	}
-
+func getSecurityContext(instanceGroup *model.InstanceGroup) helm.Node {
 	sc := helm.NewMapping()
-	allowPrivileged := instanceGroup.AllowPrivilegeEscalation()
-
-	capabilities := instanceGroup.Run.Capabilities
-	if createHelmChart {
-		// This code handles manifest modes `caplist` and `nil` (empty caplist).
-		//
-		// Conditional capabilities, fixed set, and ...
-		caplist := helm.NewList()
-		for _, cap := range capabilities {
-			// Never run when the manifest caplist is empty
-			caplist.Add(cap)
-		}
-		// ... and range over operator-specified dynamic set.
-		caplist.Add(helm.NewNode("{{ . | upper }}", helm.Block(fmt.Sprintf("range %s", config))))
-		cla := helm.NewMapping("add", caplist)
-		cla.Set(helm.Block(notAll))
-
-		// Complete the context, with conditional privileged mode
-		sc.Add("privileged", helm.NewNode(true, helm.Block(hasAll)))
-		sc.Add("capabilities", cla)
-		if allowPrivileged {
-			sc.Add("allowPrivilegeEscalation", allowPrivileged)
-		} else {
-			// We ned to allow privilege escalation if if want privileged mode
-			sc.Add("allowPrivilegeEscalation", fmt.Sprintf("{{ %s -}} true {{- else -}} false {{- end }}", hasAll))
-		}
-	} else {
-		if len(capabilities) > 0 {
-			sc.Add("capabilities", helm.NewMapping("add", helm.NewNode(capabilities)))
-		}
-		sc.Add("allowPrivilegeEscalation", allowPrivileged)
+	if len(instanceGroup.Run.Capabilities) > 0 {
+		sc.Add("capabilities", helm.NewMapping("add", helm.NewNode(instanceGroup.Run.Capabilities)))
 	}
+	if instanceGroup.Run.Privileged {
+		sc.Add("privileged", instanceGroup.Run.Privileged)
+	}
+	allowPrivilegeEscalation := instanceGroup.Run.Privileged
+	for _, cap := range instanceGroup.Run.Capabilities {
+		if cap == "ALL" || cap == "SYS_ADMIN" {
+			allowPrivilegeEscalation = true
+			break
+		}
+	}
+	sc.Add("allowPrivilegeEscalation", allowPrivilegeEscalation)
 
-	return sc
+	return sc.Sort()
 }
 
 func getContainerLivenessProbe(role *model.InstanceGroup) (helm.Node, error) {

@@ -12,6 +12,7 @@ import (
 type RoleRun struct {
 	Scaling            *RoleRunScaling  `yaml:"scaling"`
 	Capabilities       []string         `yaml:"capabilities"`
+	Privileged         bool             `yaml:"privileged"`
 	PersistentVolumes  []*RoleRunVolume `yaml:"persistent-volumes"` // Backwards compat only
 	SharedVolumes      []*RoleRunVolume `yaml:"shared-volumes"`     // Backwards compat only
 	Volumes            []*RoleRunVolume `yaml:"volumes"`
@@ -165,6 +166,9 @@ func (r *RoleRun) mergeCapabilities(jobReferences JobReferences) {
 	for _, j := range jobReferences {
 		for _, c := range j.ContainerProperties.BoshContainerization.Run.Capabilities {
 			seen[strings.ToUpper(c)] = 1
+		}
+		if j.ContainerProperties.BoshContainerization.Run.Privileged {
+			r.Privileged = true
 		}
 	}
 
