@@ -1,0 +1,10 @@
+---
+instance_groups:
+- name: myrole
+  jobs:
+  - name: new_hostname
+    release: tor
+    properties:
+      bosh_containerization:
+        run:
+          service-account: '{{if .Values.enable.feature}}feature{{else}}default{{end}}'

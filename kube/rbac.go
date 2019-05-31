@@ -36,9 +36,9 @@ func NewRBACAccount(accountName string, config *model.Configuration, settings Ex
 		return nil, nil
 	}
 
-	// If we want to modify the default account, there's no need to create it
-	// first -- it already exists
-	if accountName != "default" {
+	// If we want to modify the default account, there's no need to create it first -- it already exists.
+	// We also don't create templated account names; any possible name must already be defined elsewhere.
+	if accountName != "default" && !(strings.HasPrefix(accountName, "{{") && strings.HasSuffix(accountName, "}}")) {
 		var instanceGroupNames []string
 		for instanceGroupName := range account.UsedBy {
 			instanceGroupNames = append(instanceGroupNames, fmt.Sprintf("- %s", instanceGroupName))

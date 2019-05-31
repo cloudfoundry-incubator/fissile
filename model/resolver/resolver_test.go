@@ -298,6 +298,24 @@ func TestLoadRoleManifestMissingRBACAccount(t *testing.T) {
 	assert.Nil(t, roleManifest)
 }
 
+func TestLoadRoleManifestTemplatedRBACAccount(t *testing.T) {
+	workDir, err := os.Getwd()
+	assert.NoError(t, err)
+
+	torReleasePath := filepath.Join(workDir, "../../test-assets/tor-boshrelease")
+	roleManifestPath := filepath.Join(workDir, "../../test-assets/role-manifests/model/rbac-templated-account.yml")
+	roleManifest, err := loader.LoadRoleManifest(roleManifestPath, model.LoadRoleManifestOptions{
+		ReleaseOptions: model.ReleaseOptions{
+			ReleasePaths:     []string{torReleasePath},
+			BOSHCacheDir:     filepath.Join(workDir, "../../test-assets/bosh-cache"),
+			FinalReleasesDir: filepath.Join(workDir, "../../test-assets/.final_releases")},
+		ValidationOptions: model.RoleManifestValidationOptions{
+			AllowMissingScripts: true,
+		}})
+	assert.NoError(t, err)
+	assert.NotNil(t, roleManifest)
+}
+
 func TestLoadRoleManifestMissingRBACRole(t *testing.T) {
 	workDir, err := os.Getwd()
 	assert.NoError(t, err)

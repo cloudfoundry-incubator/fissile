@@ -3,6 +3,7 @@ package resolver
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/validation"
@@ -22,9 +23,11 @@ func validateRoleRun(instanceGroup *model.InstanceGroup, roleManifest *model.Rol
 
 	if instanceGroup.Run.ServiceAccount != "" {
 		accountName := instanceGroup.Run.ServiceAccount
-		if _, ok := roleManifest.Configuration.Authorization.Accounts[accountName]; !ok {
-			allErrs = append(allErrs, validation.NotFound(
-				fmt.Sprintf("instance_groups[%s].run.service-account", instanceGroup.Name), accountName))
+		if !(strings.HasPrefix(accountName, "{{") && strings.HasSuffix(accountName, "}}")) {
+			if _, ok := roleManifest.Configuration.Authorization.Accounts[accountName]; !ok {
+				allErrs = append(allErrs, validation.NotFound(
+					fmt.Sprintf("instance_groups[%s].run.service-account", instanceGroup.Name), accountName))
+			}
 		}
 	} else {
 		// Make the default ("default" (sic!)) explicit.
