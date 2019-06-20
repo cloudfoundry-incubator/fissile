@@ -44,10 +44,7 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 	spec.Add("dnsPolicy", "ClusterFirst")
 	spec.Add("volumes", getNonClaimVolumes(role, settings))
 	spec.Add("restartPolicy", "Always")
-	if role.Run.ServiceAccount != "default" {
-		// This role requires a custom service account
-		spec.Add("serviceAccountName", role.Run.ServiceAccount, authModeRBAC(settings))
-	}
+	spec.Add("serviceAccountName", role.Run.ServiceAccount, authModeRBAC(settings))
 	if settings.CreateHelmChart {
 		spec.Get("imagePullSecrets").Set(helm.Block(`if ne .Values.kube.registry.username ""`))
 	}
