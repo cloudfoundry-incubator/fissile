@@ -24,7 +24,10 @@ func DownloadFile(filepath string, url string, progressEvent progressDelegate) e
 	defer out.Close()
 
 	// Get the data
-	resp, err := http.Get(url)
+	transport := &http.Transport{}
+	transport.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	httpClient := &http.Client{Transport: transport}
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return err
 	}
