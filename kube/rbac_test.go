@@ -3,7 +3,6 @@ package kube
 import (
 	"testing"
 
-	"code.cloudfoundry.org/fissile/helm"
 	"code.cloudfoundry.org/fissile/model"
 	"code.cloudfoundry.org/fissile/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 
 	require.NoError(t, err)
 
-	account := matchNodeInList(resources, helm.NewMapping("kind", "ServiceAccount"))
+	account := findKind(resources, "ServiceAccount")
 	if assert.NotNil(t, account, "service account not found") {
 		actualAccount, err := RoundtripKube(account)
 		if assert.NoError(t, err) {
@@ -47,7 +46,7 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		}
 	}
 
-	roleBinding := matchNodeInList(resources, helm.NewMapping("kind", "RoleBinding"))
+	roleBinding := findKind(resources, "RoleBinding")
 	if assert.NotNil(t, roleBinding, "role binding not found") {
 		actualRole, err := RoundtripKube(roleBinding)
 		if assert.NoError(t, err) {
@@ -69,7 +68,7 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		}
 	}
 
-	role := matchNodeInList(resources, helm.NewMapping("kind", "Role"))
+	role := findKind(resources, "Role")
 	if assert.NotNil(t, role, "role not found") {
 		actualRole, err := RoundtripKube(role)
 		if assert.NoError(t, err) {
@@ -85,7 +84,7 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		}
 	}
 
-	clusterRoleBinding := matchNodeInList(resources, helm.NewMapping("kind", "ClusterRoleBinding"))
+	clusterRoleBinding := findKind(resources, "ClusterRoleBinding")
 	if assert.NotNil(t, clusterRoleBinding, "cluster role binding not found") {
 		actualBinding, err := RoundtripKube(clusterRoleBinding)
 		if assert.NoError(t, err) {
@@ -108,7 +107,7 @@ func TestNewRBACAccountPSPKube(t *testing.T) {
 		}
 	}
 
-	clusterRole := matchNodeInList(resources, helm.NewMapping("kind", "ClusterRole"))
+	clusterRole := findKind(resources, "ClusterRole")
 	if assert.NotNil(t, clusterRole, "cluster role not found") {
 		actualClusterRole, err := RoundtripKube(clusterRole)
 		if assert.NoError(t, err) {
@@ -167,11 +166,11 @@ func TestNewRBACAccountHelm(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 5, "Should have account, role binding, and cluster role binding")
 
-	account := matchNodeInList(resources, helm.NewMapping("kind", "ServiceAccount"))
-	roleBinding := matchNodeInList(resources, helm.NewMapping("kind", "RoleBinding"))
-	role := matchNodeInList(resources, helm.NewMapping("kind", "Role"))
-	clusterRoleBinding := matchNodeInList(resources, helm.NewMapping("kind", "ClusterRoleBinding"))
-	clusterRole := matchNodeInList(resources, helm.NewMapping("kind", "ClusterRole"))
+	account := findKind(resources, "ServiceAccount")
+	roleBinding := findKind(resources, "RoleBinding")
+	role := findKind(resources, "Role")
+	clusterRoleBinding := findKind(resources, "ClusterRoleBinding")
+	clusterRole := findKind(resources, "ClusterRole")
 
 	t.Run("NoAuth", func(t *testing.T) {
 		t.Parallel()

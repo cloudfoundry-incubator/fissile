@@ -146,10 +146,6 @@ type Node interface {
 	// Mapping node methods:
 	Get(...string) Node
 
-	// Match returns true if this Node is a superset of the other Node.
-	// This is meant for use in tests (to locate nodes).
-	Match(Node) bool
-
 	// The write() method implements the part of Encoder.writeNode() that
 	// needs to access the fields specific to each node type. prefix will be
 	// the indented label, either "name:" or "-", depending on whether the
@@ -224,15 +220,6 @@ func (scalar *Scalar) String() string {
 	return scalar.value
 }
 
-// Match returns true if the given node is a scalar with the same value
-func (scalar *Scalar) Match(otherNode Node) bool {
-	other, ok := otherNode.(*Scalar)
-	if !ok {
-		return false
-	}
-	return scalar.value == other.value
-}
-
 func (scalar Scalar) write(enc *Encoder, prefix string) {
 	fmt.Fprintln(enc, prefix+" "+strings.Replace(scalar.value, "\n", "\\n", -1))
 }
@@ -267,31 +254,6 @@ func (list *List) String() string {
 // Values returns a slice of all the elements of the list.
 func (list *List) Values() []Node {
 	return list.nodes
-}
-
-// Match returns true if the given node is a (non-strict) subset of this list
-func (list *List) Match(otherNode Node) bool {
-	other, ok := otherNode.(*List)
-	if !ok {
-		return false
-	}
-	if len(other.nodes) > len(list.nodes) {
-		// The given list has more things, it cannot be a subset
-		return false
-	}
-	listIndex := 0
-	for _, node := range other.nodes {
-		for listIndex < len(list.nodes) {
-			match := node.Match(list.nodes[listIndex])
-			listIndex++
-			if match {
-				// This node matched, continue to the next one
-				break
-			}
-			// Continue matching the next element
-		}
-	}
-	return listIndex < len(list.nodes)
 }
 
 func (list List) write(enc *Encoder, prefix string) {
@@ -382,29 +344,6 @@ func (mapping *Mapping) Names() []string {
 // Merge appends all named nodes from another mapping.
 func (mapping *Mapping) Merge(merge *Mapping) {
 	mapping.nodes = append(mapping.nodes, merge.nodes...)
-}
-
-// Match checks if this mapping is a superset of the given mapping
-func (mapping *Mapping) Match(otherNode Node) bool {
-	other, ok := otherNode.(*Mapping)
-	if !ok {
-		return false
-	}
-targetLoop:
-	for _, targetNamedNode := range other.nodes {
-		for _, namedNode := range mapping.nodes {
-			if targetNamedNode.name == namedNode.name {
-				// Have a match, do a recursive match
-				if !namedNode.node.Match(targetNamedNode.node) {
-					return false
-				}
-				continue targetLoop
-			}
-		}
-		// Getting here means we failed to find the desired name
-		return false
-	}
-	return true
 }
 
 // Sort all nodes of the mapping by name.
