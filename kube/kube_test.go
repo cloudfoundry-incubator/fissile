@@ -266,11 +266,11 @@ func getBasicConfig() (map[string]interface{}, error) {
 	return converted.(map[string]interface{}), nil
 }
 
-// matchNodeInList iterates through a list of nodes and returns the first one
-// where node.Match(target) succeeds
-func matchNodeInList(list []helm.Node, target helm.Node) helm.Node {
+// findKind iterates through a list of resources and returns the first one
+// of the specified kind.
+func findKind(list []helm.Node, kind string) helm.Node {
 	for _, node := range list {
-		if node.Match(target) {
+		if node.Get("kind").String() == kind {
 			return node
 		}
 	}
