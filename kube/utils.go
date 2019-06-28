@@ -201,6 +201,7 @@ func MakeBasicValues() *helm.Mapping {
 		),
 		"config", helm.NewMapping(
 			"HA", helm.NewNode(false, helm.Comment("Flag to activate high-availability mode")),
+			"HA_strict", helm.NewNode(true, helm.Comment("Flag to verify instance counts against HA minimums")),
 			"memory", helm.NewNode(helm.NewMapping(
 				"requests", helm.NewNode(false, helm.Comment("Flag to activate memory requests")),
 				"limits", helm.NewNode(false, helm.Comment("Flag to activate memory limits")),

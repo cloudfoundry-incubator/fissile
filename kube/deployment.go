@@ -140,15 +140,20 @@ func generalCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	return nil
 }
 
+func notNil(variable string) string {
+	return fmt.Sprintf(`(not (eq (quote %s) "\"<nil>\""))`, variable)
+}
+
 func replicaCount(instanceGroup *model.InstanceGroup, quoted bool) string {
 	quote := ""
 	if quoted {
 		quote = " | quote"
 	}
 	count := fmt.Sprintf(".Values.sizing.%s.count", makeVarName(instanceGroup.Name))
-	// Under HA use HA count if the user hasn't explicitly modified the default count
-	return fmt.Sprintf("{{ if and .Values.config.HA (eq (int %s) %d) }}{{ %d%s }}{{ else }}{{ %s%s }}{{ end }}",
-		count, instanceGroup.Run.Scaling.Min, instanceGroup.Run.Scaling.HA, quote, count, quote)
+	return fmt.Sprintf(`{{ if %s }}{{ %s%s }}{{ else }}`+
+		`{{ if .Values.config.HA }}{{ %d%s }}{{ else }}{{ %d%s }}{{ end }}{{ end }}`,
+		notNil(count), count, quote,
+		instanceGroup.Run.Scaling.HA, quote, instanceGroup.Run.Scaling.Min, quote)
 }
 
 // replicaCheck adds various guards to validate the number of replicas
@@ -188,26 +193,28 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	}
 
 	roleName := makeVarName(instanceGroup.Name)
+	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
+
+	// min replica check
 	fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances" }}`, roleName, instanceGroup.Run.Scaling.Min)
-	block := fmt.Sprintf("if lt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Min)
+	block := fmt.Sprintf("if and %s (lt (int %s) %d)", notNil(count), count, instanceGroup.Run.Scaling.Min)
 	controller.Add("_minReplicas", fail, helm.Block(block))
 
-	if instanceGroup.Run.Scaling.HA != instanceGroup.Run.Scaling.Min {
-		fail := fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, instanceGroup.Run.Scaling.HA)
-		count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
-		// If count != Min then count must be >= HA
-		block := fmt.Sprintf("if and .Values.config.HA (and (ne (int %s) %d) (lt (int %s) %d))",
-			count, instanceGroup.Run.Scaling.Min, count, instanceGroup.Run.Scaling.HA)
-		controller.Add("_minHAReplicas", fail, helm.Block(block))
-	}
+	// min HA replica check
+	fail = fmt.Sprintf(`{{ fail "%s must have at least %d instances for HA" }}`, roleName, instanceGroup.Run.Scaling.HA)
+	block = fmt.Sprintf("if and .Values.config.HA .Values.config.HA_strict %s (lt (int %s) %d)",
+		notNil(count), count, instanceGroup.Run.Scaling.HA)
+	controller.Add("_minHAReplicas", fail, helm.Block(block))
 
+	// max replica check
 	fail = fmt.Sprintf(`{{ fail "%s cannot have more than %d instances" }}`, roleName, instanceGroup.Run.Scaling.Max)
-	block = fmt.Sprintf("if gt (int .Values.sizing.%s.count) %d", roleName, instanceGroup.Run.Scaling.Max)
+	block = fmt.Sprintf("if and %s (gt (int %s) %d)", notNil(count), count, instanceGroup.Run.Scaling.Max)
 	controller.Add("_maxReplicas", fail, helm.Block(block))
 
+	// odd replica check
 	if instanceGroup.Run.Scaling.MustBeOdd {
 		fail := fmt.Sprintf(`{{ fail "%s must have an odd instance count" }}`, roleName)
-		block := fmt.Sprintf("if eq (mod (int .Values.sizing.%s.count) 2) 0", roleName)
+		block := fmt.Sprintf("if and %s (eq (mod (int %s) 2) 0)", notNil(count), count)
 		controller.Add("_oddReplicas", fail, helm.Block(block))
 	}
 
