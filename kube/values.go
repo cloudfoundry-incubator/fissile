@@ -122,7 +122,7 @@ func MakeValues(settings ExportSettings) helm.Node {
 					instanceGroup.Run.Scaling.HA)
 			}
 		}
-		entry.Add("count", instanceGroup.Run.Scaling.Min, helm.Comment(comment))
+		entry.Add("count", nil, helm.Comment(comment))
 		if settings.UseMemoryLimits {
 			var request helm.Node
 			if instanceGroup.Run.Memory.Request == nil {
