@@ -141,7 +141,7 @@ func generalCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 }
 
 func notNil(variable string) string {
-	return fmt.Sprintf(`(not (eq (quote %s) "\"<nil>\""))`, variable)
+	return fmt.Sprintf(`(ne (typeOf %s) "<nil>")`, variable)
 }
 
 func replicaCount(instanceGroup *model.InstanceGroup, quoted bool) string {
