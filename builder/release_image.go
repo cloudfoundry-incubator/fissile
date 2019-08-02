@@ -40,6 +40,7 @@ type ReleasesImageBuilder struct {
 	NoBuild                bool
 	OutputDirectory        string
 	RepositoryPrefix       string
+	ShowImageName          bool
 	StemcellName           string
 	StreamPackages         bool
 	UI                     *termui.UI
@@ -275,6 +276,12 @@ func (j releaseBuildJob) Run() {
 		if err != nil {
 			return err
 		}
+
+		if r.ShowImageName {
+			r.UI.Printf("Image Name: %s\n", color.YellowString(imageName))
+			return nil
+		}
+
 		outputPath := fmt.Sprintf("%s.tar", imageName)
 
 		if r.OutputDirectory != "" {

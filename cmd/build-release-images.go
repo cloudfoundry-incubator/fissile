@@ -33,6 +33,7 @@ This command goes through builds a Docker image for each specified release.
 			NoBuild:                buildReleaseImagesViper.GetBool("no-build"),
 			OutputDirectory:        buildReleaseImagesViper.GetString("output-directory"),
 			RepositoryPrefix:       fissile.Options.RepositoryPrefix,
+			ShowImageName:          buildReleaseImagesViper.GetBool("show-image-name"),
 			StemcellName:           buildReleaseImagesViper.GetString("stemcell"),
 			StreamPackages:         buildPackagesViper.GetBool("stream-packages"),
 			UI:                     fissile.UI,
@@ -187,6 +188,13 @@ func init() {
 		"",
 		false,
 		"If true, fissile will stream packages to the docker daemon for compilation, instead of mounting volumes",
+	)
+
+	buildReleaseImagesCmd.PersistentFlags().BoolP(
+		"show-image-name",
+		"",
+		false,
+		"If true, displays the name of the image to be built without actually building it",
 	)
 
 	buildReleaseImagesViper.BindPFlags(buildReleaseImagesCmd.PersistentFlags())
