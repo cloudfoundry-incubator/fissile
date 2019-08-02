@@ -23,6 +23,7 @@ This command goes through builds a Docker image for each specified release.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		imgBuilder := &builder.ReleasesImageBuilder{
 			CompilationCacheConfig: buildReleaseImagesViper.GetString("compilation-cache-config"),
+			DisplayImageName:       buildReleaseImagesViper.GetBool("display-image-name"),
 			DockerNetworkMode:      buildPackagesViper.GetString("docker-network-mode"),
 			DockerOrganization:     fissile.Options.DockerOrganization,
 			DockerRegistry:         fissile.Options.DockerRegistry,
@@ -33,7 +34,6 @@ This command goes through builds a Docker image for each specified release.
 			NoBuild:                buildReleaseImagesViper.GetBool("no-build"),
 			OutputDirectory:        buildReleaseImagesViper.GetString("output-directory"),
 			RepositoryPrefix:       fissile.Options.RepositoryPrefix,
-			ShowImageName:          buildReleaseImagesViper.GetBool("show-image-name"),
 			StemcellName:           buildReleaseImagesViper.GetString("stemcell"),
 			StreamPackages:         buildPackagesViper.GetBool("stream-packages"),
 			UI:                     fissile.UI,
@@ -191,7 +191,7 @@ func init() {
 	)
 
 	buildReleaseImagesCmd.PersistentFlags().BoolP(
-		"show-image-name",
+		"display-image-name",
 		"",
 		false,
 		"If true, displays the name of the image to be built without actually building it",

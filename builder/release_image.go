@@ -30,6 +30,7 @@ import (
 type ReleasesImageBuilder struct {
 	CompilationCacheConfig string
 	CompilationDir         string
+	DisplayImageName       bool
 	DockerNetworkMode      string
 	DockerOrganization     string
 	DockerRegistry         string
@@ -40,7 +41,6 @@ type ReleasesImageBuilder struct {
 	NoBuild                bool
 	OutputDirectory        string
 	RepositoryPrefix       string
-	ShowImageName          bool
 	StemcellName           string
 	StreamPackages         bool
 	UI                     *termui.UI
@@ -277,7 +277,7 @@ func (j releaseBuildJob) Run() {
 			return err
 		}
 
-		if r.ShowImageName {
+		if r.DisplayImageName {
 			r.UI.Printf("Image Name: %s\n", color.YellowString(imageName))
 			return nil
 		}
