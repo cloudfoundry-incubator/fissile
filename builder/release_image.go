@@ -30,10 +30,10 @@ import (
 type ReleasesImageBuilder struct {
 	CompilationCacheConfig string
 	CompilationDir         string
-	DisplayImageName       bool
 	DockerNetworkMode      string
 	DockerOrganization     string
 	DockerRegistry         string
+	DryRun                 bool
 	FissileVersion         string
 	Force                  bool
 	Grapher                util.ModelGrapher
@@ -277,8 +277,9 @@ func (j releaseBuildJob) Run() {
 			return err
 		}
 
-		if r.DisplayImageName {
-			r.UI.Printf("Image Name: %s\n", color.YellowString(imageName))
+		r.UI.Printf("Image Name: %s\n", color.YellowString(imageName))
+
+		if r.DryRun {
 			return nil
 		}
 

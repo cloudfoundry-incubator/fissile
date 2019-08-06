@@ -23,10 +23,10 @@ This command goes through builds a Docker image for each specified release.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		imgBuilder := &builder.ReleasesImageBuilder{
 			CompilationCacheConfig: buildReleaseImagesViper.GetString("compilation-cache-config"),
-			DisplayImageName:       buildReleaseImagesViper.GetBool("display-image-name"),
 			DockerNetworkMode:      buildPackagesViper.GetString("docker-network-mode"),
 			DockerOrganization:     fissile.Options.DockerOrganization,
 			DockerRegistry:         fissile.Options.DockerRegistry,
+			DryRun:                 buildReleaseImagesViper.GetBool("dry-run"),
 			FissileVersion:         fissile.Version,
 			Force:                  buildReleaseImagesViper.GetBool("force"),
 			Grapher:                fissile,
@@ -191,10 +191,10 @@ func init() {
 	)
 
 	buildReleaseImagesCmd.PersistentFlags().BoolP(
-		"display-image-name",
+		"dry-run",
 		"",
 		false,
-		"If true, displays the name of the image to be built without actually building it",
+		"If true, invokes a dry run i.e. skips building the images",
 	)
 
 	buildReleaseImagesViper.BindPFlags(buildReleaseImagesCmd.PersistentFlags())
