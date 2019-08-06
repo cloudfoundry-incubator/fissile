@@ -26,6 +26,7 @@ This command goes through builds a Docker image for each specified release.
 			DockerNetworkMode:      buildPackagesViper.GetString("docker-network-mode"),
 			DockerOrganization:     fissile.Options.DockerOrganization,
 			DockerRegistry:         fissile.Options.DockerRegistry,
+			DryRun:                 buildReleaseImagesViper.GetBool("dry-run"),
 			FissileVersion:         fissile.Version,
 			Force:                  buildReleaseImagesViper.GetBool("force"),
 			Grapher:                fissile,
@@ -187,6 +188,13 @@ func init() {
 		"",
 		false,
 		"If true, fissile will stream packages to the docker daemon for compilation, instead of mounting volumes",
+	)
+
+	buildReleaseImagesCmd.PersistentFlags().BoolP(
+		"dry-run",
+		"",
+		false,
+		"If true, invokes a dry run i.e. skips building the images",
 	)
 
 	buildReleaseImagesViper.BindPFlags(buildReleaseImagesCmd.PersistentFlags())

@@ -33,6 +33,7 @@ type ReleasesImageBuilder struct {
 	DockerNetworkMode      string
 	DockerOrganization     string
 	DockerRegistry         string
+	DryRun                 bool
 	FissileVersion         string
 	Force                  bool
 	Grapher                util.ModelGrapher
@@ -275,6 +276,13 @@ func (j releaseBuildJob) Run() {
 		if err != nil {
 			return err
 		}
+
+		r.UI.Printf("Image Name: %s\n", color.YellowString(imageName))
+
+		if r.DryRun {
+			return nil
+		}
+
 		outputPath := fmt.Sprintf("%s.tar", imageName)
 
 		if r.OutputDirectory != "" {
