@@ -1387,7 +1387,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 			input: &model.HealthProbe{
 				URL: "http://example.com:port_number/",
 			},
-			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+			err: "Invalid liveness URL health check for myrole: parse http://example.com:port_number/: invalid port \":port_number\" after host",
 		},
 		{
 			desc: "URL probe (localhost)",
