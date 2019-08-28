@@ -41,6 +41,7 @@ func NewJob(instanceGroup *model.InstanceGroup, settings ExportSettings, grapher
 		return nil, fmt.Errorf("failed to build a new kube config: %v", err)
 	}
 	job.Add("spec", helm.NewMapping("template", podTemplate))
+	addFeatureCheck(instanceGroup, job)
 
 	return job.Sort(), nil
 }

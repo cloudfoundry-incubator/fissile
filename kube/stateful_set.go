@@ -58,7 +58,8 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 		return nil, nil, fmt.Errorf("failed to build a new kube config: %v", err)
 	}
 	statefulSet.Add("spec", spec)
-	err = replicaCheck(role, statefulSet, svcList, settings)
+	addFeatureCheck(role, statefulSet, svcList)
+	err = replicaCheck(role, statefulSet, settings)
 	if err != nil {
 		return nil, nil, err
 	}
