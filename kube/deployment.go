@@ -35,7 +35,8 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 		return nil, nil, fmt.Errorf("failed to build a new kube config: %v", err)
 	}
 	deployment.Add("spec", spec)
-	err = replicaCheck(instanceGroup, deployment, svc, settings)
+	addFeatureCheck(instanceGroup, deployment, svc)
+	err = replicaCheck(instanceGroup, deployment, settings)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,6 +141,28 @@ func generalCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 	return nil
 }
 
+// addFeatureCheck adds a conditional if a role is dependent on a feature flag,
+// such that the nodes will only be included when the feature is enabled.
+func addFeatureCheck(instanceGroup *model.InstanceGroup, nodes ...helm.Node) {
+	// default_feature, if_feature, and unless_feature are all mutually exclusive, so only one can be set
+	var nodeMod helm.NodeModifier
+	if instanceGroup.IfFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.IfFeature))
+	} else if instanceGroup.DefaultFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.DefaultFeature))
+	} else if instanceGroup.UnlessFeature != "" {
+		nodeMod = helm.Block(fmt.Sprintf("if not .Values.enable.%s", instanceGroup.UnlessFeature))
+	}
+	if nodeMod != nil {
+		for _, node := range nodes {
+			if node != nil {
+				node.Set(nodeMod)
+			}
+		}
+	}
+
+}
+
 func notNil(variable string) string {
 	return fmt.Sprintf(`(ne (typeOf %s) "<nil>")`, variable)
 }
@@ -159,7 +182,7 @@ func replicaCount(instanceGroup *model.InstanceGroup, quoted bool) string {
 // replicaCheck adds various guards to validate the number of replicas
 // for the pod described by the controller. It further adds the
 // replicas specification itself as well.
-func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, service helm.Node, settings ExportSettings) error {
+func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, settings ExportSettings) error {
 	spec := controller.Get("spec").(*helm.Mapping)
 
 	err := addAffinityRules(instanceGroup, spec, settings)
@@ -175,22 +198,6 @@ func replicaCheck(instanceGroup *model.InstanceGroup, controller *helm.Mapping, 
 
 	spec.Add("replicas", replicaCount(instanceGroup, false))
 	spec.Sort()
-
-	// default_feature, if_feature, and unless_feature are all mutually exclusive, so only one can be set
-	var nodeMod helm.NodeModifier
-	if instanceGroup.IfFeature != "" {
-		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.IfFeature))
-	} else if instanceGroup.DefaultFeature != "" {
-		nodeMod = helm.Block(fmt.Sprintf("if .Values.enable.%s", instanceGroup.DefaultFeature))
-	} else if instanceGroup.UnlessFeature != "" {
-		nodeMod = helm.Block(fmt.Sprintf("if not .Values.enable.%s", instanceGroup.UnlessFeature))
-	}
-	if nodeMod != nil {
-		controller.Set(nodeMod)
-		if service != nil {
-			service.Set(nodeMod)
-		}
-	}
 
 	roleName := makeVarName(instanceGroup.Name)
 	count := fmt.Sprintf(".Values.sizing.%s.count", roleName)
