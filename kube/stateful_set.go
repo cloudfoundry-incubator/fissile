@@ -49,7 +49,7 @@ func NewStatefulSet(role *model.InstanceGroup, settings ExportSettings, grapher 
 
 	cb := NewConfigBuilder().
 		SetSettings(&settings).
-		SetAPIVersion("apps/v1beta1").
+		SetConditionalAPIVersion("apps/v1", "apps/v1beta1").
 		SetKind("StatefulSet").
 		SetName(role.Name).
 		AddModifier(helm.Comment(role.GetLongDescription()))

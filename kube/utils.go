@@ -75,6 +75,23 @@ func (b *ConfigBuilder) SetAPIVersion(apiVersion string) *ConfigBuilder {
 	return b
 }
 
+// SetConditionalAPIVersion sets the kube API version of the resource to build;
+// if that API version is not available, use a fallback instead (to be
+// compatible with older releases of kube).  If we are not building a helm
+// chart, the desired API version is always used.
+func (b *ConfigBuilder) SetConditionalAPIVersion(apiVersion, fallbackAPIVersion string) *ConfigBuilder {
+	if b.settings == nil || !b.settings.CreateHelmChart {
+		b.apiVersion = apiVersion
+	} else {
+		b.apiVersion = fmt.Sprintf(
+			`{{ ternary "%s" "%s" (.Capabilities.APIVersions.Has "%s") }}`,
+			apiVersion,
+			fallbackAPIVersion,
+			apiVersion)
+	}
+	return b
+}
+
 // SetKind sets the kubernetes resource kind of the resource to build.
 func (b *ConfigBuilder) SetKind(kind string) *ConfigBuilder {
 	b.kind = kind

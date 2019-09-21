@@ -44,7 +44,10 @@ func RenderNode(node helm.Node, config interface{}) ([]byte, error) {
 				"Minor": "8",
 			},
 			"APIVersions": &fakeAPIVersions{
+				"apps/v1":                      true,
 				"rbac.authorization.k8s.io/v1": true,
+				"networking.k8s.io/v1":         true,
+				"policy/v1beta1":               true,
 			},
 		},
 		"Template": map[string]interface{}{

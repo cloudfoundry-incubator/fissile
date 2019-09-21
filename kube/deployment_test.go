@@ -220,7 +220,7 @@ func TestNewDeploymentHelm(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
-			apiVersion: "extensions/v1beta1"
+			apiVersion: "apps/v1"
 			kind: "Deployment"
 			metadata:
 				name: "some-group"
@@ -355,7 +355,7 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLEqualString(assert, `---
-			apiVersion: "extensions/v1beta1"
+			apiVersion: "apps/v1"
 			kind: "Deployment"
 			metadata:
 				name: "istio-managed-group"
@@ -632,7 +632,7 @@ func TestNewDeploymentWithEmptyDirVolume(t *testing.T) {
 			return
 		}
 		testhelpers.IsYAMLSubsetString(assert, `---
-			apiVersion: "extensions/v1beta1"
+			apiVersion: "apps/v1"
 			kind: "Deployment"
 			spec:
 				template:

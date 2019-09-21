@@ -222,7 +222,7 @@ func NewRBACRole(name string, kind RBACRoleKind, authRole model.AuthRole, settin
 func NewRBACPSP(name string, psp *model.PodSecurityPolicy, settings ExportSettings) (helm.Node, error) {
 	cb := NewConfigBuilder().
 		SetSettings(&settings).
-		SetAPIVersion("extensions/v1beta1").
+		SetConditionalAPIVersion("policy/v1beta1", "extensions/v1beta1").
 		SetKind("PodSecurityPolicy").
 		AddModifier(helm.Comment(fmt.Sprintf(`Pod security policy "%s"`, name)))
 	if settings.CreateHelmChart {

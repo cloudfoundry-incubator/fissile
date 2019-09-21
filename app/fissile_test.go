@@ -506,7 +506,7 @@ func TestGenerateAuth(t *testing.T) {
 		},
 		`auth/auth-psp-nonprivileged.yaml`: []string{
 			`{
-				"apiVersion": "extensions/v1beta1",
+				"apiVersion": "policy/v1beta1",
 				"kind": "PodSecurityPolicy",
 				"metadata": {
 					"name": "nonprivileged",
