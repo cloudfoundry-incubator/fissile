@@ -2,6 +2,7 @@ package kube
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,14 +59,16 @@ type Sample struct {
 	input    interface{}
 	helm     map[string]interface{}
 	expected string
-	err      string
+	err      []string
 }
 
 func (sample *Sample) check(t *testing.T, helmConfig helm.Node, err error) {
 	t.Run(sample.desc, func(t *testing.T) {
 		assert := assert.New(t)
-		if sample.err != "" {
-			assert.EqualError(err, sample.err, sample.desc)
+		if sample.err != nil {
+			if assert.NotNil(err, fmt.Sprintf("%s: Expected error, got nil", sample.desc)) {
+				assert.Contains(sample.err, err.Error(), fmt.Sprintf("%s: Unexpected error message", sample.desc))
+			}
 			return
 		}
 		if !assert.NoError(err, sample.desc) {
@@ -1326,7 +1329,7 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 			input: &model.HealthProbe{
 				URL: "file:///etc/shadow",
 			},
-			err: "Health check for myrole has unsupported URI scheme \"file\"",
+			err: []string{"Health check for myrole has unsupported URI scheme \"file\""},
 		},
 		{
 			desc: "URL probe (query)",
@@ -1380,14 +1383,19 @@ func TestPodGetContainerLivenessProbe(t *testing.T) {
 			input: &model.HealthProbe{
 				URL: "://",
 			},
-			err: "Invalid liveness URL health check for myrole: parse ://: missing protocol scheme",
+			err: []string{
+				"Invalid liveness URL health check for myrole: parse ://: missing protocol scheme",
+			},
 		},
 		{
 			desc: "URL probe (invalid port)",
 			input: &model.HealthProbe{
 				URL: "http://example.com:port_number/",
 			},
-			err: "Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+			err: []string{
+				"Failed to get URL port for health check for myrole: invalid host \"example.com:port_number\"",
+				"Invalid liveness URL health check for myrole: parse http://example.com:port_number/: invalid port \":port_number\" after host",
+			},
 		},
 		{
 			desc: "URL probe (localhost)",
