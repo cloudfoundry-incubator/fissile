@@ -84,10 +84,10 @@ func (b *ConfigBuilder) SetConditionalAPIVersion(apiVersion, fallbackAPIVersion 
 		b.apiVersion = apiVersion
 	} else {
 		b.apiVersion = fmt.Sprintf(
-			`{{ ternary "%s" "%s" (.Capabilities.APIVersions.Has "%s") }}`,
+			`{{ if (.Capabilities.APIVersions.Has "%s") }}%s{{ else }}%s{{ end }}`,
 			apiVersion,
-			fallbackAPIVersion,
-			apiVersion)
+			apiVersion,
+			fallbackAPIVersion)
 	}
 	return b
 }
