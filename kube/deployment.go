@@ -26,7 +26,7 @@ func NewDeployment(instanceGroup *model.InstanceGroup, settings ExportSettings, 
 
 	cb := NewConfigBuilder().
 		SetSettings(&settings).
-		SetAPIVersion("extensions/v1beta1").
+		SetConditionalAPIVersion("apps/v1", "extensions/v1beta1").
 		SetKind("Deployment").
 		SetName(instanceGroup.Name).
 		AddModifier(helm.Comment(instanceGroup.GetLongDescription()))
