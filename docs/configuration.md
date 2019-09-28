@@ -267,8 +267,7 @@ $ vim role-manifest.yml # See above for contents
 $ vim opinions.yml
 $ vim dark-opinions.yml
 $ vim defaults.txt
-$ git clone https://github.com/cloudfoundry/nats-release.git # from $FISSILE_RELEASE
-$ git -C nats-release submodule update --init --recursive
+$ git clone https://github.com/cloudfoundry/nats-release.git --recurse-submodules # from $FISSILE_RELEASE
 ```
 
 We will also need to create a BOSH dev release:
