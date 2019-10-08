@@ -1,46 +1,34 @@
-## fissile build images
+## fissile build release-images
 
 Builds Docker images from your BOSH releases.
 
 ### Synopsis
 
 
-This command goes through all the instance group definitions in the role manifest creating a
-Dockerfile for each of them and building it.
-
-Each instance group gets a directory `<work-dir>/dockerfiles`. In each directory one can find
-a Dockerfile and a directory structure that gets ADDed to the docker image. The
-directory structure contains jobs, packages and all other necessary scripts and
-templates.
-
-The images will have a 'instance_group' label useful for filtering.
-The entrypoint for each image is `/opt/fissile/run.sh`.
-
-The images will be tagged: `<repository>-<instance_group_name>:<SIGNATURE>`.
-The SIGNATURE is based on the hashes of all jobs and packages that are included in
-the image.
-
-The `--patch-properties-release` flag is used to distinguish the patchProperties release/job spec
-from other specs.  At most one is allowed.
+This command goes through builds a Docker image for each specified release.
 	
 
 ```
-fissile build images [flags]
+fissile build release-images [flags]
 ```
 
 ### Options
 
 ```
-      --add-label strings                 Additional label which will be set for the base layer image. Format: label=value
+      --compilation-cache-config string   Points to a file containing configuration for a compiled package cache or contains the configuration as valid yaml (default "~/.fissile/package-cache.yaml")
+      --docker-network-mode string        Specify network mode to be used when building with docker. e.g. "--docker-network-mode host" is equivalent to "docker run --network=host"
+      --dry-run                           If true, invokes a dry run i.e. skips building the images
   -F, --force                             If specified, image creation will proceed even when images already exist.
-  -h, --help                              help for images
+  -h, --help                              help for release-images
+      --name string                       The release name
   -N, --no-build                          If specified, the Dockerfile and assets will be created, but the image won't be built.
   -O, --output-directory string           Output the result as tar files in the given directory rather than building with docker
-  -P, --patch-properties-release string   Used to designate a "patch-properties" pseudo-job in a particular release.  Format: RELEASE/JOB.
-      --roles string                      Build only images with the given instance group name; comma separated.
+      --sha1 string                       The release SHA1
   -s, --stemcell string                   The source stemcell
-      --stemcell-id string                Docker image ID for the stemcell (intended for CI)
-      --tag-extra string                  Additional information to use in computing the image tags
+      --stream-packages                   If true, fissile will stream packages to the docker daemon for compilation, instead of mounting volumes
+      --url string                        The release URL
+      --version string                    The release version
+      --without-docker                    Build without docker; this may adversely affect your system.  Only supported on Linux, and requires CAP_SYS_ADMIN.
 ```
 
 ### Options inherited from parent commands
