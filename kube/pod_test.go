@@ -1953,6 +1953,8 @@ func TestPodPreFlightHelm(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "pre-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2073,6 +2075,8 @@ func TestPodPostFlightHelm(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "post-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2203,6 +2207,8 @@ func TestPodMemoryHelmDisabled(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "pre-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2296,6 +2302,8 @@ func TestPodMemoryHelmActive(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "pre-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2428,6 +2436,8 @@ func TestPodCPUHelmDisabled(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "pre-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2521,6 +2531,8 @@ func TestPodCPUHelmActive(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "pre-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:
@@ -2969,6 +2981,8 @@ func TestPodIstioManagedHelm(t *testing.T) {
 			-	env:
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
+				-	name: "KUBERNETES_CONTAINER_NAME"
+					value: "istio-managed-role"
 				-	name: "KUBERNETES_NAMESPACE"
 					valueFrom:
 						fieldRef:

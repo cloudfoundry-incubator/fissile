@@ -78,6 +78,14 @@ func (g *InstanceGroup) GetVariablesForRole() (Variables, error) {
 		}
 	}
 
+	configs["KUBERNETES_CONTAINER_NAME"] = &VariableDefinition{
+		Name: "KUBERNETES_CONTAINER_NAME",
+		CVOptions: CVOptions{
+			Type:    CVTypeEnv,
+			Default: g.Name,
+		},
+	}
+
 	result := make(Variables, 0, len(configs))
 
 	for _, value := range configs {

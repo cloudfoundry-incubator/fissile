@@ -191,6 +191,8 @@ func TestJobHelm(t *testing.T) {
 					-	env:
 						-	name: "KUBERNETES_CLUSTER_DOMAIN"
 							value: "cluster.local"
+						-	name: "KUBERNETES_CONTAINER_NAME"
+							value: "pre-role"
 						-	name: "KUBERNETES_NAMESPACE"
 							valueFrom:
 								fieldRef:
