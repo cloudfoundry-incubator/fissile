@@ -172,8 +172,11 @@ func (j releaseBuildJob) imageName() (string, error) {
 
 	listOptions := dockerclient.ListImagesOptions{Filter: j.builder.StemcellName}
 	matches, err := imageManager.ListImages(listOptions)
-	if err != nil || len(matches) == 0 {
+	if err != nil {
 		return "", errors.Wrap(err, fmt.Sprintf("Retrieving stemcell image '%s'", j.builder.StemcellName))
+	}
+	if len(matches) == 0 {
+		return "", fmt.Errorf("Retrieving stemcell image '%s'. Have you run docker pull?", j.builder.StemcellName)
 	}
 	stemcellImage := matches[0]
 	stemcellFlavor := stemcellImage.Labels["stemcell-flavor"]
