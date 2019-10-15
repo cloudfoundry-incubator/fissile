@@ -78,6 +78,17 @@ func (g *InstanceGroup) GetVariablesForRole() (Variables, error) {
 		}
 	}
 
+	configs["KUBERNETES_CONTAINER_NAME"] = &VariableDefinition{
+		Name: "KUBERNETES_CONTAINER_NAME",
+		CVOptions: CVOptions{
+			Type: CVTypeEnv,
+			// The name of the statefulset is derived from the instance group name of
+			// the main container. Co-located containers have their own, independent
+			// (and non-unique) instance group names, e.g. `loggregator-agent`.
+			Default: g.Name,
+		},
+	}
+
 	result := make(Variables, 0, len(configs))
 
 	for _, value := range configs {
