@@ -78,6 +78,11 @@ func (g *InstanceGroup) SetRoleManifest(m *RoleManifest) {
 	g.roleManifest = m
 }
 
+// Manifest return a reference to the instance groups role manifest
+func (g *InstanceGroup) Manifest() *RoleManifest {
+	return g.roleManifest
+}
+
 // CalculateRoleRun collects properties from the jobs run properties and puts them on the instance group
 // It also validates where necessary and is run *before* validateRoleRun
 func (g *InstanceGroup) CalculateRoleRun() validation.ErrorList {

@@ -271,6 +271,8 @@ func TestNewDeploymentHelm(t *testing.T) {
 							nodeAffinity: "snafu"
 						containers:
 						-	env:
+							-	name: CONFIGGIN_VERSION_TAG
+								value: 42.1+foo-1
 							-	name: "KUBERNETES_CLUSTER_DOMAIN"
 								value: "cluster.local"
 							-	name: "KUBERNETES_CONTAINER_NAME"
@@ -409,6 +411,8 @@ func TestNewDeploymentIstioManagedHelm(t *testing.T) {
 							nodeAffinity: "snafu"
 						containers:
 						-	env:
+							-	name: CONFIGGIN_VERSION_TAG
+								value: 42.1+foo-1
 							-	name: "KUBERNETES_CLUSTER_DOMAIN"
 								value: "cluster.local"
 							-	name: "KUBERNETES_CONTAINER_NAME"

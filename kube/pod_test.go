@@ -339,6 +339,61 @@ func TestPodGetVolumeMounts(t *testing.T) {
 	}
 }
 
+func TestPodGetEnvVarsConfiggin(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	role := podTemplateTestLoadRole(assert)
+	if role == nil {
+		return
+	}
+
+	role.JobReferences[0].ResolvedConsumes = map[string]model.JobConsumesInfo{
+		"external": model.JobConsumesInfo{
+			JobLinkInfo: model.JobLinkInfo{
+				RoleName: "provider",
+			},
+		},
+		"self": model.JobConsumesInfo{
+			JobLinkInfo: model.JobLinkInfo{
+				RoleName: "myrole",
+			},
+		},
+	}
+
+	ev, err := getEnvVars(role, ExportSettings{
+		CreateHelmChart: true,
+		RoleManifest:    role.Manifest(),
+	})
+	if !assert.NoError(err) {
+		return
+	}
+
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
+	if !assert.NoError(err) {
+		return
+	}
+
+	importProvider := false
+	importMyRole := false
+	for _, elem := range actual.([]interface{}) {
+		switch elem.(map[interface{}]interface{})["name"].(string) {
+		case "CONFIGGIN_IMPORT_MYROLE":
+			importMyRole = true
+		case "CONFIGGIN_IMPORT_PROVIDER":
+			importProvider = true
+			testhelpers.IsYAMLEqualString(assert, `---
+				name: CONFIGGIN_IMPORT_PROVIDER
+				valueFrom:
+					secretKeyRef:
+						key: 42.1+foo-1
+						name: provider
+			`, elem)
+		}
+	}
+	assert.True(importProvider, `Need to wait for "provider" secret to become available`)
+	assert.False(importMyRole, `Waiting for our own role would cause a deadlock`)
+}
+
 func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -361,8 +416,11 @@ func TestPodGetEnvVarsFromConfigSizingCountKube(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
-	actual, err := RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -404,12 +462,15 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
 	config := map[string]interface{}{
 		"Values.sizing.foo.count": "22",
 	}
 
-	actual, err := RoundtripNode(ev, config)
+	actual, err := RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -431,7 +492,7 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 		"Values.config.HA":        true,
 	}
 
-	actual, err = RoundtripNode(ev, config)
+	actual, err = RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -453,7 +514,7 @@ func TestPodGetEnvVarsFromConfigSizingCountHelm(t *testing.T) {
 		"Values.config.HA":        true,
 	}
 
-	actual, err = RoundtripNode(ev, config)
+	actual, err = RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -508,8 +569,11 @@ func TestPodGetEnvVarsFromConfigSizingPortsKube(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
-	actual, err := RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -565,12 +629,15 @@ func TestPodGetEnvVarsFromConfigSizingPortsHelm(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
 	config := map[string]interface{}{
 		"Values.sizing.foo.ports.store.count": "22",
 	}
 
-	actual, err := RoundtripNode(ev, config)
+	actual, err := RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -607,8 +674,11 @@ func TestPodGetEnvVarsFromConfigGenerationCounterKube(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
-	actual, err := RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -644,12 +714,15 @@ func TestPodGetEnvVarsFromConfigGenerationCounterHelm(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
 	config := map[string]interface{}{
 		"Values.kube.secrets_generation_counter": "3",
 	}
 
-	actual, err := RoundtripNode(ev, config)
+	actual, err := RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -684,8 +757,11 @@ func TestPodGetEnvVarsFromConfigGenerationNameKube(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
-	actual, err := RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -721,13 +797,16 @@ func TestPodGetEnvVarsFromConfigGenerationNameHelm(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
 	config := map[string]interface{}{
 		"Chart.Version":                          "CV",
 		"Values.kube.secrets_generation_counter": "SGC",
 	}
 
-	actual, err := RoundtripNode(ev, config)
+	actual, err := RoundtripNode(helm.NewNode(ev), config)
 	if !assert.NoError(err) {
 		return
 	}
@@ -764,8 +843,11 @@ func TestPodGetEnvVarsFromConfigSecretsKube(t *testing.T) {
 			},
 		},
 	})
+	if !assert.NoError(err) {
+		return
+	}
 
-	actual, err := RoundtripNode(ev, nil)
+	actual, err := RoundtripNode(helm.NewNode(ev), nil)
 	if !assert.NoError(err) {
 		return
 	}
@@ -815,7 +897,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 			return
 		}
 
-		actual, err := RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(helm.NewNode(ev), nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -863,7 +945,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		// Mutation of cv below between tests prevents parallel execution
 
 		t.Run("AsIs", func(t *testing.T) {
-			actual, err := RoundtripNode(ev, config)
+			actual, err := RoundtripNode(helm.NewNode(ev), config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -890,7 +972,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 				"Values.secrets.A_SECRET": "user's choice",
 			}
 
-			actual, err := RoundtripNode(ev, config)
+			actual, err := RoundtripNode(helm.NewNode(ev), config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -919,7 +1001,7 @@ func TestPodGetEnvVarsFromConfigSecretsHelm(t *testing.T) {
 		}
 
 		t.Run("Immutable", func(t *testing.T) {
-			actual, err := RoundtripNode(ev, config)
+			actual, err := RoundtripNode(helm.NewNode(ev), config)
 			if !assert.NoError(err) {
 				return
 			}
@@ -966,8 +1048,11 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 				},
 			},
 		}, settings)
+		if !assert.NoError(err) {
+			return
+		}
 
-		actual, err := RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(helm.NewNode(ev), nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1000,7 +1085,7 @@ func TestPodGetEnvVarsFromConfigNonSecretKube(t *testing.T) {
 			},
 		}, settings)
 
-		actual, err := RoundtripNode(ev, nil)
+		actual, err := RoundtripNode(helm.NewNode(ev), nil)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1049,7 +1134,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": nil,
 		}
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1074,7 +1159,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserOptional(t *testing.T) {
 			"Values.env.SOMETHING": "else",
 		}
 
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1120,7 +1205,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 
 	t.Run("Missing", func(t *testing.T) {
 		t.Parallel()
-		_, err := RenderNode(ev, nil)
+		_, err := RenderNode(helm.NewNode(ev), nil)
 		assert.EqualError(err,
 			`template: :7:219: executing "" at <fail "env.SOMETHING has not been set">: error calling fail: env.SOMETHING has not been set`)
 	})
@@ -1130,7 +1215,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 		config := map[string]interface{}{
 			"Values.env.SOMETHING": nil,
 		}
-		_, err := RenderNode(ev, config)
+		_, err := RenderNode(helm.NewNode(ev), config)
 		assert.EqualError(err,
 			`template: :7:219: executing "" at <fail "env.SOMETHING has not been set">: error calling fail: env.SOMETHING has not been set`)
 	})
@@ -1141,7 +1226,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 			"Values.env.SOMETHING": "needed",
 		}
 
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1166,7 +1251,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmUserRequired(t *testing.T) {
 			"Values.env.SOMETHING": map[string]string{"foo": "bar"},
 		}
 
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1218,7 +1303,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
 			"Values.kube.organization": "my-org",
 			"Values.env.IMAGENAME":     "my-image:my-tag",
 		}
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -1244,7 +1329,7 @@ func TestPodGetEnvVarsFromConfigNonSecretHelmImagename(t *testing.T) {
 			"Values.env.IMAGENAME":     "org/image:tag",
 		}
 
-		actual, err := RoundtripNode(ev, config)
+		actual, err := RoundtripNode(helm.NewNode(ev), config)
 		if !assert.NoError(err) {
 			return
 		}
@@ -2979,6 +3064,8 @@ func TestPodIstioManagedHelm(t *testing.T) {
 		spec:
 			containers:
 			-	env:
+				-	name: CONFIGGIN_VERSION_TAG
+					value: 42.1+foo-1
 				-	name: "KUBERNETES_CLUSTER_DOMAIN"
 					value: "cluster.local"
 				-	name: "KUBERNETES_CONTAINER_NAME"
