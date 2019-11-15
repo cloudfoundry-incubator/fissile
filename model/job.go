@@ -36,6 +36,7 @@ type JobProvidesInfo struct {
 type JobConsumesInfo struct {
 	JobLinkInfo
 	Alias    string `yaml:"from"`
+	Ignore   bool   `yaml:"ignore"`
 	Optional bool
 }
 

@@ -452,7 +452,7 @@ func TestResolveLinks(t *testing.T) {
 			Missing  bool
 		}{
 			// These should match the order in the ntp-release ntp job.MF
-			{Name: "ntp-server", Type: "ntpd"},
+			// ntp-server is missing because it is being explicitly ignored by the manifest
 			{Name: "ntp-client", Type: "ntp"},
 			{Type: "missing", Missing: true},
 		}
@@ -487,9 +487,7 @@ func TestResolveLinks(t *testing.T) {
 				{RoleName: "myrole", JobName: "ntpd"},
 				{RoleName: "foorole", JobName: "tor"},
 			},
-			"ntp-server": []model.JobLinkInfo{
-				{RoleName: "myrole", JobName: "ntpd"},
-			},
+			// ntp-server is explicitly ignored by the manifest
 		}
 		for linkName, expectedConsumedByList := range expected {
 			t.Run(linkName, func(t *testing.T) {
