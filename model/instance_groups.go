@@ -78,7 +78,7 @@ func (g *InstanceGroup) SetRoleManifest(m *RoleManifest) {
 	g.roleManifest = m
 }
 
-// Manifest return a reference to the instance groups role manifest
+// Manifest returns a reference to the instance groups role manifest
 func (g *InstanceGroup) Manifest() *RoleManifest {
 	return g.roleManifest
 }

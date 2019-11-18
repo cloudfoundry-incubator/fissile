@@ -24,8 +24,9 @@ instance_groups:
           - path: /sys/fs/cgroup
             type: host
             tag: host-volume
-# The provider role only exist so that TestPodGetEnvVarsConfiggin can use
-# it to reference in a mock up bosh link.
+# The provider role only exists for the benefit of TestPodGetEnvVarsConfiggin.
+# It creates a mock bosh link to `provider` in `myrole` at runtime to verify
+# that a CONFIGGIN_IMPORT_PROVIDER secret reference is created for it.
 - name: provider
   jobs:
   - name: tor
