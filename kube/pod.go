@@ -363,7 +363,7 @@ func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, 
 		return nil, err
 	}
 
-	if settings.CreateHelmChart && role.Type == model.RoleTypeBosh {
+	if settings.CreateHelmChart && (role.Type == model.RoleTypeBosh || role.Type == model.RoleTypeColocatedContainer) {
 		env = append(env, helm.NewMapping("name", "CONFIGGIN_VERSION_TAG", "value", versionSuffix))
 
 		// Waiting for our own secret to be created would be a deadlock.
