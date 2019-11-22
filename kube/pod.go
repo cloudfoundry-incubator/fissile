@@ -303,7 +303,8 @@ func getVolumeMounts(role *model.InstanceGroup, settings ExportSettings) helm.No
 }
 
 const userSecretsName = "secrets"
-const generatedSecretsName = "secrets-{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+const versionSuffix = "{{ .Chart.Version }}-{{ .Values.kube.secrets_generation_counter }}"
+const generatedSecretsName = "secrets-" + versionSuffix
 
 func makeSecretVar(name string, generated bool, modifiers ...helm.NodeModifier) helm.Node {
 	secretKeyRef := helm.NewMapping("key", util.ConvertNameToKey(name))
@@ -357,10 +358,48 @@ func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, 
 		return nil, err
 	}
 
-	return getEnvVarsFromConfigs(configs, settings)
+	env, err := getEnvVarsFromConfigs(configs, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	if settings.CreateHelmChart && (role.Type == model.RoleTypeBosh || role.Type == model.RoleTypeColocatedContainer) {
+		env = append(env, helm.NewMapping("name", "CONFIGGIN_VERSION_TAG", "value", versionSuffix))
+
+		// Waiting for our own secret to be created would be a deadlock.
+		seen := map[string]bool{role.Name: true}
+		for _, job := range role.JobReferences {
+			for _, consumer := range job.ResolvedConsumes {
+				roleName := consumer.JobLinkInfo.RoleName
+				if seen[roleName] {
+					continue
+				}
+				seen[roleName] = true
+
+				// Create a link to each statefulset we want to import properties from.
+				// This makes sure our pods don't start until the secret is available.
+				// The environment variables are not actually used for anything else.
+				name := "CONFIGGIN_IMPORT_" + strings.ToUpper(makeVarName(roleName))
+				envVar := helm.NewMapping("name", name)
+				secretKeyRef := helm.NewMapping("name", roleName, "key", versionSuffix)
+				envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+
+				// Make sure not to wait for roles that have been disabled, e.g. credhub
+				addFeatureCheck(settings.RoleManifest.LookupInstanceGroup(roleName), envVar)
+
+				env = append(env, envVar)
+			}
+		}
+	}
+
+	sort.Slice(env[:], func(i, j int) bool {
+		return env[i].Get("name").String() < env[j].Get("name").String()
+	})
+
+	return helm.NewNode(env), nil
 }
 
-func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (helm.Node, error) {
+func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) ([]helm.Node, error) {
 	featureRexgexp := regexp.MustCompile("^FEATURE_([A-Z][A-Z_]*)_ENABLED$")
 	sizingCountRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_COUNT$")
 	sizingPortsRegexp := regexp.MustCompile("^KUBE_SIZING_([A-Z][A-Z_]*)_PORTS_([A-Z][A-Z_]*)_(MIN|MAX)$")
@@ -556,10 +595,11 @@ func getEnvVarsFromConfigs(configs model.Variables, settings ExportSettings) (he
 			"value", "1024"))
 	}
 
+	// sorting here purely for the benefit of the tests because the caller will sort again...
 	sort.Slice(env[:], func(i, j int) bool {
 		return env[i].Get("name").String() < env[j].Get("name").String()
 	})
-	return helm.NewNode(env), nil
+	return env, nil
 }
 
 func getSecurityContext(instanceGroup *model.InstanceGroup) helm.Node {

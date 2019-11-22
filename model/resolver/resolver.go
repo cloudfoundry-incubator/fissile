@@ -310,10 +310,13 @@ func (r *Resolver) ResolveLinks() validation.ErrorList {
 						fmt.Sprintf(`consumer %s not found`, consumerAlias)))
 					continue
 				}
-				jobReference.ResolvedConsumes[consumerName] = model.JobConsumesInfo{
-					JobLinkInfo: provider.JobLinkInfo,
+				if consumerInfo.Ignore {
+					delete(jobReference.ResolvedConsumes, consumerName)
+				} else {
+					jobReference.ResolvedConsumes[consumerName] = model.JobConsumesInfo{
+						JobLinkInfo: provider.JobLinkInfo,
+					}
 				}
-
 				for i := range expectedConsumers {
 					if expectedConsumers[i].Name == consumerName {
 						expectedConsumers = append(expectedConsumers[:i], expectedConsumers[i+1:]...)

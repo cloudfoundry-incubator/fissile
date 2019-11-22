@@ -14,7 +14,9 @@ instance_groups:
   - name: ntpd
     release: ntp
     provides:
-      ntp-client: {}
+      ntp-server: {}
+    consumes:
+      ntp-server: {ignore: true}
 - name: foorole
   type: bosh-task
   jobs:
