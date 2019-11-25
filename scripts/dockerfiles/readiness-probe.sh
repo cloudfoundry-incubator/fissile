@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+# Log duration of readiness probes.
+START="$(date +%s)"
+trap runtime EXIT
+runtime () {
+    STOP="$(date +%s)"
+    echo "TxPROBE,${KUBERNETES_NAMESPACE},${HOSTNAME},${START},${STOP},$(expr $STOP - $START)" >> rp-duration-stats.csv
+    return $?
+}
+
 # This is the default readiness probe, which will look at all monit monitored
 # processes and check that they are ready.
 
@@ -35,6 +44,7 @@ update_readiness() {
                 }
             }
         }'
+    runtime
     return $?
 }
 if test -n "${FISSILE_ACTIVE_PASSIVE_PROBE:-}" ; then

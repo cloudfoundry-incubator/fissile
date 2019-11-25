@@ -1,6 +1,8 @@
 #!/bin/bash
 # vim:autoindent expandtab tabstop=2 softtabstop=2:
 
+START="$(date +%s)"
+
 set -e
 
 # Sometimes kube doesn't manage to put the hostname into /etc/hosts.
@@ -177,12 +179,14 @@ echo bash {{ script_path $script }}
 bash {{ script_path $script }}
 {{ end }}
 
+PRESTART="$(date +%s)"
 # Run pre-start scripts for each job.
 {{ range $job := .instance_group.JobReferences }}
 if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/pre-start ] ; then
   /var/vcap/jobs/{{ $job.Name }}/bin/pre-start
 fi
 {{ end }}
+PRESTARTED="$(date +%s)"
 
 # Run
 {{ if eq .instance_group.Type "bosh-task" -}}
@@ -198,6 +202,10 @@ if [ ${idx} -eq 0 ] ; then
   echo "No runnable jobs found for this task" 1>&2
   exit 1
 fi
+
+STOP="$(date +%s)"
+#       host,time to prestart,time to after prestart,time to after tasks are done
+echo "TxSTART,${KUBERNETES_NAMESPACE},${HOSTNAME},${START},${STOP},$(expr $PRESTART   - $START),$(expr $PRESTARTED - $START),$(expr $STOP - $START)"
 
 {{ else -}}
 
@@ -233,6 +241,11 @@ else
   monit -I &
 fi
 child=$!
+
+STOP="$(date +%s)"
+#       host,time to prestart,time to after prestart,no (time to after tasks are done)
+echo "TxSTART,${KUBERNETES_NAMESPACE},${HOSTNAME},${START},${STOP},$(expr $PRESTART   - $START),$(expr $PRESTARTED - $START)"
+
 wait "$child"
 
 {{- end }}

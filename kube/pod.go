@@ -668,6 +668,12 @@ func getContainerReadinessProbe(role *model.InstanceGroup) (helm.Node, error) {
 					probe.Add(name, value)
 				}
 			}
+			if roleProbe.Timeout == 0 {
+				roleProbe.Timeout = 10
+			}
+			if roleProbe.Period == 0 {
+				roleProbe.Period = 30
+			}
 			addParam("initialDelaySeconds", roleProbe.InitialDelay)
 			addParam("timeoutSeconds", roleProbe.Timeout)
 			addParam("periodSeconds", roleProbe.Period)
