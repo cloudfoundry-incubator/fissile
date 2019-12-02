@@ -48,3 +48,10 @@ instance_groups:
                       values:
                       - istio-managed-group
                   topologyKey: "beta.kubernetes.io/os"
+configuration:
+  auth:
+    roles:
+      configgin: []
+    accounts:
+      default:
+        roles: [configgin]

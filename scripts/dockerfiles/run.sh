@@ -145,6 +145,11 @@ configgin \
   --env2conf /opt/fissile/env2conf.yml \
   --bosh-deployment-manifest /opt/fissile/config/deployment-manifest.yml
 
+# Unset all secrets
+{{ range $secret := .secrets }}
+unset {{ $secret }}
+{{ end }}
+
 if [ -e /etc/monitrc ]
 then
   chmod 0600 /etc/monitrc
