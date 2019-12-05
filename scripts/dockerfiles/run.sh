@@ -132,18 +132,24 @@ ln -s /var/vcap/packages /var/vcap/data/packages
 ln -s /var/vcap/sys /var/vcap/data/sys
 
 # Run custom environment scripts (that are sourced).
-{{ range $script := .instance_group.EnvironScripts }}
+{{- range $script := .instance_group.EnvironScripts }}
 source {{ script_path $script }}
-{{ end }}
+{{- end }}
+
 # Run custom role scripts.
-{{ range $script := .instance_group.Scripts }}
+{{- range $script := .instance_group.Scripts }}
 bash {{ script_path $script }}
-{{ end }}
+{{- end }}
 
 configgin \
   --jobs /opt/fissile/job_config.json \
   --env2conf /opt/fissile/env2conf.yml \
   --bosh-deployment-manifest /opt/fissile/config/deployment-manifest.yml
+
+# Unset all secrets
+{{- range $secret := .secrets }}
+unset {{ $secret }}
+{{- end }}
 
 if [ -e /etc/monitrc ]
 then
@@ -172,17 +178,17 @@ cron
 
 # Run custom post config role scripts.
 # Run any custom scripts other than pre-start.
-{{ range $script := .instance_group.PostConfigScripts }}
+{{- range $script := .instance_group.PostConfigScripts }}
 echo bash {{ script_path $script }}
 bash {{ script_path $script }}
-{{ end }}
+{{- end }}
 
 # Run pre-start scripts for each job.
-{{ range $job := .instance_group.JobReferences }}
+{{- range $job := .instance_group.JobReferences }}
 if [ -x /var/vcap/jobs/{{ $job.Name }}/bin/pre-start ] ; then
   /var/vcap/jobs/{{ $job.Name }}/bin/pre-start
 fi
-{{ end }}
+{{- end }}
 
 # Run
 {{ if eq .instance_group.Type "bosh-task" -}}

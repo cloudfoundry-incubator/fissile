@@ -37,4 +37,10 @@ instance_groups:
         run:
           flight-stage: post-flight
           memory: 256
-
+configuration:
+  auth:
+    roles:
+      configgin: []
+    accounts:
+      default:
+        roles: [configgin]

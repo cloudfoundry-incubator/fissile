@@ -363,6 +363,17 @@ func getEnvVars(role *model.InstanceGroup, settings ExportSettings) (helm.Node, 
 		return nil, err
 	}
 
+	// Provide CONFIGGIN_SA_TOKEN environment variable mapped to the configgin service account token
+	// stored in the configgin secret by the configgin-helper job.
+	// This is not needed for service accounts that already use the "configgin" role.
+	configginUsedBy := role.Manifest().Configuration.Authorization.RoleUsedBy["configgin"]
+	if _, ok := configginUsedBy[role.Run.ServiceAccount]; !ok {
+		envVar := helm.NewMapping("name", "CONFIGGIN_SA_TOKEN")
+		secretKeyRef := helm.NewMapping("name", "configgin", "key", "token")
+		envVar.Add("valueFrom", helm.NewMapping("secretKeyRef", secretKeyRef))
+		env = append(env, envVar)
+	}
+
 	if settings.CreateHelmChart && (role.Type == model.RoleTypeBosh || role.Type == model.RoleTypeColocatedContainer) {
 		env = append(env, helm.NewMapping("name", "CONFIGGIN_VERSION_TAG", "value", versionSuffix))
 

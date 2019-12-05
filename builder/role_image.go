@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"text/template"
 
 	"code.cloudfoundry.org/fissile/docker"
@@ -224,6 +225,18 @@ func (r *RoleImageBuilder) NewDockerPopulator(instanceGroup *model.InstanceGroup
 }
 
 func (r *RoleImageBuilder) generateRunScript(instanceGroup *model.InstanceGroup, assetName string) ([]byte, error) {
+	variables, err := instanceGroup.GetVariablesForRole()
+	if err != nil {
+		return nil, err
+	}
+	secrets := []string{"CONFIGGIN_SA_TOKEN"}
+	for _, variable := range variables {
+		if variable.CVOptions.Secret {
+			secrets = append(secrets, variable.Name)
+		}
+	}
+	sort.Strings(secrets)
+
 	asset, err := dockerfiles.Asset(assetName)
 	if err != nil {
 		return nil, err
@@ -240,6 +253,7 @@ func (r *RoleImageBuilder) generateRunScript(instanceGroup *model.InstanceGroup,
 	})
 	context := map[string]interface{}{
 		"instance_group": instanceGroup,
+		"secrets":        secrets,
 	}
 	runScriptTemplate, err = runScriptTemplate.Parse(string(asset))
 	if err != nil {

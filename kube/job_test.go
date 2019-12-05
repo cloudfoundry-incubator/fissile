@@ -189,6 +189,11 @@ func TestJobHelm(t *testing.T) {
 				spec:
 					containers:
 					-	env:
+						-	name: CONFIGGIN_SA_TOKEN
+							valueFrom:
+								secretKeyRef:
+									key: token
+									name: configgin
 						-	name: "KUBERNETES_CLUSTER_DOMAIN"
 							value: "cluster.local"
 						-	name: "KUBERNETES_CONTAINER_NAME"
