@@ -81,6 +81,37 @@ func TestPrefixString(t *testing.T) {
 	}
 }
 
+func TestQuoteList(t *testing.T) {
+	tests := []struct {
+		name     string
+		words    []string
+		expected []string
+	}{
+		{
+			name:     "empty list",
+			words:    []string{},
+			expected: []string{},
+		},
+		{
+			name:     "single word",
+			words:    []string{"foo"},
+			expected: []string{`"foo"`},
+		},
+		{
+			name:     "two words",
+			words:    []string{"foo", "bar"},
+			expected: []string{`"foo"`, `"bar"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := util.QuoteList(tt.words)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestWordList(t *testing.T) {
 	tests := []struct {
 		name        string

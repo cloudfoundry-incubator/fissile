@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -21,6 +22,15 @@ func PrefixString(str, prefix, separator string) string {
 		return fmt.Sprintf("%s%s%s", prefix, separator, str)
 	}
 	return str
+}
+
+// QuoteList returns an array of quoted strings.
+func QuoteList(words []string) []string {
+	quoted := make([]string, len(words))
+	for i := range words {
+		quoted[i] = strconv.Quote(words[i])
+	}
+	return quoted
 }
 
 // WordList returns a string of all words in the 'words' slice. For 2 or more words the

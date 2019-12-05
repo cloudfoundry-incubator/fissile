@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"code.cloudfoundry.org/fissile/helm"
@@ -55,6 +56,25 @@ func MakeValues(settings ExportSettings) helm.Node {
 			}
 			if cv.CVOptions.Immutable {
 				comment += "\n" + thisValue + " is immutable and must not be changed once set."
+			}
+			if cv.Type == "certificate" && !cv.CVOptions.IsCA {
+				comment += "\nThis certificate uses the "
+				if cv.CVOptions.RoleName != "" {
+					comment += " role name " + strconv.Quote(cv.CVOptions.RoleName)
+					if cv.CVOptions.AltNames != nil {
+						comment += " and the additional"
+					}
+				} else if cv.CVOptions.AltNames == nil {
+					comment += " name " + strconv.Quote(util.ConvertNameToKey(name))
+				}
+				if cv.CVOptions.AltNames != nil {
+					if len(cv.CVOptions.AltNames) == 1 {
+						comment += " name " + strconv.Quote(cv.CVOptions.AltNames[0])
+					} else {
+						comment += " names " + util.WordList(util.QuoteList(cv.CVOptions.AltNames), "and")
+					}
+				}
+				comment += "."
 			}
 			comment += formattedExample(cv.CVOptions.Example)
 			if cv.Type == "" {
