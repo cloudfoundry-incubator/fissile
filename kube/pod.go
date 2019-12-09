@@ -33,7 +33,9 @@ func NewPodTemplate(role *model.InstanceGroup, settings ExportSettings, grapher 
 			return nil, err
 		}
 
-		containers.Add(containerMapping)
+		node := helm.NewNode(containerMapping)
+		addFeatureCheck(candidate, node)
+		containers.Add(node)
 	}
 
 	imagePullSecrets := helm.NewMapping("name", "registry-credentials")
