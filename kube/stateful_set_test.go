@@ -53,7 +53,7 @@ func TestStatefulSetPorts(t *testing.T) {
 
 	var endpointService, headlessService, privateService helm.Node
 	items := deps.Get("items").Values()
-	if assert.Len(t, items, 4, "Should have four services per stateful role") {
+	if assert.Len(t, items, 3, "Should have three services per stateful role") {
 		for _, item := range items {
 			clusterIP := item.Get("spec", "clusterIP")
 			if clusterIP != nil && clusterIP.String() == "None" {
@@ -69,7 +69,7 @@ func TestStatefulSetPorts(t *testing.T) {
 		assert.Equal(t, role.Name+"-tor-public", endpointService.Get("metadata", "name").String(), "unexpected endpoint service name")
 	}
 	if assert.NotNil(t, headlessService, "headless service not found") {
-		assert.Equal(t, role.Name+"-tor-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
+		assert.Equal(t, role.Name+"-set", headlessService.Get("metadata", "name").String(), "unexpected headless service name")
 	}
 	if assert.NotNil(t, privateService, "private service not found") {
 		assert.Equal(t, role.Name+"-tor", privateService.Get("metadata", "name").String(), "unexpected private service name")
@@ -87,25 +87,6 @@ func TestStatefulSetPorts(t *testing.T) {
 			# This is the per-pod naming port
 			metadata:
 				name: myrole-set
-			spec:
-				ports:
-				-
-					name: http
-					port: 80
-					# targetPort must be undefined for headless services
-					targetPort: 0
-				-
-					name: https
-					port: 443
-					# targetPort must be undefined for headless services
-					targetPort: 0
-				selector:
-					app.kubernetes.io/component: myrole
-				clusterIP: None
-		-
-			# This is the per-pod naming port
-			metadata:
-				name: myrole-tor-set
 			spec:
 				ports:
 				-
@@ -217,42 +198,6 @@ func TestStatefulSetServices(t *testing.T) {
 				}
 				for _, style := range []string{"kube", "helm"} {
 					t.Run(style, func(t *testing.T) {
-						if assert.NotNil(t, headlessService, "Headless service not found") {
-							var actual interface{}
-							var err error
-							switch style {
-							case "helm":
-								actual, err = RoundtripNode(headlessService, nil)
-							case "kube":
-								actual, err = RoundtripKube(headlessService)
-							default:
-								panic("Unexpected style " + style)
-							}
-							require.NoError(t, err)
-							testhelpers.IsYAMLEqualString(assert.New(t), `---
-							apiVersion: v1
-							kind: Service
-							metadata:
-								name: myrole-tor-set
-								labels:
-									app.kubernetes.io/component: myrole-tor-set
-							spec:
-								clusterIP: None
-								ports:
-								-
-									name: http
-									port: 80
-									protocol: TCP
-									targetPort: 0
-								-
-									name: https
-									port: 443
-									protocol: TCP
-									targetPort: 0
-								selector:
-									app.kubernetes.io/component: myrole
-							`, actual)
-						}
 						if assert.NotNil(t, genericService, "Generic instance group service not found") {
 							var actual interface{}
 							var err error
